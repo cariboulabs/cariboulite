@@ -1,0 +1,97 @@
+Atmel Performance Analyzer
+
+IRQ handler is defined in
+
+~/making/perf_analyzer/ASF/thirdparty/wireless/avr2025_mac/source/tal/at86rf215/src/tal_irq_handler.
+
+Some processing of the IRQ status is performed in the handler but some if
+deferred to the TAL task by updating a volatile variable that holds the latest
+register value.
+
+SPI read/write routines are defined in
+
+~/making/perf_analyzer/ASF/thirdparty/wireless/services/trx_access/trx_access_2.c
+
+The TAL task function is defined in
+
+~/making/perf_analyzer/ASF/thirdparty/wireless/avr2025_mac/source/tal/at86rf215/src/tal.c
+
+
+
+
+For now we don't care for the 2.4 GHz radio and associated baseband core. The
+only exception is when we clear the IRQ line at initialization for which we need
+to read the 2.4 GHz radio IRQ status register.
+
+
+
+On the RPi, interrupt GPIO is BCM 23
+
+
+
+
+
+uncrustify -c ~/making/zephyr/.uncrustify.cfg --replace ping.c
+
+
+AT86RF215 Channel Configuration
+
+OFDM Option1 in in the 902–928 frequency band
+
+ChanSpacing: 1.2 MHz
+TotalNumChan: 20
+ChanCenterFreq0: 903.2 Mhz
+
+Center frequency for channel 3 is 906.8 according to
+
+ChanCenterFreq = ChanCenterFreq0 + NumChan × ChanSpacing
+
+
+
+
+Do NOT enable SPI in Raspberry Pi boot config file 
+
+sudo dtoverlay at86rf233
+
+/home/godzilla/making/linux/arch/arm/boot/dts/overlays/at86rf233-overlay.dts
+
+
+Enable verbose output for make
+make V=1
+
+iwpan dev wpan0 set pan_id 0x1111
+iwpan dev wpan0 set short_addr 0x0001
+ip link set wpan0 up
+wpan-ping -c 1 --address 0x1234
+
+
+
+
+root@raspberrypi:/sys/kernel/debug/tracing# cat trace
+# tracer: function
+#
+# entries-in-buffer/entries-written: 2/2   #P:4
+#
+#                              _-----=> irqs-off
+#                             / _----=> need-resched
+#                            | / _---=> hardirq/softirq
+#                            || / _--=> preempt-depth
+#                            ||| /     delay
+#           TASK-PID   CPU#  ||||    TIMESTAMP  FUNCTION
+#              | |       |   ||||       |         |
+       wpan-ping-1129  [002] .... 413347.967856: at86rf215_xmit_async <-ieee802154_tx
+       wpan-ping-1129  [002] .... 413347.967951: <stack trace>
+ => at86rf215_xmit_async
+ => ieee802154_tx
+ => ieee802154_subif_start_xmit
+ => dev_hard_start_xmit
+ => sch_direct_xmit
+ => __qdisc_run
+ => __dev_queue_xmit
+ => dev_queue_xmit
+ => dgram_sendmsg
+ => ieee802154_sock_sendmsg
+ => sock_sendmsg
+ => __sys_sendto
+ => sys_sendto
+ => ret_fast_syscall

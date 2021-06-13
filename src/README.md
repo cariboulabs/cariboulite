@@ -1,2 +1,0 @@
-# Caribou Software
-TODO

@@ -1,2 +1,0 @@
-# CaribouLite SoapiSDR Driver
-TODO
