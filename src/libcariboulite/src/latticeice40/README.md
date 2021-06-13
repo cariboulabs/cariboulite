@@ -1,0 +1,2 @@
+# Overview
+This Lattice ICE40 programming and management library was originally written by Eric Brombaugh (https://github.com/emeb) and used in https://github.com/emeb/icehat ("...RPi hat which comprises a Lattice iCE40 Ultra FPGA type ice5LP4K-SG48...").

@@ -1,0 +1,97 @@
+## PCF format reference
+#######################
+# PCF files contain physical constraints and are specified using the `--pcf` argument. Each (non blank)
+# line contains a command; lines beginning with `#` are comments.
+#
+# Two commands are supported: `set_io` and `set_frequency`.
+#        set_io [-nowarn] [-pullup yes|no] [-pullup_resistor 3P3K|6P8K|10K|100K] port pin
+#
+# - Constrains named port `port` to package pin `pin`.
+# - `-nowarn` disables the warning if `port` does not exist.
+# - `-pullup yes` can be used to enable the built in pullup for all iCE40 devices.
+# - `-pullup_resistor` sets the pullup strength, and is available on iCE40 UltraPlus only.
+# - `port` is the name (logical) of the signal (either in verilog or from datasheet)
+# - `pin` is the physical package PIN location (QFN: 1,2,3,..., QN84: A1,B1,A6..., BGA: A4,B4,C3...)
+#
+#        set_frequency net frequency
+#
+# Adds a clock constraint to a named net (any alias for the net can be used).
+# - `frequency` is in MHz.
+#
+# Note: "set_frequency" is a non-standard extension, not supported by the vendor toolchain. It allows
+# specifying clock constraints without needing the Python API.
+
+
+# For the iCE40 UltraPlus (iCE40LP1K-QN84) Breakout Board
+
+# CLOCK
+set_io i_glob_clock     A29
+
+# PMOD
+set_io io_pmod[0]       B24
+set_io io_pmod[1]       A31
+set_io io_pmod[2]       B23
+set_io io_pmod[3]       B21
+set_io io_pmod[4]       A25
+set_io io_pmod[5]       A26
+set_io io_pmod[6]       A27
+set_io io_pmod[7]       B20
+
+# MIXER
+set_io o_mixer_fm       A32
+set_io o_mixer_en       B22
+
+# RF FRONT-END PATH
+set_io o_rx_h_tx_l      A33
+set_io o_rx_h_tx_l_b    A35
+set_io o_tr_vc1         A34
+set_io o_tr_vc1_b       B27
+set_io o_tr_vc2         B26
+set_io o_shdn_rx_lna	A46
+set_io o_shdn_tx_lna	B36
+
+# LVDS TO MODEM
+set_io o_iq_tx_p		B4
+set_io o_iq_tx_n		A5
+set_io o_iq_tx_clk_p	A10
+set_io o_iq_tx_clk_n	B8
+
+set_io i_iq_rx_09_p		A4      # Paired with i_iq_rx_09_n	@ B3 - positive logic
+set_io i_iq_rx_24_n		A2      # Paired with i_iq_rx_24_p	@ B1 - negative logic - needs to be negated
+set_io i_iq_rx_clk_p	A3      # Paired with i_iq_rx_clk_n	@ B2 - positive logic
+
+# MODEM
+set_io i_radio_clk		A12
+
+# DIGITAL I/F
+set_io -pullup yes i_config[0]	B29
+set_io -pullup yes i_config[1]	A40
+set_io -pullup yes i_config[2]	B30
+set_io -pullup yes i_config[3]	A41
+set_io -pullup yes i_button     B31
+set_io o_led0		            A38
+set_io o_led1		            A39
+set_io o_ldo_2v8_en		        B32
+
+# SMI TO RPI
+set_io i_smi_a0_irq		    A19
+set_io i_smi_a1_alt_clock	A43
+set_io i_smi_a2		        A48
+set_io i_smi_a3		        A47
+
+set_io i_smi_soe_se		    B15
+set_io i_smi_swe_srw	    B13
+set_io io_smi_data[0]	    A16
+set_io io_smi_data[1]	    B11
+set_io io_smi_data[2]	    B10
+set_io io_smi_data[3]	    B12
+set_io io_smi_data[4]	    B14
+set_io io_smi_data[5]	    A20
+set_io io_smi_data[6]	    A13
+set_io io_smi_data[7]	    A14
+
+# SPI
+set_io i_mosi		    B17
+set_io i_sck		    A23
+set_io i_ss		        B18
+set_io o_miso		    A22
