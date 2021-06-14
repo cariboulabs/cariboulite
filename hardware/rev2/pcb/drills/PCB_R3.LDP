@@ -1,0 +1,4 @@
+Layer Pairs Export File for PCB: D:\Projects\cariboulite_hardware\src\PCB_R3.CSPcbDoc
+LayersSetName=Top_Bot_Thru_Holes|DrillFile=pcb_r3.txt|LayerPairs=gtl,gbl
+LayersSetName=Component Side_1_Blind_Vias|DrillFile=dr1|LayerPairs=gtl,g1
+LayersSetName=2_Solder Side_Blind_Vias|DrillFile=dr2|LayerPairs=g2,gbl
