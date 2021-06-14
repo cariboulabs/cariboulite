@@ -3,8 +3,8 @@ CaribouLite is an affordable, educational, open-source SDR platform that is also
 
 <table>
   <tr>
-    <td><img src="https://github.com/cariboulabs/cariboulite/blob/main/hardware/rev1/side.png" alt="Top View" height="200"></td>
-    <td><img src="https://github.com/cariboulabs/cariboulite/blob/main/hardware/rev1/DSC_1003.JPG" alt="Top View" height="300"></td>
+    <td><img src="hardware/rev1/side.png" alt="Top View" height="200"></td>
+    <td><img src="hardware/rev1/DSC_1003.JPG" alt="Top View" height="300"></td>
   </tr>
   <tr>
     <td>Top view, prototype Rev1</td>
@@ -26,7 +26,7 @@ In CaribouLite-R2 the PCB design has been thoroughly re-thought to meet its educ
 
 <table>
   <tr>
-    <td><img src="https://github.com/cariboulabs/cariboulite/blob/main/hardware/rev2/pictures/cad_image.png" alt="Top View" height="500"></td>
+    <td><img src="hardware/rev2/pictures/cad_image.png" alt="Top View" height="500"></td>
   </tr>
   <tr>
     <td>Top & Bottom view, Production Rev2</td>
@@ -43,7 +43,7 @@ In CaribouLite-R2 the PCB design has been thoroughly re-thought to meet its educ
 
 <table>
   <tr>
-    <td><img src="https://github.com/cariboulabs/cariboulite/blob/main/hardware/rev1/frequencies.png" alt="spectra"></td>
+    <td><img src="hardware/rev1/frequencies.png" alt="spectra"></td>
   </tr>
   <tr>
     <td style="text-align:center">Applicable spectra, S1G - sub-1GHz, WB - Wide tuning channel</td>
@@ -69,7 +69,7 @@ Max Transmit power         | 14.5 dBm                     | >14 dBm @ 30-2400 MH
 Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MHz, <8 dB @ 3500-6000 MHz
 
 # Board Layout
-![2d_nums](https://github.com/cariboulabs/cariboulite/blob/main/hardware/rev1/2d_nums.png)
+![2d_nums](hardware/rev1/2d_nums.png)
 
 <B>Description:</B>
 1. Rasperry-Pi 40-pin connector
