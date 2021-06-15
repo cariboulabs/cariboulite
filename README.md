@@ -47,7 +47,8 @@ In CaribouLite-R2 the PCB design has been thoroughly re-thought to meet its educ
     <td style="text-align:center">Applicable spectra, S1G - sub-1GHz, WB - Wide tuning channel</td>
   </tr>
 </table>
-<B>Note</B>: The gaps are defined by the design constarints of the system and may not exist in real-life hardware. Actual modem synthisizer outputs test show wider margins ar room temperature than those written in the datatsheet, but, as noted by Microchip, performance may suffer.
+<B>Note</B>: 
+The gaps are defined by the design constarints of the system and may not exist in real-life hardware. Actual modem synthisizer outputs test show wider margins ar room temperature than those written in the datatsheet, but, as noted by Microchip, performance may suffer.
 
 
 <B>FPGA specifications:</B>
@@ -65,6 +66,10 @@ Sample rate (ADC / DAC)    | 4 MSPS                       | 4 MSPS
 Analog bandwidth (Rx / Tx) | <4 MHz                       | <4 MHz
 Max Transmit power         | 14.5 dBm                     | >14 dBm @ 30-2400 MHz, >13 dBm @ 2400-6000 MHz
 Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MHz, <8 dB @ 3500-6000 MHz
+
+<B>Note</B>: 
+(1) Feature comparison table with other SDR devices will be published shortly
+(2) Some of the above specifications are simulated rather than tested
 
 # Board Layout
 ![2d_nums](hardware/rev1/2d_nums.png)
