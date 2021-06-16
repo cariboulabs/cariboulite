@@ -1,8 +1,8 @@
-/* -*- mode: c -*-
- *
- * Copyright 2012 Michael Ossmann
- *
- * This file is part of HackRF.
+/*
+ * This file was derived from code written by HackRF Team:
+ * 	1. Michael Ossmann
+ * and was modified by David Michaeli (cariboulabs.co@gmail.com) to
+ * adapt if for the CaribouLite project running on Linux OS (RPI).
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
