@@ -1,13 +1,26 @@
 /*
- * 'gcc -DTEST -DDEBUG -O2 -o test rffc507x.c' prints out what test
- * program would do if it had a real spi library
+ * This file was derived from code written by HackRF Team:
+ * 	1. 2012 Michael Ossmann
+ * 	2. 2014 Jared Boone <jared@sharebrained.com>
+ * and was modified by David Michaeli (cariboulabs.co@gmail.com) to
+ * adapt if for the CaribouLite project running on Linux OS (RPI).
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
  */
 
-/*
- * The actual part on Jawbreaker is the RFFC5072, not the RFFC507X, but the
- * RFFC507X may be installed instead.  The only difference between the parts is
- * that the RFFC507X includes a second mixer.
- */
 
 #include <stdint.h>
 #include <string.h>
