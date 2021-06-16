@@ -14,6 +14,8 @@ Unlike many other HAT projects, CaribouLite utilizes the <B>SMI</B> (Secondary M
 
 In our application, each ADC sample contains 13 bit (I) and 13 bit (Q), that are streamed with a maximal sample rate of 4 MSPS from the AT86RF215 IC. This channel requires 4 bytes (samples padded to 32-bit) per sample (and I/Q pair) => 16 MBytes/sec which are 128 MBits/sec. In addition to the 13 bit for each of I/Q, the Tx/Rx streams of data contain flow control and configuration bits. The modem (AT86RF215) IC by Microchip contains two RX I/Q outputs from its ADCs (one for each physical channel - sub-1GHz and 2.4GHz), and a single TX I/Q intput directed to the DACs.
 
+CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit our page](https://www.crowdsupply.com/cariboulabs/cariboulite)
+
 # Hardware Revisions
 **A working prototype version** of the board ([REV1](hardware/rev1)) has been produced and tested to meet product requirements. 
 In a meanwhile, a second revision of the board is being produced with the following main updates (see picture below):
