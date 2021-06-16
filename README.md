@@ -14,11 +14,13 @@ Unlike many other HAT projects, CaribouLite utilizes the <B>SMI</B> (Secondary M
 
 In our application, each ADC sample contains 13 bit (I) and 13 bit (Q), that are streamed with a maximal sample rate of 4 MSPS from the AT86RF215 IC. This channel requires 4 bytes (samples padded to 32-bit) per sample (and I/Q pair) => 16 MBytes/sec which are 128 MBits/sec. In addition to the 13 bit for each of I/Q, the Tx/Rx streams of data contain flow control and configuration bits. The modem (AT86RF215) IC by Microchip contains two RX I/Q outputs from its ADCs (one for each physical channel - sub-1GHz and 2.4GHz), and a single TX I/Q intput directed to the DACs.
 
-**A working prototype version** of the board has been produced and tested to meet product requirements. In a meanwhile, a second revision of the board is being produced with the following main updates (see picture below):
+# Hardware Revisions
+**A working prototype version** of the board ([REV1](hardware/rev1)) has been produced and tested to meet product requirements. 
+In a meanwhile, a second revision of the board is being produced with the following main updates (see picture below):
 1. Image rejection filtering improvement - U10 and U12 (HPF & LPF) - have been replaced by integrated LTCC filters by MiniCircuits
 2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI.
 3. Board layout improvements and overlays (silkscreen) beautification (including logo)
-4. More detailed changes in the schematics.
+4. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
 
 In CaribouLite-R2 the PCB design has been thoroughly re-thought to meet its educational needs. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
 
