@@ -80,7 +80,7 @@ Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MH
 ![2d_nums](hardware/rev1/2d_nums.png)
 
 <B>Description:</B>
-1. Rasperry-Pi 40-pin connector
+1. Raspberry-Pi 40-pin connector
 2. A modem - AT86RF215
 3. TCXO - 0.5 ppm @ 26 MHz
 4. FPGA - ICE40LP series from Lattice Semi.
