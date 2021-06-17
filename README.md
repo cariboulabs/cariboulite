@@ -18,7 +18,7 @@ CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit 
 
 # Hardware Revisions
 **A working prototype version** of the board ([REV1](hardware/rev1)) has been produced and tested to meet product requirements. 
-In a meanwhile, a second revision of the board is being produced with the following main updates (see picture below):
+In the meantime, a second revision of the board is being produced with the following main updates (see picture below):
 1. Image rejection filtering improvement - U10 and U12 (HPF & LPF) - have been replaced by integrated LTCC filters by MiniCircuits
 2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI.
 3. Board layout improvements and overlays (silkscreen) beautification (including logo)
@@ -52,7 +52,7 @@ In CaribouLite-R2 the PCB design has been thoroughly re-thought to meet its educ
   </tr>
 </table>
 <B>Note</B>: 
-The gaps are defined by the design constarints of the system and may not exist in real-life hardware. Actual modem synthisizer outputs test show wider margins ar room temperature than those written in the datatsheet, but, as noted by Microchip, performance may suffer.
+The gaps are defined by the design constraints of the system and may not exist in real-life hardware. Actual modem synthesizer outputs test show wider margins at room temperature than those written in the datatsheet, but, as noted by Microchip, performance may suffer.
 
 
 <B>FPGA specifications:</B>
@@ -83,8 +83,8 @@ Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MH
 1. Rasperry-Pi 40-pin connector
 2. A modem - AT86RF215
 3. TCXO - 0.5 ppm @ 26 MHz
-4. FPGA - ICE40LP serier from Lattice Semi.
-5. A frequency mixer with integrated synthysizer - RFFC5072
+4. FPGA - ICE40LP series from Lattice Semi.
+5. A frequency mixer with integrated synthesizer - RFFC5072
 6. External reference clock connector (may be used to acheive coherence between many CaribouLite units.
 7. A PMOD connector for FPGA expantion
 8. RPI configuration EEPROM (following RPI-HAT specifications)
