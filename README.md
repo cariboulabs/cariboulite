@@ -74,6 +74,7 @@ Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MH
 <B>Note</B>: 
 (1) Feature comparison table with other SDR devices will be published shortly
 (2) Some of the above specifications are simulated rather than tested
+(3) Analog bandwidth controlled by the modem
 
 # Board Layout
 ![2d_nums](hardware/rev1/2d_nums.png)
