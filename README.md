@@ -93,3 +93,6 @@ Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MH
 11. User custom switch + RPI HAT EEPROM reconfiguration (write-enable) switch
 12. Wide band SMA connector
 13. Sub 1-GHz SMA connector
+
+# License
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
