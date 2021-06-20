@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/ice40prog.dir/ice40_prog.c.o -o ice40prog  ../libcariboulite.a -lpthread ../src/io_utils/libio_utils.a ../src/datatypes/libdatatypes.a ../src/ustimer/libustimer.a ../src/caribou_fpga/libcaribou_fpga.a ../src/caribou_smi/libcaribou_smi.a ../src/latticeice40/liblatticeice40.a 

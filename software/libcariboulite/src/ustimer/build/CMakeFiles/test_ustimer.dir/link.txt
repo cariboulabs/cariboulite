@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_ustimer.dir/main.c.o -o test_ustimer  libustimer.a -lrt 

@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
+project(cariboulite)
 set(CMAKE_BUILD_TYPE Release)
 
 #Bring the headers, such as Student.h into the project

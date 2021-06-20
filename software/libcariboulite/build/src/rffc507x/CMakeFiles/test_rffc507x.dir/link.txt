@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_rffc507x.dir/rffc507x.c.o CMakeFiles/test_rffc507x.dir/test_rffc507x.c.o -o test_rffc507x  -lrt -lpthread -llgpio ../../../src/rffc507x/../io_utils/build/libio_utils.a 

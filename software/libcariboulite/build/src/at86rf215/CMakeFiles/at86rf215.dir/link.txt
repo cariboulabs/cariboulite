@@ -1,0 +1,2 @@
+/usr/bin/ar qc libat86rf215.a CMakeFiles/at86rf215.dir/at86rf215.c.o CMakeFiles/at86rf215.dir/at86rf215_events.c.o CMakeFiles/at86rf215.dir/at86rf215_radio.c.o CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o
+/usr/bin/ranlib libat86rf215.a
