@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcariboulite.a CMakeFiles/cariboulite.dir/src/cariboulite.c.o CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o
+/usr/bin/ranlib libcariboulite.a
