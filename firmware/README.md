@@ -3,7 +3,7 @@ CaribouLite contains an FPGA device (ICE40 family) with 1280 LE. It has two desi
 1. Step #1: Controlling and managing the RF front-end path, and other digital device control.
 2. Step #2: Streaming SMI I/Q data from the RPI to the modem, and from the modem LVDS back to the SMI interface.
 
-![System diagram](docs/fpga/system_view.png)
+![System diagram](../docs/fpga/system_view.png)
 
 The above block diagram shows the FPGA's peripheral connections and their naming.
 
@@ -15,14 +15,14 @@ The above block diagram shows the FPGA's peripheral connections and their naming
 * Orange: 3.3V voltage region and signals
 
 # FPGA Internal Blocks
-![Internal Block Diagram](docs/fpga/FPGA_diagram_internal.png)
+![Internal Block Diagram](../docs/fpga/FPGA_diagram_internal.png)
 In the above diagram, the FPGA internal blocks of logic are shown. These blocks are segmented into Pink (Step #1) and Violet (Step #2).
 Each subblock has a communal interface structure, module ID (within the system) and module version.
 The subblocks are described below.
 
 # Generic Block Structure
 This chapter describes the structure of a generic block within the FPGA internal blocks (SYS, IO, etc.). The minimal interfaces are shown below.
-![Generic Block Structure](docs/fpga/generic_module_block.png)
+![Generic Block Structure](../docs/fpga/generic_module_block.png)
 
 * All blocks shall respond to a default `'00000'` opcode with their module-version.
 * The blocks have a 5-bit `IOC` interface carrying the internal opcode.
