@@ -1,0 +1,23 @@
+------------------------------------------------------------------------------------------
+Gerber File Extension Report For: cariboulite_r2.GBR   6/28/2021  4:07:02 PM
+------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------
+Layer Extension     Layer Description                      
+------------------------------------------------------------------------------------------
+.GTL                Component Side                          
+.G1                 Layer 1                                 
+.G2                 Layer 2                                 
+.GBL                Solder Side                             
+.GTO                Top Overlay                             
+.GTP                Top Paste                               
+.GTS                Top Solder                              
+.GBS                Bottom Solder                           
+.GBP                Bottom Paste                            
+.GBO                Bottom Overlay                          
+.Outline            Outline                                 
+.GD1                Drill Drawing                           
+.GD2                Drill Drawing                           
+.GD3                Drill Drawing                           
+------------------------------------------------------------------------------------------
