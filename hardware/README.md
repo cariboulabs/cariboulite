@@ -30,6 +30,11 @@ TBD
 
 ## PMOD Connector
 TBD
+Synchronization
+GPS
+Display
+Peripherals
+Maximal current
 
 ## FPGA and LVDS
 TBD
