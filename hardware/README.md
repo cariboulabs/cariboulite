@@ -25,9 +25,31 @@ The power distribution provides high frequency isolation of the RF components fr
 ## RPI HAT EEPROM
 An I2C EEPROM device is assembled on CaribouLite to support for the requirements of RPI HATs as described in [RPI HAT Requirements](https://github.com/raspberrypi/hats).
 For the first setup of the device, the write-protect pin of the EEPROM needs to be released (de-asserted). To do so, the USR-Switch needs to be pushed all along the programming period, and released as the operation completes.
+<table>
+  <tr>
+    <td><img src="../docs/system/instruction_eeprom_wp.png" alt="Top View" height=200></td>
+  </tr>
+  <tr>
+    <td>User Switch to push when programming EEPROM</td>
+  </tr>
+</table>
+
 
 ## Clocking
-TBD
+The FPGA is externally clocked by a crystal oscillator of 125MHz located in the bottom side of the board.
+Clocking the FPGA from the RPI GPCLK (GPIO4 / GPCLK0 / SMI_SA1) is also possible but not recommanded as it may cause substancial increase in the board EMI. For that reason, the GPCLK option is possible but not used in the mainline hardware version. Hacking the possibility to clock from the RPI is a good idea though.
+
+The MODEM (AT86RF215) is clocked from a 26MHz TCXO (bottom layer). This device provides a stable and low phase noise clock reference to the receivers and transmitters within the IC. The MODEM further outputs a buffered version of the input clock (typically 26MHz, but other possibilities exist as well), to the MIXER input. A capacitor divider circuit adapts the LVCMOS output from the MODEM to the input levels of the MIXER.
+
+The MIXER can also be clocked from a separate dedicated TCXO (not assembled), or an external coherent clock source.
+<table>
+  <tr>
+    <td><img src="../docs/system/instructions_clocking_mixer.png" alt="Top View" height=200></td>
+  </tr>
+  <tr>
+    <td>MIXER clocking options, other than the default MODEM provided reference clock</td>
+  </tr>
+</table>
 
 ## PMOD Connector
 TBD
