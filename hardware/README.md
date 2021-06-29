@@ -50,6 +50,7 @@ The MIXER can also be clocked from a separate dedicated TCXO (not assembled), or
     <td>MIXER clocking options, other than the default MODEM provided reference clock</td>
   </tr>
 </table>
+To enable the above clocking schemes, the MODEM clock input jumper should be cut, and the appropriate jumpers need to be shorted. Consult the schematics to learn more.
 
 ## PMOD Connector
 TBD
