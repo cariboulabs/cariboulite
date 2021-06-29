@@ -30,6 +30,11 @@ TBD
 
 ## PMOD Connector
 TBD
+Synchronization
+GPS
+Display
+Peripherals
+Maximal current
 
 ## FPGA and LVDS
 TBD
@@ -49,8 +54,12 @@ TBD
 ### Mixer
 TBD
 
-### Calibrations
+### Calibrations & Testing
 TBD
+Test points
+
+### Hacks
+TBD mixerless system
 
 
 # License
