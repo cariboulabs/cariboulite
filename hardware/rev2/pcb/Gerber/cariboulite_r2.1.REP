@@ -84,10 +84,10 @@ Generating : Layer 1
 
 Used DCodes :
     D44
-    D45
     D46
     D47
-    D49
+    D48
+    D50
     D54
     D58
     D59
@@ -114,9 +114,9 @@ Generating : Layer 2
 Used DCodes :
     D44
     D45
-    D46
     D47
     D48
+    D50
     D53
     D54
     D58
@@ -209,9 +209,9 @@ Generating : Top Overlay
 
 
 Used DCodes :
-    D44
-    D45
-    D46
+    D47
+    D48
+    D50
     D54
     D95
     D96
@@ -430,8 +430,8 @@ Generating : Bottom Overlay
 
 
 Used DCodes :
-    D44
-    D45
+    D47
+    D48
     D54
     D97
     D160
@@ -464,9 +464,9 @@ Generating : Drill Drawing
 
 
 Used DCodes :
-    D45
-    D49
-    D50
+    D46
+    D48
+    D51
     D54
     D68
     D163
@@ -485,9 +485,9 @@ Generating : Drill Drawing
 
 
 Used DCodes :
-    D45
-    D49
-    D50
+    D46
+    D48
+    D51
     D54
     D68
     D163
@@ -506,9 +506,9 @@ Generating : Drill Drawing
 
 
 Used DCodes :
-    D45
-    D49
-    D50
+    D46
+    D48
+    D51
     D54
     D68
     D163
