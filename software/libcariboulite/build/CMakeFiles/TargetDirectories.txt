@@ -1,12 +1,11 @@
 /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/install/strip.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/install/local.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/install.dir
-/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/ice40prog.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/cariboulite.dir
-/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/list_install_components.dir
-/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/ice40programmer.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/fpgacomm.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/rebuild_cache.dir
+/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/ice40programmer.dir
+/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/list_install_components.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/edit_cache.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes/CMakeFiles/install/strip.dir
 /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes/CMakeFiles/install/local.dir

@@ -1,0 +1,8 @@
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/install/strip.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/install/local.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/test_io_utils.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/edit_cache.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/io_utils.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/rebuild_cache.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/list_install_components.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles/install.dir

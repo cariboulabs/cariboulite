@@ -111,16 +111,6 @@ install/fast: preinstall/fast
 	/usr/local/lib/python3.7/dist-packages/cmake/data/bin/cmake -P cmake_install.cmake
 .PHONY : install/fast
 
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-
-.PHONY : list_install_components/fast
-
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
@@ -131,6 +121,16 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 
 .PHONY : rebuild_cache/fast
+
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+
+.PHONY : list_install_components/fast
 
 # Special rule for the target edit_cache
 edit_cache:
@@ -176,19 +176,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named ice40prog
-
-# Build rule for target.
-ice40prog: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ice40prog
-.PHONY : ice40prog
-
-# fast build rule for target.
-ice40prog/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40prog.dir/build.make CMakeFiles/ice40prog.dir/build
-.PHONY : ice40prog/fast
-
-#=============================================================================
 # Target rules for targets named cariboulite
 
 # Build rule for target.
@@ -202,19 +189,6 @@ cariboulite/fast:
 .PHONY : cariboulite/fast
 
 #=============================================================================
-# Target rules for targets named ice40programmer
-
-# Build rule for target.
-ice40programmer: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ice40programmer
-.PHONY : ice40programmer
-
-# fast build rule for target.
-ice40programmer/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/build
-.PHONY : ice40programmer/fast
-
-#=============================================================================
 # Target rules for targets named fpgacomm
 
 # Build rule for target.
@@ -226,6 +200,19 @@ fpgacomm: cmake_check_build_system
 fpgacomm/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fpgacomm.dir/build.make CMakeFiles/fpgacomm.dir/build
 .PHONY : fpgacomm/fast
+
+#=============================================================================
+# Target rules for targets named ice40programmer
+
+# Build rule for target.
+ice40programmer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ice40programmer
+.PHONY : ice40programmer
+
+# fast build rule for target.
+ice40programmer/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/build
+.PHONY : ice40programmer/fast
 
 #=============================================================================
 # Target rules for targets named test_datatypes
@@ -503,33 +490,6 @@ test/fpga_comm_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fpgacomm.dir/build.make CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.s
 .PHONY : test/fpga_comm_test.c.s
 
-test/ice40_prog.o: test/ice40_prog.c.o
-
-.PHONY : test/ice40_prog.o
-
-# target to build an object file
-test/ice40_prog.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40prog.dir/build.make CMakeFiles/ice40prog.dir/test/ice40_prog.c.o
-.PHONY : test/ice40_prog.c.o
-
-test/ice40_prog.i: test/ice40_prog.c.i
-
-.PHONY : test/ice40_prog.i
-
-# target to preprocess a source file
-test/ice40_prog.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40prog.dir/build.make CMakeFiles/ice40prog.dir/test/ice40_prog.c.i
-.PHONY : test/ice40_prog.c.i
-
-test/ice40_prog.s: test/ice40_prog.c.s
-
-.PHONY : test/ice40_prog.s
-
-# target to generate assembly for a file
-test/ice40_prog.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40prog.dir/build.make CMakeFiles/ice40prog.dir/test/ice40_prog.c.s
-.PHONY : test/ice40_prog.c.s
-
 test/ice40_programmer.o: test/ice40_programmer.c.o
 
 .PHONY : test/ice40_programmer.o
@@ -575,7 +535,6 @@ help:
 	@echo "... cariboulite"
 	@echo "... datatypes"
 	@echo "... fpgacomm"
-	@echo "... ice40prog"
 	@echo "... ice40programmer"
 	@echo "... io_utils"
 	@echo "... latticeice40"
@@ -597,9 +556,6 @@ help:
 	@echo "... test/fpga_comm_test.o"
 	@echo "... test/fpga_comm_test.i"
 	@echo "... test/fpga_comm_test.s"
-	@echo "... test/ice40_prog.o"
-	@echo "... test/ice40_prog.i"
-	@echo "... test/ice40_prog.s"
 	@echo "... test/ice40_programmer.o"
 	@echo "... test/ice40_programmer.i"
 	@echo "... test/ice40_programmer.s"

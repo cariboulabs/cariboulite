@@ -1,0 +1,2 @@
+/usr/bin/ar qc librffc507x.a CMakeFiles/rffc507x.dir/rffc507x.c.o
+/usr/bin/ranlib librffc507x.a
