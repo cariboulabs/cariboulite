@@ -32,8 +32,16 @@ int main ()
 	io_utils_setup();
 	io_utils_set_gpio_mode(FPGA_RESET, io_utils_alt_gpio_out);
     io_utils_set_gpio_mode(ICE40_CS, io_utils_alt_gpio_out);
-    io_utils_write_gpio(FPGA_RESET, 0);
-    io_utils_write_gpio(ICE40_CS, 0);
+	io_utils_setup_gpio(CARIBOULITE_MXR_RESET, io_utils_dir_output, io_utils_pull_up);
+	
+    //io_utils_write_gpio(FPGA_RESET, 0);
+    //io_utils_write_gpio(ICE40_CS, 0);
+	
+	io_utils_write_gpio(CARIBOULITE_MXR_RESET, 0);
+	printf("RFFC5072 is reset, press enter to release...\n");
+	getchar();
+	io_utils_write_gpio(CARIBOULITE_MXR_RESET, 1);
+	printf("RFFC5072 is not reset.\n");
 
 	io_utils_spi_init(&io_spi_dev);
 	rffc507x_init(&dev, &io_spi_dev);

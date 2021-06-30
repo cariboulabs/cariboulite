@@ -61,10 +61,9 @@ set(CMAKE_MAKEFILE_PRODUCTS
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
-  "CMakeFiles/ice40prog.dir/DependInfo.cmake"
   "CMakeFiles/cariboulite.dir/DependInfo.cmake"
-  "CMakeFiles/ice40programmer.dir/DependInfo.cmake"
   "CMakeFiles/fpgacomm.dir/DependInfo.cmake"
+  "CMakeFiles/ice40programmer.dir/DependInfo.cmake"
   "src/datatypes/CMakeFiles/test_datatypes.dir/DependInfo.cmake"
   "src/datatypes/CMakeFiles/datatypes.dir/DependInfo.cmake"
   "src/ustimer/CMakeFiles/test_ustimer.dir/DependInfo.cmake"

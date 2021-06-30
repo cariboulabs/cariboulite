@@ -32,15 +32,12 @@ set(SOURCES_ICE40_PROG test/ice40_prog.c)
 set(SOURCES_ICE40_PROGRAMMER test/ice40_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
 
-add_executable(ice40prog ${SOURCES_ICE40_PROG})
 add_executable(ice40programmer ${SOURCES_ICE40_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 
-target_link_libraries(ice40prog cariboulite pthread io_utils)
 target_link_libraries(ice40programmer cariboulite pthread io_utils)
 target_link_libraries(fpgacomm cariboulite pthread io_utils)
 
-set_target_properties( ice40prog PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( ice40programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 
