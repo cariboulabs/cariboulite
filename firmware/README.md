@@ -11,8 +11,6 @@ The above block diagram shows the FPGA's peripheral connections and their naming
 * i_<signal>: input signal
 * o_<signal>: output signal
 * io_<signal>: input / output signal (controllable pin)
-* Violet: 2.8V voltage region and signals
-* Orange: 3.3V voltage region and signals
 
 # FPGA Internal Blocks
 ![Internal Block Diagram](../docs/fpga/FPGA_diagram_internal.png)
