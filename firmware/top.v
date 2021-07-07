@@ -2,6 +2,7 @@
 `include "sys_ctrl.v"
 `include "io_ctrl.v"
 `include "smi_ctrl.v"
+`include "lvds_rx.v"
 
 module top(
       input i_glob_clock,
@@ -204,10 +205,6 @@ module top(
       .USER_SIGNAL_TO_GLOBAL_BUFFER (lvds_clock),
       .GLOBAL_BUFFER_OUTPUT(lvds_clock_buf) );
 
-   // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = lvds_clock_buf;
-   assign io_pmod[1] = ~lvds_clock_buf;
-
    // Differential 2.4GHz I/Q DDR signal
    SB_IO #(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
@@ -218,8 +215,8 @@ module top(
       .PACKAGE_PIN(i_iq_rx_24_n),   // Attention: this is the 'n' input, thus the actual values
                                     //            will need to be negated (PCB layout constraint)
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( io_pmod[2] ),       // the 0 deg data output
-      .D_IN_1 ( io_pmod[3]) );      // the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_24_d0 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_24_d1 ) );// the 180 deg data output
 
    // Differential 0.9GHz I/Q DDR signal
    SB_IO #(
@@ -229,7 +226,52 @@ module top(
    ) iq_rx_09 (
       .PACKAGE_PIN(i_iq_rx_09_p),
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( io_pmod[4] ),       // the 0 deg data output
-      .D_IN_1 ( io_pmod[5]) );      // the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_09_d0 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_09_d1 ) );// the 180 deg data output
+
+
+   //=========================================================================
+   // LVDS RX SIGNAL FROM MODEM
+   //=========================================================================
+   wire w_lvds_rx_09_d0;   // 0 degree
+   wire w_lvds_rx_09_d1;   // 180 degree
+   wire w_lvds_rx_24_d0;   // 0 degree
+   wire w_lvds_rx_24_d1;   // 180 degree
+   wire w_rx_09_fifo_full;
+   wire w_rx_09_fifo_write_clk;
+   wire w_rx_09_fifo_push;
+   wire [31:0] w_rx_09_fifo_data;
+   wire w_rx_24_fifo_full;
+   wire w_rx_24_fifo_write_clk;
+   wire w_rx_24_fifo_push;
+   wire [31:0] w_rx_24_fifo_data;
+
+   lvds_rx lvds_rx_09_inst
+   (
+      .i_reset (r_reset),
+      .i_ddr_clk (lvds_clock_buf),
+      .i_ddr_data ({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
+      .i_fifo_full (w_rx_09_fifo_full),
+      .o_fifo_write_clk (w_rx_09_fifo_write_clk),
+      .o_fifo_push (w_rx_09_fifo_push),
+      .o_fifo_data (w_rx_09_fifo_data)
+   );
+
+   lvds_rx lvds_rx_24_inst
+   (
+      .i_reset (r_reset),
+      .i_ddr_clk (lvds_clock_buf),
+      .i_ddr_data ({w_lvds_rx_24_d0, w_lvds_rx_24_d1}),
+      .i_fifo_full (w_rx_24_fifo_full),
+      .o_fifo_write_clk (w_rx_24_fifo_write_clk),
+      .o_fifo_push (w_rx_24_fifo_push),
+      .o_fifo_data (w_rx_24_fifo_data)
+   );
+
+   // Testing - output the clock signal (positive and negative) to the PMOD
+   assign io_pmod[0] = lvds_clock_buf;
+   assign io_pmod[1] = w_rx_09_fifo_push;
+   assign io_pmod[2] = w_rx_24_fifo_push;
+   assign io_pmod[7:3] = w_rx_09_fifo_data[29:26];
 
 endmodule // top

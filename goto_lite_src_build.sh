@@ -1,2 +1,2 @@
-cd Software/CaribouLite/libcariboulite/build/
+cd software/libcariboulite/build/
 
