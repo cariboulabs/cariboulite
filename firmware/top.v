@@ -3,7 +3,7 @@
 `include "io_ctrl.v"
 `include "smi_ctrl.v"
 `include "lvds_rx.v"
-`include "dual_clock_fifo.v"
+`include "complex_fifo.v"
 
 module top(
       input i_glob_clock,
@@ -266,7 +266,7 @@ module top(
       .o_fifo_data (w_rx_09_fifo_data)
    );
 
-   dual_clock_fifo rx_09_fifo(
+   complex_fifo rx_09_fifo(
       .wr_rst_i (r_reset),
       .wr_clk_i (w_rx_09_fifo_write_clk),
       .wr_en_i (w_rx_09_fifo_push),
@@ -290,7 +290,7 @@ module top(
       .o_fifo_data (w_rx_24_fifo_data)
    );
 
-   dual_clock_fifo rx_24_fifo(
+   complex_fifo rx_24_fifo(
       .wr_rst_i (r_reset),
       .wr_clk_i (w_rx_24_fifo_write_clk),
       .wr_en_i (w_rx_24_fifo_push),
@@ -309,6 +309,6 @@ module top(
    assign io_pmod[2] = w_rx_24_fifo_push;
    assign io_pmod[3] = w_rx_09_fifo_empty;
    assign io_pmod[4] = w_rx_24_fifo_empty;
-   assign io_pmod[7:5] = w_rx_09_fifo_data[29:27];
+   assign io_pmod[7:5] = w_rx_09_fifo_data[4:2];
 
 endmodule // top

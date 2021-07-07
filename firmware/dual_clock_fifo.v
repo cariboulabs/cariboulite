@@ -110,34 +110,6 @@ always @(posedge rd_clk_i)
 	else
 		empty_o <= empty_o & (gray_conv(rd_addr) == wr_addr_gray_rd_r);
 
-// generate dual clocked memory
-SB_RAM256x16 ram256x16_i_inst (
-    .RDATA(RDATA_c[15:0]),
-    .RADDR(RADDR_c[7:0]),
-    .RCLK(RCLK_c),
-    .RCLKE(RCLKE_c),
-    .RE(RE_c),
-    .WADDR(WADDR_c[7:0]),
-    .WCLK(WCLK_c),
-    .WCLKE(WCLKE_c),
-    .WDATA(WDATA_c[15:0]),
-    .WE(WE_c),
-    .MASK(MASK_c[15:0]) );
-
-SB_RAM256x16 ram256x16_q_inst (
-    .RDATA(RDATA_c[15:0]),
-    .RADDR(RADDR_c[7:0]),
-    .RCLK(RCLK_c),
-    .RCLKE(RCLKE_c),
-    .RE(RE_c),
-    .WADDR(WADDR_c[7:0]),
-    .WCLK(WCLK_c),
-    .WCLKE(WCLKE_c),
-    .WDATA(WDATA_c[15:0]),
-    .WE(WE_c),
-    .MASK(MASK_c[15:0]) );
-
-
 reg [DATA_WIDTH-1:0] mem[(1<<ADDR_WIDTH)-1:0];
 
 always @(posedge rd_clk_i)
