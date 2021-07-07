@@ -3,6 +3,7 @@
 `include "io_ctrl.v"
 `include "smi_ctrl.v"
 `include "lvds_rx.v"
+`include "dual_clock_fifo.v"
 
 module top(
       input i_glob_clock,
@@ -71,7 +72,7 @@ module top(
    wire [3:0]  w_cs;
    wire        w_fetch;
    wire        w_load;
-   reg         r_reset_b;
+   reg         r_reset;
 
    wire [7:0]  w_tx_data_sys;
    wire [7:0]  w_tx_data_io;
@@ -82,7 +83,7 @@ module top(
    //=========================================================================
    initial begin
       r_counter = 2'b00;
-      r_reset_b = 1'b1;
+      r_reset = 1'b0;
    end
 
    //=========================================================================
@@ -90,7 +91,7 @@ module top(
    //=========================================================================
    spi_if spi_if_ins
    (
-      .i_rst_b (r_reset_b),
+      .i_rst_b (r_reset),
       .i_sys_clk (w_clock_spi),
       .o_ioc (w_ioc),
       .o_data_in (w_rx_data),
@@ -237,14 +238,22 @@ module top(
    wire w_lvds_rx_09_d1;   // 180 degree
    wire w_lvds_rx_24_d0;   // 0 degree
    wire w_lvds_rx_24_d1;   // 180 degree
+
    wire w_rx_09_fifo_full;
+   wire w_rx_09_fifo_empty;
    wire w_rx_09_fifo_write_clk;
    wire w_rx_09_fifo_push;
    wire [31:0] w_rx_09_fifo_data;
+   wire w_rx_09_fifo_pull;
+   wire [31:0] w_rx_09_fifo_pulled_data;
+
    wire w_rx_24_fifo_full;
+   wire w_rx_24_fifo_empty;
    wire w_rx_24_fifo_write_clk;
    wire w_rx_24_fifo_push;
    wire [31:0] w_rx_24_fifo_data;
+   wire w_rx_24_fifo_pull;
+   wire [31:0] w_rx_24_fifo_pulled_data;
 
    lvds_rx lvds_rx_09_inst
    (
@@ -255,6 +264,19 @@ module top(
       .o_fifo_write_clk (w_rx_09_fifo_write_clk),
       .o_fifo_push (w_rx_09_fifo_push),
       .o_fifo_data (w_rx_09_fifo_data)
+   );
+
+   dual_clock_fifo rx_09_fifo(
+      .wr_rst_i (r_reset),
+      .wr_clk_i (w_rx_09_fifo_write_clk),
+      .wr_en_i (w_rx_09_fifo_push),
+      .wr_data_i (w_rx_09_fifo_data),
+      .rd_rst_i (r_reset),
+      .rd_clk_i (w_clock_sys),
+      .rd_en_i (w_rx_09_fifo_pull),
+      .rd_data_o (w_rx_09_fifo_pulled_data),
+      .full_o (w_rx_09_fifo_full),
+      .empty_o (w_rx_09_fifo_empty)
    );
 
    lvds_rx lvds_rx_24_inst
@@ -268,10 +290,25 @@ module top(
       .o_fifo_data (w_rx_24_fifo_data)
    );
 
+   dual_clock_fifo rx_24_fifo(
+      .wr_rst_i (r_reset),
+      .wr_clk_i (w_rx_24_fifo_write_clk),
+      .wr_en_i (w_rx_24_fifo_push),
+      .wr_data_i (w_rx_24_fifo_data),
+      .rd_rst_i (r_reset),
+      .rd_clk_i (w_clock_sys),
+      .rd_en_i (w_rx_24_fifo_pull),
+      .rd_data_o (w_rx_24_fifo_pulled_data),
+      .full_o (w_rx_24_fifo_full),
+      .empty_o (w_rx_24_fifo_empty)
+   );
+
    // Testing - output the clock signal (positive and negative) to the PMOD
    assign io_pmod[0] = lvds_clock_buf;
    assign io_pmod[1] = w_rx_09_fifo_push;
    assign io_pmod[2] = w_rx_24_fifo_push;
-   assign io_pmod[7:3] = w_rx_09_fifo_data[29:26];
+   assign io_pmod[3] = w_rx_09_fifo_empty;
+   assign io_pmod[4] = w_rx_24_fifo_empty;
+   assign io_pmod[7:5] = w_rx_09_fifo_data[29:27];
 
 endmodule // top
