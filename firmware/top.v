@@ -153,18 +153,6 @@ module top(
       .o_mixer_en (o_mixer_en)
    );
 
-   smi_ctrl smi_ctrl_ins
-   (
-      .i_rst_b (r_reset),
-      .i_sys_clk (w_clock_sys),
-      .i_ioc (w_ioc),
-      .i_data_in (w_rx_data),
-      .o_data_out (w_tx_data_smi),
-      .i_cs (w_cs[2]),
-      .i_fetch_cmd (w_fetch),
-      .i_load_cmd (w_load)
-   );
-
    //=========================================================================
    // CONBINATORIAL ASSIGNMENTS
    //=========================================================================
@@ -301,6 +289,26 @@ module top(
       .rd_data_o (w_rx_24_fifo_pulled_data),
       .full_o (w_rx_24_fifo_full),
       .empty_o (w_rx_24_fifo_empty)
+   );
+
+   smi_ctrl smi_ctrl_ins
+   (
+      .i_rst_b (r_reset),
+      .i_sys_clk (w_clock_sys),
+      .i_ioc (w_ioc),
+      .i_data_in (w_rx_data),
+      .o_data_out (w_tx_data_smi),
+      .i_cs (w_cs[2]),
+      .i_fetch_cmd (w_fetch),
+      .i_load_cmd (w_load),
+
+      .o_fifo_09_pull (w_rx_09_fifo_pull),
+      .i_fifo_09_pulled_data (w_rx_09_fifo_pulled_data),
+      .i_fifo_09_empty (w_rx_09_fifo_empty),
+
+      .o_fifo_24_pull (w_rx_24_fifo_pull),
+      .i_fifo_24_pulled_data (w_rx_24_fifo_pulled_data),
+      .i_fifo_24_empty (w_rx_24_fifo_empty)
    );
 
    // Testing - output the clock signal (positive and negative) to the PMOD

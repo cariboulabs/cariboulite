@@ -8,7 +8,16 @@ module smi_ctrl
         output reg [7:0]    o_data_out,
         input               i_cs,
         input               i_fetch_cmd,
-        input               i_load_cmd );
+        input               i_load_cmd,
+        
+        output              o_fifo_09_pull,
+        input [31:0]        i_fifo_09_pulled_data,
+        input               i_fifo_09_empty,
+
+        output              o_fifo_24_pull,
+        input [31:0]        i_fifo_24_pulled_data,
+        input               i_fifo_24_empty
+    );
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------
@@ -32,5 +41,13 @@ module smi_ctrl
             o_data_out <= 8'b00000000;
         end
     end
+
+    always @(posedge i_sys_clk)
+    begin
+        if (i_fifo_09_empty == 1'b0) begin
+          
+        end
+    end
+
 
 endmodule // smi_ctrl
