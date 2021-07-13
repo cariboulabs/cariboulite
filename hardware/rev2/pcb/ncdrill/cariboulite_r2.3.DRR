@@ -1,0 +1,37 @@
+---------------------------------------------------------------------------
+NCDrill File Report For: cariboulite_r2.CSPcbDoc   7/9/2021  8:59:22 AM
+---------------------------------------------------------------------------
+
+Layer Pair : Component Side to Solder Side
+ASCII RoundHoles File : cariboulite_r2.TXT
+
+Tool         Hole Size           Hole Type     Hole Count Plated       Tool Travel
+---------------------------------------------------------------------------
+T2        8mil (0.2032mm)          Round          752              45.96 Inch (1167.35 mm)
+T3        18.11mil (0.45999mm)     Round          4                0.80 Inch (20.24 mm)
+T4        23.62mil (0.59995mm)     Round          2                0.16 Inch (4.05 mm)
+T5        25mil (0.635mm)          Round          2                1.38 Inch (35.08 mm)
+T6        35.43mil (0.89992mm)     Round          40               5.40 Inch (137.16 mm)
+T7        108.27mil (2.75006mm)    Round          3         NPTH   4.74 Inch (120.39 mm)
+---------------------------------------------------------------------------
+Totals                                            803              58.44 Inch (1484.27 mm)
+Layer Pair : Component Side to Layer 1
+ASCII RoundHoles File : cariboulite_r2.TX1
+
+Tool         Hole Size           Hole Type     Hole Count Plated       Tool Travel
+---------------------------------------------------------------------------
+T1        4mil (0.1016mm)          Round          615              24.87 Inch (631.78 mm)
+---------------------------------------------------------------------------
+Totals                                            615              24.87 Inch (631.78 mm)
+Layer Pair : Layer 2 to Solder Side
+ASCII RoundHoles File : cariboulite_r2.TX2
+
+Tool         Hole Size           Hole Type     Hole Count Plated       Tool Travel
+---------------------------------------------------------------------------
+T1        4mil (0.1016mm)          Round          579              28.68 Inch (728.58 mm)
+---------------------------------------------------------------------------
+Totals                                            579              28.68 Inch (728.58 mm)
+---------------------------------------------------------------------------
+Totals                                            1997             111.99 Inch (2844.63 mm)
+
+Total Processing Time (hh:mm:ss) : 00:00:00
