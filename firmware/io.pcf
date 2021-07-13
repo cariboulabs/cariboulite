@@ -75,7 +75,7 @@ set_io o_ldo_2v8_en		        B32
 
 # SMI TO RPI
 set_io i_smi_a0_irq		    A19
-set_io i_smi_a1_alt_clock	A43
+set_io i_smi_a1	            A43
 set_io i_smi_a2		        A48
 set_io i_smi_a3		        A47
 
