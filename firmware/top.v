@@ -8,7 +8,6 @@
 module top(
       input i_glob_clock,
       output i_smi_a0_irq,
-      input i_smi_a1_alt_clock,
 
       // RF FRONT-END PATH
       output o_rx_h_tx_l,
@@ -47,6 +46,7 @@ module top(
       output o_led1,
 
       // SMI TO RPI
+      input i_smi_a1,
       input i_smi_a2,
       input i_smi_a3,
 
@@ -304,19 +304,39 @@ module top(
 
       .o_fifo_09_pull (w_rx_09_fifo_pull),
       .i_fifo_09_pulled_data (w_rx_09_fifo_pulled_data),
+      .i_fifo_09_full (w_rx_09_fifo_full),
       .i_fifo_09_empty (w_rx_09_fifo_empty),
 
       .o_fifo_24_pull (w_rx_24_fifo_pull),
       .i_fifo_24_pulled_data (w_rx_24_fifo_pulled_data),
-      .i_fifo_24_empty (w_rx_24_fifo_empty)
+      .i_fifo_24_full (w_rx_24_fifo_full),
+      .i_fifo_24_empty (w_rx_24_fifo_empty),
+
+      .i_smi_a ({i_smi_a1, i_smi_a2, i_smi_a3}),
+      .i_smi_soe_se (i_smi_soe_se),
+      .i_smi_swe_srw (i_smi_swe_srw),
+      .o_smi_data_out (w_smi_data_output),
+      .i_smi_data_in (w_smi_data_input),
+      .o_smi_read_req (w_smi_read_req),
+      .o_smi_write_req (w_smi_write_req),
+      .o_smi_writing (w_smi_writing)
    );
 
+   wire [7:0] w_smi_data_output;
+   wire [7:0] w_smi_data_input;
+   wire w_smi_read_req;
+   wire w_smi_write_req;
+   wire w_smi_writing;
+
+   assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
+   assign w_smi_data_input = io_smi_data;
+
    // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = lvds_clock_buf;
+   assign io_pmod[0] = w_smi_writing;
    assign io_pmod[1] = w_rx_09_fifo_push;
-   assign io_pmod[2] = w_rx_24_fifo_push;
+   assign io_pmod[2] = w_smi_read_req;
    assign io_pmod[3] = w_rx_09_fifo_empty;
-   assign io_pmod[4] = w_rx_24_fifo_empty;
+   assign io_pmod[4] = w_smi_write_req;
    assign io_pmod[7:5] = w_rx_09_fifo_data[4:2];
 
 endmodule // top
