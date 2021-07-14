@@ -26,10 +26,11 @@ module smi_ctrl
         input [2:0]         i_smi_a,
         input               i_smi_soe_se,
         input               i_smi_swe_srw,
-        output [7:0]        o_smi_data_out,
-        inout [7:0]         i_smi_data_in,
+        output reg [7:0]    o_smi_data_out,
+        input [7:0]         i_smi_data_in,
         output              o_smi_read_req,
-        output              o_smi_write_req );
+        output              o_smi_write_req,
+        output              o_smi_writing );
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------
@@ -41,6 +42,15 @@ module smi_ctrl
     // ----------------------
     localparam
         module_version  = 8'b00000001;
+
+    // MODULE RX STATE MACHINE
+    localparam
+        state_rx_idle = 3'b000,
+        state_rx_fetch_fifo = 3'b001,
+        state_rx_byte_0 = 3'b010,
+        state_rx_byte_1 = 3'b011,
+        state_rx_byte_2 = 3'b100,
+        state_rx_byte_3 = 3'b101;
 
     assign o_smi_writing = 1'b0;
 
@@ -76,12 +86,75 @@ module smi_ctrl
     reg [31:0] rx_data_buf_09;
     reg [31:0] rx_data_buf_24;
 
+    reg [2:0] rx09_smi_state;
+    reg [2:0] rx24_smi_state;
+    reg [2:0] r_soe;
+    always @(posedge i_sys_clk) r_soe <= {r_soe[1:0], i_smi_soe_se};
+    wire soe_falling_edge = (r_soe[2:1]==2'b10);  // detecting synchronous soe falling edge
+
     always @(posedge i_sys_clk)
     begin
-        if (!i_fifo_09_empty) begin
+        if (i_reset) begin
+            rx09_smi_state <= state_rx_idle;
+            rx24_smi_state <= state_rx_idle;
+        end else if (soe_falling_edge) begin
+            //==========================
+            //  0.9 GHz complex fifo
+            //==========================
+            if (i_smi_a == 3'b000) begin
+                case (rx09_smi_state)
+                    //----------------------------------------------
+                    state_rx_idle: begin end
 
+                    //----------------------------------------------
+                    state_rx_fetch_fifo:  begin end
+
+                    //----------------------------------------------
+                    state_rx_byte_0: begin end
+
+                    //----------------------------------------------
+                    state_rx_byte_1: begin end
+
+                    //----------------------------------------------
+                    state_rx_byte_2: begin end
+                    
+                    //----------------------------------------------
+                    state_rx_byte_3: begin end
+                endcase
+            end 
+            //==========================
+            //  2.4 GHz complex fifo
+            //==========================
+            else if (i_smi_a == 3'b001) begin
+                case (rx24_smi_state)
+                    //----------------------------------------------
+                    state_rx_idle: begin end
+
+                    //----------------------------------------------
+                    state_rx_fetch_fifo:  begin end
+
+                    //----------------------------------------------
+                    state_rx_byte_0: begin end
+
+                    //----------------------------------------------
+                    state_rx_byte_1: begin end
+
+                    //----------------------------------------------
+                    state_rx_byte_2: begin end
+                    
+                    //----------------------------------------------
+                    state_rx_byte_3: begin end
+                endcase
+            end 
+            //==========================
+            //  wrong address error
+            //==========================
+            else begin
+              // error
+            end
         end
     end
 
+    assign o_smi_writing = i_smi_a[2];
 
 endmodule // smi_ctrl
