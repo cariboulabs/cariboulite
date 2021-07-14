@@ -92,7 +92,7 @@ module top(
    //=========================================================================
    spi_if spi_if_ins
    (
-      .i_rst_b (r_reset),
+      .i_rst_b (w_soft_reset),
       .i_sys_clk (w_clock_spi),
       .o_ioc (w_ioc),
       .o_data_in (w_rx_data),
@@ -113,7 +113,7 @@ module top(
 
    sys_ctrl sys_ctrl_ins
    (
-      .i_rst_b (r_reset),
+      .i_reset (r_reset),
       .i_sys_clk (w_clock_sys),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),
@@ -126,7 +126,7 @@ module top(
 
    io_ctrl io_ctrl_ins
    (
-      .i_rst_b (r_reset),
+      .i_reset (w_soft_reset),
       .i_sys_clk (w_clock_sys),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),
@@ -247,7 +247,7 @@ module top(
 
    lvds_rx lvds_rx_09_inst
    (
-      .i_reset (r_reset),
+      .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
       .i_ddr_data ({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
       .i_fifo_full (w_rx_09_fifo_full),
@@ -257,11 +257,11 @@ module top(
    );
 
    complex_fifo rx_09_fifo(
-      .wr_rst_i (r_reset),
+      .wr_rst_i (w_soft_reset),
       .wr_clk_i (w_rx_09_fifo_write_clk),
       .wr_en_i (w_rx_09_fifo_push),
       .wr_data_i (w_rx_09_fifo_data),
-      .rd_rst_i (r_reset),
+      .rd_rst_i (w_soft_reset),
       .rd_clk_i (w_clock_sys),
       .rd_en_i (w_rx_09_fifo_pull),
       .rd_data_o (w_rx_09_fifo_pulled_data),
@@ -271,7 +271,7 @@ module top(
 
    lvds_rx lvds_rx_24_inst
    (
-      .i_reset (r_reset),
+      .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
       .i_ddr_data ({w_lvds_rx_24_d0, w_lvds_rx_24_d1}),
       .i_fifo_full (w_rx_24_fifo_full),
@@ -281,11 +281,11 @@ module top(
    );
 
    complex_fifo rx_24_fifo(
-      .wr_rst_i (r_reset),
+      .wr_rst_i (w_soft_reset),
       .wr_clk_i (w_rx_24_fifo_write_clk),
       .wr_en_i (w_rx_24_fifo_push),
       .wr_data_i (w_rx_24_fifo_data),
-      .rd_rst_i (r_reset),
+      .rd_rst_i (w_soft_reset),
       .rd_clk_i (w_clock_sys),
       .rd_en_i (w_rx_24_fifo_pull),
       .rd_data_o (w_rx_24_fifo_pulled_data),
@@ -295,7 +295,7 @@ module top(
 
    smi_ctrl smi_ctrl_ins
    (
-      .i_rst_b (r_reset),
+      .i_reset (w_soft_reset),
       .i_sys_clk (w_clock_sys),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),
