@@ -77,11 +77,10 @@ module smi_ctrl
     reg [31:0] rx_data_buf_24;
 
     always @(posedge i_sys_clk)
-        if (!i_fifo_09_empty) begin
-          
-        end
     begin
+        if (!i_fifo_09_empty) begin
 
+        end
     end
 
 
