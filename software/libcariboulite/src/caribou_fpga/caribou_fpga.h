@@ -35,7 +35,7 @@ typedef enum
 
 typedef struct
 {
-    uint8_t mixer_en : 1;
+    uint8_t mixer_en : 1;           // LSB
     uint8_t lna_rx_shdn : 1;
     uint8_t lna_tx_shdn : 1;
     uint8_t trvc2 : 1;
@@ -44,6 +44,16 @@ typedef struct
     uint8_t rx_h_tx_l_b : 1;
     uint8_t rx_h_tx_l : 1;          // MSB
 } caribou_fpga_rf_pin_st;
+
+typedef struct
+{
+    uint8_t rx_fifo_09_empty : 1;       // LSB
+    uint8_t rx_fifo_09_full : 1;
+    uint8_t rx_fifo_24_empty : 1;
+    uint8_t rx_fifo_24_full : 1;
+    uint8_t res : 4;                    // MSB
+} caribou_fpga_smi_fifo_status_st;
+
 #pragma pack()
 
 
@@ -66,6 +76,7 @@ typedef struct
 
 int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi);
 int caribou_fpga_close(caribou_fpga_st* dev);
+int caribou_fpga_soft_reset(caribou_fpga_st* dev);
 
 // System Controller
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st *vers);
@@ -86,5 +97,7 @@ int caribou_fpga_get_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t *val);
 
 int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st pins);
 int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins);
+
+int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_smi_fifo_status_st *status);
 
 #endif // __CARIBOU_FPGA_H__

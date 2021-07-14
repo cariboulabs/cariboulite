@@ -54,13 +54,17 @@ int main ()
     // get errors
     uint8_t err_map = 0;
     caribou_fpga_get_errors (&dev, &err_map);
-    printf("ERRORS: 0x%02X\n", err_map);
+    printf("ERRORS: 0x%02X\n -- Press Enter to Soft-Reset --\n", err_map);
+
+    // soft reset
+    getchar();
+    caribou_fpga_soft_reset(&dev);
 
     // io control mode
     uint8_t debug_mode = 0;
     caribou_fpga_io_ctrl_rfm_en rfmode = 0;
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
-    printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode);
+    printf("IO_CTRL MODE: debug = %d, rfm = %d\n", debug_mode, rfmode);
     
     // io_ctrl_dig
     int ldo = 0;
@@ -85,6 +89,16 @@ int main ()
     caribou_fpga_rf_pin_st pins = {0};
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+
+    // smi fifo status
+    caribou_fpga_smi_fifo_status_st fifo_stat = {0};
+    caribou_fpga_get_smi_ctrl_fifo_status (&dev, &fifo_stat);
+    printf("SMI_FIFO_STAT: rx_09_empty = %d, rx_09_full = %d, rx_24_empty = %d, rx_24_full = %d, res = 0x%02X\n", 
+                                        fifo_stat.rx_fifo_09_empty,
+                                        fifo_stat.rx_fifo_09_full,
+                                        fifo_stat.rx_fifo_24_empty,
+                                        fifo_stat.rx_fifo_24_full,
+                                        fifo_stat.res );
 
     // setting RF states RFM
     printf("MODE = caribou_fpga_io_ctrl_rfm_low_power\npress enter\n");

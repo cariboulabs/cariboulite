@@ -73,6 +73,7 @@ module top(
    wire        w_fetch;
    wire        w_load;
    reg         r_reset;
+   wire        w_soft_reset;
 
    wire [7:0]  w_tx_data_sys;
    wire [7:0]  w_tx_data_io;
@@ -119,7 +120,8 @@ module top(
       .o_data_out (w_tx_data_sys),
       .i_cs (w_cs[0]),
       .i_fetch_cmd (w_fetch),
-      .i_load_cmd (w_load)
+      .i_load_cmd (w_load),
+      .o_soft_reset (w_soft_reset)
    );
 
    io_ctrl io_ctrl_ins
@@ -331,7 +333,7 @@ module top(
    assign w_smi_data_input = io_smi_data;
 
    // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = w_smi_writing;
+   assign io_pmod[0] = w_soft_reset;
    assign io_pmod[1] = w_rx_09_fifo_push;
    assign io_pmod[2] = w_smi_read_req;
    assign io_pmod[3] = w_rx_09_fifo_empty;
