@@ -48,32 +48,34 @@ module sys_ctrl
             // WRITE OPERATIONS
             //=============================================
             else if (i_load_cmd == 1'b1) begin
-                //case (i_ioc)
-                //    ioc_soft_reset: begin reset_count <= 3; end
-                //endcase
+                case (i_ioc)
+                    ioc_soft_reset: begin reset_cmd <= 1'b1; end
+                endcase
             end
+        end else begin
+            reset_cmd <= 1'b0;
         end
     end
 
+    reg reset_cmd;
 
     // Reset state process
     always @(posedge i_sys_clk)
     begin
-        if (reset_count < 4'd15) begin
-            reset_count <= reset_count + 1'b1;
-        end else if (reset_count == 4'd15) begin
-            reset_count <= reset_count;
+        if (reset_cmd) begin
+            reset_count <= 0;
         end else begin
-            reset_count <= 0; 
+            if (reset_count < 4'd15) begin
+                reset_count <= reset_count + 1'b1;
+                o_soft_reset <= 1'b1;
+            end else if (reset_count == 4'd15) begin
+                reset_count <= reset_count;
+                o_soft_reset <= 1'b0;
+            end else begin
+                reset_count <= 0; 
+            end
         end
-    end
-
-    always @(posedge i_sys_clk)
-    begin
-        if (reset_count == 4'd15)
-            o_soft_reset <= 1'b0;
-        else
-            o_soft_reset <= 1'b1;
+        
     end
 
 endmodule // sys_ctrl
