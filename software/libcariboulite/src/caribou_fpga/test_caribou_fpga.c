@@ -86,10 +86,12 @@ int main ()
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
+    // setting RF states RFM
     printf("MODE = caribou_fpga_io_ctrl_rfm_low_power\npress enter\n");
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_low_power);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_low_power);
+    caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
     getchar();
@@ -98,6 +100,7 @@ int main ()
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_bypass);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_bypass);
+    caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
     getchar();
@@ -106,6 +109,7 @@ int main ()
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_rx_lowpass);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_rx_lowpass);
+    caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
     getchar();
@@ -114,6 +118,7 @@ int main ()
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_rx_hipass);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_rx_hipass);
+    caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
     getchar();
@@ -122,6 +127,7 @@ int main ()
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_tx_lowpass);
+    caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
     getchar();
@@ -130,12 +136,14 @@ int main ()
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_tx_hipass);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_tx_hipass);
+    caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
     getchar();
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_low_power);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_low_power);
+    caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
     printf("RF_PIN_STATE: val = 0x%02X\n", pins);
 
     // read out stuff
