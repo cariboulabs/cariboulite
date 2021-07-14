@@ -314,22 +314,25 @@ module top(
       .i_fifo_24_full (w_rx_24_fifo_full),
       .i_fifo_24_empty (w_rx_24_fifo_empty),
 
-      .i_smi_a ({i_smi_a1, i_smi_a2, i_smi_a3}),
+      .i_smi_a (w_smi_addr),
       .i_smi_soe_se (i_smi_soe_se),
       .i_smi_swe_srw (i_smi_swe_srw),
       .o_smi_data_out (w_smi_data_output),
       .i_smi_data_in (w_smi_data_input),
       .o_smi_read_req (w_smi_read_req),
-      .o_smi_write_req (w_smi_write_req)
+      .o_smi_write_req (w_smi_write_req),
+      .o_smi_writing (w_smi_writing)
    );
 
+   wire [2:0] w_smi_addr;
    wire [7:0] w_smi_data_output;
    wire [7:0] w_smi_data_input;
    wire w_smi_read_req;
    wire w_smi_write_req;
    wire w_smi_writing;
 
-   assign io_smi_data = (i_smi_a3)?1'bZ:w_smi_data_output;
+   assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
+   assign io_smi_data = (w_smi_writing)?1'bZ:w_smi_data_output;
    assign w_smi_data_input = io_smi_data;
 
    // Testing - output the clock signal (positive and negative) to the PMOD
