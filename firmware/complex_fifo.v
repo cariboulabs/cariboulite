@@ -3,18 +3,18 @@ module complex_fifo #(
 	parameter DATA_WIDTH = 16
 )
 (
-	input wire 			            wr_rst_i,
-	input wire 			            wr_clk_i,
-	input wire 			            wr_en_i,
-	input wire [2*DATA_WIDTH-1:0]	wr_data_i,
+  input wire 			            wr_rst_i,
+  input wire 			            wr_clk_i,
+  input wire 			            wr_en_i,
+  input wire [2*DATA_WIDTH-1:0]	wr_data_i,
 
-	input wire 			            rd_rst_i,
-	input wire 			            rd_clk_i,
-	input wire 			            rd_en_i,
-	output reg [2*DATA_WIDTH-1:0]	rd_data_o,
+  input wire 			            rd_rst_i,
+  input wire 			            rd_clk_i,
+  input wire 			            rd_en_i,
+  output reg [2*DATA_WIDTH-1:0]	rd_data_o,
 
-	output reg 			full_o,
-	output reg 			empty_o
+  output reg 			full_o,
+  output reg 			empty_o
 );
 
 reg [ADDR_WIDTH-1:0]	wr_addr;

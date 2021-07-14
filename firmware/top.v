@@ -318,8 +318,7 @@ module top(
       .o_smi_data_out (w_smi_data_output),
       .i_smi_data_in (w_smi_data_input),
       .o_smi_read_req (w_smi_read_req),
-      .o_smi_write_req (w_smi_write_req),
-      .o_smi_writing (w_smi_writing)
+      .o_smi_write_req (w_smi_write_req)
    );
 
    wire [7:0] w_smi_data_output;
@@ -328,7 +327,7 @@ module top(
    wire w_smi_write_req;
    wire w_smi_writing;
 
-   assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
+   assign io_smi_data = (i_smi_a3)?1'bZ:w_smi_data_output;
    assign w_smi_data_input = io_smi_data;
 
    // Testing - output the clock signal (positive and negative) to the PMOD

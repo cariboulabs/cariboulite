@@ -29,8 +29,7 @@ module smi_ctrl
         output [7:0]        o_smi_data_out,
         inout [7:0]         i_smi_data_in,
         output              o_smi_read_req,
-        output              o_smi_write_req,
-        output              o_smi_writing  );
+        output              o_smi_write_req );
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------
@@ -69,11 +68,18 @@ module smi_ctrl
         end
     end
 
+    // Tell the RPI that data is pending in either of the two fifos
+    assign o_smi_read_req = !i_fifo_09_empty || !i_fifo_24_empty;
+
+    reg [31:0] rx_data_buf_09;
+    reg [31:0] rx_data_buf_24;
+
     always @(posedge i_sys_clk)
-    begin
-        if (i_fifo_09_empty == 1'b0) begin
+        if (!i_fifo_09_empty) begin
           
         end
+    begin
+
     end
 
 
