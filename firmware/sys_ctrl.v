@@ -1,6 +1,6 @@
 module sys_ctrl
     (
-        input               i_rst_b,          // FPGA Reset
+        input               i_reset,
         input               i_sys_clk,        // FPGA Clock
 
         input [4:0]         i_ioc,
@@ -28,8 +28,13 @@ module sys_ctrl
         system_version  = 8'b00000001,
         manu_id         = 8'b00000001;
 
+    // MODULE INTERNAL SIGNALS
+    // -----------------------
     reg [3:0] reset_count;
+    reg reset_cmd;
 
+    // MODULE MAIN PROCESS
+    // -------------------
     always @(posedge i_sys_clk)
     begin
         if (i_cs == 1'b1) begin
@@ -56,8 +61,6 @@ module sys_ctrl
             reset_cmd <= 1'b0;
         end
     end
-
-    reg reset_cmd;
 
     // Reset state process
     always @(posedge i_sys_clk)

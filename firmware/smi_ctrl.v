@@ -1,6 +1,6 @@
 module smi_ctrl
     (
-        input               i_rst_b,          // FPGA Reset
+        input               i_reset,
         input               i_sys_clk,        // FPGA Clock
 
         input [4:0]         i_ioc,
@@ -46,25 +46,27 @@ module smi_ctrl
 
     always @(posedge i_sys_clk)
     begin
-        if (i_cs == 1'b1) begin
-            if (i_fetch_cmd == 1'b1) begin
-                case (i_ioc)
-                    //----------------------------------------------
-                    ioc_module_version: o_data_out <= module_version; // Module Version
+        if (i_reset) begin
+            // put the initial states here
+        end else begin        
+            if (i_cs == 1'b1) begin
+                if (i_fetch_cmd == 1'b1) begin
+                    case (i_ioc)
+                        //----------------------------------------------
+                        ioc_module_version: o_data_out <= module_version; // Module Version
 
-                    //----------------------------------------------
-                    ioc_fifo_status: begin
-                        o_data_out[0] <= i_fifo_09_empty;
-                        o_data_out[1] <= i_fifo_09_full;
-                        o_data_out[2] <= i_fifo_24_empty;
-                        o_data_out[3] <= i_fifo_24_full;
-                        o_data_out[7:4] <= 4'b0000;
-                    end
+                        //----------------------------------------------
+                        ioc_fifo_status: begin
+                            o_data_out[0] <= i_fifo_09_empty;
+                            o_data_out[1] <= i_fifo_09_full;
+                            o_data_out[2] <= i_fifo_24_empty;
+                            o_data_out[3] <= i_fifo_24_full;
+                            o_data_out[7:4] <= 4'b0000;
+                        end
 
-                endcase
-            end
-        end else begin
-            o_data_out <= 8'b00000000;
+                    endcase
+                end
+            end 
         end
     end
 

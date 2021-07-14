@@ -1,6 +1,6 @@
 module io_ctrl
     (
-        input               i_rst_b,          // FPGA Reset
+        input               i_reset,
         input               i_sys_clk,        // FPGA Clock
 
         input [4:0]         i_ioc,
@@ -89,13 +89,13 @@ module io_ctrl
     //=========================================================================
     // INITIAL STATES
     //=========================================================================
-    initial begin
+    /*initial begin
         debug_mode = debug_mode_none;
         rf_mode = rf_mode_low_power;
         ldo2v8_state = 1'b0;
         led0_state = 1'b0;
         led1_state = 1'b0;
-    end
+    end*/
 
     //=========================================================================
     // LOGICAL SIGNAL ASSIGNMENTS
@@ -122,92 +122,100 @@ module io_ctrl
     //=========================================================================
     always @(posedge i_sys_clk)
     begin
-        if (i_cs == 1'b1) begin
-            //=============================================
-            // READ OPERATIONS
-            //=============================================
-            if (i_fetch_cmd == 1'b1) begin
-                case (i_ioc)
-                    //----------------------------------------------
-                    ioc_module_version: o_data_out <= module_version;
+        if (i_reset) begin
+            debug_mode = debug_mode_none;
+            rf_mode = rf_mode_low_power;
+            ldo2v8_state = 1'b0;
+            led0_state = 1'b0;
+            led1_state = 1'b0;
+        end else begin
+            if (i_cs == 1'b1) begin
+                //=============================================
+                // READ OPERATIONS
+                //=============================================
+                if (i_fetch_cmd == 1'b1) begin
+                    case (i_ioc)
+                        //----------------------------------------------
+                        ioc_module_version: o_data_out <= module_version;
 
-                    //----------------------------------------------
-                    ioc_mode: begin
-                        o_data_out[1:0] <= debug_mode;
-                        o_data_out[4:2] <= rf_mode;
-                    end
-
-                    //----------------------------------------------
-                    ioc_dig_pin: begin
-                        o_data_out[0] <= led0_state;
-                        o_data_out[1] <= led1_state;
-                        o_data_out[2] <= ldo2v8_state;
-                        o_data_out[6:3] <= i_config;
-                        o_data_out[7] <= i_button;
-                    end
-
-                    //----------------------------------------------
-                    ioc_pmod_dir: begin
-                        o_data_out <= pmod_dir_state;
-                    end
-
-                    //----------------------------------------------
-                    ioc_pmod_val: begin
-                        o_data_out <= pmod_state;
-                    end
-
-                    //----------------------------------------------
-                    ioc_rf_pin: begin
-                        o_data_out[0] <= mixer_en_state;
-                        o_data_out[1] <= lna_rx_shutdown_state;
-                        o_data_out[2] <= lna_tx_shutdown_state;
-                        o_data_out[3] <= tr_vc_2_state;
-                        o_data_out[4] <= tr_vc_1_b_state;
-                        o_data_out[5] <= tr_vc_1_state;
-                        o_data_out[6] <= rx_h_b_state;
-                        o_data_out[7] <= rx_h_state;
-                    end
-                endcase
-            end 
-            //=============================================
-            // WRITE OPERATIONS
-            //=============================================
-            else if (i_load_cmd == 1'b1) begin
-                case (i_ioc)
-                    //----------------------------------------------
-                    ioc_mode: begin
-                        debug_mode <= i_data_in[1:0];
-                        rf_mode <= i_data_in[4:2];
-
-                        if (i_data_in[1:0] == debug_mode_none) begin
-                            // TBD move back all the controls to good position
-                            // use rf_mode to control everything
+                        //----------------------------------------------
+                        ioc_mode: begin
+                            o_data_out[1:0] <= debug_mode;
+                            o_data_out[4:2] <= rf_mode;
                         end
-                    end
 
-                    //----------------------------------------------
-                    ioc_dig_pin: begin
-                        led0_state <= i_data_in[0];
-                        led1_state <= i_data_in[1];
-                        ldo2v8_state <= i_data_in[2];
-                    end
+                        //----------------------------------------------
+                        ioc_dig_pin: begin
+                            o_data_out[0] <= led0_state;
+                            o_data_out[1] <= led1_state;
+                            o_data_out[2] <= ldo2v8_state;
+                            o_data_out[6:3] <= i_config;
+                            o_data_out[7] <= i_button;
+                        end
 
-                    //----------------------------------------------
-                    ioc_pmod_dir: begin
-                        pmod_dir_state <= i_data_in;
-                    end
+                        //----------------------------------------------
+                        ioc_pmod_dir: begin
+                            o_data_out <= pmod_dir_state;
+                        end
 
-                    //----------------------------------------------
-                    ioc_pmod_val: begin
-                        pmod_state <= i_data_in;
-                    end
+                        //----------------------------------------------
+                        ioc_pmod_val: begin
+                            o_data_out <= pmod_state;
+                        end
 
-                    //----------------------------------------------
-                    ioc_rf_pin: begin
-                        rf_pin_state <= i_data_in;
-                    end
-                    //----------------------------------------------
-                endcase
+                        //----------------------------------------------
+                        ioc_rf_pin: begin
+                            o_data_out[0] <= mixer_en_state;
+                            o_data_out[1] <= lna_rx_shutdown_state;
+                            o_data_out[2] <= lna_tx_shutdown_state;
+                            o_data_out[3] <= tr_vc_2_state;
+                            o_data_out[4] <= tr_vc_1_b_state;
+                            o_data_out[5] <= tr_vc_1_state;
+                            o_data_out[6] <= rx_h_b_state;
+                            o_data_out[7] <= rx_h_state;
+                        end
+                    endcase
+                end 
+                //=============================================
+                // WRITE OPERATIONS
+                //=============================================
+                else if (i_load_cmd == 1'b1) begin
+                    case (i_ioc)
+                        //----------------------------------------------
+                        ioc_mode: begin
+                            debug_mode <= i_data_in[1:0];
+                            rf_mode <= i_data_in[4:2];
+
+                            if (i_data_in[1:0] == debug_mode_none) begin
+                                // TBD move back all the controls to good position
+                                // use rf_mode to control everything
+                            end
+                        end
+
+                        //----------------------------------------------
+                        ioc_dig_pin: begin
+                            led0_state <= i_data_in[0];
+                            led1_state <= i_data_in[1];
+                            ldo2v8_state <= i_data_in[2];
+                        end
+
+                        //----------------------------------------------
+                        ioc_pmod_dir: begin
+                            pmod_dir_state <= i_data_in;
+                        end
+
+                        //----------------------------------------------
+                        ioc_pmod_val: begin
+                            pmod_state <= i_data_in;
+                        end
+
+                        //----------------------------------------------
+                        ioc_rf_pin: begin
+                            rf_pin_state <= i_data_in;
+                        end
+                        //----------------------------------------------
+                    endcase
+                end
             end
         end
     end
