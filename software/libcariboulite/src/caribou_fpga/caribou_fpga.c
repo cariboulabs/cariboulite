@@ -9,6 +9,7 @@
 #define IOC_SYS_CTRL_SYS_VERSION    1
 #define IOC_SYS_CTRL_MANU_ID        2
 #define IOC_SYS_CTRL_SYS_ERR_STAT   3
+#define IOC_SYS_CTRL_SYS_SOFT_RST   4
 
 #define IOC_IO_CTRL_MODE            1
 #define IOC_IO_CTRL_DIG_PIN         2
@@ -17,6 +18,8 @@
 #define IOC_IO_CTRL_RF_PIN          5
 #define IOC_IO_CTRL_MXR_FM_PS       6
 #define IOC_IO_CTRL_MXR_FM_DATA     7
+
+#define IOC_SMI_CTRL_FIFO_STATUS    1
 
 //--------------------------------------------------------------
 // Internal Data-Types
@@ -135,6 +138,20 @@ int caribou_fpga_close(caribou_fpga_st* dev)
     return io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
 }
 
+//--------------------------------------------------------------
+int caribou_fpga_soft_reset(caribou_fpga_st* dev)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_soft_reset");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_SYS_SOFT_RST
+    };
+
+    uint8_t res = 0;
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &res);
+}
 
 //--------------------------------------------------------------
 // System Controller
@@ -183,9 +200,7 @@ int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map)
         .ioc = IOC_SYS_CTRL_SYS_ERR_STAT
     };
 
-    uint8_t *poc = (uint8_t*)&oc;
     *err_map = 0;
-
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), err_map);
 }
 
@@ -310,7 +325,7 @@ int caribou_fpga_set_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t val)
 int caribou_fpga_get_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t *val)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_io_ctrl_pmod_val");
-    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(val,"caribou_fpga_get_io_ctrl_pmod_dir","val");
+    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(val,"caribou_fpga_get_io_ctrl_pmod_val","val");
     caribou_fpga_opcode_st oc =
     {
         .rw  = caribou_fpga_rw_read,
@@ -338,7 +353,7 @@ int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin
 int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_io_ctrl_rf_state");
-    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(pins,"caribou_fpga_get_io_ctrl_pmod_dir","pins");
+    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(pins,"caribou_fpga_get_io_ctrl_rf_state","pins");
     caribou_fpga_opcode_st oc =
     {
         .rw  = caribou_fpga_rw_read,
@@ -347,4 +362,19 @@ int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin
     };
     memset(pins, 0, sizeof(caribou_fpga_rf_pin_st));
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)pins);
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_smi_fifo_status_st *status)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_smi_ctrl_fifo_status");
+    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(status,"caribou_fpga_get_smi_ctrl_fifo_status","status");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_read,
+        .mid = caribou_fpga_mid_smi_ctrl,
+        .ioc = IOC_SMI_CTRL_FIFO_STATUS
+    };
+    memset(status, 0, sizeof(caribou_fpga_smi_fifo_status_st));
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)status);
 }

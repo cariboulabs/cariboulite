@@ -168,11 +168,11 @@ module io_ctrl
                         o_data_out[7] <= rx_h_state;
                     end
                 endcase
-
+            end 
             //=============================================
             // WRITE OPERATIONS
             //=============================================
-            end else if (i_load_cmd == 1'b1) begin
+            else if (i_load_cmd == 1'b1) begin
                 case (i_ioc)
                     //----------------------------------------------
                     ioc_mode: begin
