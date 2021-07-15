@@ -52,8 +52,6 @@ module smi_ctrl
         state_rx_byte_2 = 3'b100,
         state_rx_byte_3 = 3'b101;
 
-    assign o_smi_writing = 1'b0;
-
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
