@@ -43,15 +43,6 @@ module smi_ctrl
     localparam
         module_version  = 8'b00000001;
 
-    // MODULE RX STATE MACHINE
-    localparam
-        state_rx_idle = 3'b000,
-        state_rx_fetch_fifo = 3'b001,
-        state_rx_byte_0 = 3'b010,
-        state_rx_byte_1 = 3'b011,
-        state_rx_byte_2 = 3'b100,
-        state_rx_byte_3 = 3'b101;
-
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
@@ -84,75 +75,70 @@ module smi_ctrl
     reg [31:0] rx_data_buf_09;
     reg [31:0] rx_data_buf_24;
 
-    reg [2:0] rx09_smi_state;
-    reg [2:0] rx24_smi_state;
-    reg [2:0] r_soe;
-    always @(posedge i_sys_clk) r_soe <= {r_soe[1:0], i_smi_soe_se};
-    wire soe_falling_edge = (r_soe[2:1]==2'b10);  // detecting synchronous soe falling edge
+    reg r_last_soe;
+    reg [5:0] int_cnt_09;
+    reg [5:0] int_cnt_24;
+    reg r_fifo_09_pull;
+    reg r_fifo_24_pull;
 
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
-            rx09_smi_state <= state_rx_idle;
-            rx24_smi_state <= state_rx_idle;
-        end else if (soe_falling_edge) begin
+            int_cnt_09 <= 6'd32;
+            int_cnt_24 <= 6'd32;
+            r_last_soe <= 1'b1;
+            r_fifo_09_pull <= 1'b0;
+            r_fifo_24_pull <= 1'b0;
+        end else begin            
             //==========================
-            //  0.9 GHz complex fifo
+            //  0.9 GHz Data Sender
             //==========================
             if (i_smi_a == 3'b000) begin
-                case (rx09_smi_state)
-                    //----------------------------------------------
-                    state_rx_idle: begin end
-
-                    //----------------------------------------------
-                    state_rx_fetch_fifo:  begin end
-
-                    //----------------------------------------------
-                    state_rx_byte_0: begin end
-
-                    //----------------------------------------------
-                    state_rx_byte_1: begin end
-
-                    //----------------------------------------------
-                    state_rx_byte_2: begin end
-                    
-                    //----------------------------------------------
-                    state_rx_byte_3: begin end
-                endcase
-            end 
+                if (r_last_soe != i_smi_soe_se) begin
+                    if (int_cnt_09 > 8) int_cnt_09 <= int_cnt_09 - 8;
+                    if (r_fifo_09_pull) begin
+                        r_fifo_09_pull <= 1'b0;
+                        o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09-1:int_cnt_09-8];
+                    end
+                end
+                else if (i_smi_soe_se == 1'b1) begin
+                    if (int_cnt_09 > 0) begin
+                        r_fifo_09_pull <= 1'b0;
+                        o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09-1:int_cnt_09-8];
+                    end else if ((i_fifo_09_empty == 1'b0) && (int_cnt_09 == 6'd0)) begin
+                        r_fifo_09_pull <=1'b1;
+                        int_cnt_09 <= 6'd32;
+                    end
+                end
+            end
             //==========================
-            //  2.4 GHz complex fifo
+            //  2.4 GHz Data Sender
             //==========================
             else if (i_smi_a == 3'b001) begin
-                case (rx24_smi_state)
-                    //----------------------------------------------
-                    state_rx_idle: begin end
-
-                    //----------------------------------------------
-                    state_rx_fetch_fifo:  begin end
-
-                    //----------------------------------------------
-                    state_rx_byte_0: begin end
-
-                    //----------------------------------------------
-                    state_rx_byte_1: begin end
-
-                    //----------------------------------------------
-                    state_rx_byte_2: begin end
-                    
-                    //----------------------------------------------
-                    state_rx_byte_3: begin end
-                endcase
-            end 
-            //==========================
-            //  wrong address error
-            //==========================
-            else begin
-              // error
+                if (r_last_soe != i_smi_soe_se) begin
+                    if (int_cnt_24 > 8) int_cnt_24 <= int_cnt_24 - 8;
+                    if (r_fifo_24_pull) begin
+                        r_fifo_24_pull <= 1'b0;
+                        o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24-1:int_cnt_24-8];
+                    end
+                end
+                else if (i_smi_soe_se == 1'b1) begin
+                    if (int_cnt_24 > 0) begin
+                        r_fifo_24_pull <= 1'b0;
+                        o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24-1:int_cnt_24-8];
+                    end else if ((i_fifo_24_empty == 1'b0) && (int_cnt_24 == 6'd0)) begin
+                        r_fifo_24_pull <=1'b1;
+                        int_cnt_24 <= 6'd32;
+                    end
+                end
             end
+
+            r_last_soe <= i_smi_soe_se;
         end
     end
 
+    assign o_fifo_09_pull = r_fifo_09_pull;
+    assign o_fifo_24_pull = r_fifo_24_pull;
     assign o_smi_writing = i_smi_a[2];
 
 endmodule // smi_ctrl
