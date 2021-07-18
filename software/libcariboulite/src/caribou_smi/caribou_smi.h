@@ -2,7 +2,7 @@
 #define __CARIBOU_SMI_H__
 
 #include "caribou_smi_defs.h"
-
+#include "io_utils/io_utils.h"
 
 typedef struct
 {
@@ -21,8 +21,16 @@ typedef struct
 {
     int initialized;
 
-    extern caribou_smi_mem_map_st gpio_regs, dma_regs;
-    caribou_smi_mem_map_st vc_mem, clk_regs, smi_regs;
+    int data_0_pin;
+    int num_data_pins;
+    int soe_pin;
+    int swe_pin;
+    int addr0_pin;
+    int num_addr_pins;
+    int read_req_pin;
+    int write_req_pin;
+
+    caribou_smi_mem_map_st dma_regs, vc_mem, clk_regs, smi_regs;
 
     volatile SMI_CS_REG  *smi_cs;
     volatile SMI_L_REG   *smi_l;

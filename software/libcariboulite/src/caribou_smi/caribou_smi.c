@@ -20,7 +20,6 @@ void caribou_smi_unmap_devices(caribou_smi_st* dev)
     //unmap_periph_mem(&dev->gpio_regs);
 }
 
-
 //=====================================================================
 // Initialise SMI, given data width, time step, and setup/hold/strobe counts
 // Step value is in nanoseconds: even numbers, 2 to 30
@@ -66,27 +65,36 @@ void init_smi(caribou_smi_st* dev,
     dev->smi_dsr->rstrobe = dev->smi_dsw->wstrobe = strobe;
     dev->smi_dsr->rhold = dev->smi_dsw->whold = hold;
     dev->smi_dmc->panicr = dev->smi_dmc->panicw = 8;
-    dev->smi_dmc->reqr = dev->smi_dmc->reqw = REQUEST_THRESH;
+    dev->smi_dmc->reqr = dev->smi_dmc->reqw = 4;                // should be minimal number of bytes???
     dev->smi_dsr->rwidth = dev->smi_dsw->wwidth = width;
 }
 
 //=====================================================================
 int caribou_smi_init(caribou_smi_st* dev)
 {
-    for (int i=0; i<ADC_NPINS; i++)
+    for (int i=0; i<dev->num_data_pins; i++)
     {
-        gpio_mode(ADC_D0_PIN+i, GPIO_IN);
+        io_utils_set_gpio_mode(dev->data_0_pin + i, io_utils_alt_gpio_in);
     }
-    gpio_mode(SMI_SOE_PIN, GPIO_ALT1);
+    io_utils_set_gpio_mode(dev->soe_pin, io_utils_alt_1);
+    io_utils_set_gpio_mode(dev->swe_pin, io_utils_alt_1);
+
+    //io_utils_set_gpio_mode(dev->read_req_pin, io_utils_alt_1);
+    //io_utils_set_gpio_mode(dev->write_req_pin, io_utils_alt_1);
+
+    for (int i=0; i<dev->num_addr_pins; i++)
+    {
+        io_utils_set_gpio_mode(dev->addr0_pin + i, io_utils_alt_1);
+    }
 
     init_smi(SMI_NUM_BITS, SMI_TIMING);
 
-    map_uncached_mem(&vc_mem, VC_MEM_SIZE(NSAMPLES+PRE_SAMP));
+    map_uncached_mem(&dev->vc_mem, VC_MEM_SIZE(NSAMPLES+PRE_SAMP));
     dev->smi_dmc->dmaen = 1;
     dev->smi_cs->enable = 1;
     dev->smi_cs->clear = 1;
 
-    rxbuff = adc_dma_start(&vc_mem, NSAMPLES);
+    rxbuff = adc_dma_start(&dev->vc_mem, NSAMPLES);
     smi_start(dev, NSAMPLES, 1);
 
     while (dma_active(DMA_CHAN_A)) ;
@@ -114,13 +122,20 @@ int caribou_smi_close(caribou_smi_st* dev)
 
     dev->initialized = 0;
 
-    if (dev->gpio_regs.virt)
+    // GPIO Setting back to default
+    for (int i=0; i<dev->num_data_pins; i++)
     {
-        for (int i=0; i<ADC_NPINS; i++)
-        {
-            gpio_mode(ADC_D0_PIN+i, GPIO_IN);
-        }
+        io_utils_set_gpio_mode(dev->data_0_pin + i, io_utils_alt_gpio_in);
     }
+    io_utils_set_gpio_mode(dev->soe_pin, io_utils_alt_gpio_in);
+    io_utils_set_gpio_mode(dev->swe_pin, io_utils_alt_gpio_in);
+    //io_utils_set_gpio_mode(dev->read_req_pin, io_utils_alt_gpio_in);
+    //io_utils_set_gpio_mode(dev->write_req_pin, io_utils_alt_gpio_in);
+    for (int i=0; i<dev->num_addr_pins; i++)
+    {
+        io_utils_set_gpio_mode(dev->addr0_pin + i, io_utils_alt_gpio_in);
+    }
+
     if (dev->smi_regs.virt)
     {
         *REG32(dev->smi_regs, SMI_CS) = 0;
