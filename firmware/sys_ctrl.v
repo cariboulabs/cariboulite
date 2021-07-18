@@ -10,7 +10,8 @@ module sys_ctrl
         input               i_fetch_cmd,
         input               i_load_cmd,
 
-        output reg          o_soft_reset );
+        output reg          o_soft_reset,
+        input [7:0]         i_error_list );
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------
@@ -46,7 +47,7 @@ module sys_ctrl
                     ioc_module_version: o_data_out <= module_version;
                     ioc_system_version: o_data_out <= system_version;
                     ioc_manu_id: o_data_out <= manu_id;
-                    ioc_error_state: o_data_out <= 8'b00000000;
+                    ioc_error_state: o_data_out <= i_error_list;
                 endcase
             end
             //=============================================

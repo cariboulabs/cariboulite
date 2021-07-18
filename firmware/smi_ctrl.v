@@ -30,7 +30,10 @@ module smi_ctrl
         input [7:0]         i_smi_data_in,
         output              o_smi_read_req,
         output              o_smi_write_req,
-        output              o_smi_writing );
+        output              o_smi_writing,
+        
+        // Errors
+        output reg          o_address_error );
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------
@@ -46,6 +49,7 @@ module smi_ctrl
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
+            o_address_error <= 1'b0;
             // put the initial states here
         end else begin        
             if (i_cs == 1'b1) begin
@@ -71,9 +75,6 @@ module smi_ctrl
 
     // Tell the RPI that data is pending in either of the two fifos
     assign o_smi_read_req = !i_fifo_09_empty || !i_fifo_24_empty;
-
-    reg [31:0] rx_data_buf_09;
-    reg [31:0] rx_data_buf_24;
 
     reg r_last_soe;
     reg [5:0] int_cnt_09;
@@ -131,6 +132,10 @@ module smi_ctrl
                         int_cnt_24 <= 6'd32;
                     end
                 end
+            end
+            else begin
+                // error with address
+                o_address_error <= 1'b1;
             end
 
             r_last_soe <= i_smi_soe_se;
