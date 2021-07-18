@@ -401,25 +401,112 @@ void at86rf215_setup_iq_radio_transmit (at86rf215_st* dev, at86rf215_rf_channel_
 }
 
 //===================================================================
-void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio)
+void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio, uint32_t freq_hz)
 {
     /*
-    It is assumed, that the radio has been reset before and is in State TRXOFF. All interrupts in register RFn_IRQS should be enabled (RFn_IRQM=0x3f).
+    It is assumed, that 
+        1. the radio has been reset before and is in State TRXOFF. 
+        2. All interrupts in register RFn_IRQS should be enabled (RFn_IRQM=0x3f).
     */
 
     // 1. Set TRXOFF mode
-    // 2. Enable all interrupts in 09,_24_IRQS
-    // 3. Enable I/Q radio mode - setting IQIFC1.CHPM=1 at AT86RF215
+    at86rf215_radio_set_state(dev, radio, at86rf215_radio_state_cmd_trx_off);
+
+
+    // 2. Enable all radio interrupts in 09,_24_IRQS
+    at86rf215_radio_irq_st int_mask = {
+        .wake_up_por = 1,
+        .trx_ready = 1,
+        .energy_detection_complete = 1,
+        .battery_low = 1,
+        .trx_error = 1,
+        .IQ_if_sync_fail = 1,
+        .res = 0,
+    };
+    at86rf215_radio_setup_interrupt_mask(dev, radio, &int_mask);
+
+    // 3. Enable I/Q radio mode - setting IQIFC1.CHPM=1 at AT86RF215 (in AT86RF215IQ it is the only choice)
+    at86rf215_iq_interface_config_st iq_if_config =
+    {
+        .loopback_enable = 0,
+        .drv_strength = at86rf215_iq_drive_current_2ma,
+        .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
+        .tx_control_with_iq_if = false,
+        .radio09_mode = at86rf215_iq_if_mode,
+        .radio24_mode = at86rf215_iq_if_mode,
+        .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
+    };
+    at86rf215_setup_iq_if(dev, &iq_if_config);
+
     // 4. Configure the Receiving Frontend:
     //      Set the receiver analog frontend sub-registers RXBWC.BW and RXBWC.IFS,
     //      Set the receiver digital frontend sub-registers RXDFE.SR and RXDFE.RCUT
     //      Set the AGC registers RFn_AGCC and RFn_AGCS
+    at86rf215_radio_set_rx_bw_samp_st rx_bw_samp_cfg =
+    {
+        .inverter_sign_if = 0,  // A value of one configures the receiver to implement the inverted-sign IF freq.
+        .shift_if_freq = 0,     // A value of one configures the receiver to shift the IF frequency by factor of 1.25.
+        .bw = at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ,
+                                // The sub-register controls the receiver filter bandwidth settings.
+        .fcut = at86rf215_radio_rx_f_cut_half_fs,
+                                // RX filter relative cut-off frequency
+        .fs = at86rf215_radio_rx_sample_rate_4000khz,
+                                // RX Sample Rate
+    };
+    at86rf215_radio_set_rx_bandwidth_sampling(dev, radio, &rx_bw_samp_cfg);
+
+    at86rf215_radio_agc_ctrl_st agc_ctrl = 
+    {
+        // commands
+        .agc_measure_source_not_filtered = 0,           // AGC Input (0 - filterred, 1 - unfiltered, faster operation)
+        .avg = at86rf215_radio_agc_averaging_8,         // AGC Average Time in Number of Samples
+        .reset_cmd = 0,                                 // AGC Reset - resets the AGC and sets the maximum receiver gain.
+        .freeze_cmd = 0,                                // AGC Freeze Control - A value of one forces the AGC to
+                                                        // freeze to its current value.
+        .enable_cmd = 1,                                // AGC Enable - a value of zero allows a manual setting of
+                                                        // the RX gain control by sub-register AGCS.GCW
+        .att = at86rf215_radio_agc_relative_atten_21_db,// AGC Target Level - sets the AGC target level relative to ADC full scale.
+        .gain_control_word = 0,                         // If AGCC_EN is set to 1, a read of bit AGCS.GCW indicates the current
+                                                        // receiver gain setting. If AGCC_EN is set to 0, a write access to GCW
+                                                        // manually sets the receiver gain. An integer value of 23 indicates
+                                                        // the maximum receiver gain; each integer step changes the gain by 3dB.
+        .freeze_status = 0,                             // AGC Freeze Status - A value of one indicates that the AGC is on hold.
+    };
+    at86rf215_radio_setup_agc(dev, radio, &agc_ctrl);
+
     // 5. Configure the channel parameters, see section "Channel Configuration" on page 62 and transmit power
-    // 6. Switch to State TXPREP; interrupt IRQS.TRXRDY is issued. TXD and TXCLK are activated as shown in Figure 4-12 on page 26.
+    at86rf215_setup_channel (dev, radio, freq_hz);
+
+    // 6. Switch to State TXPREP; interrupt IRQS.TRXRDY is issued. 
+    //    TXD and TXCLK are activated as shown in Figure 4-12 on page 26.
+    //    What? Why TX?
+
     // 7. Prepare the external baseband for reception of I/Q samples
+    //    The FPGA was born prepared (;
+
     // 8. Enable the radio receiver by writing command RX to the register RFn_CMD.
-    // 9. To prevent the AGC from switching its gain during reception, it is recommended to set AGCC.FRZC=1 after reception of the preamble,
-    //    the AGC has to be released after finishing reception by setting AGCC.FRZC=0.
+    at86rf215_radio_set_state(dev, radio, at86rf215_radio_state_cmd_rx);
+
+    // 9. To prevent the AGC from switching its gain during reception, it is recommended to set AGCC.FRZC=1 
+    //    after reception of the preamble, the AGC has to be released after finishing reception by setting AGCC.FRZC=0.
+    // at86rf215_radio_setup_agc(dev, radio, &agc_ctrl);
+}
+
+//===================================================================
+void at86rf215_stop_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio)
+{
+    at86rf215_radio_set_state(dev, radio, at86rf215_radio_state_cmd_trx_off);
+    at86rf215_iq_interface_config_st iq_if_config =
+    {
+        .loopback_enable = 0,
+        .drv_strength = at86rf215_iq_drive_current_2ma,
+        .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
+        .tx_control_with_iq_if = false,
+        .radio09_mode = at86rf215_baseband_mode,
+        .radio24_mode = at86rf215_baseband_mode,
+        .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
+    };
+    at86rf215_setup_iq_if(dev, &iq_if_config);
 }
 
 //===================================================================

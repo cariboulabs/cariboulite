@@ -339,11 +339,10 @@ module top(
    assign w_smi_data_input = io_smi_data;
 
    // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = w_soft_reset;
-   assign io_pmod[1] = w_rx_09_fifo_push;
-   assign io_pmod[2] = w_smi_read_req;
-   assign io_pmod[3] = w_rx_09_fifo_empty;
-   assign io_pmod[4] = w_smi_write_req;
-   assign io_pmod[7:5] = w_rx_09_fifo_data[4:2];
+   assign io_pmod[0] = w_rx_09_fifo_push;
+   assign io_pmod[1] = w_smi_read_req;
+   assign io_pmod[2] = w_rx_09_fifo_empty;
+   assign io_pmod[3] = i_smi_soe_se;
+   assign io_pmod[7:4] = w_rx_09_fifo_data[5:2];
 
 endmodule // top

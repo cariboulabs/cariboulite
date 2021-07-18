@@ -94,7 +94,11 @@ void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
 
         //printf("Press enter to switch\n");
         if (usec_gaps > 0) io_utils_usleep(usec_gaps);
-        else getchar();
+        else
+        {   
+            printf("Press enter to step...\n");
+            getchar();
+        }
         f += step_freq;
     }
 
@@ -102,9 +106,31 @@ void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
     at86rf215_radio_set_state(dev, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_trx_off);
 }
 
+// -----------------------------------------------------------------------------------------
+// Starting a reception window
+// usec_timeout - set up a timeout value in micro-seconds or -1 to wait for "enter" key
+int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en radio, 
+                                        uint32_t freq_hz, int usec_timeout)
+{
+    at86rf215_setup_iq_radio_receive (dev, radio, freq_hz);
+
+    if (usec_timeout>0)
+    {
+        io_utils_usleep(usec_timeout);
+    }
+    else
+    {   
+        printf("Press enter to stop...\n");
+        getchar();
+    }
+    at86rf215_stop_iq_radio_receive (dev, radio);
+    return 1;
+}
+
 
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
+#define TEST_IQ_RX_WIND     1
 
 int main ()
 {
@@ -136,12 +162,16 @@ int main ()
     // TEST: read the p/n and v/n from the IC
     #if TEST_VERSIONS
         test_at86rf215_read_chip_vn_pn(&dev);
-    #endif
+    #endif // TEST_VERSIONS
 
     // TEST: Frequency sweep
     #if TEST_FREQ_SWEEP
         test_at86rf215_sweep_frequencies(&dev, at86rf215_rf_channel_900mhz, 900e6, 1, 0, 10000);
-    #endif
+    #endif // TEST_FREQ_SWEEP
+
+    #if TEST_IQ_RX_WIND
+        test_at86rf215_continues_iq_rx (&dev, at86rf215_rf_channel_900mhz, 900e6, -1);
+    #endif // TEST_IQ_RX_WIND
 
 	at86rf215_close(&dev);
 	io_utils_spi_close(&io_spi_dev);
