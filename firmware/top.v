@@ -121,7 +121,9 @@ module top(
       .i_cs (w_cs[0]),
       .i_fetch_cmd (w_fetch),
       .i_load_cmd (w_load),
-      .o_soft_reset (w_soft_reset)
+      .o_soft_reset (w_soft_reset),
+
+      .i_error_list ({o_address_error, 7'b0000000})
    );
 
    io_ctrl io_ctrl_ins
@@ -321,7 +323,8 @@ module top(
       .i_smi_data_in (w_smi_data_input),
       .o_smi_read_req (w_smi_read_req),
       .o_smi_write_req (w_smi_write_req),
-      .o_smi_writing (w_smi_writing)
+      .o_smi_writing (w_smi_writing),
+      .o_address_error ()
    );
 
    wire [2:0] w_smi_addr;
