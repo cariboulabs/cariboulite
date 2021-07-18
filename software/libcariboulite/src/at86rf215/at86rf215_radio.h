@@ -315,10 +315,10 @@ void at86rf215_radio_set_rx_bandwidth_sampling(at86rf215_st* dev, at86rf215_rf_c
 void at86rf215_radio_get_rx_bandwidth_sampling(at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                 at86rf215_radio_set_rx_bw_samp_st* cfg);
 
-float at86rf215_radio_setup_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
+void at86rf215_radio_setup_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                     at86rf215_radio_agc_ctrl_st *agc_ctrl);
 
-float at86rf215_radio_get_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
+void at86rf215_radio_get_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                 at86rf215_radio_agc_ctrl_st *agc_ctrl);
 
 float at86rf215_radio_get_rssi_dbm(at86rf215_st* dev, at86rf215_rf_channel_en ch);

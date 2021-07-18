@@ -322,7 +322,7 @@ void at86rf215_radio_get_rx_bandwidth_sampling(at86rf215_st* dev, at86rf215_rf_c
 }
 
 //==================================================================================
-float at86rf215_radio_setup_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
+void at86rf215_radio_setup_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                     at86rf215_radio_agc_ctrl_st *agc_ctrl)
 {
     // "RG_AGCC, RG_AGCS" RFn_AGCC – Receiver AGC Control 0 / RFn_AGCS – Receiver AGCG
@@ -371,7 +371,7 @@ float at86rf215_radio_setup_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
 }
 
 //==================================================================================
-float at86rf215_radio_get_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
+void at86rf215_radio_get_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                 at86rf215_radio_agc_ctrl_st *agc_ctrl)
 {
     uint16_t reg_address_agc = AT86RF215_REG_ADDR(ch, AGCC);
