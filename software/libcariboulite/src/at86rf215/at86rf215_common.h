@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <lgpio.h>
+//#include <lgpio.h>
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_spi.h"
 #include "at86rf215_regs.h"
