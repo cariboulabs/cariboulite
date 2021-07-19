@@ -14,6 +14,17 @@
 #include <stdint.h>
 
 //==========================================================
+// GENERAL DEFS
+//==========================================================
+#define REG32(m, x) ((volatile uint32_t *)((uint32_t)(m.virt)+(uint32_t)(x)))
+// Get bus address of register
+#define REG_BUS_ADDR(m, x)  ((uint32_t)(m.bus)  + (uint32_t)(x))
+// Convert uncached memory virtual address to bus address
+#define MEM_BUS_ADDR(mp, a) ((uint32_t)a-(uint32_t)mp->virt+(uint32_t)mp->bus)
+// Convert bus address to physical address (for mmap)
+#define BUS_PHYS_ADDR(a)    ((void *)((uint32_t)(a)&~0xC0000000))
+
+//==========================================================
 // SMI
 //==========================================================
 
@@ -38,11 +49,7 @@
 #define SMI_FD      0x40    // SMI FIFO Debug
 #define SMI_REGLEN  (SMI_FD * 4)
 
-// Data widths
-#define SMI_8_BITS  0
-#define SMI_16_BITS 1
-#define SMI_18_BITS 2
-#define SMI_9_BITS  3
+
 
 // DMA request
 #define DMA_SMI_DREQ 4
@@ -258,5 +265,37 @@ REG_DEF(SMI_FLVL_REG, SMI_FLVL_FIELDS);
 #define CLK_PWM_DIV     0xa4
 #define CLK_PASSWD      0x5a000000
 #define PWM_CLOCK_ID    0xa
+
+//==========================================================
+// VIDEOCORE
+//==========================================================
+// VC flags for unchached DMA memory
+#define DMA_MEM_FLAGS (MEM_FLAG_DIRECT|MEM_FLAG_ZERO)
+
+
+// Videocore mailbox memory allocation flags, see:
+//     https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
+typedef enum 
+{
+    MEM_FLAG_DISCARDABLE    = 1<<0, // can be resized to 0 at any time. Use for cached data
+    MEM_FLAG_NORMAL         = 0<<2, // normal allocating alias. Don't use from ARM
+    MEM_FLAG_DIRECT         = 1<<2, // 0xC alias uncached
+    MEM_FLAG_COHERENT       = 2<<2, // 0x8 alias. Non-allocating in L2 but coherent
+    MEM_FLAG_ZERO           = 1<<4, // initialise buffer to all zeros
+    MEM_FLAG_NO_INIT        = 1<<5, // don't initialise (default is initialise to all ones)
+    MEM_FLAG_HINT_PERMALOCK = 1<<6, // Likely to be locked for long periods of time
+    MEM_FLAG_L1_NONALLOCATING=(MEM_FLAG_DIRECT | MEM_FLAG_COHERENT) // Allocating in L2
+} VC_ALLOC_FLAGS;
+
+// Mailbox command/response structure
+typedef struct 
+{
+    uint32_t len,               // Overall length (bytes)
+        req,                    // Zero for request, 1<<31 for response
+        tag,                    // Command number
+        blen,                   // Buffer length (bytes)
+        dlen;                   // Data length (bytes)
+        uint32_t uints[32-5];   // Data (108 bytes maximum)
+} VC_MSG __attribute__ ((aligned (16)));
 
 #endif // __CARIBOU_SMI_DEFS_H__

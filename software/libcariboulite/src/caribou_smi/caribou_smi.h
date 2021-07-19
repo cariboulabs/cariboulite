@@ -15,6 +15,23 @@ typedef struct
     void *phys;     // Physical address
 } caribou_smi_mem_map_st;
 
+// step: in clock cycles of the specific platform (RPI0-3 or RPI4)
+// setup, strobe, and hold: calculated in number of steps.
+// 
+// Thus, the total sample period (in nanosecs) is given by:
+//    step * ( setup + strobe + hold ) * ns_per_clock_cycle
+//
+// For an RPI4 @ 1500 MHz clock => 0.667 nsec / clock cycle
+// The configuration of: (step, setup, strobe, hold) = (4,  3,  8,  4)
+// yields: 0.667nsec*4*(3+8+4) = 8/3*15 = 40 nanoseconds/sample => 25 MSPS
+typedef struct
+{
+    int step_size;
+    int setup_steps;
+    int strobe_steps;
+    int hold_steps;
+} caribou_smi_timing_st;
+
 typedef enum
 {
     caribou_smi_processor_BCM2835 = 0,
@@ -24,7 +41,13 @@ typedef enum
     caribou_smi_processor_UNKNOWN = 4,
 } caribou_smi_processor_type_en;
 
-#define REG32(m, x) ((volatile uint32_t *)((uint32_t)(m.virt)+(uint32_t)(x)))
+typedef enum
+{
+    caribou_smi_transaction_size_8bits = 0,
+    caribou_smi_transaction_size_16bits = 1,
+    caribou_smi_transaction_size_18bits = 2,
+    caribou_smi_transaction_size_9bits = 3,
+} caribou_smi_transaction_size_bits_en;
 
 typedef struct
 {

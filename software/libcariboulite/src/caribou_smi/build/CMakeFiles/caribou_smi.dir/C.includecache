@@ -71,6 +71,18 @@ pigpio.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.c
 stdio.h
 -
+fcntl.h
+-
+stdint.h
+-
+stdlib.h
+-
+string.h
+-
+unistd.h
+-
+math.h
+-
 caribou_smi.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
 
