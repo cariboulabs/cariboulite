@@ -2,22 +2,20 @@
 #include "caribou_smi.h"
 
 //=====================================================================
-void caribou_smi_map_devices(caribou_smi_st* dev)
+static void caribou_smi_map_devices(caribou_smi_st* dev)
 {
-    // map_periph(&dev->gpio_regs, (void *)GPIO_BASE, PAGE_SIZE);
-/*    map_periph(&dev->dma_regs, (void *)DMA_BASE, PAGE_SIZE);
-    map_periph(&dev->clk_regs, (void *)CLK_BASE, PAGE_SIZE);
-    map_periph(&dev->smi_regs, (void *)SMI_BASE, PAGE_SIZE);*/
+    map_periph(&dev->dma_regs, (void *)(DMA_BASE + dev->phys_reg_base), PAGE_SIZE);
+    map_periph(&dev->clk_regs, (void *)(CLK_BASE + dev->phys_reg_base), PAGE_SIZE);
+    map_periph(&dev->smi_regs, (void *)(SMI_BASE + dev->phys_reg_base), PAGE_SIZE);
 }
 
 //=====================================================================
 // Free memory segments and exit
-void caribou_smi_unmap_devices(caribou_smi_st* dev)
+static void caribou_smi_unmap_devices(caribou_smi_st* dev)
 {    
-    /*unmap_periph_mem(&dev->vc_mem);
+    unmap_periph_mem(&dev->vc_mem);
     unmap_periph_mem(&dev->smi_regs);
-    unmap_periph_mem(&dev->dma_regs);*/
-    //unmap_periph_mem(&dev->gpio_regs);
+    unmap_periph_mem(&dev->dma_regs);
 }
 
 //=====================================================================
@@ -31,12 +29,12 @@ void caribou_smi_unmap_devices(caribou_smi_st* dev)
 // For an RPI4 @ 1500 MHz clock => 0.667 nsec / clock cycle
 // The configuration of: (step, setup, strobe, hold) = (4,  3,  8,  4)
 // yields: 0.667nsec*4*(3+8+4) = 8/3*15 = 40 nanoseconds/sample => 25 MSPS
-void caribou_smi_init_internal(caribou_smi_st* dev, 
-                                int width, 
-                                int step, 
-                                int setup, 
-                                int strobe, 
-                                int hold)
+static void caribou_smi_init_internal(caribou_smi_st* dev, 
+                                                int width, 
+                                                int step, 
+                                                int setup, 
+                                                int strobe, 
+                                                int hold)
 {
     int divi = step / 2;
 
@@ -45,36 +43,65 @@ void caribou_smi_init_internal(caribou_smi_st* dev,
     dev->smi_a   = (SMI_A_REG *)  REG32(dev->smi_regs, SMI_A);
     dev->smi_d   = (SMI_D_REG *)  REG32(dev->smi_regs, SMI_D);
     dev->smi_dmc = (SMI_DMC_REG *)REG32(dev->smi_regs, SMI_DMC);
-    dev->smi_dsr = (SMI_DSR_REG *)REG32(dev->smi_regs, SMI_DSR0);
-    dev->smi_dsw = (SMI_DSW_REG *)REG32(dev->smi_regs, SMI_DSW0);
+    dev->smi_dsr0 = (SMI_DSR_REG *)REG32(dev->smi_regs, SMI_DSR0);
+    dev->smi_dsw0 = (SMI_DSW_REG *)REG32(dev->smi_regs, SMI_DSW0);
+    dev->smi_dsr1 = (SMI_DSR_REG *)REG32(dev->smi_regs, SMI_DSR1);
+    dev->smi_dsw1 = (SMI_DSW_REG *)REG32(dev->smi_regs, SMI_DSW1);
+    dev->smi_dsr2 = (SMI_DSR_REG *)REG32(dev->smi_regs, SMI_DSR2);
+    dev->smi_dsw2 = (SMI_DSW_REG *)REG32(dev->smi_regs, SMI_DSW2);
+    dev->smi_dsr3 = (SMI_DSR_REG *)REG32(dev->smi_regs, SMI_DSR3);
+    dev->smi_dsw3 = (SMI_DSW_REG *)REG32(dev->smi_regs, SMI_DSW3);
     dev->smi_dcs = (SMI_DCS_REG *)REG32(dev->smi_regs, SMI_DCS);
     dev->smi_dca = (SMI_DCA_REG *)REG32(dev->smi_regs, SMI_DCA);
     dev->smi_dcd = (SMI_DCD_REG *)REG32(dev->smi_regs, SMI_DCD);
-    dev->smi_cs->value = dev->smi_l->value = dev->smi_a->value = 0;
-    dev->smi_dsr->value = dev->smi_dsw->value = dev->smi_dcs->value = dev->smi_dca->value = 0;
+
+    dev->smi_cs->value = 0;
+    dev->smi_l->value = 0;
+    dev->smi_a->value = 0;
+    dev->smi_dsr0->value = 0;
+    dev->smi_dsw0->value = 0;
+    dev->smi_dsr1->value = 0;
+    dev->smi_dsw1->value = 0;
+    dev->smi_dsr2->value = 0;
+    dev->smi_dsw2->value = 0;
+    dev->smi_dsr3->value = 0;
+    dev->smi_dsw3->value = 0;
+    dev->smi_dcs->value = 0;
+    dev->smi_dca->value = 0;
+
+    // Clock configuration
     if (*REG32(dev->clk_regs, CLK_SMI_DIV) != divi << 12)
     {
         *REG32(dev->clk_regs, CLK_SMI_CTL) = CLK_PASSWD | (1 << 5);
-        usleep(10);
+        io_utils_usleep(10);
         while (*REG32(dev->clk_regs, CLK_SMI_CTL) & (1 << 7)) ;
-        usleep(10);
+        io_utils_usleep(10);
         *REG32(dev->clk_regs, CLK_SMI_DIV) = CLK_PASSWD | (divi << 12);
-        usleep(10);
+        io_utils_usleep(10);
         *REG32(dev->clk_regs, CLK_SMI_CTL) = CLK_PASSWD | 6 | (1 << 4);
-        usleep(10);
+        io_utils_usleep(10);
         while ((*REG32(dev->clk_regs, CLK_SMI_CTL) & (1 << 7)) == 0) ;
-        usleep(100);
+        io_utils_usleep(100);
     }
+
+    // if error exist in the SMI Control & Status (CS), latch it to clear
     if (dev->smi_cs->seterr)
     {
         dev->smi_cs->seterr = 1;
     }
-    dev->smi_dsr->rsetup = dev->smi_dsw->wsetup = setup;
-    dev->smi_dsr->rstrobe = dev->smi_dsw->wstrobe = strobe;
-    dev->smi_dsr->rhold = dev->smi_dsw->whold = hold;
-    dev->smi_dmc->panicr = dev->smi_dmc->panicw = 8;
-    dev->smi_dmc->reqr = dev->smi_dmc->reqw = 4;                // should be minimal number of bytes???
-    dev->smi_dsr->rwidth = dev->smi_dsw->wwidth = width;
+
+    dev->smi_dsr0->rsetup = setup;
+    dev->smi_dsw0->wsetup = setup;
+    dev->smi_dsr0->rstrobe = strobe;
+    dev->smi_dsw0->wstrobe = strobe;
+    dev->smi_dsr0->rhold = hold;
+    dev->smi_dsw0->whold = hold;
+    dev->smi_dmc->panicr = 8;
+    dev->smi_dmc->panicw = 8;
+    dev->smi_dmc->reqr = 4;
+    dev->smi_dmc->reqw = 4;
+    dev->smi_dsr0->rwidth = width;
+    dev->smi_dsw0->wwidth = width;
 }
 
 //=====================================================================

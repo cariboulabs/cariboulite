@@ -52,8 +52,14 @@ typedef struct
     SMI_A_REG   *smi_a;
     SMI_D_REG   *smi_d;
     SMI_DMC_REG *smi_dmc;
-    SMI_DSR_REG *smi_dsr;
-    SMI_DSW_REG *smi_dsw;
+    SMI_DSR_REG *smi_dsr0;
+    SMI_DSW_REG *smi_dsw0;
+    SMI_DSR_REG *smi_dsr1;
+    SMI_DSW_REG *smi_dsw1;
+    SMI_DSR_REG *smi_dsr2;
+    SMI_DSW_REG *smi_dsw2;
+    SMI_DSR_REG *smi_dsr3;
+    SMI_DSW_REG *smi_dsw3;
     SMI_DCS_REG *smi_dcs;
     SMI_DCA_REG *smi_dca;
     SMI_DCD_REG *smi_dcd;
