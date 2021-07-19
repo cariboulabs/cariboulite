@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "caribou_smi.h": "c"
+        "caribou_smi.h": "c",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
     }
 }
