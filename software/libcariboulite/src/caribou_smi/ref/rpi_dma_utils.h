@@ -31,7 +31,7 @@
 #define DEBUG           0
 
 // If non-zero, set PWM clock using VideoCore mailbox
-#define USE_VC_CLOCK_SET 0
+#define USE_VC_CLOCK_SET 1
 
 // Size of memory page
 #define PAGE_SIZE       0x1000

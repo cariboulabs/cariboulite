@@ -5,32 +5,40 @@
 void caribou_smi_map_devices(caribou_smi_st* dev)
 {
     // map_periph(&dev->gpio_regs, (void *)GPIO_BASE, PAGE_SIZE);
-    map_periph(&dev->dma_regs, (void *)DMA_BASE, PAGE_SIZE);
+/*    map_periph(&dev->dma_regs, (void *)DMA_BASE, PAGE_SIZE);
     map_periph(&dev->clk_regs, (void *)CLK_BASE, PAGE_SIZE);
-    map_periph(&dev->smi_regs, (void *)SMI_BASE, PAGE_SIZE);
+    map_periph(&dev->smi_regs, (void *)SMI_BASE, PAGE_SIZE);*/
 }
 
 //=====================================================================
 // Free memory segments and exit
 void caribou_smi_unmap_devices(caribou_smi_st* dev)
 {    
-    unmap_periph_mem(&dev->vc_mem);
+    /*unmap_periph_mem(&dev->vc_mem);
     unmap_periph_mem(&dev->smi_regs);
-    unmap_periph_mem(&dev->dma_regs);
+    unmap_periph_mem(&dev->dma_regs);*/
     //unmap_periph_mem(&dev->gpio_regs);
 }
 
 //=====================================================================
 // Initialise SMI, given data width, time step, and setup/hold/strobe counts
-// Step value is in nanoseconds: even numbers, 2 to 30
-void init_smi(caribou_smi_st* dev, 
-                int width, 
-                int ns, 
-                int setup, 
-                int strobe, 
-                int hold)
+// step: in clock cycles of the specific platform (RPI0-3 or RPI4)
+// setup, strobe, and hold: calculated in number of steps.
+// 
+// Thus, the total sample period (in nanosecs) is given by:
+//    step * ( setup + strobe + hold ) * ns_per_clock_cycle
+//
+// For an RPI4 @ 1500 MHz clock => 0.667 nsec / clock cycle
+// The configuration of: (step, setup, strobe, hold) = (4,  3,  8,  4)
+// yields: 0.667nsec*4*(3+8+4) = 8/3*15 = 40 nanoseconds/sample => 25 MSPS
+void caribou_smi_init_internal(caribou_smi_st* dev, 
+                                int width, 
+                                int step, 
+                                int setup, 
+                                int strobe, 
+                                int hold)
 {
-    int divi = ns / 2;
+    int divi = step / 2;
 
     dev->smi_cs  = (SMI_CS_REG *) REG32(dev->smi_regs, SMI_CS);
     dev->smi_l   = (SMI_L_REG *)  REG32(dev->smi_regs, SMI_L);
@@ -70,8 +78,63 @@ void init_smi(caribou_smi_st* dev,
 }
 
 //=====================================================================
+static void caribou_smi_fill_sys_info(caribou_smi_st* dev, io_utils_sys_info_st *sys_info)
+{
+    dev->use_video_core_clock = 1;
+    
+    if (!strcmp(sys_info->processor, "BCM2835"))
+    {
+        // PI ZERO / PI1
+        dev->processor_type = caribou_smi_processor_BCM2835;
+        dev->phys_reg_base = 0x20000000;
+        dev->sys_clock_hz = 400000000;
+        dev->bus_reg_base = 0x7E000000;
+    } 
+    else if (!strcmp(sys_info->processor, "BCM2836") || !strcmp(sys_info->processor, "BCM2837"))
+    {
+        // PI2 / PI3
+        dev->processor_type = caribou_smi_processor_BCM2836;
+        dev->phys_reg_base = 0x3F000000;
+        dev->sys_clock_hz = 250000000;
+        dev->bus_reg_base = 0x7E000000;
+    }
+    else if (!strcmp(sys_info->processor, "BCM2711"))
+    {
+        // PI4 / PI400
+        dev->processor_type = caribou_smi_processor_BCM2711;
+        dev->phys_reg_base = 0xFE000000;
+        dev->sys_clock_hz = 250000000;
+        dev->bus_reg_base = 0x7E000000;
+    }
+    else
+    {
+        // USE ZERO AS DEFAULT
+        dev->processor_type = caribou_smi_processor_UNKNOWN;
+        dev->phys_reg_base = 0x20000000;
+        dev->sys_clock_hz = 400000000;
+        dev->bus_reg_base = 0x7E000000;
+    }
+
+    if (!strcmp(sys_info->ram, "256M")) dev->ram_size_mbytes = 256;
+    else if (!strcmp(sys_info->ram, "512M")) dev->ram_size_mbytes = 512;
+    else if (!strcmp(sys_info->ram, "1G")) dev->ram_size_mbytes = 1000;
+    else if (!strcmp(sys_info->ram, "2G")) dev->ram_size_mbytes = 2000;
+    else if (!strcmp(sys_info->ram, "4G")) dev->ram_size_mbytes = 4000;
+    else if (!strcmp(sys_info->ram, "8G")) dev->ram_size_mbytes = 8000;
+}
+
+//=====================================================================
 int caribou_smi_init(caribou_smi_st* dev)
 {
+    // Get the RPI information
+    io_utils_sys_info_st sys_info = {0};
+    io_utils_get_rpi_info(&sys_info);
+    caribou_smi_fill_sys_info(dev, &sys_info);
+
+    printf("processor_type = %d, phys_reg_base = %08X, sys_clock_hz = %d Hz, bus_reg_base = %08X, RAM = %d Mbytes\n",
+    dev->processor_type, dev->phys_reg_base, dev->sys_clock_hz, dev->bus_reg_base, dev->ram_size_mbytes);
+    io_utils_print_rpi_info(&sys_info);
+
     for (int i=0; i<dev->num_data_pins; i++)
     {
         io_utils_set_gpio_mode(dev->data_0_pin + i, io_utils_alt_gpio_in);
@@ -89,7 +152,7 @@ int caribou_smi_init(caribou_smi_st* dev)
 
     init_smi(SMI_NUM_BITS, SMI_TIMING);
 
-    map_uncached_mem(&dev->vc_mem, VC_MEM_SIZE(NSAMPLES+PRE_SAMP));
+    /*map_uncached_mem(&dev->vc_mem, VC_MEM_SIZE(NSAMPLES+PRE_SAMP));
     dev->smi_dmc->dmaen = 1;
     dev->smi_cs->enable = 1;
     dev->smi_cs->clear = 1;
@@ -106,7 +169,7 @@ int caribou_smi_init(caribou_smi_st* dev)
     for (int i=0; i<NSAMPLES; i++)
     {
         printf("%1.3f\n", val_volts(sample_data[i]));
-    }
+    }*/
 
     dev->initialized = 1;
     return 0;
@@ -136,12 +199,13 @@ int caribou_smi_close(caribou_smi_st* dev)
         io_utils_set_gpio_mode(dev->addr0_pin + i, io_utils_alt_gpio_in);
     }
 
+    /*
     if (dev->smi_regs.virt)
     {
         *REG32(dev->smi_regs, SMI_CS) = 0;
     }
     stop_dma(DMA_CHAN_A);
-    caribou_smi_unmap_devices(dev);
+    caribou_smi_unmap_devices(dev);*/
 
     return 0;
 }
@@ -159,7 +223,7 @@ void caribou_smi_start(caribou_smi_st* dev, int nsamples, int pre_samp, int pack
 
 //===========================================================================
 // Start DMA for SMI ADC, return Rx data buffer
-uint32_t *adc_dma_start(caribou_smi_mem_map_st *mp, int nsamp)
+/*uint32_t *adc_dma_start(caribou_smi_mem_map_st *mp, int nsamp)
 {
     DMA_CB *cbs=mp->virt;
     uint32_t *data=(uint32_t *)(cbs+4), *pindata=data+8, *modes=data+0x10;
@@ -273,4 +337,4 @@ void caribou_smi_disp_smi(caribou_smi_st* dev)
         if (i%8==0 || smi_regstrs[i][0]==0)
             printf("\n");
     }
-}
+}*/
