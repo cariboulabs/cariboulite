@@ -355,7 +355,7 @@ static void caribou_smi_fill_sys_info(caribou_smi_st* dev, io_utils_sys_info_st 
         // PI ZERO / PI1
         dev->processor_type = caribou_smi_processor_BCM2835;
         dev->phys_reg_base = 0x20000000;
-        dev->sys_clock_hz = 400000000;
+        dev->sys_clock_hz = 700000000;
         dev->bus_reg_base = 0x7E000000;
     } 
     else if (!strcmp(sys_info->processor, "BCM2836") || !strcmp(sys_info->processor, "BCM2837"))
@@ -363,7 +363,7 @@ static void caribou_smi_fill_sys_info(caribou_smi_st* dev, io_utils_sys_info_st 
         // PI2 / PI3
         dev->processor_type = caribou_smi_processor_BCM2836;
         dev->phys_reg_base = 0x3F000000;
-        dev->sys_clock_hz = 250000000;
+        dev->sys_clock_hz = 600000000;
         dev->bus_reg_base = 0x7E000000;
     }
     else if (!strcmp(sys_info->processor, "BCM2711"))
@@ -371,7 +371,7 @@ static void caribou_smi_fill_sys_info(caribou_smi_st* dev, io_utils_sys_info_st 
         // PI4 / PI400
         dev->processor_type = caribou_smi_processor_BCM2711;
         dev->phys_reg_base = 0xFE000000;
-        dev->sys_clock_hz = 250000000;
+        dev->sys_clock_hz = 600000000;
         dev->bus_reg_base = 0x7E000000;
     }
     else
@@ -404,8 +404,8 @@ static float caribou_smi_calculate_clocking (caribou_smi_st* dev, float freq_sps
         printf("The clock cycle budget for the calculation is too small.\n");
         return -1;
     }
-    // try to make a 1:2:1 ratio between setup, strobe and hold 
-    timing->step_size = (int)(roundf((float)cc_budget / 4.0f));
+    // try to make a 1:2:1 ratio between setup, strobe and hold (but step needs to be even)
+    timing->step_size = (int)(roundf((float)cc_budget / 8.0f))*2;
     timing->setup_steps = 1;
     timing->strobe_steps = 2;
     timing->hold_steps = 1;
