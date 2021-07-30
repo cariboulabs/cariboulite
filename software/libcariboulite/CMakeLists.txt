@@ -22,7 +22,7 @@ add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
 
 add_library(cariboulite STATIC ${SOURCES_LIB})
-target_link_libraries(cariboulite datatypes ustimer caribou_fpga caribou_smi latticeice40 io_utils)
+target_link_libraries(cariboulite datatypes ustimer caribou_fpga caribou_smi latticeice40 io_utils m rt pthread)
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ----------------------------------
@@ -35,8 +35,8 @@ set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
 add_executable(ice40programmer ${SOURCES_ICE40_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 
-target_link_libraries(ice40programmer cariboulite pthread io_utils)
-target_link_libraries(fpgacomm cariboulite pthread io_utils)
+target_link_libraries(ice40programmer cariboulite io_utils pthread m rt)
+target_link_libraries(fpgacomm cariboulite io_utils pthread m rt)
 
 set_target_properties( ice40programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)

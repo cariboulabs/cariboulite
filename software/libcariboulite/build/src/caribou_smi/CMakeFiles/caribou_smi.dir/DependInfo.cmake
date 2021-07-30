@@ -14,8 +14,7 @@ set(CMAKE_C_TARGET_INCLUDE_PATH
   ".././include"
   "../src"
   "/."
-  "../.."
-  "../src/caribou_smi"
+  "../src/caribou_smi/.."
   )
 
 # Targets to which this target links.

@@ -7,11 +7,10 @@
 #define CARIBOULITE_SCK 21
 #define CARIBOULITE_MISO 19
 
-#define FPGA_RESET 24
+#define FPGA_RESET 26
 #define ICE40_CS 18
 #define CARIBOULITE_MXR_SS 16
-#define CARIBOULITE_MXR_RESET 25
-#define CARIBOULITE_MXR_MODE 26
+#define CARIBOULITE_MXR_RESET 5
 
 io_utils_spi_st io_spi_dev =
 {
@@ -24,7 +23,6 @@ rffc507x_st dev =
 {
     .cs_pin = CARIBOULITE_MXR_SS,
     .reset_pin = CARIBOULITE_MXR_RESET,
-    .mode_pin = CARIBOULITE_MXR_MODE,
 };
 
 int main ()

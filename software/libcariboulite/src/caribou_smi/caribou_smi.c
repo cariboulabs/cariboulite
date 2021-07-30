@@ -432,6 +432,7 @@ int caribou_smi_init(caribou_smi_st* dev)
     dev->processor_type, dev->phys_reg_base, dev->sys_clock_hz, dev->bus_reg_base, dev->ram_size_mbytes);
     io_utils_print_rpi_info(&sys_info);
 
+    // Initialize the GPIO modes and states
     for (int i=0; i<dev->num_data_pins; i++)
     {
         io_utils_set_gpio_mode(dev->data_0_pin + i, io_utils_alt_gpio_in);

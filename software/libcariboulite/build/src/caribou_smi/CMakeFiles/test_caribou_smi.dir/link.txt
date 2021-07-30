@@ -1,1 +1,1 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_caribou_smi.dir/test_caribou_smi.c.o -o test_caribou_smi  libcaribou_smi.a -lrt 
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o CMakeFiles/test_caribou_smi.dir/test_caribou_smi.c.o -o test_caribou_smi  -lm -lrt -lpthread ../../../src/caribou_smi/../io_utils/build/libio_utils.a 

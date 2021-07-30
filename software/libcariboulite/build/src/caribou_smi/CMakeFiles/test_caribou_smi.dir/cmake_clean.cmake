@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o"
   "CMakeFiles/test_caribou_smi.dir/test_caribou_smi.c.o"
   "test_caribou_smi"
   "test_caribou_smi.pdb"

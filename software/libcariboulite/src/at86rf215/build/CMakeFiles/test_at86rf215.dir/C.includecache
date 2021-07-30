@@ -73,8 +73,6 @@ stdbool.h
 -
 stdio.h
 -
-lgpio.h
--
 io_utils/io_utils.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/io_utils/io_utils.h
 io_utils/io_utils_spi.h

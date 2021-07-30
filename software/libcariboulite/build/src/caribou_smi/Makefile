@@ -211,6 +211,7 @@ caribou_smi.o: caribou_smi.c.o
 
 # target to build an object file
 caribou_smi.c.o:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/test_caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o
 .PHONY : caribou_smi.c.o
 
@@ -220,6 +221,7 @@ caribou_smi.i: caribou_smi.c.i
 
 # target to preprocess a source file
 caribou_smi.c.i:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/test_caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/test_caribou_smi.dir/caribou_smi.c.i
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.i
 .PHONY : caribou_smi.c.i
 
@@ -229,6 +231,7 @@ caribou_smi.s: caribou_smi.c.s
 
 # target to generate assembly for a file
 caribou_smi.c.s:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/test_caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/test_caribou_smi.dir/caribou_smi.c.s
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.s
 .PHONY : caribou_smi.c.s
 
