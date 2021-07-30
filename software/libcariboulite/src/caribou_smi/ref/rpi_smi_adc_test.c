@@ -36,15 +36,8 @@
 #define SMI_TIMING      SMI_TIMING_20M
 
 #if PHYS_REG_BASE==PI_4_REG_BASE        // Timings for RPi v4 (1.5 GHz)
-// 1.5 GHz => 667ps / cc
-// int step_ns, int setup, int strobe, int hold
-// 10 * (38 + 74 + 38) = 1500 => 1 usec => 1 MSPS
 #define SMI_TIMING_1M   10, 38, 74, 38  // 1 MS/s
-
-// 6 * (6 + 13 + 6) = 6*25 = 150 cc => 0.1 usec => 10 MSPS
 #define SMI_TIMING_10M   6,  6, 13,  6  // 10 MS/s
-
-// 4 * (5 + 9 + 5) = 76 cc => 19.74 MSPS
 #define SMI_TIMING_20M   4,  5,  9,  5  // 19.74 MS/s
 #define SMI_TIMING_25M   4,  3,  8,  4  // 25 MS/s
 #define SMI_TIMING_31M   4,  3,  6,  3  // 31.25 MS/s
