@@ -5,9 +5,8 @@
 #define CARIBOULITE_SCK 21
 #define CARIBOULITE_MISO 19
 
-#define FPGA_RESET 24
+#define FPGA_RESET 26
 #define FPGA_CS 18
-#define FPGA_IRQ 5  // originally SA0
 
 #define CARIBOULITE_SPI_DEV 1
 #define CARIBOULITE_FPGA_SPI_CHANNEL 0
@@ -22,7 +21,6 @@ io_utils_spi_st io_spi_dev =
 caribou_fpga_st dev =
 {
     .reset_pin = FPGA_RESET,
-	.irq_pin = FPGA_IRQ,
     .cs_pin = FPGA_CS,
     .spi_dev = CARIBOULITE_SPI_DEV,
     .spi_channel = CARIBOULITE_FPGA_SPI_CHANNEL,

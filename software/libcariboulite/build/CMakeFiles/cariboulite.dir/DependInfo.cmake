@@ -17,7 +17,6 @@ set(CMAKE_C_TARGET_INCLUDE_PATH
   "../"
   "../src/datatypes"
   "../src/ustimer"
-  "../src/caribou_smi"
   "../src/latticeice40"
   "../src/io_utils"
   )

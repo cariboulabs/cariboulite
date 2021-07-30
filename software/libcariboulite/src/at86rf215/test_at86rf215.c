@@ -8,7 +8,7 @@
 #define CARIBOULITE_SCK 21
 #define CARIBOULITE_MISO 19
 
-#define FPGA_RESET 24
+#define FPGA_RESET 26
 #define ICE40_CS 18
 #define CARIBOULITE_SPI_DEV 1
 #define CARIBOULITE_MODEM_SPI_CHANNEL 1
@@ -113,6 +113,8 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
                                         uint32_t freq_hz, int usec_timeout)
 {
     at86rf215_setup_iq_radio_receive (dev, radio, freq_hz);
+    printf("Started I/Q RX session for Radio %d, Freq: %d Hz, timeout: %d usec (0=infinity)\n",
+        radio, freq_hz, usec_timeout);
 
     if (usec_timeout>0)
     {
@@ -127,11 +129,17 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
     return 1;
 }
 
-
+// -----------------------------------------------------------------------------------------
+// TEST SELECTION
+// -----------------------------------------------------------------------------------------
+#define NO_FPGA_MODE        0
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
 #define TEST_IQ_RX_WIND     1
 
+// -----------------------------------------------------------------------------------------
+// MAIN
+// -----------------------------------------------------------------------------------------
 int main ()
 {
     at86rf215_iq_interface_config_st cfg = {0};
@@ -140,7 +148,7 @@ int main ()
     // Init GPIOs and set FPGA on reset
 	io_utils_setup();
 
-    #ifdef NO_FPGA_MODE
+    #if NO_FPGA_MODE
     // When the FPGA wakes up non-programmed, it starts interogating
     // the SPI interface for SPI-Flash hosted firmware. This process
     // interfered with other bus users. Thus in the case that the FPGA

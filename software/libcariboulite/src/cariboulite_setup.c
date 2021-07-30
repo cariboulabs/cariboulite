@@ -42,7 +42,6 @@ cariboulite_st sys =
     .fpga =
     {
         .reset_pin = CARIBOULITE_FPGA_CRESET,
-        .irq_pin = CARIBOULITE_FPGA_IRQ,
         .cs_pin = CARIBOULITE_FPGA_SS,
         .spi_dev = CARIBOULITE_SPI_DEV,
         .spi_channel = CARIBOULITE_FPGA_SPI_CHANNEL,
@@ -63,7 +62,6 @@ cariboulite_st sys =
     {
         .cs_pin = CARIBOULITE_MIXER_SS,
         .reset_pin = CARIBOULITE_MIXER_RESET,
-        .mode_pin = CARIBOULITE_MIXER_MODE,
         .initialized = 0,
     },
 

@@ -15,7 +15,6 @@ set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a)
 #Generate the static library from the sources
 add_library(caribou_smi STATIC ${SOURCES_LIB})
 add_executable(test_caribou_smi ${SOURCES})
-target_include_directories(caribou_smi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(test_caribou_smi m rt pthread ${EXTERN_LIBS})
 
 #Set the location for library installation -- i.e., /usr/lib in this case
