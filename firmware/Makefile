@@ -1,4 +1,4 @@
-PROG = /home/pi/projects/Caribou/Software/CaribouLite/libcariboulite/build/test/ice40programmer
+PROG = ../software/libcariboulite/build/test/ice40programmer
 filename = top
 pcf_file = ./io.pcf
 
