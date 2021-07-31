@@ -44,7 +44,7 @@ int latticeice40_init(latticeice40_st *dev,
 
 	dev->io_spi = io_spi;
 
-	// Init pin directions lgpio
+	// Init pin directions
 	io_utils_setup_gpio(dev->cdone_pin, io_utils_dir_input, io_utils_pull_up);
 	io_utils_setup_gpio(dev->cs_pin, io_utils_dir_output, io_utils_pull_up);
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);

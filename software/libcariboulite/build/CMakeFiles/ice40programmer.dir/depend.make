@@ -7,6 +7,7 @@ CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/at86rf215/at86r
 CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/at86rf215/at86rf215_regs.h
 CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/caribou_fpga/caribou_fpga.h
 CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/caribou_smi/caribou_smi.h
+CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/caribou_smi/caribou_smi_defs.h
 CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/cariboulite_setup.h
 CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/io_utils/io_utils.h
 CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o: ../src/io_utils/io_utils_spi.h

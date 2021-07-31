@@ -15,7 +15,7 @@ set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a)
 #Generate the static library from the sources
 add_library(caribou_smi STATIC ${SOURCES_LIB})
 add_executable(test_caribou_smi ${SOURCES})
-target_link_libraries(test_caribou_smi m rt pthread ${EXTERN_LIBS})
+target_link_libraries(test_caribou_smi ${EXTERN_LIBS} m rt pthread)
 
 #Set the location for library installation -- i.e., /usr/lib in this case
 # not really necessary in this example. Use "sudo make install" to apply

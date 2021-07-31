@@ -99,12 +99,12 @@ ice40programmer_EXTERNAL_OBJECTS =
 test/ice40programmer: CMakeFiles/ice40programmer.dir/test/ice40_programmer.c.o
 test/ice40programmer: CMakeFiles/ice40programmer.dir/build.make
 test/ice40programmer: libcariboulite.a
-test/ice40programmer: src/io_utils/libio_utils.a
 test/ice40programmer: src/datatypes/libdatatypes.a
 test/ice40programmer: src/ustimer/libustimer.a
 test/ice40programmer: src/caribou_fpga/libcaribou_fpga.a
 test/ice40programmer: src/caribou_smi/libcaribou_smi.a
 test/ice40programmer: src/latticeice40/liblatticeice40.a
+test/ice40programmer: src/io_utils/libio_utils.a
 test/ice40programmer: CMakeFiles/ice40programmer.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable test/ice40programmer"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/ice40programmer.dir/link.txt --verbose=$(VERBOSE)
