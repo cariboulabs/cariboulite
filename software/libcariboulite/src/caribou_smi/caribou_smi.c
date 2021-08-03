@@ -48,23 +48,6 @@ static void caribou_smi_init_registers( caribou_smi_st* dev,
     dev->smi_dcs->value = 0;
     dev->smi_dca->value = 0;
 
-
-    int divi = timing->step_size / 2;
-    // Clock configuration
-    /*if (*REG32(dev->clk_regs, CLK_SMI_DIV) != divi << 12)
-    {
-        *REG32(dev->clk_regs, CLK_SMI_CTL) = CLK_PASSWD | (1 << 5);
-        io_utils_usleep(10);
-        while (*REG32(dev->clk_regs, CLK_SMI_CTL) & (1 << 7)) ;
-        io_utils_usleep(10);
-        *REG32(dev->clk_regs, CLK_SMI_DIV) = CLK_PASSWD | (divi << 12);
-        io_utils_usleep(10);
-        *REG32(dev->clk_regs, CLK_SMI_CTL) = CLK_PASSWD | 6 | (1 << 4);
-        io_utils_usleep(10);
-        while ((*REG32(dev->clk_regs, CLK_SMI_CTL) & (1 << 7)) == 0) ;
-        io_utils_usleep(100);
-    }*/
-
     // if error exist in the SMI Control & Status (CS), latch it to clear
     if (dev->smi_cs->seterr)
     {
@@ -160,7 +143,7 @@ int caribou_smi_init(caribou_smi_st* dev)
     caribou_smi_init_registers(dev, caribou_smi_transaction_size_8bits, &timing);
 
 
-    
+
     dev->smi_dmc->dmaen = 1;
     dev->smi_cs->enable = 1;
     dev->smi_cs->clear = 1;
@@ -234,7 +217,7 @@ void caribou_smi_start(caribou_smi_st* dev, int nsamples, int pre_samp, int pack
 
 //===========================================================================
 // Start DMA for SMI ADC, return Rx data buffer
-uint32_t *adc_dma_start(caribou_smi_mem_map_st *mp, int nsamp)
+uint32_t *adc_dma_start(MEM_MAP *mp, int nsamp)
 {
     DMA_CB *cbs=mp->virt;
     uint32_t *data=(uint32_t *)(cbs+4), *pindata=data+8, *modes=data+0x10;
