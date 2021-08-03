@@ -5,15 +5,10 @@
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_sys_info.h"
 
-typedef struct
-{
-    int fd;         // File descriptor
-    int h;          // Memory handle
-    int size;       // Memory size
-    void *bus;      // Bus address
-    void *virt;     // Virtual address
-    void *phys;     // Physical address
-} caribou_smi_mem_map_st;
+//==========================================================
+// SAMPLING INFO
+//==========================================================
+#define SAMPLE_SIZE_BYTES  (4)
 
 // step: in clock cycles of the specific platform (RPI0-3 or RPI4)
 // setup, strobe, and hold: calculated in number of steps.
@@ -34,15 +29,6 @@ typedef struct
 
 typedef enum
 {
-    caribou_smi_processor_BCM2835 = 0,
-    caribou_smi_processor_BCM2836 = 1,
-    caribou_smi_processor_BCM2837 = 2,
-    caribou_smi_processor_BCM2711 = 3,
-    caribou_smi_processor_UNKNOWN = 4,
-} caribou_smi_processor_type_en;
-
-typedef enum
-{
     caribou_smi_transaction_size_8bits = 0,
     caribou_smi_transaction_size_16bits = 1,
     caribou_smi_transaction_size_18bits = 2,
@@ -60,15 +46,20 @@ typedef struct
     int read_req_pin;
     int write_req_pin;
 
-    int initialized;
+    uint32_t sample_buf_length;
+    uint32_t num_sample_bufs;
+    int dma_channel;
 
-    uint32_t ram_size_mbytes;
-    caribou_smi_processor_type_en processor_type;
-    uint32_t phys_reg_base;
-    uint32_t sys_clock_hz;
-    uint32_t bus_reg_base;
-    uint8_t use_video_core_clock;
-    caribou_smi_mem_map_st dma_regs, vc_mem, clk_regs, smi_regs;
+    // Internal varibles
+    int initialized;
+    io_utils_sys_info_st sys_info;
+    uint32_t videocore_alloc_size;
+    float actual_sample_buf_length_sec;
+
+    dma_utils_st dma;
+    MEM_MAP smi_regs;
+    MEM_MAP vc_mem;
+    MEM_MAP clk_regs;
 
     SMI_CS_REG  *smi_cs;
     SMI_L_REG   *smi_l;

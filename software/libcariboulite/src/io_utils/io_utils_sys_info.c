@@ -3,7 +3,53 @@
 #include <time.h>
 #include "io_utils_sys_info.h"
 
-// RPI INFO FUNCTIONS
+
+//=====================================================================
+static void io_utils_fill_sys_info(io_utils_sys_info_st *sys_info)
+{    
+    if (!strcmp(sys_info->processor, "BCM2835"))
+    {
+        // PI ZERO / PI1
+        sys_info->processor_type = io_utils_processor_BCM2835;
+        sys_info->phys_reg_base = 0x20000000;
+        sys_info->sys_clock_hz = 700000000;
+        sys_info->bus_reg_base = 0x7E000000;
+    } 
+    else if (!strcmp(sys_info->processor, "BCM2836") || !strcmp(sys_info->processor, "BCM2837"))
+    {
+        // PI2 / PI3
+        sys_info->processor_type = io_utils_processor_BCM2836;
+        sys_info->phys_reg_base = 0x3F000000;
+        sys_info->sys_clock_hz = 600000000;
+        sys_info->bus_reg_base = 0x7E000000;
+    }
+    else if (!strcmp(sys_info->processor, "BCM2711"))
+    {
+        // PI4 / PI400
+        sys_info->processor_type = io_utils_processor_BCM2711;
+        sys_info->phys_reg_base = 0xFE000000;
+        sys_info->sys_clock_hz = 600000000;
+        sys_info->bus_reg_base = 0x7E000000;
+    }
+    else
+    {
+        // USE ZERO AS DEFAULT
+        sys_info->processor_type = io_utils_processor_UNKNOWN;
+        sys_info->phys_reg_base = 0x20000000;
+        sys_info->sys_clock_hz = 400000000;
+        sys_info->bus_reg_base = 0x7E000000;
+    }
+
+    if (!strcmp(sys_info->ram, "256M")) sys_info->ram_size_mbytes = 256;
+    else if (!strcmp(sys_info->ram, "512M")) sys_info->ram_size_mbytes = 512;
+    else if (!strcmp(sys_info->ram, "1G")) sys_info->ram_size_mbytes = 1000;
+    else if (!strcmp(sys_info->ram, "2G")) sys_info->ram_size_mbytes = 2000;
+    else if (!strcmp(sys_info->ram, "4G")) sys_info->ram_size_mbytes = 4000;
+    else if (!strcmp(sys_info->ram, "8G")) sys_info->ram_size_mbytes = 8000;
+}
+
+
+//=====================================================================
 int io_utils_get_rpi_info(io_utils_sys_info_st *info)
 {
    FILE *fp;
@@ -216,9 +262,12 @@ int io_utils_get_rpi_info(io_utils_sys_info_st *info)
          info->p1_revision = 3;
       }
    }
+
+   io_utils_fill_sys_info(info);
    return 0;
 }
 
+//=====================================================================
 void io_utils_print_rpi_info(io_utils_sys_info_st *info)
 {
     if (info == NULL)

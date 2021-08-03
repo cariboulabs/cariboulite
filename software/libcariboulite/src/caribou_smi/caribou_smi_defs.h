@@ -12,17 +12,7 @@
 // adaptation for the CaribouLite project.
 
 #include <stdint.h>
-
-//==========================================================
-// GENERAL DEFS
-//==========================================================
-#define REG32(m, x) ((volatile uint32_t *)((uint32_t)(m.virt)+(uint32_t)(x)))
-// Get bus address of register
-#define REG_BUS_ADDR(m, x)  ((uint32_t)(m.bus)  + (uint32_t)(x))
-// Convert uncached memory virtual address to bus address
-#define MEM_BUS_ADDR(mp, a) ((uint32_t)a-(uint32_t)mp->virt+(uint32_t)mp->bus)
-// Convert bus address to physical address (for mmap)
-#define BUS_PHYS_ADDR(a)    ((void *)((uint32_t)(a)&~0xC0000000))
+#include "register_utils.h"
 
 //==========================================================
 // SMI
@@ -49,13 +39,10 @@
 #define SMI_FD      0x40    // SMI FIFO Debug
 #define SMI_REGLEN  (SMI_FD * 4)
 
-
-
 // DMA request
 #define DMA_SMI_DREQ 4
 
-// Union of 32-bit value with register bitfields
-#define REG_DEF(name, fields) typedef union {struct {volatile uint32_t fields;}; volatile uint32_t value;} name
+
 
 //=====================================================================================
 // Control and status register
@@ -216,86 +203,5 @@ REG_DEF(SMI_FLVL_REG, SMI_FLVL_FIELDS);
 
 #define CLK_SMI_CTL     0xb0
 #define CLK_SMI_DIV     0xb4
-
-
-//==========================================================
-// DMA
-//==========================================================
-// DMA channels and data requests
-#define DMA_CHAN_A      10
-#define DMA_CHAN_B      11
-#define DMA_PWM_DREQ    5
-#define DMA_SPI_TX_DREQ 6
-#define DMA_SPI_RX_DREQ 7
-#define DMA_BASE        (0x007000) /* + PHYS_REG_BASE*/
-
-// DMA register addresses offset by 0x100 * chan_num
-#define DMA_CS          0x00
-#define DMA_CONBLK_AD   0x04
-#define DMA_TI          0x08
-#define DMA_SRCE_AD     0x0c
-#define DMA_DEST_AD     0x10
-#define DMA_TXFR_LEN    0x14
-#define DMA_STRIDE      0x18
-#define DMA_NEXTCONBK   0x1c
-#define DMA_DEBUG       0x20
-#define DMA_REG(ch, r)  ((r)==DMA_ENABLE ? DMA_ENABLE : (ch)*0x100+(r))
-#define DMA_ENABLE      0xff0
-
-// DMA register values
-#define DMA_WAIT_RESP   (1 << 3)
-#define DMA_CB_DEST_INC (1 << 4)
-#define DMA_DEST_DREQ   (1 << 6)
-#define DMA_CB_SRCE_INC (1 << 8)
-#define DMA_SRCE_DREQ   (1 << 10)
-#define DMA_PRIORITY(n) ((n) << 16)
-
-// Size of memory page
-#define PAGE_SIZE       0x1000
-
-// Round up to nearest page
-#define PAGE_ROUNDUP(n) ((n)%PAGE_SIZE==0 ? (n) : ((n)+PAGE_SIZE)&~(PAGE_SIZE-1))
-
-//==========================================================
-// CLOCK
-//==========================================================
-// Clock registers and values
-#define CLK_BASE        (0x101000) /* + PHYS_REG_BASE */
-#define CLK_PWM_CTL     0xa0
-#define CLK_PWM_DIV     0xa4
-#define CLK_PASSWD      0x5a000000
-#define PWM_CLOCK_ID    0xa
-
-//==========================================================
-// VIDEOCORE
-//==========================================================
-// VC flags for unchached DMA memory
-#define DMA_MEM_FLAGS (MEM_FLAG_DIRECT|MEM_FLAG_ZERO)
-
-
-// Videocore mailbox memory allocation flags, see:
-//     https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
-typedef enum 
-{
-    MEM_FLAG_DISCARDABLE    = 1<<0, // can be resized to 0 at any time. Use for cached data
-    MEM_FLAG_NORMAL         = 0<<2, // normal allocating alias. Don't use from ARM
-    MEM_FLAG_DIRECT         = 1<<2, // 0xC alias uncached
-    MEM_FLAG_COHERENT       = 2<<2, // 0x8 alias. Non-allocating in L2 but coherent
-    MEM_FLAG_ZERO           = 1<<4, // initialise buffer to all zeros
-    MEM_FLAG_NO_INIT        = 1<<5, // don't initialise (default is initialise to all ones)
-    MEM_FLAG_HINT_PERMALOCK = 1<<6, // Likely to be locked for long periods of time
-    MEM_FLAG_L1_NONALLOCATING=(MEM_FLAG_DIRECT | MEM_FLAG_COHERENT) // Allocating in L2
-} VC_ALLOC_FLAGS;
-
-// Mailbox command/response structure
-typedef struct 
-{
-    uint32_t len,               // Overall length (bytes)
-        req,                    // Zero for request, 1<<31 for response
-        tag,                    // Command number
-        blen,                   // Buffer length (bytes)
-        dlen;                   // Data length (bytes)
-        uint32_t uints[32-5];   // Data (108 bytes maximum)
-} VC_MSG __attribute__ ((aligned (16)));
 
 #endif // __CARIBOU_SMI_DEFS_H__
