@@ -4,6 +4,9 @@
         "array": "cpp",
         "string": "cpp",
         "string_view": "cpp",
-        "cmath": "c"
+        "cmath": "c",
+        "rpi_dma_utils.h": "c",
+        "mbox_utils.h": "c",
+        "caribou_smi_defs.h": "c"
     }
 }

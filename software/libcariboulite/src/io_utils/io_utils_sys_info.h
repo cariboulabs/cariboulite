@@ -12,6 +12,15 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+typedef enum
+{
+    io_utils_processor_BCM2835 = 0,
+    io_utils_processor_BCM2836 = 1,
+    io_utils_processor_BCM2837 = 2,
+    io_utils_processor_BCM2711 = 3,
+    io_utils_processor_UNKNOWN = 4,
+} io_utils_processor_type_en;
+
 typedef struct
 {
    int p1_revision;
@@ -20,10 +29,15 @@ typedef struct
    char *processor;
    char *type;
    char revision[1024];
+
+   io_utils_processor_type_en processor_type;
+   uint32_t ram_size_mbytes;
+   uint32_t phys_reg_base;
+   uint32_t sys_clock_hz;
+   uint32_t bus_reg_base;
 } io_utils_sys_info_st;
 
 int io_utils_get_rpi_info(io_utils_sys_info_st *info);
 void io_utils_print_rpi_info(io_utils_sys_info_st *info);
-
 
 #endif // __IO_UTILS_SYS_INFO_H__
