@@ -4,6 +4,7 @@
 CMakeFiles/rffc507x.dir/rffc507x.c.o: ../../io_utils/io_utils.h
 CMakeFiles/rffc507x.dir/rffc507x.c.o: ../../io_utils/io_utils_spi.h
 CMakeFiles/rffc507x.dir/rffc507x.c.o: ../../io_utils/pigpio/pigpio.h
+CMakeFiles/rffc507x.dir/rffc507x.c.o: ../../zf_log/zf_log.h
 CMakeFiles/rffc507x.dir/rffc507x.c.o: ../rffc507x.c
 CMakeFiles/rffc507x.dir/rffc507x.c.o: ../rffc507x.h
 CMakeFiles/rffc507x.dir/rffc507x.c.o: ../rffc507x_regs.h

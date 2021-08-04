@@ -5,6 +5,7 @@ CMakeFiles/test_caribou_fpga.dir/caribou_fpga.c.o
  ../../io_utils/io_utils.h
  ../../io_utils/io_utils_spi.h
  ../../io_utils/pigpio/pigpio.h
+ ../../zf_log/zf_log.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.h
 CMakeFiles/test_caribou_fpga.dir/test_caribou_fpga.c.o

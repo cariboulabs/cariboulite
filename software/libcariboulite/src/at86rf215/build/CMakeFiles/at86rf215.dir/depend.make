@@ -4,6 +4,7 @@
 CMakeFiles/at86rf215.dir/at86rf215.c.o: ../../io_utils/io_utils.h
 CMakeFiles/at86rf215.dir/at86rf215.c.o: ../../io_utils/io_utils_spi.h
 CMakeFiles/at86rf215.dir/at86rf215.c.o: ../../io_utils/pigpio/pigpio.h
+CMakeFiles/at86rf215.dir/at86rf215.c.o: ../../zf_log/zf_log.h
 CMakeFiles/at86rf215.dir/at86rf215.c.o: ../at86rf215.c
 CMakeFiles/at86rf215.dir/at86rf215.c.o: ../at86rf215.h
 CMakeFiles/at86rf215.dir/at86rf215.c.o: ../at86rf215_common.h
@@ -13,6 +14,7 @@ CMakeFiles/at86rf215.dir/at86rf215.c.o: ../at86rf215_regs.h
 CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../../io_utils/io_utils.h
 CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../../io_utils/io_utils_spi.h
 CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../../io_utils/pigpio/pigpio.h
+CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../../zf_log/zf_log.h
 CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../at86rf215_baseband.c
 CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../at86rf215_baseband.h
 CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../at86rf215_common.h
@@ -22,6 +24,7 @@ CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o: ../at86rf215_regs.h
 CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../../io_utils/io_utils.h
 CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../../io_utils/io_utils_spi.h
 CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../../io_utils/pigpio/pigpio.h
+CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../../zf_log/zf_log.h
 CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../at86rf215_common.h
 CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../at86rf215_events.c
 CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../at86rf215_regs.h
@@ -29,6 +32,7 @@ CMakeFiles/at86rf215.dir/at86rf215_events.c.o: ../at86rf215_regs.h
 CMakeFiles/at86rf215.dir/at86rf215_radio.c.o: ../../io_utils/io_utils.h
 CMakeFiles/at86rf215.dir/at86rf215_radio.c.o: ../../io_utils/io_utils_spi.h
 CMakeFiles/at86rf215.dir/at86rf215_radio.c.o: ../../io_utils/pigpio/pigpio.h
+CMakeFiles/at86rf215.dir/at86rf215_radio.c.o: ../../zf_log/zf_log.h
 CMakeFiles/at86rf215.dir/at86rf215_radio.c.o: ../at86rf215_common.h
 CMakeFiles/at86rf215.dir/at86rf215_radio.c.o: ../at86rf215_radio.c
 CMakeFiles/at86rf215.dir/at86rf215_radio.c.o: ../at86rf215_radio.h

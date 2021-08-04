@@ -4,6 +4,7 @@
 src/caribou_fpga/CMakeFiles/caribou_fpga.dir/caribou_fpga.c.o: ../src/io_utils/io_utils.h
 src/caribou_fpga/CMakeFiles/caribou_fpga.dir/caribou_fpga.c.o: ../src/io_utils/io_utils_spi.h
 src/caribou_fpga/CMakeFiles/caribou_fpga.dir/caribou_fpga.c.o: ../src/io_utils/pigpio/pigpio.h
+src/caribou_fpga/CMakeFiles/caribou_fpga.dir/caribou_fpga.c.o: ../src/zf_log/zf_log.h
 src/caribou_fpga/CMakeFiles/caribou_fpga.dir/caribou_fpga.c.o: ../src/caribou_fpga/caribou_fpga.c
 src/caribou_fpga/CMakeFiles/caribou_fpga.dir/caribou_fpga.c.o: ../src/caribou_fpga/caribou_fpga.h
 

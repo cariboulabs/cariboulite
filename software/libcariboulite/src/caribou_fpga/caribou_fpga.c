@@ -1,5 +1,10 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "FPGA"
+
 #include <stdio.h>
 #include <string.h>
+#include "zf_log/zf_log.h"
 #include "caribou_fpga.h"
 
 //--------------------------------------------------------------
@@ -52,10 +57,10 @@ typedef struct
 
 #define CARIBOU_FPGA_CHECK_DEV(d,f)                                                                             \
                     {                                                                                           \
-                        if ((d)==NULL) { printf("ERROR @ %s: dev is NULL\n", (f)); return -1;}          \
-                        if (!(d)->initialized) {printf("ERROR @ %s: dev not initialized\n", (f)); return -1;}   \
+                        if ((d)==NULL) { ZF_LOGE("%s: dev is NULL", (f)); return -1;}          \
+                        if (!(d)->initialized) {ZF_LOGE("%s: dev not initialized", (f)); return -1;}   \
                     }
-#define CARIBOU_FPGA_CHECK_PTR_NOT_NULL(p,f,n) {if ((p)==NULL) {printf("ERROR @ %s: %s is NULL\n",(f),(n)); return -1;}}
+#define CARIBOU_FPGA_CHECK_PTR_NOT_NULL(p,f,n) {if ((p)==NULL) {ZF_LOGE("%s: %s is NULL",(f),(n)); return -1;}}
 
 
 //===================================================================
@@ -82,7 +87,7 @@ static int caribou_fpga_spi_transfer (caribou_fpga_st* dev, uint8_t *opcode, uin
                                         tx_buf, rx_buf, 2, io_utils_spi_read_write);
     if (ret<0)
     {
-        printf("Error @ caribou_fpga_spi_transfer: spi transfer failed (%d)\n", ret);
+        ZF_LOGE("spi transfer failed (%d)", ret);
         return -1;
     }
     // on success return 0 (the number of transmitted bytes are same as needed),
@@ -97,13 +102,13 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
 {
     if (dev == NULL)
     {
-        printf("ERROR @ caribou_fpga_init: dev is NULL\n");
+        ZF_LOGE("dev is NULL");
         return -1;
     }
 
     dev->io_spi = io_spi;
 
-    printf("INFO @ caribou_fpga_init: configuring reset and irq pins\n");
+    ZF_LOGI("configuring reset and irq pins");
 	// Configure GPIO pins
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
@@ -111,7 +116,7 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
 	// set to known state
 	//io_utils_write_gpio(dev->reset_pin, 1);
 
-    printf("INFO @ caribou_fpga_init: Initializing io_utils_spi\n");
+    ZF_LOGI("Initializing io_utils_spi");
     io_utils_hard_spi_st hard_dev_fpga = {  .spi_dev_id = dev->spi_dev,
                                             .spi_dev_channel = dev->spi_channel, };
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
@@ -120,7 +125,7 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
 
     if (io_utils_setup_interrupt(dev->irq_pin, caribou_fpga_interrupt_handler, dev) < 0)
     {
-        printf("Error @ caribou_fpga_init: interrupt registration for irq_pin (%d) failed\n", dev->irq_pin);
+        ZF_LOGE("interrupt registration for irq_pin (%d) failed", dev->irq_pin);
         io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
         io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
         io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);

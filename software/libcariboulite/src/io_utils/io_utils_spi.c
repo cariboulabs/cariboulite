@@ -1,7 +1,12 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "IO_UTILS_SPI"
+
 #include <pthread.h>
 #include <time.h>
 #include <errno.h>
 
+#include "zf_log/zf_log.h"
 #include "io_utils_spi.h"
 #include "io_utils.h"
 
@@ -267,12 +272,12 @@ int io_utils_spi_init(io_utils_spi_st* dev)
 {
     if (dev == NULL)
     {
-        printf("ERROR @ io_utils_spi_init: dev is NULL\n");
+        ZF_LOGE("dev is NULL");
         return -1;
     }
     if (dev->initialized == 1)
     {
-        printf("WARNING @ io_utils_spi_init: spi_dev already initialized\n");
+        ZF_LOGW("spi_dev already initialized");
     }
 
     // init the chip list
@@ -290,11 +295,11 @@ int io_utils_spi_init(io_utils_spi_st* dev)
     // Init mutex and unlock
     if (pthread_mutex_init(&dev->mtx, NULL) != 0)
     {
-        printf("ERROR @ io_utils_spi_init: mutex init failed\n");
+        ZF_LOGE("mutex init failed");
         return -1;
     }
 
-    printf("Info @ io_utils_spi_init: configuring gpio setups\n");
+    ZF_LOGI("configuring gpio setups");
 
     io_utils_set_gpio_mode(dev->miso, io_utils_alt_4);
     io_utils_set_gpio_mode(dev->mosi, io_utils_alt_4);
@@ -311,7 +316,7 @@ int io_utils_spi_close(io_utils_spi_st* dev)
 {
     if (dev == NULL || !dev->initialized)
     {
-        printf("ERROR @ io_utils_spi_close: closing uninitialized device\n");
+        ZF_LOGE("closing uninitialized device");
         return -1;
     }
 
@@ -323,11 +328,11 @@ int io_utils_spi_close(io_utils_spi_st* dev)
     if (ret == -ETIMEDOUT)
     {
         // timeout locking - some thread is holding spi as a hostage
-        printf("WARNING @ io_utils_spi_close: timed out trying locking mutex\n");
+        ZF_LOGW("timed out trying locking mutex");
     }
     else if (ret<0)
     {
-        printf("ERROR @ io_utils_spi_close: mutex locking failed\n");
+        ZF_LOGE("mutex locking failed");
         return -1;
     }
 
@@ -341,8 +346,7 @@ int io_utils_spi_close(io_utils_spi_st* dev)
         {
             if (spiClose(dev->chips[i].hard_spi_handle) < 0)
             {
-                printf("Error @ io_utils_spi_close: pigpio says %d is a BAD HANDLE\n",
-                            dev->chips[i].hard_spi_handle);
+                ZF_LOGE("pigpio says %d is a BAD HANDLE", dev->chips[i].hard_spi_handle);
             }
         }
         dev->chips[i].initialized = 0;
@@ -362,7 +366,7 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
     int res = -1;
     if (dev == NULL || !dev->initialized)
     {
-        printf("ERROR @ io_utils_spi_add_chip: uninitialized device\n");
+        ZF_LOGE("uninitialized device");
         return -1;
     }
 
@@ -372,7 +376,7 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
     // will never be greater but still it is good to check
     if (dev->num_of_chips >= IO_UTILS_MAX_CHIPS)
     {
-        printf("ERROR @ io_utils_spi_add_chip: cannnot add - exceeded max %d\n", IO_UTILS_MAX_CHIPS);
+        ZF_LOGE("cannnot add - exceeded max %d", IO_UTILS_MAX_CHIPS);
         pthread_mutex_unlock(&dev->mtx);
         return -1;
     }
@@ -403,7 +407,7 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
         res = spiOpen(dev->chips[new_chip_index].hard_dev.spi_dev_channel, speed, spiFlags);
         if (res < 0)
         {
-            printf("Error @ io_utils_spi_add_chip: spiOpen function failed with code %d\n", res);
+            ZF_LOGE("spiOpen function failed with code %d", res);
             pthread_mutex_unlock(&dev->mtx);
             return -1;
         }
@@ -422,19 +426,19 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
 //=====================================================================================
 int io_utils_spi_remove_chip(io_utils_spi_st* dev, int chip_handle)
 {
-    printf("Info @ io_utils_spi_remove_chip: removing an spi device with handle %d\n", chip_handle);
+    ZF_LOGI("removing an spi device with handle %d", chip_handle);
 
     pthread_mutex_lock(&dev->mtx);
     if (dev->num_of_chips <= 0)
     {
-        printf("Error @ io_utils_spi_remove_chip: the device is already empty\n");
+        ZF_LOGE("the device is already empty");
         pthread_mutex_unlock(&dev->mtx);
         return -1;
     }
 
     if (dev->chips[chip_handle].initialized == 0)
     {
-        printf("Error @ io_utils_spi_remove_chip: the specified handle - %d - is not initialized\n", chip_handle);
+        ZF_LOGE("the specified handle - %d - is not initialized", chip_handle);
         pthread_mutex_unlock(&dev->mtx);
         return -1;
     }
@@ -444,7 +448,7 @@ int io_utils_spi_remove_chip(io_utils_spi_st* dev, int chip_handle)
     {
         if (spiClose(dev->chips[chip_handle].hard_spi_handle) < 0)
         {
-            printf("Error @ io_utils_spi_remove_chip: the specified hard_handle - %d - is not valid\n", dev->chips[chip_handle].hard_spi_handle);
+            ZF_LOGE("the specified hard_handle - %d - is not valid", dev->chips[chip_handle].hard_spi_handle);
             // no return as we anyway are going to return
         }
     }
@@ -464,12 +468,12 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
     int ret = 0;
     if (dev == NULL || !dev->initialized)
     {
-        printf("ERROR @ io_utils_spi_transmit: uninitialized device\n");
+        ZF_LOGE("uninitialized device");
         return -1;
     }
     if (dev->chips[chip_handle].initialized == 0)
     {
-        printf("ERROR @ io_utils_spi_transmit: uninitialized spi chip handle %d\n", chip_handle);
+        ZF_LOGE("uninitialized spi chip handle %d", chip_handle);
         return -1;
     }
 
@@ -478,7 +482,7 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
 
     if (io_utils_spi_setup_chip(dev, chip_handle) < 0)
     {
-        printf("ERROR @ io_utils_spi_transmit: chip setup failed %d\n", chip_handle);
+        ZF_LOGE("chip setup failed %d", chip_handle);
         goto io_utils_spi_transmit_error;
     }
 
@@ -494,7 +498,7 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
             ret = spiXfer(dev->current_chip->hard_spi_handle, (unsigned char*)tx_buf, rx_buf, length);
             if (ret < 0)
             {
-                printf("Error @ io_utils_spi_transmit: spi transfer failed (%d)\n", ret);
+                ZF_LOGE("spi transfer failed (%d)", ret);
                 goto io_utils_spi_transmit_error;
             }
         }
@@ -509,7 +513,7 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
                 int r = io_utils_spi_read_rffc507x(dev, dev->current_chip, reg);
                 if (r < 0)
                 {
-                    printf("Error @ io_utils_spi_transmit: rffc507x read transfer failed\n");
+                    ZF_LOGE("rffc507x read transfer failed");
                     goto io_utils_spi_transmit_error;
                 }
                 *((uint16_t*)rx_buf) = (uint16_t)(r & 0xFFFF);
@@ -520,7 +524,7 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
                 int r = io_utils_spi_write_rffc507x(dev, dev->current_chip, reg, val);
                 if (r < 0)
                 {
-                    printf("Error @ io_utils_spi_transmit: rffc507x write transfer failed\n");
+                    ZF_LOGE("rffc507x write transfer failed");
                     goto io_utils_spi_transmit_error;
                 }
             }
@@ -544,7 +548,7 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
         // --------------------------------------------------
 	    default:
         {
-            printf("WARNING @ io_utils_spi_transmit: generic function transfer not implemented\n");
+            ZF_LOGW("generic function transfer not implemented");
         }
         break;
     }
@@ -562,7 +566,7 @@ void io_utils_spi_print_setup(io_utils_spi_st* dev)
 {
     if (dev == NULL || !dev->initialized)
     {
-        printf("INFO @ io_utils_spi_print_setup: uninitialized device\n");
+        ZF_LOGI("uninitialized device");
         return;
     }
 

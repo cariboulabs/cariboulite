@@ -20,9 +20,10 @@ add_subdirectory(src/caribou_smi EXCLUDE_FROM_ALL)
 add_subdirectory(src/latticeice40 EXCLUDE_FROM_ALL)
 add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
+add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 
 add_library(cariboulite STATIC ${SOURCES_LIB})
-target_link_libraries(cariboulite datatypes ustimer caribou_fpga caribou_smi latticeice40 io_utils m rt pthread)
+target_link_libraries(cariboulite datatypes ustimer caribou_fpga caribou_smi latticeice40 io_utils m rt pthread zf_log)
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ----------------------------------

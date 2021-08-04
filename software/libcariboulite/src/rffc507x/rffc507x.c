@@ -21,9 +21,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "RFFC5072"
 
 #include <stdint.h>
 #include <string.h>
+#include "zf_log/zf_log.h"
 #include "rffc507x.h"
 #include "rffc507x_regs.h" // private register def macros
 
@@ -101,14 +105,14 @@ int rffc507x_init(  rffc507x_st* dev,
 {
 	if (dev == NULL)
 	{
-		printf("ERROR @ rffc507x_init: dev is NULL\n");
+		ZF_LOGE("input dev is NULL");
 		return -1;
 	}
-	printf("INFO @ rffc507x_init: Initializing\n");
+	ZF_LOGI("Initializing RFFC507x driver");
 	memcpy(dev->rffc507x_regs, rffc507x_regs_default, sizeof(dev->rffc507x_regs));
 	dev->rffc507x_regs_dirty = 0x7fffffff;
 
-	printf("INFO @ rffc507x_init: setting up device pins\n");
+	ZF_LOGI("Setting up device GPIOs");
 
 	dev->io_spi = io_spi;
 
@@ -123,7 +127,7 @@ int rffc507x_init(  rffc507x_st* dev,
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
                         						io_utils_spi_chip_type_rffc, NULL);
 
-	printf("INFO @ rffc507x_init: received spi handle %d\n", dev->io_spi_handle);
+	ZF_LOGI("Received spi handle %d", dev->io_spi_handle);
 
 	// initial setup
 	// put zeros in freq contol registers
@@ -152,7 +156,7 @@ int rffc507x_init(  rffc507x_st* dev,
 	int ret = rffc507x_regs_commit(dev);
 	if (ret < 0)
 	{
-		printf("ERROR @ rffc507x_init: rffc507x_regs_commit failed\n");
+		ZF_LOGE("Failed commiting varibles into rffc507X");
 		return -1;
 	}
 
@@ -166,13 +170,13 @@ int rffc507x_release(rffc507x_st* dev)
 {
 	if (dev == NULL)
 	{
-		printf("ERROR @ rffc507x_release: device pointer NULL\n");
+		ZF_LOGE("Device pointer NULL - cannot release");
 		return -1;
 	}
 
 	if (!dev->initialized)
 	{
-		printf("Error @ rffc507x_release: device not initialized\n");
+		ZF_LOGE("Device not initialized - cannot release");
 		return 0;
 	}
 
@@ -184,7 +188,7 @@ int rffc507x_release(rffc507x_st* dev)
 	// Release the SPI device
 	io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
 
-	printf("INFO @ rffc507x_release: device release completed\n");
+	ZF_LOGI("Device release completed");
 
 	return 0;
 }
@@ -236,7 +240,7 @@ void rffc507x_reg_write(rffc507x_st* dev, uint8_t r, uint16_t v)
 //===========================================================================
 void rffc507x_tx(rffc507x_st* dev)
 {
-	printf("INFO @ rffc507x_tx: rffc507x_tx\n");
+	ZF_LOGD("rffc507x_tx");
 	set_RFFC507X_ENBL(dev, 0);
 	set_RFFC507X_FULLD(dev, 0);
 	set_RFFC507X_MODE(dev, 1); // mixer 2 used for both RX and TX
@@ -246,7 +250,7 @@ void rffc507x_tx(rffc507x_st* dev)
 //===========================================================================
 void rffc507x_rx(rffc507x_st* dev)
 {
-	printf("INFO @ rffc507x_rx: rffc507x_rx\n");
+	ZF_LOGD("rffc507x_rx");
 	set_RFFC507X_ENBL(dev, 0);
 	set_RFFC507X_FULLD(dev, 0);
 	set_RFFC507X_MODE(dev, 1); // mixer 2 used for both RX and TX
@@ -258,7 +262,7 @@ void rffc507x_rx(rffc507x_st* dev)
 // current hardware designs do not support full-duplex operation.
 void rffc507x_rxtx(rffc507x_st* dev)
 {
-	printf("# rfc5071_rxtx\n");
+	ZF_LOGD("rfc5071_rxtx");
 	set_RFFC507X_ENBL(dev, 0);
 	set_RFFC507X_FULLD(dev, 1); // mixer 1 and mixer 2 (RXTX)
 	rffc507x_regs_commit(dev);
@@ -269,7 +273,7 @@ void rffc507x_rxtx(rffc507x_st* dev)
 //===========================================================================
 void rffc507x_disable(rffc507x_st* dev)
 {
-	printf("# rfc5071_disable\n");
+	ZF_LOGD("rfc5071_disable");
 	set_RFFC507X_ENBL(dev, 0);
 	rffc507x_regs_commit(dev);
 }
@@ -277,7 +281,7 @@ void rffc507x_disable(rffc507x_st* dev)
 //===========================================================================
 void rffc507x_enable(rffc507x_st* dev)
 {
-	printf("# rfc5071_enable\n");
+	ZF_LOGD("rfc5071_enable");
 	set_RFFC507X_ENBL(dev, 1);
 	rffc507x_regs_commit(dev);
 }
@@ -294,7 +298,7 @@ uint64_t rffc507x_config_synth_int(rffc507x_st* dev, uint16_t lo)
 	uint16_t p1nmsb;
 	uint8_t p1nlsb;
 
-	LOG("# config_synth_int\n");
+	ZF_LOGD("config_synth_int");
 
 	// Calculate n_lo
 	uint8_t n_lo = 0;
@@ -332,7 +336,7 @@ uint64_t rffc507x_config_synth_int(rffc507x_st* dev, uint16_t lo)
 
 	tune_freq_hz = (REF_FREQ * (tmp_n >> 5ULL) * fbkdiv * FREQ_ONE_MHZ)
 			/ (lodiv * (1 << 24ULL));
-	printf("# lo=%d n_lo=%d lodiv=%d fvco=%d fbkdiv=%d n=%d tune_freq_hz=%d\n",
+	ZF_LOGD("lo=%d n_lo=%d lodiv=%d fvco=%d fbkdiv=%d n=%d tune_freq_hz=%d",
 				lo, n_lo, lodiv, fvco, fbkdiv, n, tune_freq_hz);
 
 	// Path 1

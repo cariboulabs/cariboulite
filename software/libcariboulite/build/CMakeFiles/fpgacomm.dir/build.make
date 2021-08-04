@@ -105,6 +105,7 @@ test/fpgacomm: src/caribou_fpga/libcaribou_fpga.a
 test/fpgacomm: src/caribou_smi/libcaribou_smi.a
 test/fpgacomm: src/latticeice40/liblatticeice40.a
 test/fpgacomm: src/io_utils/libio_utils.a
+test/fpgacomm: src/zf_log/libzf_log.a
 test/fpgacomm: CMakeFiles/fpgacomm.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable test/fpgacomm"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fpgacomm.dir/link.txt --verbose=$(VERBOSE)

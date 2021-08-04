@@ -1,4 +1,9 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "AT86RF215_Events"
+
 #include <stdio.h>
+#include "zf_log/zf_log.h"
 #include "at86rf215_common.h"
 
 //===================================================================
@@ -8,32 +13,32 @@ static void at86rf215_radio_event_handler (at86rf215_st* dev,
 {
     if (events->wake_up_por)
     {
-        printf("INT @ RADIO%s: Woke up\n", ch?"09":"24");
+        ZF_LOGD("INT @ RADIO%s: Woke up", ch?"09":"24");
     }
 
     if (events->trx_ready)
     {
-        printf("INT @ RADIO%s: Transceiver ready\n", ch?"09":"24");
+        ZF_LOGD("INT @ RADIO%s: Transceiver ready", ch?"09":"24");
     }
 
     if (events->energy_detection_complete)
     {
-        printf("INT @ RADIO%s: Energy detection complete\n", ch?"09":"24");
+        ZF_LOGD("INT @ RADIO%s: Energy detection complete", ch?"09":"24");
     }
 
     if (events->battery_low)
     {
-        printf("INT @ RADIO%s: Battery low\n", ch?"09":"24");
+        ZF_LOGD("INT @ RADIO%s: Battery low", ch?"09":"24");
     }
 
     if (events->trx_error)
     {
-        printf("INT @ RADIO%s: Transceiver error\n", ch?"09":"24");
+        ZF_LOGD("INT @ RADIO%s: Transceiver error", ch?"09":"24");
     }
 
     if (events->IQ_if_sync_fail)
     {
-        printf("INT @ RADIO%s: I/Q interface sync failed\n", ch?"09":"24");
+        ZF_LOGD("INT @ RADIO%s: I/Q interface sync failed", ch?"09":"24");
     }
 }
 
@@ -44,42 +49,42 @@ static void at86rf215_baseband_event_handler (at86rf215_st* dev,
 {
     if (events->frame_rx_started)
     {
-        printf("INT @ BB%s: Frame reception started\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: Frame reception started", ch?"09":"24");
     }
 
     if (events->frame_rx_complete)
     {
-        printf("INT @ BB%s: Frame reception complete\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: Frame reception complete", ch?"09":"24");
     }
 
     if (events->frame_rx_address_match)
     {
-        printf("INT @ BB%s: Frame address matched\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: Frame address matched", ch?"09":"24");
     }
 
     if (events->frame_rx_match_extended)
     {
-        printf("INT @ BB%s: Frame extended address matched\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: Frame extended address matched", ch?"09":"24");
     }
 
     if (events->frame_tx_complete)
     {
-        printf("INT @ BB%s: Frame transmission complete\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: Frame transmission complete", ch?"09":"24");
     }
 
     if (events->agc_hold)
     {
-        printf("INT @ BB%s: AGC hold\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: AGC hold", ch?"09":"24");
     }
 
     if (events->agc_release)
     {
-        printf("INT @ BB%s: AGC released\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: AGC released", ch?"09":"24");
     }
 
     if (events->frame_buffer_level)
     {
-        printf("INT @ BB%s: Frame buffer level\n", ch?"09":"24");
+        ZF_LOGD("INT @ BB%s: Frame buffer level", ch?"09":"24");
     }
 }
 

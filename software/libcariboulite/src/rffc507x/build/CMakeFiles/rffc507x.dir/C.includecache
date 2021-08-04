@@ -56,11 +56,15 @@ stdio.h
 pigpio.h
 -
 
+../../zf_log/zf_log.h
+
 /home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/rffc507x.c
 stdint.h
 -
 string.h
 -
+zf_log/zf_log.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/zf_log/zf_log.h
 rffc507x.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/rffc507x.h
 rffc507x_regs.h

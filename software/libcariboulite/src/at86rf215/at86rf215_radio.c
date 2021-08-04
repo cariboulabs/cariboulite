@@ -1,9 +1,13 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "AT86RF215_Radio"
+
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <lgpio.h>
+#include "zf_log/zf_log.h"
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_spi.h"
 #include "at86rf215_radio.h"
@@ -187,8 +191,7 @@ int at86rf215_radio_get_good_channel(float wanted_frequency_hz, at86rf215_radio_
     }
     else
     {
-        printf("Error @ at86rf215_radio_get_good_channel: the requested frequency %.1f Hz not supported\n",
-                    wanted_frequency_hz);
+        ZF_LOGE("the requested frequency %.1f Hz not supported", wanted_frequency_hz);
         return -1;
     }
     return 0;

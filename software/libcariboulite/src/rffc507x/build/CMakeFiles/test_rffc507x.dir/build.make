@@ -114,6 +114,7 @@ test_rffc507x: CMakeFiles/test_rffc507x.dir/rffc507x.c.o
 test_rffc507x: CMakeFiles/test_rffc507x.dir/test_rffc507x.c.o
 test_rffc507x: CMakeFiles/test_rffc507x.dir/build.make
 test_rffc507x: ../../io_utils/build/libio_utils.a
+test_rffc507x: ../../zf_log/build/libzf_log.a
 test_rffc507x: CMakeFiles/test_rffc507x.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable test_rffc507x"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/test_rffc507x.dir/link.txt --verbose=$(VERBOSE)

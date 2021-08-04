@@ -5,6 +5,7 @@ CMakeFiles/at86rf215.dir/at86rf215.c.o
  ../../io_utils/io_utils.h
  ../../io_utils/io_utils_spi.h
  ../../io_utils/pigpio/pigpio.h
+ ../../zf_log/zf_log.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_common.h
@@ -14,6 +15,7 @@ CMakeFiles/at86rf215.dir/at86rf215_baseband.c.o
  ../../io_utils/io_utils.h
  ../../io_utils/io_utils_spi.h
  ../../io_utils/pigpio/pigpio.h
+ ../../zf_log/zf_log.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_baseband.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_baseband.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_common.h
@@ -23,6 +25,7 @@ CMakeFiles/at86rf215.dir/at86rf215_events.c.o
  ../../io_utils/io_utils.h
  ../../io_utils/io_utils_spi.h
  ../../io_utils/pigpio/pigpio.h
+ ../../zf_log/zf_log.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_common.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_events.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_regs.h
@@ -30,6 +33,7 @@ CMakeFiles/at86rf215.dir/at86rf215_radio.c.o
  ../../io_utils/io_utils.h
  ../../io_utils/io_utils_spi.h
  ../../io_utils/pigpio/pigpio.h
+ ../../zf_log/zf_log.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_common.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_radio.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_radio.h

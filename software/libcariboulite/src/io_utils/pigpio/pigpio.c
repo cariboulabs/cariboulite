@@ -64,6 +64,12 @@ For more information, please refer to <http://unlicense.org/>
 #include <glob.h>
 #include <arpa/inet.h>
 
+
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "PIGPIO"
+
+#include "zf_log/zf_log.h"
 #include "pigpio.h"
 
 #include "command.h"
@@ -204,7 +210,8 @@ bit 0 READ_LAST_NOT_SET_ERROR
 #define BIT  (1<<(gpio&0x1F))
 
 #ifndef EMBEDDED_IN_VM
-#define DBG(level, format, arg...) DO_DBG(level, format, ## arg)
+//#define DBG(level, format, arg...) DO_DBG(level, format, ## arg)
+   #define DBG(level,...)    {if((level)==DBG_ALWAYS) {ZF_LOG_WRITE(ZF_LOG_VERBOSE, 0, __VA_ARGS__);}}
 #else
 #define DBG(level, format, arg...)
 #endif
