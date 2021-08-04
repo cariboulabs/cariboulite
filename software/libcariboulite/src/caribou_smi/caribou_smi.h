@@ -4,6 +4,7 @@
 #include "caribou_smi_defs.h"
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_sys_info.h"
+#include "dma_utils.h"
 
 //==========================================================
 // SAMPLING INFO

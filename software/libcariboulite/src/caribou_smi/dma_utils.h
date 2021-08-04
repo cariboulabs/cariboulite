@@ -22,7 +22,7 @@
     1 DSI0 / PWM1 **
     2 PCM TX
     3 PCM RX
-    4 SMI
+    4 SMI                    <---====
     5 PWM0
     6 SPI0 TX
     7 SPI0 RX
@@ -55,22 +55,124 @@
         DMA_DREQ_CONTROL register in the system arbiter control block.
 */
 
-#define DMA_SMI_DREQ    XXX
-#define DMA_PWM_DREQ    5
-#define DMA_BASE        (0x007000)
+#define DMA_SMI_DREQ    4
+#define DMA_PWM_DREQ    5       // In cases where the dara request is provided by clock ticks
+
 
 // DMA register addresses offset by 0x100 * chan_num
-#define DMA_CS          0x00
-#define DMA_CONBLK_AD   0x04
-#define DMA_TI          0x08
-#define DMA_SRCE_AD     0x0c
-#define DMA_DEST_AD     0x10
-#define DMA_TXFR_LEN    0x14
-#define DMA_STRIDE      0x18
-#define DMA_NEXTCONBK   0x1c
-#define DMA_DEBUG       0x20
+#define DMA_BASE        (0x007000)  /* + PHYS_REG_BASE */
+#define DMA_CS          0x00        // Control and Status
+#define DMA_CONBLK_AD   0x04        // Control Block (CB) Address
+#define DMA_TI          0x08        // Transfer Information
+#define DMA_SRCE_AD     0x0c        // Source Address
+#define DMA_DEST_AD     0x10        // Destination Address
+#define DMA_TXFR_LEN    0x14        // Transfer Length
+#define DMA_STRIDE      0x18        // 2D Stride
+#define DMA_NEXTCONBK   0x1c        // Next CB (Control Block) Address
+#define DMA_DEBUG       0x20        // Debug
+
 #define DMA_REG(ch, r)  ((r)==DMA_ENABLE ? DMA_ENABLE : (ch)*0x100+(r))
 #define DMA_ENABLE      0xff0
+#define REG_DEF(name,fields) typedef union {struct {volatile uint32_t fields;}; volatile uint32_t value;} name
+
+//=====================================================================================
+// Control and status register
+#define DMA_CS_FIELDS_0_10   \
+    activate:1,             /* LSB. Activate the DMA This bit enables the DMA. The DMA will start if this bit is set */ \
+                            /* and the CB_ADDR is non zero. The DMA transfer can be paused and resumed by clearing, then setting it again. */ \
+    end:1,                  /* DMA End flag- clear by writing '1' */ \
+    ints:1,                 /* Interrupt Status - if the INTEN is enabled, then clearing by writing '1'.*/ \
+    dreq:1,                 /* DREQ State, READ ONLY*/ \
+    paused:1,               /* DMA Paused State. READ ONLY*/ \
+    dreq_stops_dma:1,       /* DMA Paused by DREQ State, READ ONLY*/ \
+    waiting_outstanding_w:1,/* DMA is Waiting for the Last Write to be Received, READ ONLY*/ \
+    res3:1,                                                         \
+    error:1,                /* DMA Error, Read only*/ \
+    res2:7,                                                         \
+    priority:2,             /* AXI Priority Level, Zero is the lowest priority.*/ \
+    panic_priority:4,       /* AXI Panic Priority Level, Zero is the lowest priority.*/ \
+    res1:4,                                                     \
+    wait_outstanding_w:1,   /* Wait for outstanding writes */ \
+    dis_debug:1,            /* Disable debug pause signal*/ \
+    abort:1,                /* Writing a 1 to this bit will abort the current DMA CB, DMA will load the next CB and attempt to continue*/ \
+    reset:1                 /* MSB. Writing a 1 to this bit will reset the DMA. The bit cannot be read, and will self clear*/   
+REG_DEF(DMA_CS_REG_0_10, DMA_CS_FIELDS_0_10);
+
+#define DMA_CS_FIELDS_11_14   \
+    activate:1,             /* LSB. Activate the DMA4 This bit enables the DMA. The DMA will start if this bit is set */ \
+                            /* and the CB_ADDR is non zero. The DMA transfer can be paused and resumed by clearing, then setting it again. */ \
+    end:1,                  /* DMA End flag- clear by writing '1' */ \
+    ints:1,                 /* Interrupt Status - if the INTEN is enabled, then clearing by writing '1'.*/ \
+    dreq:1,                 /* DREQ State, READ ONLY*/ \
+    read_paused:1,           /*DMA read Paused State*/ \
+    write_paused:1,         /* DMA Write Paused State*/ \
+    dreq_stops_dma:1,       /* DMA Paused by DREQ State, READ ONLY*/ \
+    waiting_outstanding_w:1,/* DMA is Waiting for the Last Write to be Received, READ ONLY*/ \
+    res3:2,                                                         \
+    error:1,                /* DMA Error, Read only*/ \
+    res2:5,                                                         \
+    priority:2,             /* AXI Priority Level, Zero is the lowest priority.*/ \
+    panic_priority:4,       /* AXI Panic Priority Level, Zero is the lowest priority.*/ \
+    dma_busy:1,             /* Indicates the DMA4 is BUSY.*/ \
+    outstanding_resanc:1,   /* Indicates that there are outstanding AXI transfers*/ \
+    res1:2,                                                     \
+    wait_outstanding_w:1,   /* Wait for outstanding writes */ \
+    dis_debug:1,            /* Disable debug pause signal*/ \
+    abort:1,                /* Writing a 1 to this bit will abort the current DMA CB, DMA will load the next CB and attempt to continue*/ \
+    halt:1                  /* MSB. Writing a 1 to this bit will cleanly halt the current DMA transfer.*/   
+REG_DEF(DMA_CS_REG_11_14, DMA_CS_FIELDS_11_14);
+
+
+#define DMA_TI_FIELDS_0_6   \
+    inten:1,                /* */ \
+    two_dim_mode:1,         /* */ \
+    res1:1,                 /* */ \
+    wait_resp:1,            /* */ \
+    dest_increment:1,       /* */ \
+    dest_width_128bit:1,    /* */ \
+    dest_dreq:1,            /* */ \
+    dest_ignore:1,          /* */ \
+    src_increment:1,        /* */ \
+    src_width:1,            /* */ \
+    src_dreq:1,             /* */ \
+    src_ignore:1,           /* */ \
+    burst_length:4,         /* */ \
+    periph_map:5,           /* */ \
+    waits_to_add:5,         /* */ \
+    no_wide_bursts:1,       /* */ \
+    res2:5                  /* */
+REG_DEF(DMA_TI_REG_0_6, DMA_TI_FIELDS_0_6);
+
+#define DMA_TI_FIELDS_7_10   \
+    inten:1,                /* */ \
+    res1:2,                 /* */ \
+    wait_resp:1,            /* */ \
+    dest_increment:1,       /* */ \
+    dest_width_128bit:1,    /* */ \
+    dest_dreq:1,            /* */ \
+    res2:1,                 /* */ \
+    src_increment:1,        /* */ \
+    src_width:1,            /* */ \
+    src_dreq:1,             /* */ \
+    res3:1,                 /* */ \
+    burst_length:4,         /* */ \
+    periph_map:5,           /* */ \
+    waits_to_add:5,         /* */ \
+    res4:6                  /* */
+REG_DEF(DMA_TI_REG_7_10, DMA_TI_FIELDS_7_10);
+
+#define DMA_TI_FIELDS_11_14   \
+    inten:1,                /* */ \
+    two_dim_mode:1,         /* */ \
+    wait_to_response:1,     /* */ \
+    wait_read_resp:1,       /* */ \
+    res1:5,                 /* */ \
+    periph_map:5,           /* */ \
+    src_read_dreq:1,        /* */ \
+    dest_writes_dreq:1,     /* */ \
+    src_read_waits:8,       /* */ \
+    dest_write_waits:8      /* */
+REG_DEF(DMA_TI_REG_11_14, DMA_TI_FIELDS_11_14);
 
 //===================================================================
 // DMA TI register values
