@@ -4,7 +4,7 @@
 # compile C with /usr/bin/cc
 C_DEFINES = 
 
-C_INCLUDES = -I/. -I/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/.. -I/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi
+C_INCLUDES = -I/. -I/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/..
 
 C_FLAGS = -O3 -DNDEBUG
 

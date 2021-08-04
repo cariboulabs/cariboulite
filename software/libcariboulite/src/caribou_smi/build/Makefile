@@ -201,35 +201,95 @@ caribou_smi/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/build
 .PHONY : caribou_smi/fast
 
-caribou_smi.o: caribou_smi.c.o
+dma_utils.o: dma_utils.c.o
 
-.PHONY : caribou_smi.o
+.PHONY : dma_utils.o
 
 # target to build an object file
-caribou_smi.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/caribou_smi.c.o
-.PHONY : caribou_smi.c.o
+dma_utils.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/dma_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/dma_utils.c.o
+.PHONY : dma_utils.c.o
 
-caribou_smi.i: caribou_smi.c.i
+dma_utils.i: dma_utils.c.i
 
-.PHONY : caribou_smi.i
+.PHONY : dma_utils.i
 
 # target to preprocess a source file
-caribou_smi.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/caribou_smi.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/caribou_smi.c.i
-.PHONY : caribou_smi.c.i
+dma_utils.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/dma_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/dma_utils.c.i
+.PHONY : dma_utils.c.i
 
-caribou_smi.s: caribou_smi.c.s
+dma_utils.s: dma_utils.c.s
 
-.PHONY : caribou_smi.s
+.PHONY : dma_utils.s
 
 # target to generate assembly for a file
-caribou_smi.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/caribou_smi.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/caribou_smi.c.s
-.PHONY : caribou_smi.c.s
+dma_utils.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/dma_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/dma_utils.c.s
+.PHONY : dma_utils.c.s
+
+mbox_utils.o: mbox_utils.c.o
+
+.PHONY : mbox_utils.o
+
+# target to build an object file
+mbox_utils.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/mbox_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/mbox_utils.c.o
+.PHONY : mbox_utils.c.o
+
+mbox_utils.i: mbox_utils.c.i
+
+.PHONY : mbox_utils.i
+
+# target to preprocess a source file
+mbox_utils.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/mbox_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/mbox_utils.c.i
+.PHONY : mbox_utils.c.i
+
+mbox_utils.s: mbox_utils.c.s
+
+.PHONY : mbox_utils.s
+
+# target to generate assembly for a file
+mbox_utils.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/mbox_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/mbox_utils.c.s
+.PHONY : mbox_utils.c.s
+
+register_utils.o: register_utils.c.o
+
+.PHONY : register_utils.o
+
+# target to build an object file
+register_utils.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/register_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/register_utils.c.o
+.PHONY : register_utils.c.o
+
+register_utils.i: register_utils.c.i
+
+.PHONY : register_utils.i
+
+# target to preprocess a source file
+register_utils.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/register_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/register_utils.c.i
+.PHONY : register_utils.c.i
+
+register_utils.s: register_utils.c.s
+
+.PHONY : register_utils.s
+
+# target to generate assembly for a file
+register_utils.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/register_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/register_utils.c.s
+.PHONY : register_utils.c.s
 
 test_caribou_smi.o: test_caribou_smi.c.o
 
@@ -272,9 +332,15 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... caribou_smi"
 	@echo "... test_caribou_smi"
-	@echo "... caribou_smi.o"
-	@echo "... caribou_smi.i"
-	@echo "... caribou_smi.s"
+	@echo "... dma_utils.o"
+	@echo "... dma_utils.i"
+	@echo "... dma_utils.s"
+	@echo "... mbox_utils.o"
+	@echo "... mbox_utils.i"
+	@echo "... mbox_utils.s"
+	@echo "... register_utils.o"
+	@echo "... register_utils.i"
+	@echo "... register_utils.s"
 	@echo "... test_caribou_smi.o"
 	@echo "... test_caribou_smi.i"
 	@echo "... test_caribou_smi.s"

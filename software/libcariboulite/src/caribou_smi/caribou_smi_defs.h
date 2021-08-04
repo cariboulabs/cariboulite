@@ -39,11 +39,6 @@
 #define SMI_FD      0x40    // SMI FIFO Debug
 #define SMI_REGLEN  (SMI_FD * 4)
 
-// DMA request
-#define DMA_SMI_DREQ 4
-
-
-
 //=====================================================================================
 // Control and status register
 #define SMI_CS_FIELDS   \

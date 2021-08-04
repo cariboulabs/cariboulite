@@ -1,5 +1,7 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/caribou_smi.dir/caribou_smi.c.o"
+  "CMakeFiles/caribou_smi.dir/dma_utils.c.o"
+  "CMakeFiles/caribou_smi.dir/mbox_utils.c.o"
+  "CMakeFiles/caribou_smi.dir/register_utils.c.o"
   "libcaribou_smi.a"
   "libcaribou_smi.pdb"
 )
