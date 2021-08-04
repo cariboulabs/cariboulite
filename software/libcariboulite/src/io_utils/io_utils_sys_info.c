@@ -1,6 +1,11 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "IO_UTILS_SysInfo"
+
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include "zf_log/zf_log.h"
 #include "io_utils_sys_info.h"
 
 
@@ -61,7 +66,8 @@ int io_utils_get_rpi_info(io_utils_sys_info_st *info)
 
    if ((fp = fopen("/proc/device-tree/system/linux,revision", "r"))) {
       uint32_t n;
-      if (fread(&n, sizeof(n), 1, fp) != 1) {
+      if (fread(&n, sizeof(n), 1, fp) != 1) 
+      {
          fclose(fp);
          return -1;
       }
@@ -272,7 +278,7 @@ void io_utils_print_rpi_info(io_utils_sys_info_st *info)
 {
     if (info == NULL)
     {
-        printf("Error @ io_utils_print_rpi_info: info is NULL\n");
+        ZF_LOGE("info is NULL");
         return;
     }
 

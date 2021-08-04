@@ -7,4 +7,22 @@ src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/io_utils/pigp
 src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/caribou_smi/caribou_smi.c
 src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/caribou_smi/caribou_smi.h
 src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/caribou_smi/caribou_smi_defs.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/caribou_smi/dma_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/caribou_smi/mbox_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/caribou_smi/register_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/io_utils/io_utils_sys_info.h
+
+src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../src/caribou_smi/dma_utils.c
+src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../src/caribou_smi/dma_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../src/caribou_smi/mbox_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../src/caribou_smi/register_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../src/io_utils/io_utils_sys_info.h
+
+src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.o: ../src/caribou_smi/mbox_utils.c
+src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.o: ../src/caribou_smi/mbox_utils.h
+
+src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o: ../src/caribou_smi/mbox_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o: ../src/caribou_smi/register_utils.c
+src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o: ../src/caribou_smi/register_utils.h
+src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o: ../src/io_utils/io_utils_sys_info.h
 

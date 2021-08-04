@@ -99,6 +99,7 @@ test_io_utils_EXTERNAL_OBJECTS =
 test_io_utils: CMakeFiles/test_io_utils.dir/main.c.o
 test_io_utils: CMakeFiles/test_io_utils.dir/build.make
 test_io_utils: libio_utils.a
+test_io_utils: ../../zf_log/build/libzf_log.a
 test_io_utils: CMakeFiles/test_io_utils.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable test_io_utils"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/test_io_utils.dir/link.txt --verbose=$(VERBOSE)

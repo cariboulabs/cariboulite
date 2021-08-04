@@ -1,1 +1,1 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_caribou_fpga.dir/caribou_fpga.c.o CMakeFiles/test_caribou_fpga.dir/test_caribou_fpga.c.o -o test_caribou_fpga  -lrt -lpthread ../../io_utils/build/libio_utils.a 
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_caribou_fpga.dir/caribou_fpga.c.o CMakeFiles/test_caribou_fpga.dir/test_caribou_fpga.c.o -o test_caribou_fpga  -lrt -lpthread ../../io_utils/build/libio_utils.a ../../zf_log/build/libzf_log.a 

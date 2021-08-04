@@ -10,7 +10,7 @@ include_directories(${SUPER_DIR})
 # Source files
 set(SOURCES_LIB caribou_fpga.c)
 set(SOURCES ${SOURCES_LIB} test_caribou_fpga.c)
-set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a)
+set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a ${SUPER_DIR}/zf_log/build/libzf_log.a)
 
 
 #Generate the static library from the sources

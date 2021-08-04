@@ -114,6 +114,7 @@ src/caribou_fpga/test_caribou_fpga: src/caribou_fpga/CMakeFiles/test_caribou_fpg
 src/caribou_fpga/test_caribou_fpga: src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/test_caribou_fpga.c.o
 src/caribou_fpga/test_caribou_fpga: src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/build.make
 src/caribou_fpga/test_caribou_fpga: ../src/caribou_fpga/../io_utils/build/libio_utils.a
+src/caribou_fpga/test_caribou_fpga: ../src/caribou_fpga/../zf_log/build/libzf_log.a
 src/caribou_fpga/test_caribou_fpga: src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable test_caribou_fpga"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_fpga && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/test_caribou_fpga.dir/link.txt --verbose=$(VERBOSE)

@@ -1,0 +1,7 @@
+/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/build/CMakeFiles/install/strip.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/build/CMakeFiles/edit_cache.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/build/CMakeFiles/latticeice40.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/build/CMakeFiles/rebuild_cache.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/build/CMakeFiles/list_install_components.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/build/CMakeFiles/install.dir
+/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/build/CMakeFiles/install/local.dir

@@ -1,9 +1,13 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "AT86RF215_Main"
+
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <lgpio.h>
+#include "zf_log/zf_log.h"
 #include "at86rf215.h"
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_spi.h"
@@ -75,13 +79,13 @@ int at86rf215_init(at86rf215_st* dev,
 {
 	if (dev == NULL)
 	{
-		printf("ERROR @ at86rf215_init: dev is NULL\n");
+        ZF_LOGE("dev is NULL");
 		return -1;
 	}
 
 	dev->io_spi = io_spi;
 
-    printf("INFO @ at86rf215_init: configuring reset and irq pins\n");
+    ZF_LOGI("configuring reset and irq pins");
 	// Configure GPIO pins
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
@@ -89,7 +93,7 @@ int at86rf215_init(at86rf215_st* dev,
 	// set to known state
 	io_utils_write_gpio(dev->reset_pin, 1);
 
-    printf("INFO @ at86rf215_init: Initializing io_utils_spi\n");
+    ZF_LOGI("Initializing io_utils_spi");
     io_utils_hard_spi_st hard_dev_modem = { .spi_dev_id = dev->spi_dev, .spi_dev_channel = dev->spi_channel, };
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
                         						io_utils_spi_chip_type_modem,
@@ -101,7 +105,7 @@ int at86rf215_init(at86rf215_st* dev,
 
     if (io_utils_setup_interrupt(dev->irq_pin, at86rf215_interrupt_handler, dev) < 0)
     {
-        printf("Error @ at86rf215_init: interrupt registration for irq_pin (%d) failed\n", dev->irq_pin);
+        ZF_LOGE("interrupt registration for irq_pin (%d) failed", dev->irq_pin);
         io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
         io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
         io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
@@ -119,13 +123,13 @@ int at86rf215_close(at86rf215_st* dev)
 {
     if (dev == NULL)
 	{
-		printf("ERROR @ at86rf215_close: device pointer NULL\n");
+		ZF_LOGE("device pointer NULL");
 		return -1;
 	}
 
 	if (!dev->initialized)
 	{
-		printf("Error @ at86rf215_close: device not initialized\n");
+		ZF_LOGE("device not initialized");
 		return 0;
 	}
 
@@ -137,7 +141,7 @@ int at86rf215_close(at86rf215_st* dev)
 	// Release the SPI device
     io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
 
-	printf("INFO @ at86rf215_close: device release completed\n");
+	ZF_LOGI("device release completed");
     return 0;
 }
 
@@ -279,7 +283,7 @@ void at86rf215_get_iq_if_cfg(at86rf215_st* dev, at86rf215_iq_interface_config_st
             cfg->radio24_mode = at86rf215_iq_if_mode;
             break;
         default:
-            printf("Error @ at86rf215_get_iq_if_cfg: I/Q chipmode invalid: %d\n", chip_mode);
+            ZF_LOGE("I/Q chipmode invalid: %d", chip_mode);
             break;
     }
 
@@ -351,7 +355,7 @@ int at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uin
 {
     if (dev->initialized == 0)
     {
-        printf("Error @ at86rf215_setup_channel: device not initialized\n");
+        ZF_LOGE("device not initialized");
         return -1;
     }
 
@@ -360,7 +364,7 @@ int at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uin
 
     if (at86rf215_radio_get_good_channel(freq_hz, &mode, &req_ch) < 0 || req_ch != ch)
     {
-        printf("Error @ at86rf215_setup_channel: the requested channel or frequency not supported\n");
+        ZF_LOGE("the requested channel or frequency not supported");
         return -1;
     }
     int center_freq_25khz_res = 0;

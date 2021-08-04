@@ -159,6 +159,7 @@ src/at86rf215/test_at86rf215: src/at86rf215/CMakeFiles/test_at86rf215.dir/at86rf
 src/at86rf215/test_at86rf215: src/at86rf215/CMakeFiles/test_at86rf215.dir/test_at86rf215.c.o
 src/at86rf215/test_at86rf215: src/at86rf215/CMakeFiles/test_at86rf215.dir/build.make
 src/at86rf215/test_at86rf215: ../src/at86rf215/../io_utils/build/libio_utils.a
+src/at86rf215/test_at86rf215: ../src/at86rf215/../zf_log/build/libzf_log.a
 src/at86rf215/test_at86rf215: src/at86rf215/CMakeFiles/test_at86rf215.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking C executable test_at86rf215"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/at86rf215 && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/test_at86rf215.dir/link.txt --verbose=$(VERBOSE)

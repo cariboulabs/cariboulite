@@ -50,10 +50,10 @@ static void ustimer_handle_quant ( int sig )
 //================================================
 static int ustimer_make_timer( timer_t *timerID, int expireMS, int intervalMS )
 {
-	struct sigevent         te;
-	struct itimerspec       its;
-	struct sigaction        sa;
-	int                     sigNo = SIGUSR1;
+	struct sigevent te;
+	struct itimerspec its;
+	struct sigaction sa;
+	int sigNo = SIGUSR1;
 
 	// Set up signal handler
 	sa.sa_flags = SA_RESTART;
@@ -63,7 +63,6 @@ static int ustimer_make_timer( timer_t *timerID, int expireMS, int intervalMS )
 	{
 		return -1;
 	}
-
 
 	// Set and enable alarm
 	te.sigev_notify = SIGEV_SIGNAL;
@@ -83,8 +82,6 @@ static int ustimer_make_timer( timer_t *timerID, int expireMS, int intervalMS )
 
 	return 0;
 }
-
-
 
 //================================================
 int ustimer_init ( void )
@@ -106,7 +103,6 @@ int ustimer_init ( void )
 
 	// init the periodic counter
 	timer_info.timer_count = 0;
-
 	timer_info.global_running = 0;
 
 	// check RT ability capability
@@ -220,11 +216,9 @@ int ustimer_unregister         ( int id )
 	{
 		return -3;
 	}
-
 	timer_info.time_enabled[id] = 0;
 	timer_info.handlers[id] = NULL;
 	timer_info.timer_quant[id] = 100000000;
-
 	return 0;
 }
 

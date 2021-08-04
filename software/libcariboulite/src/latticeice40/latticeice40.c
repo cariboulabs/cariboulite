@@ -1,7 +1,12 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "ICE40"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "zf_log/zf_log.h"
 #include "latticeice40.h"
 
 
@@ -13,13 +18,13 @@ static int latticeice40_check_if_programmed(latticeice40_st* dev)
 {
 	if (dev == NULL)
 	{
-		printf("ERROR @ latticeice40_check_if_programmed: device pointer NULL\n");
+		ZF_LOGE("device pointer NULL");
 		return -1;
 	}
 
 	if (!dev->initialized)
 	{
-		printf("Error @ latticeice40_check_if_programmed: device not initialized\n");
+		ZF_LOGE("device not initialized");
 		return -1;
 	}
 
@@ -32,13 +37,13 @@ int latticeice40_init(latticeice40_st *dev,
 {
 	if (dev == NULL)
 	{
-		printf("ERROR @ latticeice40_init: device pointer NULL\n");
+		ZF_LOGE("device pointer NULL");
 		return -1;
 	}
 
 	if (dev->initialized)
 	{
-		printf("ERROR @ latticeice40_init: device already initialized\n");
+		ZF_LOGE("device already initialized");
 		return 0;
 	}
 
@@ -57,10 +62,10 @@ int latticeice40_init(latticeice40_st *dev,
 	// check if the FPGA is already configures
 	if (latticeice40_check_if_programmed(dev) == 1)
 	{
-		printf("INFO @ latticeice40_init: FPGA is already configured and running.\n");
+		ZF_LOGI("FPGA is already configured and running");
 	}
 
-	printf("INFO @ latticeice40_init: device init completed\n");
+	ZF_LOGI("device init completed");
 
 	return 0;
 }
@@ -70,13 +75,13 @@ int latticeice40_release(latticeice40_st *dev)
 {
 	if (dev == NULL)
 	{
-		printf("ERROR @ latticeice40_release: device pointer NULL\n");
+		ZF_LOGE("device pointer NULL");
 		return -1;
 	}
 
 	if (!dev->initialized)
 	{
-		printf("Error @ latticeice40_release: device not initialized\n");
+		ZF_LOGE("device not initialized");
 		return 0;
 	}
 
@@ -89,7 +94,7 @@ int latticeice40_release(latticeice40_st *dev)
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
 
 	dev->initialized = 0;
-	printf("INFO @ latticeice40_release: device release completed\n");
+	ZF_LOGI("device release completed");
 
 	return 0;
 }
@@ -109,27 +114,27 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 
 	if (dev == NULL)
 	{
-		printf("ERROR @ latticeice40_configure: device pointer NULL\n");
+		ZF_LOGE("device pointer NULL");
 		return -1;
 	}
 
 	if (!dev->initialized)
 	{
-		printf("Error @ latticeice40_configure: device not initialized\n");
+		ZF_LOGE("device not initialized");
 		return -1;
 	}
 
 	// open file or return error
 	if(!(fd = fopen(bitfilename, "r")))
 	{
-		printf("INFO @ latticeice40_configure: open file %s failed\n", bitfilename);
+		ZF_LOGI("open file %s failed", bitfilename);
 		return 0;
 	}
 	else
 	{
 		fseek(fd, 0L, SEEK_END);
 		file_length = ftell(fd);
-		printf("INFO @ latticeice40_configure: opened bitstream file %s\n", bitfilename);
+		ZF_LOGI("opened bitstream file %s", bitfilename);
 		fseek(fd, 0L, SEEK_SET);
 	}
 
@@ -141,7 +146,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	io_utils_usleep(200);
 
 	// Wait for DONE low
-	printf("INFO @ latticeice40_configure: RESET low, Waiting for CDONE low\n");
+	ZF_LOGI("RESET low, Waiting for CDONE low");
 	ct = LATTICE_ICE40_TO_COUNT;
 
 	while(io_utils_read_gpio(dev->cdone_pin)==1 && ct--)
@@ -150,7 +155,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	}
 	if (!ct)
 	{
-		printf("ERROR @ latticeice40_configure: CDONE didn't fall during RESET='0'\n");
+		ZF_LOGE("CDONE didn't fall during RESET='0'");
 		return -1;
 	}
 	io_utils_write_gpio_with_wait(dev->reset_pin, 1, 200);
@@ -161,7 +166,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle, &byte, &rxbyte, 1, io_utils_spi_write);
 
 	// Read file & send bitstream to FPGA via SPI with CS LOW
-	printf("INFO @ latticeice40_configure: Sending bitstream\n");
+	ZF_LOGI("Sending bitstream\n");
 	ct = 0;
 	io_utils_write_gpio_with_wait(dev->cs_pin, 0, 200);
 	while( (read=fread(readbuf, sizeof(char), LATTICE_ICE40_BUFSIZE, fd)) > 0 )
@@ -188,12 +193,12 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 								io_utils_spi_write);
 
 	/* close file */
-	printf("\nINFO @ latticeice40_configure: sent %ld bytes\n", ct);
-	printf("INFO @ latticeice40_configure: bitstream sent, closing file\n");
+	ZF_LOGI("sent %ld bytes", ct);
+	ZF_LOGI("bitstream sent, closing file");
 	fclose(fd);
 
 	/* send dummy data while waiting for DONE */
- 	printf("INFO @ latticeice40_configure: sending dummy clocks, waiting for CDONE to rise (or fail)\n");
+ 	ZF_LOGI("sending dummy clocks, waiting for CDONE to rise (or fail)");
 
 	ct = LATTICE_ICE40_TO_COUNT;
 	while(latticeice40_check_if_programmed(dev)==0 && ct--)
@@ -204,21 +209,21 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 
 	if(ct)
 	{
-	 	printf("INFO @ latticeice40_configure: %d dummy clocks sent\n", (LATTICE_ICE40_TO_COUNT-ct)*8);
+	 	ZF_LOGI("%d dummy clocks sent", (LATTICE_ICE40_TO_COUNT-ct)*8);
     }
 	else
 	{
-		printf("INFO @ latticeice40_configure: timeout waiting for CDONE\n");
+		ZF_LOGI("timeout waiting for CDONE");
 	}
 
 	/* return status */
 	if (latticeice40_check_if_programmed(dev)==0)
 	{
-		printf("ERROR @ latticeice40_configure: config failed - CDONE not high\n");
+		ZF_LOGE("config failed - CDONE not high");
 		return -1;
 	}
 
-	printf("INFO @ latticeice40_configure: Success!\n");
+	ZF_LOGI("FPGA programming - Success!\n");
 
 	return 0;
 }

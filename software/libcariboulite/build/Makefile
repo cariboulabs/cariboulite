@@ -409,6 +409,19 @@ rffc507x/fast:
 	$(MAKE) $(MAKESILENT) -f src/rffc507x/CMakeFiles/rffc507x.dir/build.make src/rffc507x/CMakeFiles/rffc507x.dir/build
 .PHONY : rffc507x/fast
 
+#=============================================================================
+# Target rules for targets named zf_log
+
+# Build rule for target.
+zf_log: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 zf_log
+.PHONY : zf_log
+
+# fast build rule for target.
+zf_log/fast:
+	$(MAKE) $(MAKESILENT) -f src/zf_log/CMakeFiles/zf_log.dir/build.make src/zf_log/CMakeFiles/zf_log.dir/build
+.PHONY : zf_log/fast
+
 src/cariboulite.o: src/cariboulite.c.o
 
 .PHONY : src/cariboulite.o
@@ -547,6 +560,7 @@ help:
 	@echo "... test_rffc507x"
 	@echo "... test_ustimer"
 	@echo "... ustimer"
+	@echo "... zf_log"
 	@echo "... src/cariboulite.o"
 	@echo "... src/cariboulite.i"
 	@echo "... src/cariboulite.s"

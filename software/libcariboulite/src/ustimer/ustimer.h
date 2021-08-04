@@ -1,4 +1,3 @@
-// linkage using "-lrt"
 #ifndef ___USTIMER_H__
 #define ___USTIMER_H__
 
@@ -8,9 +7,9 @@
 #include <signal.h>
 #include <time.h>
 
-#define USTIMER_NUM_SLOTS		20					// maximum 10 timers available
+#define USTIMER_NUM_SLOTS		30					// maximum 10 timers available
 #define USTIMER_DELTA(a,b)		(((b).tv_sec-(a).tv_sec)*1e6+((b).tv_usec-(a).tv_usec))
-#define USTIMER_MIN_QUANT		10					// Millisec
+#define USTIMER_MIN_QUANT		5					// Millisec
 
 // handler function gets the timer id and the timeval from its last occurence
 typedef void (*ustimer_handler)(unsigned int,struct timeval);

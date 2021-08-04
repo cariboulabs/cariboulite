@@ -1,9 +1,13 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "AT86RF215_BaseBand"
+
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <lgpio.h>
+#include "zf_log/zf_log.h"
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_spi.h"
 #include "at86rf215_radio.h"

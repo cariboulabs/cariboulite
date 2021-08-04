@@ -1,5 +1,10 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "IO_UTILS_Main"
+
 #include <time.h>
 #include "pigpio/pigpio.h"
+#include "zf_log/zf_log.h"
 #include "io_utils.h"
 
 
@@ -15,14 +20,14 @@ static char *io_utils_gpio_mode_strs[] = {"IN","OUT","ALT5","ALT4","ALT0","ALT1"
 //=============================================================================================
 int io_utils_setup()
 {
-   printf("Info @ io_utils_setup: initializing pigpio\n");
+   ZF_LOGI("initializing pigpio");
    int status = gpioInitialise();
    if (status < 0)
    {
-      printf("Error @ io_utils_setup: initializing pigpio failed\n");
+      ZF_LOGE("initializing pigpio failed");
       return -1;
    }
-   printf("Info @ io_utils_setup: pigpio version %d\n", status);
+   ZF_LOGI("pigpio version %d", status);
    return 0;
 }
 
@@ -65,7 +70,7 @@ inline void io_utils_set_gpio_mode(int gpio, io_utils_alt_en mode)
 {
    if (gpioSetMode(gpio, mode) < 0)
    {
-      printf("Error @ io_utils_set_gpio_mode\n");
+      ZF_LOGE("couldn't set mode for gpio %d", gpio);
    }
 }
 
@@ -74,7 +79,7 @@ inline void io_utils_write_gpio(int gpio, int value)
 {
    if (gpioWrite(gpio, value) < 0)
    {
-      printf("Error @ io_utils_write_gpio\n");
+      ZF_LOGE("couldn't write to gpio %d", gpio);
    }
 }
 

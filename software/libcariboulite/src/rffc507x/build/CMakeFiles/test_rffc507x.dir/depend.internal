@@ -5,6 +5,7 @@ CMakeFiles/test_rffc507x.dir/rffc507x.c.o
  ../../io_utils/io_utils.h
  ../../io_utils/io_utils_spi.h
  ../../io_utils/pigpio/pigpio.h
+ ../../zf_log/zf_log.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/rffc507x.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/rffc507x.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/rffc507x_regs.h

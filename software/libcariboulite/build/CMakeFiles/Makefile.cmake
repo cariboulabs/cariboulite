@@ -19,6 +19,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "../src/latticeice40/CMakeLists.txt"
   "../src/rffc507x/CMakeLists.txt"
   "../src/ustimer/CMakeLists.txt"
+  "../src/zf_log/CMakeLists.txt"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeCInformation.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeCXXInformation.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake"
@@ -57,6 +58,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "src/latticeice40/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/io_utils/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/rffc507x/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "src/zf_log/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
@@ -79,4 +81,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "src/io_utils/CMakeFiles/io_utils.dir/DependInfo.cmake"
   "src/rffc507x/CMakeFiles/test_rffc507x.dir/DependInfo.cmake"
   "src/rffc507x/CMakeFiles/rffc507x.dir/DependInfo.cmake"
+  "src/zf_log/CMakeFiles/zf_log.dir/DependInfo.cmake"
   )
