@@ -221,9 +221,11 @@ uint32_t *adc_dma_start(MEM_MAP *mp, int nsamp)
     // Get current mode register values
     for (i=0; i<3; i++)
         modes[i] = modes[i+3] = *REG32(gpio_regs, GPIO_MODE0 + i*4);
+
     // Get mode values with ADC pins set to SMI
     for (i=ADC_D0_PIN; i<ADC_D0_PIN+ADC_NPINS; i++)
         mode_word(&modes[i/10], i%10, GPIO_ALT1);
+    
     // Copy mode values into 32-bit words
     *modep1 = modes[1];
     *modep2 = modes[2];
