@@ -40,13 +40,13 @@ typedef enum
 typedef enum
 {
     caribou_smi_address_idle = 0,
-    caribou_smi_address_read_900 = 1,
-    caribou_smi_address_read_2400 = 2,
-    caribou_smi_address_read_res = 3,
-    caribou_smi_address_write_res1 = 4,
-    caribou_smi_address_write_900 = 5,
-    caribou_smi_address_write_2400 = 6,
-    caribou_smi_address_write_res2 = 7,
+    caribou_smi_address_write_900 = 1,    
+    caribou_smi_address_write_2400 = 2,
+    caribou_smi_address_write_res2 = 3,
+    caribou_smi_address_read_res1 = 4,
+    caribou_smi_address_read_900 = 5,
+    caribou_smi_address_read_2400 = 6,
+    caribou_smi_address_read_res = 7,
 } caribou_smi_address_en;
 
 typedef enum

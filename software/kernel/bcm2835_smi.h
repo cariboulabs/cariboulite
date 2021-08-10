@@ -342,7 +342,7 @@ struct bcm2835_smi_instance *bcm2835_smi_get(struct device_node *node);
  */
 #define SMIDSW_WWIDTH_MASK	 ((1<<31)|(1<<30))
 #define SMIDSW_WWIDTH_OFFS	(30)
-#define SMIDSW_WSETUP_MASK	(0x3f << 24)
+#define SMIDSW_WSETUP_MASK	(0x3f << 24)DMA_THRESHOLD_BYTES
 #define SMIDSW_WSETUP_OFFS	(24)
 #define SMIDSW_WFORMAT		(1 << 23)
 #define SMIDSW_WSWAP		(1 << 22)

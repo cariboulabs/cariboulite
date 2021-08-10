@@ -41,7 +41,7 @@ module top(
       input [3:0] i_config,
       input i_button,
       output o_ldo_2v8_en,
-      output [7:0] io_pmod,
+      inout [7:0] io_pmod,
       output o_led0,
       output o_led1,
 
@@ -335,12 +335,12 @@ module top(
    wire w_smi_writing;
 
    assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
-   assign io_smi_data = (w_smi_writing)?1'bZ:w_smi_data_output;
+   assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
    assign w_smi_data_input = io_smi_data;
 
    // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = w_smi_read_req;
-   assign io_pmod[1] = w_smi_write_req;
+   assign io_pmod[0] = (w_smi_writing)?w_smi_read_req:1'bZ;
+   assign io_pmod[1] = (w_smi_writing)?w_smi_write_req:1'bZ;
    assign io_pmod[2] = w_rx_09_fifo_empty;
    assign io_pmod[3] = i_smi_soe_se;
    assign io_pmod[7:4] = w_rx_09_fifo_data[5:2];
