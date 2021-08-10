@@ -4,7 +4,29 @@
 CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../../io_utils/io_utils.h
 CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../../io_utils/io_utils_sys_info.h
 CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../../io_utils/pigpio/pigpio.h
+CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../../zf_log/zf_log.h
 CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../caribou_smi.c
 CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../caribou_smi.h
 CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../caribou_smi_defs.h
+CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../dma_utils.h
+CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../mbox_utils.h
+CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../register_utils.h
+CMakeFiles/caribou_smi.dir/caribou_smi.c.o: /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils_sys_info.h
+
+CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../../zf_log/zf_log.h
+CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../dma_utils.c
+CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../dma_utils.h
+CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../mbox_utils.h
+CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../register_utils.h
+CMakeFiles/caribou_smi.dir/dma_utils.c.o: /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils_sys_info.h
+
+CMakeFiles/caribou_smi.dir/mbox_utils.c.o: ../../zf_log/zf_log.h
+CMakeFiles/caribou_smi.dir/mbox_utils.c.o: ../mbox_utils.c
+CMakeFiles/caribou_smi.dir/mbox_utils.c.o: ../mbox_utils.h
+
+CMakeFiles/caribou_smi.dir/register_utils.c.o: ../../zf_log/zf_log.h
+CMakeFiles/caribou_smi.dir/register_utils.c.o: ../mbox_utils.h
+CMakeFiles/caribou_smi.dir/register_utils.c.o: ../register_utils.c
+CMakeFiles/caribou_smi.dir/register_utils.c.o: ../register_utils.h
+CMakeFiles/caribou_smi.dir/register_utils.c.o: /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils_sys_info.h
 

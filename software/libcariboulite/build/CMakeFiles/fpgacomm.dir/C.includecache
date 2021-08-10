@@ -45,6 +45,8 @@ io_utils/io_utils_spi.h
 ../src/caribou_fpga/io_utils/io_utils_spi.h
 
 ../src/caribou_smi/caribou_smi.h
+pthread.h
+-
 caribou_smi_defs.h
 ../src/caribou_smi/caribou_smi_defs.h
 io_utils/io_utils.h

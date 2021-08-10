@@ -204,7 +204,7 @@ void caribou_smi_reset_read (caribou_smi_st* dev)
     ZF_LOGI("Reseting read process");
     int *ret;
     dev->read_active = 0;
-    pthread_join(&dev->read_thread, &ret);
+    pthread_join(dev->read_thread, (void**)&ret);
 
     dev->read_cb = NULL;
     dev->read_buffer = NULL;
@@ -218,21 +218,6 @@ void *caribou_smi_read_thread( void *ptr )
 {
     caribou_smi_st* dev = (caribou_smi_st*)ptr;
     ZF_LOGI("Reading thread started ID = %d", pthread_self());
-
-    void* rxbuff = adc_dma_start(&dev->vc_mem, NSAMPLES);
-    smi_start(dev, NSAMPLES, 1);
-
-    while (dma_active(dev->dma_channel)) ;
-    
-    adc_dma_end(dev, rxbuff, sample_data, NSAMPLES);
-
-    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(dev->smi_regs, SMI_CS));
-    dev->smi_cs->enable = dev->smi_dcs->enable = 0;
-    for (int i=0; i<NSAMPLES; i++)
-    {
-        printf("%1.3f\n", val_volts(sample_data[i]));
-    }
-
 
     while (dev->read_active)
     {
@@ -270,8 +255,8 @@ int caribou_smi_configure_read(caribou_smi_st* dev,
 
     switch (channel)
     {
-        case caribou_smi_channel_900: dev->smi_a = caribou_smi_address_read_900; break;
-        case caribou_smi_channel_2400: dev->smi_a = caribou_smi_address_read_2400; break;
+        case caribou_smi_channel_900: dev->smi_a->value = caribou_smi_address_read_900; break;
+        case caribou_smi_channel_2400: dev->smi_a->value = caribou_smi_address_read_2400; break;
         default: 
         {
             ZF_LOGE("Channel %d is not implemented for read", channel); 
@@ -293,12 +278,40 @@ int caribou_smi_configure_read(caribou_smi_st* dev,
     }
     else
     {
-        //continues;
-        //single_number_of_samples
+        DMA_CB *cbs = dev->vc_mem.virt;
+        // check if there is enough allocated space
+        if (single_number_of_samples*SAMPLE_SIZE_BYTES > (dev->videocore_alloc_size - PAGE_SIZE))
+        {
+            ZF_LOGE("The Videocode allocated samples memory (%d) is not sufficient for the required number of samples (%d)",
+                            dev->videocore_alloc_size - PAGE_SIZE, single_number_of_samples);
+            dev->smi_a = caribou_smi_address_idle;
+            return -1;
+        }
+        if (single_number_of_samples*SAMPLE_SIZE_BYTES > serv_buffer_len)
+        {
+            ZF_LOGE("The output Served_buffer size is too small (%d) to hold the required number of samples (%d)",
+                            serv_buffer_len, single_number_of_samples);
+            dev->smi_a = caribou_smi_address_idle;
+            return -1;
+        }
+        uint8_t *rxdata = (uint8_t*)(cbs + 0x20);
 
-        dev->smi_a = caribou_smi_address_idle;
+        // Control block 2: read data
+        cbs[0].ti = DMA_SRCE_DREQ | (DMA_SMI_DREQ << 16) | DMA_CB_DEST_INC;
+        cbs[0].tfr_len = single_number_of_samples * SAMPLE_SIZE_BYTES;
+        cbs[0].srce_ad = REG_BUS_ADDR(&(dev->smi_regs), SMI_D);
+        cbs[0].dest_ad = MEM_BUS_ADDR((&(dev->vc_mem)), rxdata);
+        cbs[0].next_cb = 0;         // stop the reception after a single shot
+        
+        dma_utils_start_dma(&dev->dma, &dev->vc_mem, dev->dma_channel, &cbs[0], 0);
+        caribou_smi_start(dev, single_number_of_samples, 0, 1);
+
+        // wait until dma finishes
+        while (dma_utils_dma_is_active(&dev->dma, dev->dma_channel)) ;
+        
+        memcpy (serv_buffer, rxdata, single_number_of_samples * SAMPLE_SIZE_BYTES);
+        dev->smi_a->value = caribou_smi_address_idle;
     }
-    
 
     return ret;
 }
@@ -312,75 +325,6 @@ void caribou_smi_start(caribou_smi_st* dev, int nsamples, int pre_samp, int pack
     dev->smi_cs->enable = 1;
     dev->smi_cs->clear = 1;
     dev->smi_cs->start = 1;
-}
-
-//===========================================================================
-// Start DMA for SMI ADC, return Rx data buffer
-uint32_t *adc_dma_start(MEM_MAP *mp, int nsamp)
-{
-    DMA_CB *cbs=mp->virt;
-    uint32_t *data=(uint32_t *)(cbs+4), *pindata=data+8, *modes=data+0x10;
-    uint32_t *modep1=data+0x18, *modep2=modep1+1, *rxdata=data+0x20, i;
-
-    // Get current mode register values
-    for (i=0; i<3; i++)
-    {
-        modes[i] = modes[i+3] = *REG32(gpio_regs, GPIO_MODE0 + i*4);
-    }
-
-    // Get mode values with ADC pins set to SMI
-    for (i=ADC_D0_PIN; i<ADC_D0_PIN+ADC_NPINS; i++)
-    {
-        mode_word(&modes[i/10], i%10, GPIO_ALT1);
-    }
-
-    // Copy mode values into 32-bit words
-    *modep1 = modes[1];
-    *modep2 = modes[2];
-    *pindata = 1 << TEST_PIN;
-    enable_dma(dev->dma_channel);
-    // Control blocks 0 and 1: enable SMI I/P pins
-    cbs[0].ti = DMA_SRCE_DREQ | (DMA_SMI_DREQ << 16) | DMA_WAIT_RESP;
-    cbs[0].tfr_len = 4;
-    cbs[0].srce_ad = MEM_BUS_ADDR(mp, modep1);
-    cbs[0].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_MODE0+4);
-    cbs[0].next_cb = MEM_BUS_ADDR(mp, &cbs[1]);
-
-    cbs[1].tfr_len = 4;
-    cbs[1].srce_ad = MEM_BUS_ADDR(mp, modep2);
-    cbs[1].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_MODE0+8);
-    cbs[1].next_cb = MEM_BUS_ADDR(mp, &cbs[2]);
-
-    // Control block 2: read data
-    cbs[2].ti = DMA_SRCE_DREQ | (DMA_SMI_DREQ << 16) | DMA_CB_DEST_INC;
-    cbs[2].tfr_len = (nsamp + PRE_SAMP) * SAMPLE_SIZE;
-    cbs[2].srce_ad = REG_BUS_ADDR(smi_regs, SMI_D);
-    cbs[2].dest_ad = MEM_BUS_ADDR(mp, rxdata);
-    cbs[2].next_cb = MEM_BUS_ADDR(mp, &cbs[3]);
-
-    // Control block 3: disable SMI I/P pins
-    cbs[3].ti = DMA_CB_SRCE_INC | DMA_CB_DEST_INC;
-    cbs[3].tfr_len = 3 * 4;
-    cbs[3].srce_ad = MEM_BUS_ADDR(mp, &modes[3]);
-    cbs[3].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_MODE0);
-
-    start_dma(mp, dev->dma_channel, &cbs[0], 0);
-    return(rxdata);
-}
-
-//===========================================================================
-// ADC DMA is complete, get data
-int adc_dma_end(void *buff, uint16_t *data, int nsamp)
-{
-    uint16_t *bp = (uint16_t *)buff;
-    int i;
-
-    for (i=0; i<nsamp+PRE_SAMP; i++)
-    {
-        if (i >= PRE_SAMP)
-            *data++ = bp[i] >> 4;
-    }
-    return(nsamp);
 }
 
 //===========================================================================

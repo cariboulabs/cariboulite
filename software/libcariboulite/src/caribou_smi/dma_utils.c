@@ -59,63 +59,6 @@ void dma_utils_stop_dma(dma_utils_st *dev, int chan)
 }
 
 //================================================================================
-int dma_utils_init_uncached_memory(dma_utils_st *dev, int chan, 
-                                        MEM_MAP *uncached_mp, 
-                                        uint32_t num_CBs,
-                                        uint32_t single_buffer_size,
-                                        uint32_t num_of_buffers,
-                                        uint32_t recurring)
-{
-    DMA_CB *cbs=uncached_mp->virt;
-
-    if (num_CBs > MAX_NUM_CBS)
-    {
-        ZF_LOGE("the requested number of CBs is too large (%d > %d)", num_CBs, MAX_NUM_CBS);
-        return -1;
-    }
-
-    uint8_t *data=(uint8_t *)(cbs + num_CBs);
-    
-    DMA_CB* current_cb = cbs;
-    uint8_t* current_data = data;
-    for (int i = 0; i < num_CBs; i++)
-    {
-        // Control blocks 0 and 1: enable SMI I/P pins
-        cbs[i].ti = DMA_SRCE_DREQ | (DMA_SMI_DREQ << 16) | DMA_WAIT_RESP;
-        cbs[i].tfr_len = 4;
-        cbs[i].srce_ad = MEM_BUS_ADDR(mp, modep1);
-        cbs[i].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_MODE0+4);
-        cbs[i].next_cb = MEM_BUS_ADDR(mp, &cbs[1]);
-
-
-cbs[2].ti = DMA_SRCE_DREQ | (DMA_SMI_DREQ << 16) | DMA_CB_DEST_INC;
-cbs[2].tfr_len = (nsamp + PRE_SAMP) * SAMPLE_SIZE;
-cbs[2].srce_ad = REG_BUS_ADDR(smi_regs, SMI_D);
-cbs[2].dest_ad = MEM_BUS_ADDR(mp, rxdata);
-cbs[2].next_cb = MEM_BUS_ADDR(mp, &cbs[3]);
-
-
-        if (i==(num_CBs-1)) // reached the last buffer
-        {
-            if (recurring)
-            {
-                // put CB(0) to the next nextCB
-            }
-            else
-            {
-                // put '0' / NULL to the nextCB
-            }
-        }
-        else
-        {
-            // put the nextCB = CB(i+1)
-            current_cb += 1;
-            current_data += single_buffer_size;
-        }
-    }
-}
-
-//================================================================================
 char *dma_regstrs[] = {"DMA CS", "CB_AD", "TI", "SRCE_AD", "DEST_AD",
     "TFR_LEN", "STRIDE", "NEXT_CB", "DEBUG", ""};
 
