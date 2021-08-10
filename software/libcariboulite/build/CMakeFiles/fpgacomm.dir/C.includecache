@@ -51,10 +51,28 @@ io_utils/io_utils.h
 ../src/caribou_smi/io_utils/io_utils.h
 io_utils/io_utils_sys_info.h
 ../src/caribou_smi/io_utils/io_utils_sys_info.h
+dma_utils.h
+../src/caribou_smi/dma_utils.h
 
 ../src/caribou_smi/caribou_smi_defs.h
 stdint.h
 -
+register_utils.h
+../src/caribou_smi/register_utils.h
+
+../src/caribou_smi/dma_utils.h
+stdio.h
+-
+string.h
+-
+stdint.h
+-
+register_utils.h
+../src/caribou_smi/register_utils.h
+../io_utils/io_utils_sys_info.h
+../src/io_utils/io_utils_sys_info.h
+
+../src/caribou_smi/register_utils.h
 
 ../src/cariboulite_setup.h
 latticeice40/latticeice40.h

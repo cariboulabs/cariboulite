@@ -114,10 +114,13 @@ int caribou_smi_init(caribou_smi_st* dev)
     map_periph(&dev->smi_regs, SMI_BASE, PAGE_SIZE);
 
     // the allocation is page_size rounded-up
+    // The page-size if 0x1000 = (4096) decimal. Thus for a CB sized 32byte => 128 maximal number of CBs
+    // Sample size from the modem is 4 bytes and each buffer contains "sample_buf_length" samples.
+    // We allocate unchahced memory for max 128 CBs and "num_sample_bufs" sample buffers
     uint32_t single_buffer_size_round = PAGE_ROUNDUP(dev->sample_buf_length * SAMPLE_SIZE_BYTES);
     dev->videocore_alloc_size = PAGE_SIZE + dev->num_sample_bufs * single_buffer_size_round;
     dev->actual_sample_buf_length_sec = (float)(single_buffer_size_round) / 16e6;
-
+    
     map_uncached_mem(&dev->vc_mem, dev->videocore_alloc_size);
 
     printf("INFO: caribou_smi_init - The actual single buffer contains %.2f usec of data\n", 
@@ -143,29 +146,13 @@ int caribou_smi_init(caribou_smi_st* dev)
     // Setup a reading rate of 32 MSPS (16 MSPS x2)
     //---------------------------------------------
     caribou_smi_timing_st timing = {0};
-    float actual_sps = caribou_smi_calculate_clocking (dev, 32e6, &timing);
-    caribou_smi_print_timing (actual_sps, &timing);
+    timing.hold_steps = 1;
+    timing.setup_steps = 1;
+    timing.strobe_steps = 1;
     caribou_smi_init_registers(dev, caribou_smi_transaction_size_8bits, &timing);
 
-
-
-    dev->smi_dmc->dmaen = 1;
-    dev->smi_cs->enable = 1;
-    dev->smi_cs->clear = 1;
-
-    void* rxbuff = adc_dma_start(&dev->vc_mem, NSAMPLES);
-    smi_start(dev, NSAMPLES, 1);
-
-    while (dma_active(dev->dma_channel)) ;
-    
-    adc_dma_end(dev, rxbuff, sample_data, NSAMPLES);
-
-    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(dev->smi_regs, SMI_CS));
-    dev->smi_cs->enable = dev->smi_dcs->enable = 0;
-    for (int i=0; i<NSAMPLES; i++)
-    {
-        printf("%1.3f\n", val_volts(sample_data[i]));
-    }*/
+    // Initialize the reader
+    caribou_smi_reset_read(dev);
 
     dev->initialized = 1;
     return 0;
@@ -180,6 +167,8 @@ int caribou_smi_close(caribou_smi_st* dev)
     }
 
     dev->initialized = 0;
+
+    caribou_smi_reset_read(dev);
 
     // GPIO Setting back to default
     for (int i=0; i<dev->num_data_pins; i++)
@@ -207,6 +196,111 @@ int caribou_smi_close(caribou_smi_st* dev)
     dma_utils_close (&dev->dma);
 
     return 0;
+}
+
+//===========================================================================
+void caribou_smi_reset_read (caribou_smi_st* dev)
+{
+    ZF_LOGI("Reseting read process");
+    int *ret;
+    dev->read_active = 0;
+    pthread_join(&dev->read_thread, &ret);
+
+    dev->read_cb = NULL;
+    dev->read_buffer = NULL;
+    dev->read_buffer_length = 0;
+    dev->current_read_counter = 0;
+    ZF_LOGI("Read process reset");
+}
+
+//===========================================================================
+void *caribou_smi_read_thread( void *ptr )
+{
+    caribou_smi_st* dev = (caribou_smi_st*)ptr;
+    ZF_LOGI("Reading thread started ID = %d", pthread_self());
+
+    void* rxbuff = adc_dma_start(&dev->vc_mem, NSAMPLES);
+    smi_start(dev, NSAMPLES, 1);
+
+    while (dma_active(dev->dma_channel)) ;
+    
+    adc_dma_end(dev, rxbuff, sample_data, NSAMPLES);
+
+    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(dev->smi_regs, SMI_CS));
+    dev->smi_cs->enable = dev->smi_dcs->enable = 0;
+    for (int i=0; i<NSAMPLES; i++)
+    {
+        printf("%1.3f\n", val_volts(sample_data[i]));
+    }
+
+
+    while (dev->read_active)
+    {
+        usleep(1000);
+    }
+
+    // idle the smi address
+    dev->smi_a = caribou_smi_address_idle;
+
+    // exit the thread
+    dev->read_thread_ret_val = 0;
+    pthread_exit(&dev->read_thread_ret_val);
+}
+
+//===========================================================================
+// Setup SMI reading process
+int caribou_smi_configure_read(caribou_smi_st* dev,
+                                caribou_smi_channel_en channel,
+                                uint32_t continues,
+                                uint32_t single_number_of_samples,
+                                caribou_smi_read_data_callback cb,
+                                uint8_t *serv_buffer, uint32_t serv_buffer_len)
+{
+    ZF_LOGI("Configuring SMI read from Channel %d", channel);
+
+    if (dev->read_active)
+    {
+        ZF_LOGI("Read process already active, deactivate and try again");
+        return -1;
+    }
+
+    dev->smi_dmc->dmaen = 1;
+    dev->smi_cs->enable = 1;
+    dev->smi_cs->clear = 1;
+
+    switch (channel)
+    {
+        case caribou_smi_channel_900: dev->smi_a = caribou_smi_address_read_900; break;
+        case caribou_smi_channel_2400: dev->smi_a = caribou_smi_address_read_2400; break;
+        default: 
+        {
+            ZF_LOGE("Channel %d is not implemented for read", channel); 
+            return -1; 
+            break;
+        }
+    }
+
+    int ret = 0;
+    if (continues)
+    {
+        // start a continues thread
+        dev->read_cb = cb;
+        dev->read_buffer = serv_buffer;
+        dev->read_buffer_length = serv_buffer_len;
+        dev->current_read_counter = 0;
+        dev->read_active = 1;
+        ret = pthread_create(&dev->read_thread, NULL, caribou_smi_read_thread, (void*) dev);
+    }
+    else
+    {
+        //continues;
+        //single_number_of_samples
+
+        dev->smi_a = caribou_smi_address_idle;
+    }
+    
+
+    return ret;
 }
 
 //===========================================================================

@@ -9,6 +9,8 @@ CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/at86rf215/at86rf215
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/caribou_fpga/caribou_fpga.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/caribou_smi/caribou_smi_defs.h
+CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/caribou_smi/dma_utils.h
+CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/caribou_smi/register_utils.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/cariboulite_setup.c
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/cariboulite_setup.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/io_utils/io_utils.h
