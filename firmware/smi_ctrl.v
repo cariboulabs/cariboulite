@@ -50,14 +50,14 @@ module smi_ctrl
     // ----------------
     localparam
         smi_address_idle = 3'b000,
-        smi_address_read_900 = 3'b001,
-        smi_address_read_2400 = 3'b010,
-        smi_address_read_res = 3'b011,
+        smi_address_write_900 = 3'b001,
+        smi_address_write_2400 = 3'b010,
+        smi_address_write_res2 = 3'b011,
         smi_address_read_res1 = 3'b100,
-        smi_address_write_900 = 3'b101,
-        smi_address_write_2400 = 3'b110,
-        smi_address_write_res2 = 3'b111;
-
+        smi_address_read_900 = 3'b101,
+        smi_address_read_2400 = 3'b110,
+        smi_address_read_res = 3'b111;        
+    
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
