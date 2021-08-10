@@ -46,6 +46,18 @@ module smi_ctrl
     localparam
         module_version  = 8'b00000001;
 
+    // SMI ADDRESS DEFS
+    // ----------------
+    localparam
+        smi_address_idle = 3'b000,
+        smi_address_read_900 = 3'b001,
+        smi_address_read_2400 = 3'b010,
+        smi_address_read_res = 3'b011,
+        smi_address_read_res1 = 3'b100,
+        smi_address_write_900 = 3'b101,
+        smi_address_write_2400 = 3'b110,
+        smi_address_write_res2 = 3'b111;
+
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
@@ -94,7 +106,7 @@ module smi_ctrl
             //==========================
             //  0.9 GHz Data Sender
             //==========================
-            if (i_smi_a == 3'b000) begin
+            if (i_smi_a == smi_address_read_900) begin
                 if (r_last_soe != i_smi_soe_se) begin
                     if (int_cnt_09 > 8) int_cnt_09 <= int_cnt_09 - 8;
                     if (r_fifo_09_pull) begin
@@ -115,7 +127,7 @@ module smi_ctrl
             //==========================
             //  2.4 GHz Data Sender
             //==========================
-            else if (i_smi_a == 3'b001) begin
+            else if (i_smi_a == smi_address_read_2400) begin
                 if (r_last_soe != i_smi_soe_se) begin
                     if (int_cnt_24 > 8) int_cnt_24 <= int_cnt_24 - 8;
                     if (r_fifo_24_pull) begin

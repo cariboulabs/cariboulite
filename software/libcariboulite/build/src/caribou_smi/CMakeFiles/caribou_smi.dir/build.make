@@ -76,22 +76,9 @@ include src/caribou_smi/CMakeFiles/caribou_smi.dir/progress.make
 # Include the compile flags for this target's objects.
 include src/caribou_smi/CMakeFiles/caribou_smi.dir/flags.make
 
-src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: src/caribou_smi/CMakeFiles/caribou_smi.dir/flags.make
-src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o: ../src/caribou_smi/caribou_smi.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o"
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/caribou_smi.dir/caribou_smi.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.c
-
-src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/caribou_smi.dir/caribou_smi.c.i"
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.c > CMakeFiles/caribou_smi.dir/caribou_smi.c.i
-
-src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/caribou_smi.dir/caribou_smi.c.s"
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.c -o CMakeFiles/caribou_smi.dir/caribou_smi.c.s
-
 src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o: src/caribou_smi/CMakeFiles/caribou_smi.dir/flags.make
 src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o: ../src/caribou_smi/dma_utils.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/caribou_smi.dir/dma_utils.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/dma_utils.c
 
 src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.i: cmake_force
@@ -104,7 +91,7 @@ src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.s: cmake_force
 
 src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.o: src/caribou_smi/CMakeFiles/caribou_smi.dir/flags.make
 src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.o: ../src/caribou_smi/mbox_utils.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.o"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/caribou_smi.dir/mbox_utils.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/mbox_utils.c
 
 src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.i: cmake_force
@@ -117,7 +104,7 @@ src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.s: cmake_force
 
 src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o: src/caribou_smi/CMakeFiles/caribou_smi.dir/flags.make
 src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o: ../src/caribou_smi/register_utils.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building C object src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/caribou_smi.dir/register_utils.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.c
 
 src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.i: cmake_force
@@ -130,7 +117,6 @@ src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.s: cmake_force
 
 # Object files for target caribou_smi
 caribou_smi_OBJECTS = \
-"CMakeFiles/caribou_smi.dir/caribou_smi.c.o" \
 "CMakeFiles/caribou_smi.dir/dma_utils.c.o" \
 "CMakeFiles/caribou_smi.dir/mbox_utils.c.o" \
 "CMakeFiles/caribou_smi.dir/register_utils.c.o"
@@ -138,13 +124,12 @@ caribou_smi_OBJECTS = \
 # External object files for target caribou_smi
 caribou_smi_EXTERNAL_OBJECTS =
 
-src/caribou_smi/libcaribou_smi.a: src/caribou_smi/CMakeFiles/caribou_smi.dir/caribou_smi.c.o
 src/caribou_smi/libcaribou_smi.a: src/caribou_smi/CMakeFiles/caribou_smi.dir/dma_utils.c.o
 src/caribou_smi/libcaribou_smi.a: src/caribou_smi/CMakeFiles/caribou_smi.dir/mbox_utils.c.o
 src/caribou_smi/libcaribou_smi.a: src/caribou_smi/CMakeFiles/caribou_smi.dir/register_utils.c.o
 src/caribou_smi/libcaribou_smi.a: src/caribou_smi/CMakeFiles/caribou_smi.dir/build.make
 src/caribou_smi/libcaribou_smi.a: src/caribou_smi/CMakeFiles/caribou_smi.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking C static library libcaribou_smi.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking C static library libcaribou_smi.a"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && $(CMAKE_COMMAND) -P CMakeFiles/caribou_smi.dir/cmake_clean_target.cmake
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/caribou_smi.dir/link.txt --verbose=$(VERBOSE)
 

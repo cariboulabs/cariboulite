@@ -1,6 +1,7 @@
 #ifndef __CARIBOU_SMI_H__
 #define __CARIBOU_SMI_H__
 
+#include <pthread.h>
 #include "caribou_smi_defs.h"
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_sys_info.h"
@@ -36,6 +37,30 @@ typedef enum
     caribou_smi_transaction_size_9bits = 3,
 } caribou_smi_transaction_size_bits_en;
 
+typedef enum
+{
+    caribou_smi_address_idle = 0,
+    caribou_smi_address_read_900 = 1,
+    caribou_smi_address_read_2400 = 2,
+    caribou_smi_address_read_res = 3,
+    caribou_smi_address_write_res1 = 4,
+    caribou_smi_address_write_900 = 5,
+    caribou_smi_address_write_2400 = 6,
+    caribou_smi_address_write_res2 = 7,
+} caribou_smi_address_en;
+
+typedef enum
+{
+    caribou_smi_channel_900 = 0,
+    caribou_smi_channel_2400 = 1,
+} caribou_smi_channel_en;
+
+typedef void (*caribou_smi_read_data_callback)(  void *ctx, 
+                                                caribou_smi_channel_en ch, 
+                                                uint32_t count,
+                                                uint8_t *buffer, 
+                                                uint32_t buffer_len_bytes);
+
 typedef struct
 {
     int data_0_pin;
@@ -57,11 +82,22 @@ typedef struct
     uint32_t videocore_alloc_size;
     float actual_sample_buf_length_sec;
 
+    // read parameters
+    caribou_smi_read_data_callback read_cb;
+    uint8_t *read_buffer;
+    uint32_t read_buffer_length;
+    uint32_t current_read_counter;
+    int read_active;
+    pthread_t read_thread;
+    uint32_t read_thread_ret_val;    
+
+    // memory maps
     dma_utils_st dma;
     MEM_MAP smi_regs;
     MEM_MAP vc_mem;
-    MEM_MAP clk_regs;
+    //MEM_MAP clk_regs;
 
+    // SMI registers
     SMI_CS_REG  *smi_cs;
     SMI_L_REG   *smi_l;
     SMI_A_REG   *smi_a;

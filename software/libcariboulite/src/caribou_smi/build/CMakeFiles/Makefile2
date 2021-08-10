@@ -95,12 +95,12 @@ clean: CMakeFiles/caribou_smi.dir/clean
 CMakeFiles/test_caribou_smi.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles --progress-num=5,6,7,8,9 "Built target test_caribou_smi"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles --progress-num=6,7,8,9,10,11 "Built target test_caribou_smi"
 .PHONY : CMakeFiles/test_caribou_smi.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/test_caribou_smi.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles 5
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles 6
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_caribou_smi.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles 0
 .PHONY : CMakeFiles/test_caribou_smi.dir/rule
@@ -122,12 +122,12 @@ CMakeFiles/test_caribou_smi.dir/clean:
 CMakeFiles/caribou_smi.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles --progress-num=1,2,3,4 "Built target caribou_smi"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles --progress-num=1,2,3,4,5 "Built target caribou_smi"
 .PHONY : CMakeFiles/caribou_smi.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/caribou_smi.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles 5
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/caribou_smi.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/build/CMakeFiles 0
 .PHONY : CMakeFiles/caribou_smi.dir/rule

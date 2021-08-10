@@ -4,6 +4,7 @@
 src/latticeice40/CMakeFiles/latticeice40.dir/latticeice40.c.o: ../src/io_utils/io_utils.h
 src/latticeice40/CMakeFiles/latticeice40.dir/latticeice40.c.o: ../src/io_utils/io_utils_spi.h
 src/latticeice40/CMakeFiles/latticeice40.dir/latticeice40.c.o: ../src/io_utils/pigpio/pigpio.h
+src/latticeice40/CMakeFiles/latticeice40.dir/latticeice40.c.o: ../src/zf_log/zf_log.h
 src/latticeice40/CMakeFiles/latticeice40.dir/latticeice40.c.o: ../src/latticeice40/latticeice40.c
 src/latticeice40/CMakeFiles/latticeice40.dir/latticeice40.c.o: ../src/latticeice40/latticeice40.h
 

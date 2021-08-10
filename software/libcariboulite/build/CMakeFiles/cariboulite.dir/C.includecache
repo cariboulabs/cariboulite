@@ -49,10 +49,28 @@ io_utils/io_utils.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/io_utils/io_utils.h
 io_utils/io_utils_sys_info.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/io_utils/io_utils_sys_info.h
+dma_utils.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/dma_utils.h
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi_defs.h
 stdint.h
 -
+register_utils.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/dma_utils.h
+stdio.h
+-
+string.h
+-
+stdint.h
+-
+register_utils.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.h
+../io_utils/io_utils_sys_info.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils_sys_info.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.h
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.c
 stdio.h

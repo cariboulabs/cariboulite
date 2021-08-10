@@ -201,6 +201,36 @@ caribou_smi/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/build
 .PHONY : caribou_smi/fast
 
+caribou_smi.o: caribou_smi.c.o
+
+.PHONY : caribou_smi.o
+
+# target to build an object file
+caribou_smi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/caribou_smi.c.o
+.PHONY : caribou_smi.c.o
+
+caribou_smi.i: caribou_smi.c.i
+
+.PHONY : caribou_smi.i
+
+# target to preprocess a source file
+caribou_smi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/caribou_smi.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/caribou_smi.c.i
+.PHONY : caribou_smi.c.i
+
+caribou_smi.s: caribou_smi.c.s
+
+.PHONY : caribou_smi.s
+
+# target to generate assembly for a file
+caribou_smi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_caribou_smi.dir/build.make CMakeFiles/test_caribou_smi.dir/caribou_smi.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_smi.dir/build.make CMakeFiles/caribou_smi.dir/caribou_smi.c.s
+.PHONY : caribou_smi.c.s
+
 dma_utils.o: dma_utils.c.o
 
 .PHONY : dma_utils.o
@@ -332,6 +362,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... caribou_smi"
 	@echo "... test_caribou_smi"
+	@echo "... caribou_smi.o"
+	@echo "... caribou_smi.i"
+	@echo "... caribou_smi.s"
 	@echo "... dma_utils.o"
 	@echo "... dma_utils.i"
 	@echo "... dma_utils.s"
