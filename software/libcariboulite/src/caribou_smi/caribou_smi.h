@@ -119,5 +119,7 @@ typedef struct
 
 int caribou_smi_init(caribou_smi_st* dev);
 int caribou_smi_close(caribou_smi_st* dev);
+void caribou_smi_reset_read (caribou_smi_st* dev);
+void caribou_smi_start(caribou_smi_st* dev, int nsamples, int pre_samp, int packed);
 
 #endif // __CARIBOU_SMI_H__

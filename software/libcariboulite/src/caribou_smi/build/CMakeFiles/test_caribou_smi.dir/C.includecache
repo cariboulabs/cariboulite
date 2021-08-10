@@ -97,6 +97,8 @@ register_utils.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.h
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
+pthread.h
+-
 caribou_smi_defs.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi_defs.h
 io_utils/io_utils.h
@@ -133,6 +135,12 @@ stdint.h
 -
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/test_caribou_smi.c
+stdio.h
+-
+caribou_smi.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils_sys_info.h
 stdio.h
