@@ -114,16 +114,6 @@ stdint.h
 register_utils.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.h
 
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/dma_utils.c
-zf_log/zf_log.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/zf_log/zf_log.h
-dma_utils.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/dma_utils.h
-register_utils.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/register_utils.h
-mbox_utils.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/mbox_utils.h
-
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/dma_utils.h
 stdio.h
 -

@@ -54,7 +54,7 @@ int latticeice40_init(latticeice40_st *dev,
 	io_utils_setup_gpio(dev->cs_pin, io_utils_dir_output, io_utils_pull_up);
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 
-	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 1, 0,
+	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
                                         io_utils_spi_chip_ice40_prog, NULL);
 
 	dev->initialized = 1;

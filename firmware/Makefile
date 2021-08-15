@@ -15,5 +15,8 @@ build:
 prog: build
 	 $(PROG) $(filename).bin
 
+prog_only:
+	$(PROG) $(filename).bin
+
 clean:
 	rm -rf $(filename).json $(filename).blif $(filename).asc $(filename).bin

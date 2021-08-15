@@ -101,6 +101,24 @@ int cariboulite_setup_io ()
         return -1;
     }
 
+    // Setup the initial states for components reset and SS
+    // ICE40
+    io_utils_set_gpio_mode(CARIBOULITE_FPGA_SS, io_utils_alt_gpio_out);
+    io_utils_write_gpio(CARIBOULITE_FPGA_SS, 1);
+
+    // AT86RF215
+    io_utils_set_gpio_mode(CARIBOULITE_MODEM_SS, io_utils_alt_gpio_out);
+    io_utils_write_gpio(CARIBOULITE_MODEM_SS, 1);
+    io_utils_set_gpio_mode(CARIBOULITE_MODEM_RESET, io_utils_alt_gpio_out);
+    io_utils_write_gpio(CARIBOULITE_MODEM_RESET, 0);
+    io_utils_set_gpio_mode(CARIBOULITE_MODEM_IRQ, io_utils_alt_gpio_in);
+
+    // RFFC5072
+    io_utils_set_gpio_mode(CARIBOULITE_MIXER_SS, io_utils_alt_gpio_out);
+    io_utils_write_gpio(CARIBOULITE_MIXER_SS, 1);
+    io_utils_set_gpio_mode(CARIBOULITE_MIXER_RESET, io_utils_alt_gpio_out);
+    io_utils_write_gpio(CARIBOULITE_MIXER_RESET, 0);
+
     return 0;
 }
 
