@@ -7,7 +7,6 @@
 
 module top(
       input i_glob_clock,
-      output i_smi_a0_irq,
 
       // RF FRONT-END PATH
       output o_rx_h_tx_l,
@@ -19,7 +18,6 @@ module top(
       output o_shdn_tx_lna,
 
       // MODEM (LVDS & CLOCK)
-      input i_radio_clk,
       output o_iq_tx_p,
       output o_iq_tx_n,
       output o_iq_tx_clk_p,
@@ -40,7 +38,6 @@ module top(
       // DIGITAL I/F
       input [3:0] i_config,
       input i_button,
-      output o_ldo_2v8_en,
       inout [7:0] io_pmod,
       output o_led0,
       output o_led1,
@@ -53,6 +50,8 @@ module top(
       input i_smi_soe_se,
       input i_smi_swe_srw,
       inout [7:0] io_smi_data,
+      output o_smi_write_req,
+      output o_smi_read_req,
 
       // SPI
       input i_mosi,
@@ -337,6 +336,9 @@ module top(
    assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
    assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
    assign w_smi_data_input = io_smi_data;
+   assign o_smi_write_req = (w_smi_writing)?w_smi_write_req:1'bZ;
+   assign o_smi_read_req = (w_smi_writing)?w_smi_read_req:1'bZ;
+
 
    // Testing - output the clock signal (positive and negative) to the PMOD
    assign io_pmod[0] = (w_smi_writing)?w_smi_read_req:1'bZ;

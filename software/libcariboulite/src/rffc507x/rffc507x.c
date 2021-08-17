@@ -68,8 +68,8 @@ static uint16_t rffc507x_regs_default[RFFC507X_NUM_REGS] =
 	0x2a20,   /* 12 */
 	0x0000,   /* 13 */
 	0x0000,   /* 14 */
-	0x0000,   /* 15 */
-	0x0000,   /* 16 */
+	0x0000,   /* 15h / 21d <== SDI_CTRL - SDI Control        */
+	0x0000,   /* 16h / 22d <== GPO - General Purpose Outputs */
 	0x4900,   /* 17 */
 	0x0281,   /* 18 */
 	0xf00f,   /* 19 */
@@ -83,6 +83,7 @@ static uint16_t rffc507x_regs_default[RFFC507X_NUM_REGS] =
 //===========================================================================
 static inline void rffc507x_reg_commit(rffc507x_st* dev, uint8_t r)
 {
+	//printf("writing reg %d, value: %04X\n", r, dev->rffc507x_regs[r]);
 	rffc507x_reg_write(dev, r, dev->rffc507x_regs[r]);
 }
 
@@ -117,11 +118,9 @@ int rffc507x_init(  rffc507x_st* dev,
 	dev->io_spi = io_spi;
 
 	/* Configure GPIO pins. */
-	io_utils_setup_gpio(dev->mode_pin, io_utils_dir_output, io_utils_pull_up);
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 
 	/* set to known state */
-	io_utils_write_gpio(dev->mode_pin, 0);
 	io_utils_write_gpio(dev->reset_pin, 1);
 
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
@@ -146,10 +145,15 @@ int rffc507x_init(  rffc507x_st* dev,
 	set_RFFC507X_P2PRESC(dev, 0);
 	set_RFFC507X_P2VCOSEL(dev, 0);
 
-	// set ENBL and MODE to be configured via 3-wire interface, not control pins.
+	// set ENBL and MODE to be configured via 4-wire interface, not control pins.
+	set_RFFC507X_RESET(dev, 0);
+	set_RFFC507X_ADDR(dev, 0);
+	//set_RFFC507X_4WIRE(dev, 1);
+	set_RFFC507X_4WIRE(dev, 0);
+	set_RFFC507X_MODE(dev, 1);
+	set_RFFC507X_ENBL(dev, 1);
 	set_RFFC507X_SIPIN(dev, 1);
-
-	// GPOs are active at all times
+	set_RFFC507X_LOCK(dev, 0);
 	set_RFFC507X_GATE(dev, 1);
 
 	// Write default register values to chip.
@@ -183,7 +187,6 @@ int rffc507x_release(rffc507x_st* dev)
 	dev->initialized = 0;
 
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
-	io_utils_setup_gpio(dev->mode_pin, io_utils_dir_input, io_utils_pull_up);
 
 	// Release the SPI device
 	io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
@@ -209,7 +212,7 @@ uint16_t rffc507x_reg_read(rffc507x_st* dev, uint8_t r)
 	uint16_t vin = 0;
 
 	// Readback register is not cached.
-	if (r == RFFC507X_READBACK_REG)
+	//if (r == RFFC507X_READBACK_REG)
 	{
 		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle, &vout, (uint8_t*)&vin, 2, io_utils_spi_read);
 		return vin;
@@ -369,6 +372,36 @@ uint64_t rffc507x_set_frequency(rffc507x_st* dev, uint16_t mhz)
 	rffc507x_enable(dev);
 
 	return tune_freq;
+}
+
+//===========================================================================
+void rffc507x_setup_pin_functions(rffc507x_st* dev)
+{
+	ZF_LOGD("setting up gpio configurations (4-wire)");
+	set_RFFC507X_RESET(dev, 0);
+	set_RFFC507X_ADDR(dev, 0);
+	set_RFFC507X_4WIRE(dev, 1);
+	set_RFFC507X_MODE(dev, 1);
+	set_RFFC507X_ENBL(dev, 1);
+	set_RFFC507X_SIPIN(dev, 0);
+	set_RFFC507X_LOCK(dev, 0);
+	set_RFFC507X_GATE(dev, 0);
+	rffc507x_regs_commit(dev);
+}
+
+//===========================================================================
+void rffc507x_readback(rffc507x_st* dev, uint16_t *readback_buff, int buf_len)
+{
+	if (buf_len > 16) buf_len = 16;
+
+	for (int i = 0; i < buf_len; i++)
+	{
+		set_RFFC507X_READSEL(dev, i);
+		rffc507x_regs_commit(dev);
+		readback_buff[i] = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
+
+		printf ("READBACK #%d: %04X\n", i, readback_buff[i]);
+	}
 }
 
 //===========================================================================

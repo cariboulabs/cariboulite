@@ -87,7 +87,7 @@ int at86rf215_init(at86rf215_st* dev,
 
     ZF_LOGI("configuring reset and irq pins");
 	// Configure GPIO pins
-	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
+	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_off);
 	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
 
 	// set to known state
@@ -106,7 +106,7 @@ int at86rf215_init(at86rf215_st* dev,
     if (io_utils_setup_interrupt(dev->irq_pin, at86rf215_interrupt_handler, dev) < 0)
     {
         ZF_LOGE("interrupt registration for irq_pin (%d) failed", dev->irq_pin);
-        io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
+        //io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
         io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
         io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
         return -1;
@@ -135,7 +135,7 @@ int at86rf215_close(at86rf215_st* dev)
 
 	dev->initialized = 0;
 
-	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
+	//io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
 	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
 
 	// Release the SPI device
@@ -408,8 +408,8 @@ void at86rf215_setup_iq_radio_transmit (at86rf215_st* dev, at86rf215_rf_channel_
 void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio, uint32_t freq_hz)
 {
     /*
-    It is assumed, that 
-        1. the radio has been reset before and is in State TRXOFF. 
+    It is assumed, that
+        1. the radio has been reset before and is in State TRXOFF.
         2. All interrupts in register RFn_IRQS should be enabled (RFn_IRQM=0x3f).
     */
 
@@ -459,7 +459,7 @@ void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_e
     };
     at86rf215_radio_set_rx_bandwidth_sampling(dev, radio, &rx_bw_samp_cfg);
 
-    at86rf215_radio_agc_ctrl_st agc_ctrl = 
+    at86rf215_radio_agc_ctrl_st agc_ctrl =
     {
         // commands
         .agc_measure_source_not_filtered = 0,           // AGC Input (0 - filterred, 1 - unfiltered, faster operation)
@@ -481,7 +481,7 @@ void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_e
     // 5. Configure the channel parameters, see section "Channel Configuration" on page 62 and transmit power
     at86rf215_setup_channel (dev, radio, freq_hz);
 
-    // 6. Switch to State TXPREP; interrupt IRQS.TRXRDY is issued. 
+    // 6. Switch to State TXPREP; interrupt IRQS.TRXRDY is issued.
     //    TXD and TXCLK are activated as shown in Figure 4-12 on page 26.
     //    What? Why TX?
 
@@ -491,7 +491,7 @@ void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_e
     // 8. Enable the radio receiver by writing command RX to the register RFn_CMD.
     at86rf215_radio_set_state(dev, radio, at86rf215_radio_state_cmd_rx);
 
-    // 9. To prevent the AGC from switching its gain during reception, it is recommended to set AGCC.FRZC=1 
+    // 9. To prevent the AGC from switching its gain during reception, it is recommended to set AGCC.FRZC=1
     //    after reception of the preamble, the AGC has to be released after finishing reception by setting AGCC.FRZC=0.
     // at86rf215_radio_setup_agc(dev, radio, &agc_ctrl);
 }

@@ -60,9 +60,6 @@ set_io i_iq_rx_09_p		A4      # Paired with i_iq_rx_09_n	@ B3 - positive logic
 set_io i_iq_rx_24_n		A2      # Paired with i_iq_rx_24_p	@ B1 - negative logic - needs to be negated
 set_io i_iq_rx_clk_p	A3      # Paired with i_iq_rx_clk_n	@ B2 - positive logic
 
-# MODEM
-set_io i_radio_clk		A12
-
 # DIGITAL I/F
 set_io -pullup yes i_config[0]	B29
 set_io -pullup yes i_config[1]	A40
@@ -71,10 +68,10 @@ set_io -pullup yes i_config[3]	A41
 set_io -pullup yes i_button     B31
 set_io o_led0		            A38
 set_io o_led1		            A39
-set_io o_ldo_2v8_en		        B32
 
 # SMI TO RPI
-set_io i_smi_a0_irq		    A19
+set_io o_smi_write_req	    A19
+set_io o_smi_read_req	    B19
 set_io i_smi_a1	            A43
 set_io i_smi_a2		        A48
 set_io i_smi_a3		        A47
@@ -91,7 +88,7 @@ set_io io_smi_data[6]	    A13
 set_io io_smi_data[7]	    A14
 
 # SPI
-set_io i_mosi		    B17
+set_io i_mosi		    A22
 set_io i_sck		    A23
 set_io i_ss		        B18
-set_io o_miso		    A22
+set_io o_miso		    B17

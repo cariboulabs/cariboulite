@@ -39,7 +39,6 @@ typedef struct
 {
     int cs_pin;
     int reset_pin;
-    int mode_pin;
 
     io_utils_spi_st* io_spi;
 	int io_spi_handle;
@@ -78,5 +77,7 @@ void rffc507x_rxtx(rffc507x_st* dev);
 void rffc507x_enable(rffc507x_st* dev);
 void rffc507x_disable(rffc507x_st* dev);
 void rffc507x_set_gpo(rffc507x_st* dev, uint8_t gpo);
+void rffc507x_setup_pin_functions(rffc507x_st* dev);
+void rffc507x_readback(rffc507x_st* dev, uint16_t *readback_buff, int buf_len);
 
 #endif // __RFFC507X_H
