@@ -148,13 +148,12 @@ int rffc507x_init(  rffc507x_st* dev,
 	// set ENBL and MODE to be configured via 4-wire interface, not control pins.
 	set_RFFC507X_RESET(dev, 0);
 	set_RFFC507X_ADDR(dev, 0);
-	//set_RFFC507X_4WIRE(dev, 1);
 	set_RFFC507X_4WIRE(dev, 0);
-	set_RFFC507X_MODE(dev, 1);
-	set_RFFC507X_ENBL(dev, 1);
-	set_RFFC507X_SIPIN(dev, 1);
+	set_RFFC507X_MODE(dev, 0);
+	set_RFFC507X_ENBL(dev, 0);
+	set_RFFC507X_SIPIN(dev, 0);
 	set_RFFC507X_LOCK(dev, 0);
-	set_RFFC507X_GATE(dev, 1);
+	set_RFFC507X_GATE(dev, 0);
 
 	// Write default register values to chip.
 	int ret = rffc507x_regs_commit(dev);
