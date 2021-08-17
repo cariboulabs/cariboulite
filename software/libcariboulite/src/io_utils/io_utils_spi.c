@@ -83,6 +83,8 @@ static int io_utils_spi_write_rffc507x(io_utils_spi_st* dev, io_utils_spi_chip_s
     uint32_t data = reg;
 	data = ((data & 0x7f) << 16) | val;
 
+    //printf("==> io_utils_spi_write_rffc507x: %06X\n", data);
+
     int sdata_pin = chip->miso_mosi_swap?dev->miso:dev->mosi;
     int sclk_pin = dev->sck;
     int enx_pin = chip->cs_pin;
@@ -195,6 +197,8 @@ static int io_utils_spi_read_rffc507x(io_utils_spi_st* dev, io_utils_spi_chip_st
 	 */
 	io_utils_write_gpio_with_wait(sclk_pin, 1, nop_cnt);
     io_utils_write_gpio_with_wait(sclk_pin, 0, nop_cnt);
+
+    //printf("==>The read data is: %06X\n", data);
 
 	return data;
 }
@@ -520,7 +524,8 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
             }
             else
             {
-                uint16_t val = ((uint16_t)(tx_buf[1]))<<8 | tx_buf[2];
+                uint16_t val = ((uint16_t)(tx_buf[2]))<<8 | tx_buf[1];
+                //ZF_LOGI("rffc507x writing to reg %02X, data %04X", reg, val);
                 int r = io_utils_spi_write_rffc507x(dev, dev->current_chip, reg, val);
                 if (r < 0)
                 {

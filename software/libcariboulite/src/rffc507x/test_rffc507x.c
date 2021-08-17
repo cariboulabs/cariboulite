@@ -31,10 +31,10 @@ int main ()
 	io_utils_set_gpio_mode(FPGA_RESET, io_utils_alt_gpio_out);
     io_utils_set_gpio_mode(ICE40_CS, io_utils_alt_gpio_out);
 	io_utils_setup_gpio(CARIBOULITE_MXR_RESET, io_utils_dir_output, io_utils_pull_up);
-	
+
     //io_utils_write_gpio(FPGA_RESET, 0);
     //io_utils_write_gpio(ICE40_CS, 0);
-	
+
 	io_utils_write_gpio(CARIBOULITE_MXR_RESET, 0);
 	printf("RFFC5072 is reset, press enter to release...\n");
 	getchar();
@@ -42,6 +42,7 @@ int main ()
 	printf("RFFC5072 is not reset.\n");
 
 	io_utils_spi_init(&io_spi_dev);
+	io_utils_set_gpio_mode(19, io_utils_alt_gpio_in);
 	rffc507x_init(&dev, &io_spi_dev);
 
 	printf("RFFC507X Registers:\n");
@@ -50,6 +51,9 @@ int main ()
 		uint16_t reg_val = rffc507x_reg_read(&dev, i);
 		printf("REG #%d => %04X\n", i, reg_val);
 	}
+
+	uint16_t readback_buff[16] = {0};
+	rffc507x_readback(&dev, readback_buff, 16);
 
 	rffc507x_release(&dev);
 	io_utils_spi_close(&io_spi_dev);

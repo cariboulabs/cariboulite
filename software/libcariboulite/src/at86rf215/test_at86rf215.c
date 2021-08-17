@@ -68,7 +68,7 @@ int test_at86rf215_read_chip_vn_pn(at86rf215_st* dev)
 // usec_gaps - specifies the micro-second gaps between freq steps or '-1' that
 //             tell the function to put "getchars" (wait for enter key)
 void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
-                                        at86rf215_rf_channel_en channel, 
+                                        at86rf215_rf_channel_en channel,
                                         int start_freq,
                                         int num_freq,
                                         int step_freq,
@@ -95,7 +95,7 @@ void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
         //printf("Press enter to switch\n");
         if (usec_gaps > 0) io_utils_usleep(usec_gaps);
         else
-        {   
+        {
             printf("Press enter to step...\n");
             getchar();
         }
@@ -109,7 +109,7 @@ void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
 // -----------------------------------------------------------------------------------------
 // Starting a reception window
 // usec_timeout - set up a timeout value in micro-seconds or -1 to wait for "enter" key
-int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en radio, 
+int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en radio,
                                         uint32_t freq_hz, int usec_timeout)
 {
     at86rf215_setup_iq_radio_receive (dev, radio, freq_hz);
@@ -121,7 +121,7 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
         io_utils_usleep(usec_timeout);
     }
     else
-    {   
+    {
         printf("Press enter to stop...\n");
         getchar();
     }
@@ -135,7 +135,7 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
 #define NO_FPGA_MODE        0
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
-#define TEST_IQ_RX_WIND     1
+#define TEST_IQ_RX_WIND     0
 
 // -----------------------------------------------------------------------------------------
 // MAIN
@@ -164,8 +164,8 @@ int main ()
     // Init spi
 	io_utils_spi_init(&io_spi_dev);
 
-	at86rf215_init(&dev, &io_spi_dev);
     at86rf215_reset(&dev);
+	at86rf215_init(&dev, &io_spi_dev);
 
     // TEST: read the p/n and v/n from the IC
     #if TEST_VERSIONS
