@@ -148,8 +148,6 @@ int at86rf215_close(at86rf215_st* dev)
 //===================================================================
 void at86rf215_reset(at86rf215_st* dev)
 {
-	io_utils_write_gpio(dev->reset_pin, 1);
-    io_utils_usleep(300);
 	io_utils_write_gpio(dev->reset_pin, 0);
     io_utils_usleep(300);
 	io_utils_write_gpio(dev->reset_pin, 1);
