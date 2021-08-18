@@ -139,7 +139,6 @@ module top(
       /// Digital interfaces
       .i_button (i_button),
       .i_config (i_config),
-      .o_ldo_2v8_en (o_ldo_2v8_en),
       .o_led0 (o_led0),
       .o_led1 (o_led1),
       .o_pmod (),

@@ -13,7 +13,6 @@ module io_ctrl
         // Digital interfaces
         input               i_button,
         input [3:0]         i_config,
-        output              o_ldo_2v8_en,
         output              o_led0,
         output              o_led1,
         output [7:0]        o_pmod,
@@ -69,7 +68,6 @@ module io_ctrl
     reg [2:0]   rf_mode;
 
     // Digital outputs
-    reg         ldo2v8_state;
     reg         led0_state;
     reg         led1_state;
     reg [7:0]   pmod_dir_state;
@@ -87,20 +85,8 @@ module io_ctrl
     reg         tr_vc_2_state;
 
     //=========================================================================
-    // INITIAL STATES
-    //=========================================================================
-    /*initial begin
-        debug_mode = debug_mode_none;
-        rf_mode = rf_mode_low_power;
-        ldo2v8_state = 1'b0;
-        led0_state = 1'b0;
-        led1_state = 1'b0;
-    end*/
-
-    //=========================================================================
     // LOGICAL SIGNAL ASSIGNMENTS
     //=========================================================================
-    assign o_ldo_2v8_en = ldo2v8_state;
     assign o_led0 = led0_state;
     assign o_led1 = led1_state;
     assign o_pmod = pmod_state;
@@ -125,7 +111,6 @@ module io_ctrl
         if (i_reset) begin
             debug_mode = debug_mode_none;
             rf_mode = rf_mode_low_power;
-            ldo2v8_state = 1'b0;
             led0_state = 1'b0;
             led1_state = 1'b0;
         end else begin
@@ -148,7 +133,6 @@ module io_ctrl
                         ioc_dig_pin: begin
                             o_data_out[0] <= led0_state;
                             o_data_out[1] <= led1_state;
-                            o_data_out[2] <= ldo2v8_state;
                             o_data_out[6:3] <= i_config;
                             o_data_out[7] <= i_button;
                         end
@@ -175,7 +159,7 @@ module io_ctrl
                             o_data_out[7] <= rx_h_state;
                         end
                     endcase
-                end 
+                end
                 //=============================================
                 // WRITE OPERATIONS
                 //=============================================
@@ -196,7 +180,6 @@ module io_ctrl
                         ioc_dig_pin: begin
                             led0_state <= i_data_in[0];
                             led1_state <= i_data_in[1];
-                            ldo2v8_state <= i_data_in[2];
                         end
 
                         //----------------------------------------------
