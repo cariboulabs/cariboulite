@@ -9,7 +9,7 @@ module smi_ctrl
         input               i_cs,
         input               i_fetch_cmd,
         input               i_load_cmd,
-        
+
         // FIFO INTERFACE 0.9 GHz
         output              o_fifo_09_pull,
         input [31:0]        i_fifo_09_pulled_data,
@@ -31,7 +31,8 @@ module smi_ctrl
         output              o_smi_read_req,
         output              o_smi_write_req,
         output              o_smi_writing,
-        
+        input               i_smi_test,
+
         // Errors
         output reg          o_address_error );
 
@@ -56,14 +57,14 @@ module smi_ctrl
         smi_address_read_res1 = 3'b100,
         smi_address_read_900 = 3'b101,
         smi_address_read_2400 = 3'b110,
-        smi_address_read_res = 3'b111;        
-    
+        smi_address_read_res = 3'b111;
+
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
             o_address_error <= 1'b0;
             // put the initial states here
-        end else begin        
+        end else begin
             if (i_cs == 1'b1) begin
                 if (i_fetch_cmd == 1'b1) begin
                     case (i_ioc)
@@ -81,40 +82,53 @@ module smi_ctrl
 
                     endcase
                 end
-            end 
+            end
         end
     end
 
     // Tell the RPI that data is pending in either of the two fifos
-    assign o_smi_read_req = !i_fifo_09_empty || !i_fifo_24_empty;
+    assign o_smi_read_req = !i_fifo_09_empty || !i_fifo_24_empty || i_smi_test;
 
-    reg r_last_soe;
+    reg r_last_soe_1;
+    reg r_last_soe_2;
     reg [5:0] int_cnt_09;
     reg [5:0] int_cnt_24;
     reg r_fifo_09_pull;
     reg r_fifo_24_pull;
+    reg [7:0] r_smi_test_count_09;
+    reg [7:0] r_smi_test_count_24;
 
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
             int_cnt_09 <= 6'd32;
             int_cnt_24 <= 6'd32;
-            r_last_soe <= 1'b1;
+            r_last_soe_1 <= 1'b1;
+            r_last_soe_2 <= 1'b1;
             r_fifo_09_pull <= 1'b0;
             r_fifo_24_pull <= 1'b0;
-        end else begin            
+            r_smi_test_count_09 <= 8'b00000000;
+            r_smi_test_count_24 <= 8'b00000000;
+        end else begin
             //==========================
             //  0.9 GHz Data Sender
             //==========================
             if (i_smi_a == smi_address_read_900) begin
-                if (r_last_soe != i_smi_soe_se) begin
+                if (r_last_soe_2 == 1'b0 && r_last_soe_1 == 1'b1) begin
+                    o_smi_data_out <= r_smi_test_count_09;
+                    r_smi_test_count_09 <= r_smi_test_count_09 + 1'b1;
+                end
+                /*if (r_last_soe != i_smi_soe_se) begin
                     if (int_cnt_09 > 8) int_cnt_09 <= int_cnt_09 - 8;
-                    if (r_fifo_09_pull) begin
+
+                    if (i_smi_test) begin
+                        r_smi_test_count_09 <= r_smi_test_count_09 + 1'b1;
+                        o_smi_data_out <= r_smi_test_count_09;
+                    end else if (r_fifo_09_pull) begin
                         r_fifo_09_pull <= 1'b0;
                         o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09-1:int_cnt_09-8];
                     end
-                end
-                else if (i_smi_soe_se == 1'b1) begin
+                end else if (i_smi_soe_se == 1'b1) begin
                     if (int_cnt_09 > 0) begin
                         r_fifo_09_pull <= 1'b0;
                         o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09-1:int_cnt_09-8];
@@ -122,20 +136,27 @@ module smi_ctrl
                         r_fifo_09_pull <=1'b1;
                         int_cnt_09 <= 6'd32;
                     end
-                end
+                end*/
             end
             //==========================
             //  2.4 GHz Data Sender
             //==========================
             else if (i_smi_a == smi_address_read_2400) begin
-                if (r_last_soe != i_smi_soe_se) begin
+                if (r_last_soe_2 == 1'b0 && i_smi_soe_se == 1'b1) begin
+                    o_smi_data_out <= r_smi_test_count_24;
+                    r_smi_test_count_24 <= r_smi_test_count_24 + 1'b1;
+                end
+                /*if (r_last_soe != i_smi_soe_se) begin
                     if (int_cnt_24 > 8) int_cnt_24 <= int_cnt_24 - 8;
-                    if (r_fifo_24_pull) begin
+
+                    if (i_smi_test) begin
+                        r_smi_test_count_24 <= r_smi_test_count_24 + 1'b1;
+                        o_smi_data_out <= r_smi_test_count_24;
+                    end else if (r_fifo_24_pull) begin
                         r_fifo_24_pull <= 1'b0;
                         o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24-1:int_cnt_24-8];
                     end
-                end
-                else if (i_smi_soe_se == 1'b1) begin
+                end else if (i_smi_soe_se == 1'b1) begin
                     if (int_cnt_24 > 0) begin
                         r_fifo_24_pull <= 1'b0;
                         o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24-1:int_cnt_24-8];
@@ -143,17 +164,20 @@ module smi_ctrl
                         r_fifo_24_pull <=1'b1;
                         int_cnt_24 <= 6'd32;
                     end
-                end
+                end*/
             end
             else begin
+                o_smi_data_out <= 8'b00000000;
                 // error with address
                 o_address_error <= 1'b1;
             end
 
-            r_last_soe <= i_smi_soe_se;
+            r_last_soe_2 <= r_last_soe_1;
+            r_last_soe_1 <= i_smi_soe_se;
         end
     end
 
+    //assign o_smi_data_out = 8'b01011010;
     assign o_fifo_09_pull = r_fifo_09_pull;
     assign o_fifo_24_pull = r_fifo_24_pull;
     assign o_smi_writing = i_smi_a[2];

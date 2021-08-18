@@ -296,7 +296,7 @@ module top(
    smi_ctrl smi_ctrl_ins
    (
       .i_reset (w_soft_reset),
-      .i_sys_clk (w_clock_sys),
+      .i_sys_clk (i_glob_clock),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),
       .o_data_out (w_tx_data_smi),
@@ -322,6 +322,7 @@ module top(
       .o_smi_read_req (w_smi_read_req),
       .o_smi_write_req (w_smi_write_req),
       .o_smi_writing (w_smi_writing),
+      .i_smi_test (w_smi_test),
       .o_address_error ()
    );
 
@@ -331,13 +332,15 @@ module top(
    wire w_smi_read_req;
    wire w_smi_write_req;
    wire w_smi_writing;
+   wire w_smi_test;
 
+   //assign w_smi_data_output = 8'b10100101;
+   assign w_smi_test = 1'b1;
    assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
    assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
    assign w_smi_data_input = io_smi_data;
    assign o_smi_write_req = (w_smi_writing)?w_smi_write_req:1'bZ;
    assign o_smi_read_req = (w_smi_writing)?w_smi_read_req:1'bZ;
-
 
    // Testing - output the clock signal (positive and negative) to the PMOD
    assign io_pmod[0] = (w_smi_writing)?w_smi_read_req:1'bZ;
