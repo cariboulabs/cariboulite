@@ -37,7 +37,7 @@ For the first setup of the device, the write-protect pin of the EEPROM needs to 
 
 ## Clocking
 The FPGA is externally clocked by a crystal oscillator of 125MHz located in the bottom side of the board.
-Clocking the FPGA from the RPI GPCLK (GPIO4 / GPCLK0 / SMI_SA1) is also possible but not recommanded as it may cause substancial increase in the board EMI. For that reason, the GPCLK option is possible but not used in the mainline hardware version. Hacking the possibility to clock from the RPI is a good idea though.
+Clocking the FPGA from the RPI GPCLK (GPIO4 / GPCLK0 / SMI_SA1) is also possible but not recommanded as it may cause substantial increase in the board EMI. For that reason, the GPCLK option is possible but not used in the mainline hardware version. Hacking the possibility to clock from the RPI is a good idea though.
 
 The MODEM (AT86RF215) is clocked from a 26MHz TCXO (bottom layer). This device provides a stable and low phase noise clock reference to the receivers and transmitters within the IC. The MODEM further outputs a buffered version of the input clock (typically 26MHz, but other possibilities exist as well), to the MIXER input. A capacitor divider circuit adapts the LVCMOS output from the MODEM to the input levels of the MIXER.
 
