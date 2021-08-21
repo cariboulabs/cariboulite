@@ -5109,7 +5109,7 @@ D*/
 /*F*/
 rawCbs_t *rawWaveCBAdr(int cbNum);
 /*D
-Return the (Linux) address of contol block cbNum.
+Return the (Linux) address of control block cbNum.
 
 . .
 cbNum: the cb of interest
@@ -5361,7 +5361,7 @@ An 8-bit byte value.
 
 cbNum::
 
-A number identifying a DMA contol block.
+A number identifying a DMA control block.
 
 cfgMicros::
 

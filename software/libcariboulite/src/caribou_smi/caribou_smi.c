@@ -116,7 +116,7 @@ int caribou_smi_init(caribou_smi_st* dev)
     // the allocation is page_size rounded-up
     // The page-size if 0x1000 = (4096) decimal. Thus for a CB sized 32byte => 128 maximal number of CBs
     // Sample size from the modem is 4 bytes and each buffer contains "sample_buf_length" samples.
-    // We allocate unchahced memory for max 128 CBs and "num_sample_bufs" sample buffers
+    // We allocate uncached memory for max 128 CBs and "num_sample_bufs" sample buffers
     uint32_t single_buffer_size_round = PAGE_ROUNDUP(dev->sample_buf_length * SAMPLE_SIZE_BYTES);
     dev->videocore_alloc_size = PAGE_SIZE + dev->num_sample_bufs * single_buffer_size_round;
     dev->actual_sample_buf_length_sec = (float)(single_buffer_size_round) / 16e6;
