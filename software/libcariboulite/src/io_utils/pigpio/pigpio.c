@@ -2915,7 +2915,7 @@ static uint32_t waveCbPOadr(int pos)
    page = pos/CBS_PER_OPAGE;
    slot = pos%CBS_PER_OPAGE;
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaOBus contains bus addresses, not virtual addresses.
    return (uint32_t)(uintptr_t) &dmaOBus[page]->cb[slot];
 }
@@ -2948,7 +2948,7 @@ static uint32_t waveOOLPOadr(int pos)
 
    waveOOLPageSlot(pos, &page, &slot);
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaOBus contains bus addresses, not virtual addresses.
    return (uint32_t)(uintptr_t) &dmaOBus[page]->OOL[slot];
 }
@@ -3066,7 +3066,7 @@ static int wave2Cbs(unsigned wave_mode, int *CB, int *BOOL, int *TOOL,
       p->dst  = PWM_TIMER;
    }
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaOBus contains bus addresses, not virtual addresses.
    p->src    = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
    p->length = BPD * 20 / PI_WF_MICROS; /* 20 micros delay */
@@ -3160,7 +3160,7 @@ static int wave2Cbs(unsigned wave_mode, int *CB, int *BOOL, int *TOOL,
                p->dst  = PWM_TIMER;
             }
 
-            //cast twice to suppress compiler warning, I belive this cast is ok
+            //cast twice to suppress compiler warning, I believe this cast is ok
             //because dmaOBus contains bus addresses, not virtual addresses.
             p->src = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
 
@@ -5252,7 +5252,7 @@ static unsigned dmaNowAtICB(void)
 
    while (1)
    {
-      //cast twice to suppress compiler warning, I belive this cast is ok
+      //cast twice to suppress compiler warning, I believe this cast is ok
       //because dmaIbus contains bus addresses, not user addresses. --plugwash
       cb = (cbAddr - ((int)(uintptr_t)dmaIBus[page])) / 32;
 
@@ -5296,7 +5296,7 @@ static int dmaNowAtOCB(void)
 
    while (1)
    {
-      //cast twice to suppress compiler warning, I belive this cast is ok
+      //cast twice to suppress compiler warning, I believe this cast is ok
       //because dmaIbus contains bus addresses, not user addresses. --plugwash
       cb = (cbAddr - ((int)(uintptr_t)dmaOBus[page])) / 32;
 
@@ -5317,7 +5317,7 @@ static int dmaNowAtOCB(void)
 
    while (1)
    {
-      //cast twice to suppress compiler warning, I belive this cast is ok
+      //cast twice to suppress compiler warning, I believe this cast is ok
       //because dmaIbus contains bus addresses, not user addresses. --plugwash
       cb = (cbAddr - ((int)(uintptr_t)dmaOBus[page])) / 32;
 
@@ -5348,7 +5348,7 @@ unsigned rawWaveCB(void)
 
    while (1)
    {
-      //cast twice to suppress compiler warning, I belive this cast is ok
+      //cast twice to suppress compiler warning, I believe this cast is ok
       //because dmaIbus contains bus addresses, not user addresses. --plugwash
       cb = (cbAddr - ((int)(uintptr_t)dmaOBus[page])) / 32;
 
@@ -5385,7 +5385,7 @@ static unsigned dmaCurrentSlot(unsigned pos)
 
 static uint32_t dmaPwmDataAdr(int pos)
 {
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaIbus contains bus addresses, not user addresses. --plugwash
    return (uint32_t)(uintptr_t) &dmaIBus[pos]->periphData;
 }
@@ -5399,7 +5399,7 @@ static uint32_t dmaGpioOnAdr(int pos)
    page = pos/ON_PER_IPAGE;
    slot = pos%ON_PER_IPAGE;
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaIbus contains bus addresses, not user addresses. --plugwash
    return (uint32_t)(uintptr_t) &dmaIBus[page]->gpioOn[slot];
 }
@@ -5412,7 +5412,7 @@ static uint32_t dmaGpioOffAdr(int pos)
 
    myOffPageSlot(pos, &page, &slot);
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaIbus contains bus addresses, not user addresses. --plugwash
    return (uint32_t)(uintptr_t) &dmaIBus[page]->gpioOff[slot];
 }
@@ -5425,7 +5425,7 @@ static uint32_t dmaTickAdr(int pos)
 
    myTckPageSlot(pos, &page, &slot);
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaIbus contains bus addresses, not user addresses. --plugwash
    return (uint32_t)(uintptr_t) &dmaIBus[page]->tick[slot];
 }
@@ -5438,7 +5438,7 @@ static uint32_t dmaReadLevelsAdr(int pos)
 
    myLvsPageSlot(pos, &page, &slot);
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaIbus contains bus addresses, not user addresses. --plugwash
    return (uint32_t)(uintptr_t) &dmaIBus[page]->level[slot];
 }
@@ -5452,7 +5452,7 @@ static uint32_t dmaCbAdr(int pos)
    page = (pos/CBS_PER_IPAGE);
    slot = (pos%CBS_PER_IPAGE);
 
-   //cast twice to suppress compiler warning, I belive this cast is ok
+   //cast twice to suppress compiler warning, I believe this cast is ok
    //because dmaIbus contains bus addresses, not user addresses. --plugwash
    return (uint32_t)(uintptr_t) &dmaIBus[page]->cb[slot];
 }
@@ -6355,7 +6355,7 @@ static void * pthAlertThread(void *x)
 
             dmaInitCbs();
             flushMemory();
-            //cast twice to suppress compiler warning, I belive this cast is ok
+            //cast twice to suppress compiler warning, I believe this cast is ok
             //because dmaIbus contains bus addresses, not user addresses. --plugwash
             initDMAgo((uint32_t *)dmaIn, (uint32_t)(uintptr_t)dmaIBus[0]);
             myGpioDelay(5000); /* let DMA run for a while */
@@ -7502,7 +7502,7 @@ static int initZaps
 
       if (physical)
       {
-         //cast twice to suppress warning, I belive this is ok as these
+         //cast twice to suppress warning, I believe this is ok as these
          //are bus addresses, not virtual addresses. --plugwash
          dmaBus[basePage+n] = (dmaPage_t *)(uintptr_t) (physical | pi_dram_bus);
 
@@ -8444,7 +8444,7 @@ int initInitialise(void)
 
    flushMemory();
 
-   //cast twice to suppress compiler warning, I belive this cast
+   //cast twice to suppress compiler warning, I believe this cast
    //is ok because dmaIBus contains bus addresses, not virtual
    //addresses.
    initDMAgo((uint32_t *)dmaIn, (uint32_t)(uintptr_t)dmaIBus[0]);
@@ -9982,7 +9982,7 @@ static uint32_t chainGetValPadr(int n)
       block = n / WCB_CHAIN_OOL;
       index = n % WCB_CHAIN_OOL;
       p = (uint32_t *) dmaOBus[block] + (WCB_COUNTER_CBS+WCB_CHAIN_CBS) * 8;
-      //cast twice to suppress warning, I belive this is ok as dmaOBus
+      //cast twice to suppress warning, I believe this is ok as dmaOBus
       //contains bus addresses not virtual addresses.
       return (uint32_t)(uintptr_t) (p + index);
    }
@@ -10016,7 +10016,7 @@ static uint32_t chainGetCntValPadr(int counter, int slot)
    page = counter / 2;
    offset = (counter % 2 ? WCB_COUNTER_OOL : 0);
    p = (uint32_t *) dmaOBus[page] + (WCB_COUNTER_CBS+WCB_CHAIN_CBS) * 8;
-   //cast twice to suppress warning, I belive this is ok as dmaOBus
+   //cast twice to suppress warning, I believe this is ok as dmaOBus
    //contains bus addresses not virtual addresses. --plugwash
    return (uint32_t)(uintptr_t)(p + WCB_CHAIN_OOL + offset + slot);
 }
@@ -10176,7 +10176,7 @@ int gpioWaveChain(char *buf, unsigned bufSize)
       p->dst  = PWM_TIMER;
    }
 
-   //cast twice to suppress warning, I belive this is ok as dmaOBus
+   //cast twice to suppress warning, I believe this is ok as dmaOBus
    //contains bus addresses not virtual addresses. --plugwash
    p->src    = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
    p->length = BPD * 20 / PI_WF_MICROS; /* 20 micros delay */
@@ -10268,7 +10268,7 @@ int gpioWaveChain(char *buf, unsigned bufSize)
 
                /* dummy src and dest */
                p->info = NORMAL_DMA;
-               //cast twice to suppress warning, I belive this is ok as dmaOBus
+               //cast twice to suppress warning, I believe this is ok as dmaOBus
                //contains bus addresses not virtual addresses. --plugwash
                p->src = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
                p->dst = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
@@ -10322,7 +10322,7 @@ int gpioWaveChain(char *buf, unsigned bufSize)
                      p->dst  = PWM_TIMER;
                   }
 
-                  //cast twice to suppress warning, I belive this is ok as dmaOBus
+                  //cast twice to suppress warning, I believe this is ok as dmaOBus
                   //contains bus addresses not virtual addresses. --plugwash
                   p->src = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
 
@@ -10363,7 +10363,7 @@ int gpioWaveChain(char *buf, unsigned bufSize)
 
             /* dummy src and dest */
             p->info = NORMAL_DMA;
-            //cast twice to suppress warning, I belive this is ok as dmaOBus
+            //cast twice to suppress warning, I believe this is ok as dmaOBus
             //contains bus addresses not virtual addresses. --plugwash
             p->src = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
             p->dst = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
@@ -10414,7 +10414,7 @@ int gpioWaveChain(char *buf, unsigned bufSize)
 
    p->info   = NORMAL_DMA;
 
-   //cast twice to suppress warning, I belive this is ok as dmaOBus
+   //cast twice to suppress warning, I believe this is ok as dmaOBus
    //contains bus addresses not virtual addresses. --plugwash
    p->src    = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
    p->dst    = (uint32_t)(uintptr_t) (&dmaOBus[0]->periphData);
