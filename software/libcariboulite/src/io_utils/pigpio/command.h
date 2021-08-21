@@ -88,7 +88,7 @@ typedef struct
 
 typedef struct
 {
-   uintptr_t p[5]; //these are sometimes converted to pointers, so presumablly they sometimes have pointers stored in them, I haven't figured out where though. --plugwash
+   uintptr_t p[5]; //these are sometimes converted to pointers, so presumably they sometimes have pointers stored in them, I haven't figured out where though. --plugwash
    int8_t opt[4];
 } cmdInstr_t;
 

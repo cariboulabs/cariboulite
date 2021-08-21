@@ -18,7 +18,7 @@
 // Union of 32-bit value with register bitfields
 #define REG_DEF(name, fields) typedef union {struct {volatile uint32_t fields;}; volatile uint32_t value;} name
 
-// VC flags for unchached DMA memory
+// VC flags for uncached DMA memory
 #define DMA_MEM_FLAGS (MEM_FLAG_COHERENT | MEM_FLAG_ZERO)
 
 

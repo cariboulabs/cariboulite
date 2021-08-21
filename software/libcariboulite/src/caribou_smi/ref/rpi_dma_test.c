@@ -94,7 +94,7 @@ typedef enum {
     MEM_FLAG_HINT_PERMALOCK = 1<<6, // Likely to be locked for long periods of time
     MEM_FLAG_L1_NONALLOCATING=(MEM_FLAG_DIRECT | MEM_FLAG_COHERENT) // Allocating in L2
 } VC_ALLOC_FLAGS;
-// VC flags for unchached DMA memory
+// VC flags for uncached DMA memory
 #define DMA_MEM_FLAGS (MEM_FLAG_DIRECT|MEM_FLAG_ZERO)
 
 // Mailbox command/response structure
