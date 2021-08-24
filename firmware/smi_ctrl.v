@@ -115,8 +115,10 @@ module smi_ctrl
             //==========================
             if (i_smi_a == smi_address_read_900) begin
                 if (r_last_soe_2 == 1'b0 && r_last_soe_1 == 1'b1) begin
-                    o_smi_data_out <= r_smi_test_count_09;
-                    r_smi_test_count_09 <= r_smi_test_count_09 + 1'b1;
+                    if (i_smi_test) begin
+                        o_smi_data_out <= r_smi_test_count_09;
+                        r_smi_test_count_09 <= r_smi_test_count_09 + 1'b1;
+                    end
                 end
                 /*if (r_last_soe != i_smi_soe_se) begin
                     if (int_cnt_09 > 8) int_cnt_09 <= int_cnt_09 - 8;
@@ -143,8 +145,10 @@ module smi_ctrl
             //==========================
             else if (i_smi_a == smi_address_read_2400) begin
                 if (r_last_soe_2 == 1'b0 && i_smi_soe_se == 1'b1) begin
-                    o_smi_data_out <= r_smi_test_count_24;
-                    r_smi_test_count_24 <= r_smi_test_count_24 + 1'b1;
+                    if (i_smi_test) begin
+                        o_smi_data_out <= r_smi_test_count_24;
+                        r_smi_test_count_24 <= r_smi_test_count_24 + 1'b1;
+                    end
                 end
                 /*if (r_last_soe != i_smi_soe_se) begin
                     if (int_cnt_24 > 8) int_cnt_24 <= int_cnt_24 - 8;
