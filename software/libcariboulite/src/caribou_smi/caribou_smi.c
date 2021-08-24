@@ -28,7 +28,6 @@ int caribou_smi_init(caribou_smi_st* dev)
 
     ZF_LOGI("initializing caribou_smi");
 
-
     int fd = open(smi_file, O_RDWR);
     if (fd < 0)
     {
