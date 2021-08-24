@@ -46,11 +46,3 @@ unistd.h
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
 
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/test_caribou_smi.c
-stdio.h
--
-stdint.h
--
-caribou_smi.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
-
