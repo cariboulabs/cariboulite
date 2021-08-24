@@ -8,7 +8,7 @@ include_directories(/.)
 include_directories(${SUPER_DIR})
 
 #However, the file(GLOB...) allows for wildcard additions:
-set(SOURCES_LIB caribou_smi.c dma_utils.c mbox_utils.c register_utils.c)
+set(SOURCES_LIB caribou_smi.c)
 set(SOURCES ${SOURCES_LIB} test_caribou_smi.c)
 set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a ${SUPER_DIR}/zf_log/build/libzf_log.a)
 
