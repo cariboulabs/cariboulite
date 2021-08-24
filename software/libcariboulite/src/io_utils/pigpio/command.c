@@ -870,7 +870,7 @@ int cmdParse(
 
       case 128: /* SHELL
 
-                   Two string parameters, the first space teminated.
+                   Two string parameters, the first space terminated.
                    The second arbitrary.
                 */
          f = sscanf(buf+ctl->eaten, " %*s%n %n", &n, &n2);
