@@ -29,6 +29,8 @@ caribou_smi.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
 bcm2835_smi.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/bcm2835_smi.h
+string.h
+-
 fcntl.h
 -
 stdint.h
@@ -43,6 +45,14 @@ sys/stat.h
 -
 unistd.h
 -
+sched.h
+-
+pthread.h
+-
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
+pthread.h
+-
+stdint.h
+-
 
