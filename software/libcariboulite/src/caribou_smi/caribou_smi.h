@@ -64,6 +64,7 @@ typedef struct
     caribou_smi_data_callback data_cb;  // the application callback when read / write events happens
 
     uint8_t **buffers;                  // the buffer train to be allocated
+    int current_smi_buffer_index;
     uint8_t *current_smi_buffer;        // the buffer that is currently in the SMI DMA
     uint8_t *current_app_buffer;        // the buffer that is currently analyzed / written by the application callback
 

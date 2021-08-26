@@ -6,6 +6,7 @@ CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o: ../bcm2835_smi.h
 CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o: ../caribou_smi.c
 CMakeFiles/test_caribou_smi.dir/caribou_smi.c.o: ../caribou_smi.h
 
+CMakeFiles/test_caribou_smi.dir/test_caribou_smi.c.o: ../../zf_log/zf_log.h
 CMakeFiles/test_caribou_smi.dir/test_caribou_smi.c.o: ../caribou_smi.h
 CMakeFiles/test_caribou_smi.dir/test_caribou_smi.c.o: ../test_caribou_smi.c
 

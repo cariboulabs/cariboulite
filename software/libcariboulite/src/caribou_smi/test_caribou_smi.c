@@ -1,3 +1,9 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "CARIBOU_SMI_Test"
+
+#include "zf_log/zf_log.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include "caribou_smi.h"
@@ -14,7 +20,7 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-
+                ZF_LOGD("data event: stream channel %d, received %d bytes\n", ch, byte_count);
             }
             break;
 
@@ -28,14 +34,14 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
         //-------------------------------------------------------
         case caribou_smi_stream_start:
             {
-                printf("start event: stream channel %d\n", ch);
+                ZF_LOGD("start event: stream channel %d\n", ch);
             }
             break;
 
         //-------------------------------------------------------
         case caribou_smi_stream_end:
             {
-                printf("end event: stream channel %d\n", ch);
+                ZF_LOGD("end event: stream channel %d\n", ch);
             }
             break;
 
@@ -47,7 +53,7 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
 
 void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_error_en err)
 {
-    printf("Error (from %s) occured in channel %d, err# %d (%s)\n", (char*)ctx, ch, err, caribou_smi_get_error_string(err));
+    ZF_LOGD("Error (from %s) occured in channel %d, err# %d (%s)\n", (char*)ctx, ch, err, caribou_smi_get_error_string(err));
 }
 
 char program_name[] = "test_caribou_smi.c";
@@ -67,6 +73,11 @@ int main()
                                 caribou_smi_channel_900,
                                 4096, 4,
                                 caribou_smi_data_event);
+
+    printf("Press ENTER to exit...\n");
+    getchar();
+
+    printf("ENTER pressed...\n");
 
     caribou_smi_destroy_stream(&dev, stream_id);
 

@@ -196,42 +196,47 @@ static void release_buffer_vec(uint8_t** mat, int num_buffers, int buffer_size)
 //=========================================================================
 void* caribou_smi_thread(void *arg)
 {
-    pthread_t id = pthread_self();
+    pthread_t tid = pthread_self();
     caribou_smi_stream_st* st = (caribou_smi_stream_st*)arg;
     caribou_smi_st* dev = (caribou_smi_st*)st->parent_dev;
+    caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
+    caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
-    ZF_LOGD("Entered thread id %u", id);
+    ZF_LOGD("Entered thread id %u", tid);
 
     st->active = 1;
 
+    // start thread notification
     if (st->data_cb != NULL) st->data_cb(dev->cb_context,
                                         caribou_smi_stream_start,
-                                        (caribou_smi_channel_en)(st->stream_id>>1),
+                                        ch,
                                         0,
                                         st->current_app_buffer,
                                         st->batch_length);
 
+    // thread main loop
     while (st->active)
     {
         int ret = caribou_smi_timeout_read(dev, st->addr, st->current_smi_buffer, st->batch_length, 100);
         if (ret < 0)
         {
-            if (dev->error_cb) dev->error_cb(dev->cb_context, caribou_smi_error_read_failed, )
+            if (dev->error_cb) dev->error_cb(dev->cb_context, st->stream_id & 0x1, caribou_smi_error_read_failed);
         }
-        usleep(10000);
-    }
-    /*if(pthread_equal(id,tid[0]))
-    {
-        printf("\n First thread processing\n");
-    }
-    else
-    {
-        printf("\n Second thread processing\n");
+
+        st->current_app_buffer = st->current_smi_buffer;
+        if (st->data_cb) st->data_cb(dev->cb_context,
+                                    type,
+                                    ch,
+                                    ret,
+                                    st->current_app_buffer,
+                                    st->batch_length);
+
+        st->current_smi_buffer_index ++;
+        if (st->current_smi_buffer_index >= st->num_of_buffers) st->current_smi_buffer_index = 0;
+        st->current_smi_buffer = st->buffers[st->current_smi_buffer_index];
     }
 
-    for(i=0; i<(0xFFFFFFFF);i++);
-*/
-
+    // exit thread notification
     if (st->data_cb != NULL) st->data_cb(dev->cb_context,
                                         caribou_smi_stream_end,
                                         (caribou_smi_channel_en)(st->stream_id>>1),
@@ -239,7 +244,7 @@ void* caribou_smi_thread(void *arg)
                                         st->current_app_buffer,
                                         st->batch_length);
 
-    ZF_LOGD("Exiting thread id %u", id);
+    ZF_LOGD("Exiting thread id %u", tid);
     return NULL;
 }
 
@@ -269,6 +274,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
         return -1;
     }
 
+    st->current_smi_buffer_index = 0;
     st->current_smi_buffer = st->buffers[0];
     st->current_app_buffer = NULL;
 
@@ -333,6 +339,7 @@ static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type
     st->data_cb = NULL;
 
     st->buffers = NULL;
+    st->current_smi_buffer_index = 0;
     st->current_smi_buffer = NULL;
     st->current_app_buffer = NULL;
 
