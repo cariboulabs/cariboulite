@@ -335,7 +335,7 @@ module top(
    wire w_smi_test;
 
    //assign w_smi_data_output = 8'b10100101;
-   assign w_smi_test = 1'b1;
+   assign w_smi_test = 1'b0;
    assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
    assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
    assign w_smi_data_input = io_smi_data;
