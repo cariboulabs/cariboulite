@@ -10,17 +10,36 @@
 
 caribou_smi_st dev = {0};
 
-
-
 void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_smi_channel_en ch,
                             uint32_t byte_count, uint8_t *buffer, uint32_t buffer_len_bytes)
 {
+    static int c = 1;
+    static uint8_t last_byte = 0;
+    static int err_count = 0;
     switch(type)
     {
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-                ZF_LOGD("data event: stream channel %d, received %d bytes\n", ch, byte_count);
+                //ZF_LOGD("data event: stream channel %d, received %d bytes\n", ch, byte_count);
+                for (int i = 0; i< byte_count; i++)
+                {
+                    uint8_t dist = (uint8_t)(buffer[i] - last_byte);
+                    if ( dist > 1)
+                    {
+                        err_count ++;
+                        float bER = (float)(err_count) / (float)(c);
+                        printf("ERR > at %d, dist: %d, V: %d, bER: %.7f\n", c, dist, buffer[i], bER);
+                    }
+                    /*printf("CUR CHUNK >  %d %d %d %d ... %d %d %d %d\n", buffer[0],buffer[1],buffer[2],buffer[3],
+                                                                        buffer[byte_count-4],
+                                                                        buffer[byte_count-3],
+                                                                        buffer[byte_count-2],
+                                                                        buffer[byte_count-1]);
+                    */
+                    last_byte = buffer[i];
+                    c++;
+                }
             }
             break;
 
