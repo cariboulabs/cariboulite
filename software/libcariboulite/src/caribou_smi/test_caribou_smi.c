@@ -22,7 +22,7 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
         case caribou_smi_stream_type_read:
             {
                 //ZF_LOGD("data event: stream channel %d, received %d bytes\n", ch, byte_count);
-                for (int i = 0; i< byte_count; i++)
+                /*for (int i = 0; i< byte_count; i++)
                 {
                     uint8_t dist = (uint8_t)(buffer[i] - last_byte);
                     if ( dist > 1)
@@ -31,15 +31,24 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
                         float bER = (float)(err_count) / (float)(c);
                         printf("ERR > at %d, dist: %d, V: %d, bER: %.7f\n", c, dist, buffer[i], bER);
                     }
-                    /*printf("CUR CHUNK >  %d %d %d %d ... %d %d %d %d\n", buffer[0],buffer[1],buffer[2],buffer[3],
+
+                    last_byte = buffer[i];
+                    c++;
+                }*/
+                if ( byte_count > 0 )
+                {
+                    /*printf("CUR %d CHUNK >  %02x %02x %02x %02x ... %02x %02x %02x %02x\n", c,
+                                                                        buffer[0],
+                                                                        buffer[1],
+                                                                        buffer[2],
+                                                                        buffer[3],
                                                                         buffer[byte_count-4],
                                                                         buffer[byte_count-3],
                                                                         buffer[byte_count-2],
-                                                                        buffer[byte_count-1]);
-                    */
-                    last_byte = buffer[i];
-                    c++;
+                                                                        buffer[byte_count-1]);*/
                 }
+                else printf("CUR %d MISSED\n", c);
+                c++;
             }
             break;
 
@@ -53,14 +62,14 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
         //-------------------------------------------------------
         case caribou_smi_stream_start:
             {
-                ZF_LOGD("start event: stream channel %d\n", ch);
+                ZF_LOGD("start event: stream channel %d, batch length: %d bytes\n", ch, buffer_len_bytes);
             }
             break;
 
         //-------------------------------------------------------
         case caribou_smi_stream_end:
             {
-                ZF_LOGD("end event: stream channel %d\n", ch);
+                ZF_LOGD("end event: stream channel %d, batch length: %d bytes\n", ch, buffer_len_bytes);
             }
             break;
 
@@ -79,18 +88,18 @@ char program_name[] = "test_caribou_smi.c";
 
 int main()
 {
-    int count = 4096*32;
-    int num_of_rounds = 1;
-    uint32_t buffer[count];
-    uint8_t* b8 = (uint8_t*)buffer;
-    int hist[256] = {0};
+    //int count = 4096*32;
+    //int num_of_rounds = 1;
+    //uint32_t buffer[count];
+    //uint8_t* b8 = (uint8_t*)buffer;
+    //int hist[256] = {0};
 
     caribou_smi_init(&dev, caribou_smi_error_event, program_name);
 
     int stream_id = caribou_smi_setup_stream(&dev,
                                 caribou_smi_stream_type_read,
                                 caribou_smi_channel_900,
-                                4096, 4,
+                                4096*4*10, 2,                      // ~10 milliseconds of I/Q sample (32 bit)
                                 caribou_smi_data_event);
 
     printf("Press ENTER to exit...\n");
@@ -100,7 +109,7 @@ int main()
 
     caribou_smi_destroy_stream(&dev, stream_id);
 
-    for (int j = 0; j < num_of_rounds; j++)
+    /*for (int j = 0; j < num_of_rounds; j++)
     {
         int ret = caribou_smi_timeout_read(&dev, caribou_smi_address_read_900, (uint8_t*)buffer, count*sizeof(uint32_t), 100);
         if (ret > 0)
@@ -129,6 +138,6 @@ int main()
         }
     }
     printf(" Byte Error Rate: %.10g, %d total, %d errors\n", (float)(error_bytes) / (float)(total_bytes), total_bytes, error_bytes);
-
+    */
     caribou_smi_close (&dev);
 }

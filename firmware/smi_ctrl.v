@@ -89,96 +89,68 @@ module smi_ctrl
     // Tell the RPI that data is pending in either of the two fifos
     assign o_smi_read_req = !i_fifo_09_empty || !i_fifo_24_empty || i_smi_test;
 
-    reg r_last_soe_1;
-    reg r_last_soe_2;
-    reg [5:0] int_cnt_09;
-    reg [5:0] int_cnt_24;
+    reg [4:0] int_cnt_09;
+    reg [4:0] int_cnt_24;
     reg r_fifo_09_pull;
+    reg r_fifo_09_pull_1;
+    wire w_fifo_09_pull_trigger;
     reg r_fifo_24_pull;
+    reg r_fifo_24_pull_1;
+    wire w_fifo_24_pull_trigger;
     reg [7:0] r_smi_test_count_09;
     reg [7:0] r_smi_test_count_24;
-    wire soe_change_falling;
 
-    assign soe_change_falling = (r_last_soe_2 == 1'b1 && r_last_soe_1 == 1'b0);
+    wire soe_and_reset;
+    assign soe_and_reset = !i_reset && i_smi_soe_se;
+    assign w_fifo_09_pull_trigger = !i_fifo_09_empty && (int_cnt_09 == 5'd31);
+    assign w_fifo_24_pull_trigger = !i_fifo_24_empty && (int_cnt_24 == 5'd31);
+
+    always @(negedge soe_and_reset)
+    begin
+        if (i_reset) begin
+            int_cnt_09 <= 5'd31;
+            int_cnt_24 <= 5'd31;
+            r_smi_test_count_09 <= 8'b00000000;
+            r_smi_test_count_24 <= 8'b00000000;
+        end else begin
+            if (i_smi_a == smi_address_read_900) begin
+                if ( i_smi_test ) begin
+                    o_smi_data_out <= r_smi_test_count_09;
+                    r_smi_test_count_09 <= r_smi_test_count_09 + 1'b1;
+                end else begin
+                    int_cnt_09 <= int_cnt_09 - 8;
+                    o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09:int_cnt_09-7];
+                end
+            end else if (i_smi_a == smi_address_read_2400) begin
+                if ( i_smi_test ) begin
+                    o_smi_data_out <= r_smi_test_count_24;
+                    r_smi_test_count_24 <= r_smi_test_count_24 + 1'b1;
+                end else begin
+                    int_cnt_24 <= int_cnt_24 - 8;
+                    o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24:int_cnt_24-7];
+                end
+            end
+        end
+    end
 
     always @(posedge i_sys_clk)
     begin
         if (i_reset) begin
-            int_cnt_09 <= 6'd32;
-            int_cnt_24 <= 6'd32;
-            r_last_soe_1 <= 1'b1;
-            r_last_soe_2 <= 1'b1;
             r_fifo_09_pull <= 1'b0;
             r_fifo_24_pull <= 1'b0;
-            r_smi_test_count_09 <= 8'b00000000;
-            r_smi_test_count_24 <= 8'b00000000;
+            r_fifo_09_pull_1 <= 1'b0;
+            r_fifo_24_pull_1 <= 1'b0;
         end else begin
-            //==========================
-            //  0.9 GHz Data Sender
-            //==========================
-            if (i_smi_a == smi_address_read_900) begin
-                if (soe_change_falling) begin
-                    if (i_smi_test == 1'b1) begin
-                        o_smi_data_out <= r_smi_test_count_09;
-                        r_smi_test_count_09 <= r_smi_test_count_09 + 1'b1;
-                    end else begin
-                        if (int_cnt_09 > 8) int_cnt_09 <= int_cnt_09 - 8;
-
-                        if (r_fifo_09_pull) begin
-                            r_fifo_09_pull <= 1'b0;
-                            o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09-1:int_cnt_09-8];
-                        end
-                    end
-                end else if (r_last_soe_1 == 1'b1 && i_smi_test == 1'b0) begin
-                    if (int_cnt_09 > 0) begin
-                        r_fifo_09_pull <= 1'b0;
-                        o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09-1:int_cnt_09-8];
-                    end else if ((i_fifo_09_empty == 1'b0) && (int_cnt_09 == 6'd0)) begin
-                        r_fifo_09_pull <=1'b1;
-                        int_cnt_09 <= 6'd32;
-                    end
-                end
-            end
-            //==========================
-            //  2.4 GHz Data Sender
-            //==========================
-            else if (i_smi_a == smi_address_read_2400) begin
-                if (soe_change_falling) begin
-                    if (i_smi_test == 1'b1) begin
-                        o_smi_data_out <= r_smi_test_count_24;
-                        r_smi_test_count_24 <= r_smi_test_count_24 + 1'b1;
-                    end else begin
-                        if (int_cnt_24 > 8) int_cnt_24 <= int_cnt_24 - 8;
-
-                        if (r_fifo_24_pull) begin
-                            r_fifo_24_pull <= 1'b0;
-                            o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24-1:int_cnt_24-8];
-                        end
-                    end
-                end else if (r_last_soe_1 == 1'b1 && i_smi_test == 1'b0) begin
-                    if (int_cnt_24 > 0) begin
-                        r_fifo_24_pull <= 1'b0;
-                        o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24-1:int_cnt_24-8];
-                    end else if ((i_fifo_24_empty == 1'b0) && (int_cnt_24 == 6'd0)) begin
-                        r_fifo_24_pull <=1'b1;
-                        int_cnt_24 <= 6'd32;
-                    end
-                end
-            end
-            else begin
-                //o_smi_data_out <= 8'b00000000;
-                // error with address
-                o_address_error <= 1'b1;
-            end
-
-            r_last_soe_2 <= r_last_soe_1;
-            r_last_soe_1 <= i_smi_soe_se;
+            r_fifo_09_pull <= w_fifo_09_pull_trigger;
+            r_fifo_24_pull <= w_fifo_24_pull_trigger;
+            r_fifo_09_pull_1 <= r_fifo_09_pull;
+            r_fifo_24_pull_1 <= r_fifo_24_pull;
         end
     end
 
     //assign o_smi_data_out = 8'b01011010;
-    assign o_fifo_09_pull = r_fifo_09_pull;
-    assign o_fifo_24_pull = r_fifo_24_pull;
+    assign o_fifo_09_pull = !r_fifo_09_pull_1 && r_fifo_09_pull && !i_fifo_09_empty;
+    assign o_fifo_24_pull = !r_fifo_24_pull_1 && r_fifo_24_pull && !i_fifo_24_empty;
     assign o_smi_writing = i_smi_a[2];
 
 endmodule // smi_ctrl
