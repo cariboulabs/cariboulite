@@ -196,6 +196,9 @@ module top(
       .USER_SIGNAL_TO_GLOBAL_BUFFER (lvds_clock),
       .GLOBAL_BUFFER_OUTPUT(lvds_clock_buf) );
 
+   // optional for better fanout: seperate the 09 and the 24 buffers and give them
+   // both a semparate constraint in the pcf file.
+
    // Differential 2.4GHz I/Q DDR signal
    SB_IO #(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
@@ -256,6 +259,9 @@ module top(
       .o_fifo_data (w_rx_09_fifo_data)
    );
 
+   //assign w_rx_09_fifo_data = 32'b01011010110000111110011111110001;
+   //assign w_rx_09_fifo_pulled_data = 32'b01011010110000111110011111110000;
+
    complex_fifo rx_09_fifo(
       .wr_rst_i (w_soft_reset),
       .wr_clk_i (w_rx_09_fifo_write_clk),
@@ -296,7 +302,7 @@ module top(
    smi_ctrl smi_ctrl_ins
    (
       .i_reset (w_soft_reset),
-      .i_sys_clk (i_glob_clock),
+      .i_sys_clk (w_clock_sys),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),
       .o_data_out (w_tx_data_smi),
@@ -334,7 +340,6 @@ module top(
    wire w_smi_writing;
    wire w_smi_test;
 
-   //assign w_smi_data_output = 8'b10100101;
    assign w_smi_test = 1'b0;
    assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
    assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
@@ -343,10 +348,13 @@ module top(
    assign o_smi_read_req = (w_smi_writing)?w_smi_read_req:1'bZ;
 
    // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = (w_smi_writing)?w_smi_read_req:1'bZ;
-   assign io_pmod[1] = (w_smi_writing)?w_smi_write_req:1'bZ;
+   assign io_pmod[0] = w_rx_09_fifo_push;
+   assign io_pmod[1] = w_rx_09_fifo_pull;
    assign io_pmod[2] = w_rx_09_fifo_empty;
-   assign io_pmod[3] = i_smi_soe_se;
-   assign io_pmod[7:4] = w_rx_09_fifo_data[5:2];
+   assign io_pmod[3] = w_rx_09_fifo_full;
+   assign io_pmod[4] = i_smi_soe_se;
+   assign io_pmod[5] = o_smi_read_req;
+   assign io_pmod[6] = w_smi_addr[0];
+   assign io_pmod[7] = w_smi_addr[1];
 
 endmodule // top

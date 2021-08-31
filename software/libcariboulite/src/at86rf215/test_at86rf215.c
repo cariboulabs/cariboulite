@@ -135,7 +135,7 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
 #define NO_FPGA_MODE        0
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
-#define TEST_IQ_RX_WIND     0
+#define TEST_IQ_RX_WIND     1
 
 // -----------------------------------------------------------------------------------------
 // MAIN

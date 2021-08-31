@@ -106,14 +106,14 @@ SB_RAM40_4K #(
     .RDATA(rd_data_o[31:16]),
     .RADDR(rd_addr),
     .RCLK(rd_clk_i),
-    .RCLKE(1'b1),    //<<
+    .RCLKE(1),    //<<
     .RE(rd_en_i),
     .WADDR(wr_addr),
     .WCLK (wr_clk_i),
-    .WCLKE(1'b1),    //<<
+    .WCLKE(1),    //<<
     .WDATA(wr_data_i[31:16]),
     .WE(wr_en_i),
-    .MASK(16'hFFFF) );
+    .MASK(16'h0000) );
 
 SB_RAM40_4K #(
   .INIT_0(256'h0000000000000000000000000000000000000000000000000000000000000000),
@@ -138,13 +138,13 @@ SB_RAM40_4K #(
     .RDATA(rd_data_o[15:0]),
     .RADDR(rd_addr),
     .RCLK(rd_clk_i),
-    .RCLKE(1'b1),    //<<
+    .RCLKE(1),    //<<
     .RE(rd_en_i),
     .WADDR(wr_addr),
     .WCLK (wr_clk_i),
-    .WCLKE(1'b1),    //<<
+    .WCLKE(1),    //<<
     .WDATA(wr_data_i[15:0]),
     .WE(wr_en_i),
-    .MASK(16'hFFFF) );
+    .MASK(16'h0000) );
 
 endmodule

@@ -194,6 +194,49 @@ static void release_buffer_vec(uint8_t** mat, int num_buffers, int buffer_size)
 }
 
 //=========================================================================
+static void set_realtime_priority() 
+{
+    int ret;
+
+    // We'll operate on the currently running thread.
+    pthread_t this_thread = pthread_self();
+    // struct sched_param is used to store the scheduling priority
+    struct sched_param params;
+
+    // We'll set the priority to the maximum.
+    params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    ZF_LOGI("Trying to set thread realtime prio = %d", params.sched_priority);
+
+    // Attempt to set thread real-time priority to the SCHED_FIFO policy
+    ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
+    if (ret != 0) 
+    {
+        // Print the error
+        ZF_LOGE("Unsuccessful in setting thread realtime prio");
+        return;     
+    }
+    // Now verify the change in thread priority
+    int policy = 0;
+    ret = pthread_getschedparam(this_thread, &policy, &params);
+    if (ret != 0) 
+    {
+        ZF_LOGE("Couldn't retrieve real-time scheduling paramers");
+        return;
+    }
+
+    // Check the correct policy was applied
+    if(policy != SCHED_FIFO) 
+    {
+        ZF_LOGE("Scheduling is NOT SCHED_FIFO!");
+    } else {
+        ZF_LOGI("SCHED_FIFO OK");
+    }
+
+    // Print thread scheduling priority
+    ZF_LOGI("Thread priority is %d", params.sched_priority);
+}
+
+//=========================================================================
 void* caribou_smi_thread(void *arg)
 {
     pthread_t tid = pthread_self();
@@ -203,6 +246,8 @@ void* caribou_smi_thread(void *arg)
     caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
     ZF_LOGD("Entered thread id %u", tid);
+
+    set_realtime_priority();
 
     st->active = 1;
 
@@ -217,7 +262,7 @@ void* caribou_smi_thread(void *arg)
     // thread main loop
     while (st->active)
     {
-        int ret = caribou_smi_timeout_read(dev, st->addr, st->current_smi_buffer, st->batch_length, 100);
+        int ret = caribou_smi_timeout_read(dev, st->addr, st->current_smi_buffer, st->batch_length, 10);
         if (ret < 0)
         {
             if (dev->error_cb) dev->error_cb(dev->cb_context, st->stream_id & 0x1, caribou_smi_error_read_failed);
@@ -364,10 +409,10 @@ static void caribou_smi_print_smi_settings(struct smi_settings *settings)
 //=========================================================================
 static void caribou_smi_setup_settings (struct smi_settings *settings)
 {
-    settings->read_setup_time = 1;
-    settings->read_strobe_time = 3;
-    settings->read_hold_time = 1;
-    settings->read_pace_time = 2;
+    settings->read_setup_time = 0;
+    settings->read_strobe_time = 4;
+    settings->read_hold_time = 0;
+    settings->read_pace_time = 0;
     settings->write_setup_time = 1;
     settings->write_hold_time = 1;
     settings->write_pace_time = 2;

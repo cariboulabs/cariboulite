@@ -24,6 +24,14 @@
 
 # For the iCE40 UltraPlus (iCE40LP1K-QN84) Breakout Board
 
+
+set_frequency i_glob_clock 125
+set_frequency r_counter[0] 64
+#set_frequency smi_ctrl_ins.soe_and_reset 16
+#set_frequency i_smi_swe_srw 16
+set_frequency lvds_clock_buf 70
+#set_frequency i_sck 10
+
 # CLOCK
 set_io i_glob_clock     A29
 
@@ -92,3 +100,4 @@ set_io i_mosi		    A22
 set_io i_sck		    A23
 set_io i_ss		        B18
 set_io o_miso		    B17
+
