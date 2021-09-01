@@ -62,7 +62,7 @@ module top(
    //=========================================================================
    // INNER SIGNALS
    //=========================================================================
-   reg [1:0]   r_counter;
+   reg         r_counter;
    wire        w_clock_spi;
    wire        w_clock_sys;
    wire [4:0]  w_ioc;
@@ -82,7 +82,7 @@ module top(
    // INITIAL STATE
    //=========================================================================
    initial begin
-      r_counter = 2'b00;
+      r_counter = 2'b0;
       r_reset = 1'b0;
    end
 
@@ -92,7 +92,7 @@ module top(
    spi_if spi_if_ins
    (
       .i_rst_b (w_soft_reset),
-      .i_sys_clk (w_clock_spi),
+      .i_sys_clk (w_clock_sys),
       .o_ioc (w_ioc),
       .o_data_in (w_rx_data),
       .i_data_out (r_tx_data),
@@ -158,16 +158,24 @@ module top(
    //=========================================================================
    // CONBINATORIAL ASSIGNMENTS
    //=========================================================================
-   assign w_clock_spi = r_counter[0];
-   assign w_clock_sys = r_counter[0];
+   //assign w_clock_spi = r_counter[0];
+   //assign w_clock_sys = r_counter[0];
+
+   SB_GB sys_clk_buffer (          // Improve 'lvds_clock' fanout by pushing it into
+                                    // a global high-fanout buffer
+      .USER_SIGNAL_TO_GLOBAL_BUFFER (r_counter),
+      .GLOBAL_BUFFER_OUTPUT(w_clock_sys) );
 
    //=========================================================================
    // CLOCK AND DATA-FLOW
    //=========================================================================
    always @(posedge i_glob_clock)
    begin
-      r_counter <= r_counter + 1;
+      r_counter <= !r_counter;
+   end
 
+   always @(posedge w_clock_sys)
+   begin
       case (w_cs)
          4'b0001: r_tx_data <= w_tx_data_sys;
          4'b0010: r_tx_data <= w_tx_data_io;
@@ -204,24 +212,25 @@ module top(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
                                     // negedge of the input clock)
       .IO_STANDARD("SB_LVDS_INPUT"),// LVDS standard
-      .NEG_TRIGGER(1'b0)            // We may need to specify it as 1'b1 to negate the signal
+      .NEG_TRIGGER(1'b0)            // The signal is not negated
    ) iq_rx_24 (
       .PACKAGE_PIN(i_iq_rx_24_n),   // Attention: this is the 'n' input, thus the actual values
                                     //            will need to be negated (PCB layout constraint)
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( w_lvds_rx_24_d0 ),  // the 0 deg data output
-      .D_IN_1 ( w_lvds_rx_24_d1 ) );// the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_24_d1 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_24_d0 ) );// the 180 deg data output
 
    // Differential 0.9GHz I/Q DDR signal
    SB_IO #(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
                                     // negedge of the input clock)
-      .IO_STANDARD("SB_LVDS_INPUT") // LVDS standard
+      .IO_STANDARD("SB_LVDS_INPUT"),// LVDS standard
+      .NEG_TRIGGER(1'b1)            // The signal is negated in hardware
    ) iq_rx_09 (
       .PACKAGE_PIN(i_iq_rx_09_p),
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( w_lvds_rx_09_d0 ),  // the 0 deg data output
-      .D_IN_1 ( w_lvds_rx_09_d1 ) );// the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_09_d1 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_09_d0 ) );// the 180 deg data output
 
 
    //=========================================================================
@@ -252,11 +261,12 @@ module top(
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
-      .i_ddr_data ({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
+      .i_ddr_data ({w_lvds_rx_09_d1, w_lvds_rx_09_d0}),
       .i_fifo_full (w_rx_09_fifo_full),
       .o_fifo_write_clk (w_rx_09_fifo_write_clk),
       .o_fifo_push (w_rx_09_fifo_push),
-      .o_fifo_data (w_rx_09_fifo_data)
+      .o_fifo_data (w_rx_09_fifo_data),
+      .o_debug_state (/*io_pmod[7:6]*/)
    );
 
    //assign w_rx_09_fifo_data = 32'b01011010110000111110011111110001;
@@ -275,11 +285,11 @@ module top(
       .empty_o (w_rx_09_fifo_empty)
    );
 
-   lvds_rx lvds_rx_24_inst
+   /*lvds_rx lvds_rx_24_inst
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
-      .i_ddr_data ({w_lvds_rx_24_d0, w_lvds_rx_24_d1}),
+      .i_ddr_data ({w_lvds_rx_24_d1, w_lvds_rx_24_d0}),
       .i_fifo_full (w_rx_24_fifo_full),
       .o_fifo_write_clk (w_rx_24_fifo_write_clk),
       .o_fifo_push (w_rx_24_fifo_push),
@@ -297,7 +307,7 @@ module top(
       .rd_data_o (w_rx_24_fifo_pulled_data),
       .full_o (w_rx_24_fifo_full),
       .empty_o (w_rx_24_fifo_empty)
-   );
+   );*/
 
    smi_ctrl smi_ctrl_ins
    (
@@ -348,13 +358,14 @@ module top(
    assign o_smi_read_req = (w_smi_writing)?w_smi_read_req:1'bZ;
 
    // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = w_rx_09_fifo_push;
-   assign io_pmod[1] = w_rx_09_fifo_pull;
-   assign io_pmod[2] = w_rx_09_fifo_empty;
-   assign io_pmod[3] = w_rx_09_fifo_full;
-   assign io_pmod[4] = i_smi_soe_se;
-   assign io_pmod[5] = o_smi_read_req;
-   assign io_pmod[6] = w_smi_addr[0];
-   assign io_pmod[7] = w_smi_addr[1];
+   assign io_pmod[0] = lvds_clock_buf;
+   assign io_pmod[2:1] = {w_lvds_rx_09_d1, w_lvds_rx_09_d0};
+   assign io_pmod[3] = w_rx_09_fifo_push;
+   assign io_pmod[4] = w_rx_09_fifo_pull;
+   assign io_pmod[5] = w_rx_09_fifo_empty;
+   assign io_pmod[6] = w_rx_09_fifo_full;
+   assign io_pmod[7] = i_smi_soe_se;
+
+   //assign io_pmod[7] = w_smi_addr[1];
 
 endmodule // top

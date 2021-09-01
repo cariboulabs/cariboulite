@@ -97,5 +97,6 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
                                 caribou_smi_data_callback cb);
 int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
 char* caribou_smi_get_error_string(caribou_smi_error_en err);
+void dump_hex(const void* data, size_t size);
 
 #endif // __CARIBOU_SMI_H__

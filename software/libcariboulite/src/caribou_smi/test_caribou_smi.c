@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 #include "caribou_smi.h"
 
 caribou_smi_st dev = {0};
@@ -37,7 +38,12 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
                 }*/
                 if ( byte_count > 0 )
                 {
-                    /*printf("CUR %d CHUNK >  %02x %02x %02x %02x ... %02x %02x %02x %02x\n", c,
+                    printf("CHUNK %d> %02x %02x %02x %02x...\n", c, buffer[0],
+                                                                    buffer[1],
+                                                                    buffer[2],
+                                                                    buffer[3]);
+/*
+                    printf("CUR %d CHUNK >  %02x %02x %02x %02x ... %02x %02x %02x %02x\n", c,
                                                                         buffer[0],
                                                                         buffer[1],
                                                                         buffer[2],
@@ -86,15 +92,49 @@ void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_
 
 char program_name[] = "test_caribou_smi.c";
 
+void print_iq(uint32_t* array, int len)
+{
+    printf("Values I/Q:\n");
+    for (int i=0; i<len; i++)
+    {
+        unsigned int v = array[i];
+        uint8_t b[4];
+        b[0] = (uint8_t) (v >> 24u);
+        b[1] = (uint8_t) (v >> 16u);
+        b[2] = (uint8_t) (v >> 8u);
+        b[3] = (uint8_t) (v >> 0u);
+        v = *((uint32_t*)(b));
+
+        //printf("%08x\n", v);
+        int cnt = (v >> 30)*4 + ((v >> 14) & 0x3);
+        int16_t q_val = (v>> 1) & (0x1FFF);
+        int16_t i_val = (v>>17) & (0x1FFF);
+        if (q_val >= 0x1000) q_val-=0x2000;
+        if (i_val >= 0x1000) i_val-=0x2000;
+        float fi = i_val, fq = q_val;
+        float mod = sqrt(fi*fi + fq*fq);
+        float arg = atan(fq / fi);
+        printf("%d, %d, %d, %.4f, %.2f\n", cnt, i_val, q_val, mod, arg);
+    }
+}
+
 int main()
 {
-    //int count = 4096*32;
-    //int num_of_rounds = 1;
-    //uint32_t buffer[count];
-    //uint8_t* b8 = (uint8_t*)buffer;
-    //int hist[256] = {0};
+    int count = 128;
+    uint32_t buffer[count];
+    uint8_t* b8 = (uint8_t*)buffer;
 
     caribou_smi_init(&dev, caribou_smi_error_event, program_name);
+
+    caribou_smi_timeout_read(&dev, caribou_smi_address_read_900, b8, count*sizeof(uint32_t), 1000);
+    dump_hex(b8, count*sizeof(uint32_t));
+
+    print_iq(buffer, count);
+
+
+    caribou_smi_close (&dev);
+    return 0;
+
 
     int stream_id = caribou_smi_setup_stream(&dev,
                                 caribou_smi_stream_type_read,

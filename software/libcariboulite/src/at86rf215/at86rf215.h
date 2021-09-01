@@ -19,7 +19,8 @@ void at86rf215_set_xo_trim(at86rf215_st* dev, uint8_t fast_start, float cap_trim
 void at86rf215_get_iq_if_cfg(at86rf215_st* dev, at86rf215_iq_interface_config_st* cfg, int verbose);
 void at86rf215_setup_iq_if(at86rf215_st* dev, at86rf215_iq_interface_config_st* cfg);
 void at86rf215_setup_iq_radio_transmit (at86rf215_st* dev, at86rf215_rf_channel_en radio);
-void at86rf215_setup_iq_radio_receive(at86rf215_st *dev, at86rf215_rf_channel_en radio, uint32_t freq_hz);
+void at86rf215_setup_iq_radio_receive(at86rf215_st *dev, at86rf215_rf_channel_en radio, uint32_t freq_hz,
+                                        int iqloopback, at86rf215_iq_clock_data_skew_en skew);
 void at86rf215_stop_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio);
 void at86rf215_setup_iq_radio_continues_tx (at86rf215_st* dev, at86rf215_rf_channel_en radio);
 void at86rf215_setup_iq_radio_dac_value_override (at86rf215_st* dev, at86rf215_rf_channel_en ch,

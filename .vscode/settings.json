@@ -11,5 +11,6 @@
         "zf_log.h": "c",
         "string.h": "c",
         "io_utils.h": "c"
-    }
+    },
+    "cmake.sourceDirectory": "${workspaceFolder}/software/libcariboulite"
 }

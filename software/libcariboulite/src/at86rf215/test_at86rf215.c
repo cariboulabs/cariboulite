@@ -112,7 +112,32 @@ void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
 int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en radio,
                                         uint32_t freq_hz, int usec_timeout)
 {
-    at86rf215_setup_iq_radio_receive (dev, radio, freq_hz);
+    at86rf215_setup_iq_radio_receive (dev, radio, freq_hz, 0, at86rf215_iq_clock_data_skew_4_906ns);
+    printf("Started I/Q RX session for Radio %d, Freq: %d Hz, timeout: %d usec (0=infinity)\n",
+        radio, freq_hz, usec_timeout);
+
+    if (usec_timeout>0)
+    {
+        io_utils_usleep(usec_timeout);
+    }
+    else
+    {
+        printf("Press enter to stop...\n");
+        getchar();
+    }
+    at86rf215_stop_iq_radio_receive (dev, radio);
+    return 1;
+}
+
+// -----------------------------------------------------------------------------------------
+// SMI communication tesing with loopback
+// usec_timeout - set up a timeout value in micro-seconds or -1 to wait for "enter" key
+int test_at86rf215_continues_iq_loopback (at86rf215_st* dev, at86rf215_rf_channel_en radio,
+                                        uint32_t freq_hz, int usec_timeout)
+{
+    at86rf215_setup_iq_radio_receive (dev, radio, freq_hz, 0, at86rf215_iq_clock_data_skew_4_906ns);
+    //at86rf215_radio_set_tx_dac_input_iq(dev, radio, 1, 0x7E, 1, 0x3F);
+
     printf("Started I/Q RX session for Radio %d, Freq: %d Hz, timeout: %d usec (0=infinity)\n",
         radio, freq_hz, usec_timeout);
 
@@ -135,7 +160,8 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
 #define NO_FPGA_MODE        0
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
-#define TEST_IQ_RX_WIND     1
+#define TEST_IQ_RX_WIND     0
+#define TEST_IQ_LB_WIND     1
 
 // -----------------------------------------------------------------------------------------
 // MAIN
@@ -180,6 +206,10 @@ int main ()
     #if TEST_IQ_RX_WIND
         test_at86rf215_continues_iq_rx (&dev, at86rf215_rf_channel_900mhz, 900e6, -1);
     #endif // TEST_IQ_RX_WIND
+
+    #if TEST_IQ_LB_WIND
+        test_at86rf215_continues_iq_loopback (&dev, at86rf215_rf_channel_900mhz, 900e6, -1);
+    #endif
 
 	at86rf215_close(&dev);
 	io_utils_spi_close(&io_spi_dev);

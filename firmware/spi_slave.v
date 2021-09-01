@@ -25,12 +25,30 @@ module spi_slave
 
   // Purpose: Recover SPI Byte in SPI Clock Domain
   // Samples line on correct edge of SPI Clock
-  always @(posedge i_spi_sck or posedge i_spi_cs_b)
+  /*always @(posedge i_spi_sck or posedge i_spi_cs_b)
   begin
     if (i_spi_cs_b) begin
       r_rx_bit_count <= 0;
       r_rx_done <= 1'b0;
     end else begin
+      r_rx_bit_count <= r_rx_bit_count + 1;
+      r_temp_rx_byte <= {r_temp_rx_byte[6:0], i_spi_mosi};
+
+      if (r_rx_bit_count == 3'b111) begin
+        r_rx_done <= 1'b1;
+        r_rx_byte <= {r_temp_rx_byte[6:0], i_spi_mosi};
+      end else if (r_rx_bit_count == 3'b010) begin
+        r_rx_done <= 1'b0;
+      end
+    end
+  end
+  */
+  always @(posedge i_sys_clk)
+  begin
+    if (i_spi_cs_b) begin
+      r_rx_bit_count <= 0;
+      r_rx_done <= 1'b0;
+    end else if (SCK_risingedge) begin
       r_rx_bit_count <= r_rx_bit_count + 1;
       r_temp_rx_byte <= {r_temp_rx_byte[6:0], i_spi_mosi};
 

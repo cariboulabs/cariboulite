@@ -1,0 +1,368 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9
+					],
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						3,
+						5,
+						6
+					]
+				},
+				{
+					"build" : "src/datatypes",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/datatypes",
+					"targetIndexes" : 
+					[
+						4,
+						13
+					]
+				},
+				{
+					"build" : "src/ustimer",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/ustimer",
+					"targetIndexes" : 
+					[
+						16,
+						17
+					]
+				},
+				{
+					"build" : "src/caribou_fpga",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/caribou_fpga",
+					"targetIndexes" : 
+					[
+						1,
+						11
+					]
+				},
+				{
+					"build" : "src/at86rf215",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/at86rf215",
+					"targetIndexes" : 
+					[
+						0,
+						10
+					]
+				},
+				{
+					"build" : "src/caribou_smi",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/caribou_smi",
+					"targetIndexes" : 
+					[
+						2,
+						12
+					]
+				},
+				{
+					"build" : "src/latticeice40",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/latticeice40",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "src/io_utils",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/io_utils",
+					"targetIndexes" : 
+					[
+						7,
+						14
+					]
+				},
+				{
+					"build" : "src/rffc507x",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/rffc507x",
+					"targetIndexes" : 
+					[
+						9,
+						15
+					]
+				},
+				{
+					"build" : "src/zf_log",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.2"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src/zf_log",
+					"targetIndexes" : 
+					[
+						18
+					]
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9
+					],
+					"name" : "cariboulite",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 4,
+					"id" : "at86rf215::@e2babaa7f12c4067e898",
+					"jsonFile" : "target-at86rf215-Release-edf17307978cc352fd6f.json",
+					"name" : "at86rf215",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "caribou_fpga::@7c799ef1f0b50b51bb5f",
+					"jsonFile" : "target-caribou_fpga-Release-b236105654a684b7051c.json",
+					"name" : "caribou_fpga",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "caribou_smi::@75c208804627efeb13ab",
+					"jsonFile" : "target-caribou_smi-Release-c29707e9d6c5a8af2919.json",
+					"name" : "caribou_smi",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cariboulite::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cariboulite-Release-854c6de14822ce69631b.json",
+					"name" : "cariboulite",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "datatypes::@17436e0f6c3016b74870",
+					"jsonFile" : "target-datatypes-Release-2a49e2f31a41ec5fa3d1.json",
+					"name" : "datatypes",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "fpgacomm::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-fpgacomm-Release-78a0c12231c512b81692.json",
+					"name" : "fpgacomm",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ice40programmer::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ice40programmer-Release-5f8456c3341b1c4a3121.json",
+					"name" : "ice40programmer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "io_utils::@2668814d5e0602d6a30f",
+					"jsonFile" : "target-io_utils-Release-558a5f0eabedfd5860b2.json",
+					"name" : "io_utils",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "latticeice40::@f36133e160067e638aed",
+					"jsonFile" : "target-latticeice40-Release-1aae5212081f929ae8a2.json",
+					"name" : "latticeice40",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "rffc507x::@5b57ffb330ccf91358df",
+					"jsonFile" : "target-rffc507x-Release-27991922b9820a21a2c4.json",
+					"name" : "rffc507x",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "test_at86rf215::@e2babaa7f12c4067e898",
+					"jsonFile" : "target-test_at86rf215-Release-170e80b1ed3bd8f194ae.json",
+					"name" : "test_at86rf215",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "test_caribou_fpga::@7c799ef1f0b50b51bb5f",
+					"jsonFile" : "target-test_caribou_fpga-Release-61d8ed2b0f53ffef530d.json",
+					"name" : "test_caribou_fpga",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "test_caribou_smi::@75c208804627efeb13ab",
+					"jsonFile" : "target-test_caribou_smi-Release-b1bd9a8f1b1af7df0ad7.json",
+					"name" : "test_caribou_smi",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "test_datatypes::@17436e0f6c3016b74870",
+					"jsonFile" : "target-test_datatypes-Release-1c963663e9effd28cc82.json",
+					"name" : "test_datatypes",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "test_io_utils::@2668814d5e0602d6a30f",
+					"jsonFile" : "target-test_io_utils-Release-f7d846d79c50b48d93c8.json",
+					"name" : "test_io_utils",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "test_rffc507x::@5b57ffb330ccf91358df",
+					"jsonFile" : "target-test_rffc507x-Release-9e6801ee6a0ff8bf0312.json",
+					"name" : "test_rffc507x",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "test_ustimer::@9f10e8e79a157ba2a453",
+					"jsonFile" : "target-test_ustimer-Release-023c184f21b03f4d9016.json",
+					"name" : "test_ustimer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "ustimer::@9f10e8e79a157ba2a453",
+					"jsonFile" : "target-ustimer-Release-29c54a5d3b23738f8bc2.json",
+					"name" : "ustimer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 9,
+					"id" : "zf_log::@b6b38f22f4a558956abc",
+					"jsonFile" : "target-zf_log-Release-a7052b220b084320a3f4.json",
+					"name" : "zf_log",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/pi/projects/cariboulite/build",
+		"source" : "/home/pi/projects/cariboulite/software/libcariboulite"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 1
+	}
+}
