@@ -403,7 +403,8 @@ void at86rf215_setup_iq_radio_transmit (at86rf215_st* dev, at86rf215_rf_channel_
 }
 
 //===================================================================
-void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio, uint32_t freq_hz)
+void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio, uint32_t freq_hz,
+                                        int iqloopback, at86rf215_iq_clock_data_skew_en skew)
 {
     /*
     It is assumed, that
@@ -430,13 +431,13 @@ void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_e
     // 3. Enable I/Q radio mode - setting IQIFC1.CHPM=1 at AT86RF215 (in AT86RF215IQ it is the only choice)
     at86rf215_iq_interface_config_st iq_if_config =
     {
-        .loopback_enable = 0,
+        .loopback_enable = iqloopback,
         .drv_strength = at86rf215_iq_drive_current_2ma,
         .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
         .tx_control_with_iq_if = false,
         .radio09_mode = at86rf215_iq_if_mode,
         .radio24_mode = at86rf215_iq_if_mode,
-        .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
+        .clock_skew = skew,
     };
     at86rf215_setup_iq_if(dev, &iq_if_config);
 

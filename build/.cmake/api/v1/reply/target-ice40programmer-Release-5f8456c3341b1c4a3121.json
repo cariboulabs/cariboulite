@@ -1,0 +1,233 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "test/ice40programmer"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_executable",
+			"target_link_libraries",
+			"include_directories"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 35,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 38,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 6,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 7,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-O3 -DNDEBUG"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 3,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/."
+				},
+				{
+					"backtrace" : 3,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/./include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/zf_log"
+				}
+			],
+			"language" : "C",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "cariboulite::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "datatypes::@17436e0f6c3016b74870"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "ustimer::@9f10e8e79a157ba2a453"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "caribou_fpga::@7c799ef1f0b50b51bb5f"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "caribou_smi::@75c208804627efeb13ab"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "latticeice40::@f36133e160067e638aed"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "io_utils::@2668814d5e0602d6a30f"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "zf_log::@b6b38f22f4a558956abc"
+		}
+	],
+	"id" : "ice40programmer::@6890427a1f51a3e7e1df",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-O3 -DNDEBUG",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "libcariboulite.a",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lpthread",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lm",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lrt",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "src/datatypes/libdatatypes.a",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "src/ustimer/libustimer.a",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "src/caribou_fpga/libcaribou_fpga.a",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "src/caribou_smi/libcaribou_smi.a",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "src/latticeice40/liblatticeice40.a",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "src/io_utils/libio_utils.a",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "src/zf_log/libzf_log.a",
+				"role" : "libraries"
+			}
+		],
+		"language" : "C"
+	},
+	"name" : "ice40programmer",
+	"nameOnDisk" : "ice40programmer",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "test/ice40_programmer.c",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "EXECUTABLE"
+}

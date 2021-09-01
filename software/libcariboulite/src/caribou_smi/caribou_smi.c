@@ -22,7 +22,6 @@ static char *error_strings[] = CARIBOU_SMI_ERROR_STRS;
 
 static void caribou_smi_print_smi_settings(struct smi_settings *settings);
 static void caribou_smi_setup_settings (struct smi_settings *settings);
-static void dump_hex(const void* data, size_t size);
 static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type_en type, caribou_smi_channel_en ch);
 
 //=========================================================================
@@ -424,7 +423,7 @@ static void caribou_smi_setup_settings (struct smi_settings *settings)
 }
 
 //=========================================================================
-static void dump_hex(const void* data, size_t size)
+void dump_hex(const void* data, size_t size)
 {
 	char ascii[17];
 	size_t i, j;
