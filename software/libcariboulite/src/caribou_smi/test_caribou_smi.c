@@ -94,6 +94,8 @@ char program_name[] = "test_caribou_smi.c";
 
 void print_iq(uint32_t* array, int len)
 {
+    int last_cnt = 0;
+    int cnt_errors = 0;
     printf("Values I/Q:\n");
     for (int i=0; i<len; i++)
     {
@@ -106,7 +108,12 @@ void print_iq(uint32_t* array, int len)
         v = *((uint32_t*)(b));
 
         //printf("%08x\n", v);
-        int cnt = (v >> 30)*4 + ((v >> 14) & 0x3);
+        int cnt = (v >> 30) & 0x3;
+        int next_cnt_expected = (last_cnt + 1) & 0x3;
+        if (next_cnt_expected != cnt)
+        {
+            cnt_errors++;
+        }
         int16_t q_val = (v>> 1) & (0x1FFF);
         int16_t i_val = (v>>17) & (0x1FFF);
         if (q_val >= 0x1000) q_val-=0x2000;
@@ -115,12 +122,14 @@ void print_iq(uint32_t* array, int len)
         float mod = sqrt(fi*fi + fq*fq);
         float arg = atan(fq / fi);
         printf("%d, %d, %d, %.4f, %.2f\n", cnt, i_val, q_val, mod, arg);
+        last_cnt = cnt;
     }
+    printf("Count errors = %d\n", cnt_errors);
 }
 
 int main()
 {
-    int count = 128;
+    int count = 4096;
     uint32_t buffer[count];
     uint8_t* b8 = (uint8_t*)buffer;
 

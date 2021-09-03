@@ -268,7 +268,7 @@ module top(
       .o_fifo_write_clk (w_rx_09_fifo_write_clk),
       .o_fifo_push (w_rx_09_fifo_push),
       .o_fifo_data (w_rx_09_fifo_data),
-      .o_debug_state (/*io_pmod[7:6]*/)
+      .o_debug_state ()
    );
 
    //assign w_rx_09_fifo_data = 32'b01011010110000111110011111110001;
@@ -360,9 +360,9 @@ module top(
    assign o_smi_read_req = (w_smi_writing)?w_smi_read_req:1'bZ;
 
    // Testing - output the clock signal (positive and negative) to the PMOD
-   assign io_pmod[0] = lvds_clock_buf;
-   assign io_pmod[1] = w_lvds_rx_09_d1;
-   assign io_pmod[2] = w_lvds_rx_09_d0;
+ //  assign io_pmod[0] = lvds_clock_buf;
+   //assign io_pmod[1] = w_rx_09_fifo_data[30];
+   //assign io_pmod[2] = w_rx_09_fifo_data[31];
    assign io_pmod[3] = w_rx_09_fifo_push;
    assign io_pmod[4] = w_rx_09_fifo_pull;
    assign io_pmod[5] = w_rx_09_fifo_empty;

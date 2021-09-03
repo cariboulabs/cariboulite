@@ -193,7 +193,7 @@ static void release_buffer_vec(uint8_t** mat, int num_buffers, int buffer_size)
 }
 
 //=========================================================================
-static void set_realtime_priority() 
+static void set_realtime_priority()
 {
     int ret;
 
@@ -208,23 +208,23 @@ static void set_realtime_priority()
 
     // Attempt to set thread real-time priority to the SCHED_FIFO policy
     ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
-    if (ret != 0) 
+    if (ret != 0)
     {
         // Print the error
         ZF_LOGE("Unsuccessful in setting thread realtime prio");
-        return;     
+        return;
     }
     // Now verify the change in thread priority
     int policy = 0;
     ret = pthread_getschedparam(this_thread, &policy, &params);
-    if (ret != 0) 
+    if (ret != 0)
     {
         ZF_LOGE("Couldn't retrieve real-time scheduling paramers");
         return;
     }
 
     // Check the correct policy was applied
-    if(policy != SCHED_FIFO) 
+    if(policy != SCHED_FIFO)
     {
         ZF_LOGE("Scheduling is NOT SCHED_FIFO!");
     } else {
@@ -409,7 +409,7 @@ static void caribou_smi_print_smi_settings(struct smi_settings *settings)
 static void caribou_smi_setup_settings (struct smi_settings *settings)
 {
     settings->read_setup_time = 0;
-    settings->read_strobe_time = 4;
+    settings->read_strobe_time = 5;
     settings->read_hold_time = 0;
     settings->read_pace_time = 0;
     settings->write_setup_time = 1;
