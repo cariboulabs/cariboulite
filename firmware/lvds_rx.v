@@ -26,7 +26,7 @@ module lvds_rx
     reg [2:0]   r_phase_count;
     reg [31:0]  r_data;
     reg         r_push;
-    reg [3:0]   r_cnt;
+    reg         r_cnt;
 
     assign o_debug_state = r_state_if;
 
@@ -48,21 +48,20 @@ module lvds_rx
         if (i_reset) begin
             r_state_if = state_idle;
             r_push = 1'b0;
+            o_fifo_push = 1'b0;
             r_phase_count = 3'b111;
             r_data = 0;
             r_cnt = 0;
         end else begin
             o_fifo_push <= r_push;
+
             case (r_state_if)
                 state_idle: begin
                     if (i_ddr_data == modem_i_sync ) begin
                         r_state_if <= state_i_phase;
-                        r_data[31:2] <= 0;
-                        r_data[1:0] <= r_cnt[3:2];
-                    end
-
-                    if (r_push == 1'b1) begin
-                        o_fifo_data <= r_data;
+                        //r_data <= 0;
+                        //r_data[0] <= !r_cnt;
+                        //r_cnt = !r_cnt;
                     end
 
                     r_phase_count <= 3'b111;
@@ -74,28 +73,26 @@ module lvds_rx
                         if (i_ddr_data == modem_q_sync ) begin
                             r_phase_count <= 3'b110;
                             r_state_if <= state_q_phase;
-                            r_data <= {r_data[29:0], r_cnt[1:0]};
                         end else begin
                             r_state_if <= state_idle;
                         end
 
                     end else begin
                         r_phase_count <= r_phase_count - 1;
-                        r_data <= {r_data[29:0], i_ddr_data};
-                        //r_data <= {r_data[29:0], 2'b10};
                     end
+
+                    r_data <= {r_data[29:0], i_ddr_data};
                 end
 
                 state_q_phase: begin
                     if (r_phase_count == 3'b000) begin
                         r_push <= ~i_fifo_full;
                         r_state_if <= state_idle;
-                        r_cnt <= r_cnt + 1;
+                        o_fifo_data <= {r_data[29:0], i_ddr_data};
                     end else begin
                         r_phase_count <= r_phase_count - 1;
                     end
                     r_data <= {r_data[29:0], i_ddr_data};
-                    //r_data <= {r_data[29:0], 2'b01};
                 end
             endcase
         end

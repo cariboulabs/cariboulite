@@ -102,8 +102,6 @@ module smi_ctrl
 
     wire soe_and_reset;
     assign soe_and_reset = !i_reset && i_smi_soe_se;
-    assign w_fifo_09_pull_trigger = !i_fifo_09_empty && (int_cnt_09 == 5'd31);
-    assign w_fifo_24_pull_trigger = !i_fifo_24_empty && (int_cnt_24 == 5'd31);
 
     always @(negedge soe_and_reset)
     begin
@@ -113,6 +111,9 @@ module smi_ctrl
             r_smi_test_count_09 <= 8'b00000000;
             r_smi_test_count_24 <= 8'b00000000;
         end else begin
+            w_fifo_09_pull_trigger <= !i_fifo_09_empty && (int_cnt_09 == 5'd7);
+            w_fifo_24_pull_trigger <= !i_fifo_24_empty && (int_cnt_24 == 5'd7);
+
             if (i_smi_a == smi_address_read_900) begin
                 if ( i_smi_test ) begin
                     o_smi_data_out <= r_smi_test_count_09;
@@ -121,6 +122,7 @@ module smi_ctrl
                     int_cnt_09 <= int_cnt_09 - 8;
                     o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09:int_cnt_09-7];
                 end
+
             end else if (i_smi_a == smi_address_read_2400) begin
                 if ( i_smi_test ) begin
                     o_smi_data_out <= r_smi_test_count_24;
@@ -130,6 +132,7 @@ module smi_ctrl
                     o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24:int_cnt_24-7];
                 end
             end
+
         end
     end
 
