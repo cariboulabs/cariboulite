@@ -199,10 +199,12 @@ module top(
       .PACKAGE_PIN(i_iq_rx_clk_p),  // Physical connection to 'i_iq_rx_clk_p'
       .D_IN_0 ( lvds_clock ));      // Wire out to 'lvds_clock'
 
-   SB_GB lvds_clk_buffer (          // Improve 'lvds_clock' fanout by pushing it into
+   /*SB_GB lvds_clk_buffer (          // Improve 'lvds_clock' fanout by pushing it into
                                     // a global high-fanout buffer
       .USER_SIGNAL_TO_GLOBAL_BUFFER (lvds_clock),
       .GLOBAL_BUFFER_OUTPUT(lvds_clock_buf) );
+*/
+   assign lvds_clock_buf = lvds_clock;
 
    // optional for better fanout: seperate the 09 and the 24 buffers and give them
    // both a semparate constraint in the pcf file.
@@ -212,25 +214,25 @@ module top(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
                                     // negedge of the input clock)
       .IO_STANDARD("SB_LVDS_INPUT"),// LVDS standard
-      .NEG_TRIGGER(1'b0)            // The signal is not negated
+      .NEG_TRIGGER(1'b1)            // The signal is not negated
    ) iq_rx_24 (
       .PACKAGE_PIN(i_iq_rx_24_n),   // Attention: this is the 'n' input, thus the actual values
                                     //            will need to be negated (PCB layout constraint)
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( w_lvds_rx_24_d1 ),  // the 0 deg data output
-      .D_IN_1 ( w_lvds_rx_24_d0 ) );// the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_24_d0 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_24_d1 ) );// the 180 deg data output
 
    // Differential 0.9GHz I/Q DDR signal
    SB_IO #(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
                                     // negedge of the input clock)
       .IO_STANDARD("SB_LVDS_INPUT"),// LVDS standard
-      .NEG_TRIGGER(1'b1)            // The signal is negated in hardware
+      .NEG_TRIGGER(1'b0)            // The signal is negated in hardware
    ) iq_rx_09 (
       .PACKAGE_PIN(i_iq_rx_09_p),
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( w_lvds_rx_09_d1 ),  // the 0 deg data output
-      .D_IN_1 ( w_lvds_rx_09_d0 ) );// the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_09_d0 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_09_d1 ) );// the 180 deg data output
 
 
    //=========================================================================
@@ -359,7 +361,8 @@ module top(
 
    // Testing - output the clock signal (positive and negative) to the PMOD
    assign io_pmod[0] = lvds_clock_buf;
-   assign io_pmod[2:1] = {w_lvds_rx_09_d1, w_lvds_rx_09_d0};
+   assign io_pmod[1] = w_lvds_rx_09_d1;
+   assign io_pmod[2] = w_lvds_rx_09_d0;
    assign io_pmod[3] = w_rx_09_fifo_push;
    assign io_pmod[4] = w_rx_09_fifo_pull;
    assign io_pmod[5] = w_rx_09_fifo_empty;

@@ -14,7 +14,7 @@ module lvds_rx
     localparam
         state_idle   = 3'b00,
         state_i_phase = 3'b01,
-        state_q_phase = 3'b10;
+        state_q_phase = 3'b11;
 
     // Modem sync symbols
     localparam
@@ -39,12 +39,11 @@ module lvds_rx
     end
 
     // Global Assignments
-    assign o_fifo_push = r_push;
-    //assign o_fifo_data = r_data;
+    //assign o_fifo_push = r_push;
     assign o_fifo_write_clk = i_ddr_clk;
 
     // Main Process
-    always @(negedge i_ddr_clk)
+    always @(posedge i_ddr_clk)
     begin
         if (i_reset) begin
             r_state_if = state_idle;
@@ -53,9 +52,10 @@ module lvds_rx
             r_data = 0;
             r_cnt = 0;
         end else begin
+            o_fifo_push <= r_push;
             case (r_state_if)
                 state_idle: begin
-                    if (i_ddr_data == 2'b10 ) begin
+                    if (i_ddr_data == modem_i_sync ) begin
                         r_state_if <= state_i_phase;
                         r_data[31:2] <= 0;
                         r_data[1:0] <= r_cnt[3:2];
@@ -71,7 +71,7 @@ module lvds_rx
 
                 state_i_phase: begin
                     if (r_phase_count == 3'b000) begin
-                        if (i_ddr_data == 2'b01 ) begin
+                        if (i_ddr_data == modem_q_sync ) begin
                             r_phase_count <= 3'b110;
                             r_state_if <= state_q_phase;
                             r_data <= {r_data[29:0], r_cnt[1:0]};
