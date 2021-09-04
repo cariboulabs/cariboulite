@@ -129,7 +129,7 @@ void print_iq(uint32_t* array, int len)
 
 int main()
 {
-    /*int count = 4096;
+    int count = 4096;
     uint32_t buffer[count];
     uint8_t* b8 = (uint8_t*)buffer;
 
@@ -139,7 +139,7 @@ int main()
     dump_hex(b8, count*sizeof(uint32_t));
     print_iq(buffer, count);
     caribou_smi_close (&dev);
-    return 0;*/
+    return 0;
 
     caribou_smi_init(&dev, caribou_smi_error_event, program_name);
     int stream_id = caribou_smi_setup_stream(&dev,
