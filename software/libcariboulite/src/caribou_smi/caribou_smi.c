@@ -409,7 +409,7 @@ static void caribou_smi_print_smi_settings(struct smi_settings *settings)
 static void caribou_smi_setup_settings (struct smi_settings *settings)
 {
     settings->read_setup_time = 0;
-    settings->read_strobe_time = 4;
+    settings->read_strobe_time = 5;
     settings->read_hold_time = 0;
     settings->read_pace_time = 0;
     settings->write_setup_time = 1;
