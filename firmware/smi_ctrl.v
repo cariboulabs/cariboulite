@@ -87,7 +87,7 @@ module smi_ctrl
     end
 
     // Tell the RPI that data is pending in either of the two fifos
-    assign o_smi_read_req = !i_fifo_09_empty || !i_fifo_24_empty || i_smi_test;
+    assign o_smi_read_req = !i_fifo_09_empty || !i_fifo_24_empty /*|| i_smi_test*/;
 
     reg [4:0] int_cnt_09;
     reg [4:0] int_cnt_24;

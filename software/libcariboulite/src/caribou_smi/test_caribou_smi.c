@@ -39,7 +39,7 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
                 if ( byte_count > 0 )
                 {
                     printf("CHUNK %d> %02x %02x %02x %02x...\n", c, buffer[0],
-                                                                    buffer[1],
+                                                                   buffer[1],
                                                                     buffer[2],
                                                                     buffer[3]);
 /*
@@ -100,12 +100,12 @@ void print_iq(uint32_t* array, int len)
     for (int i=0; i<len; i++)
     {
         unsigned int v = array[i];
-        uint8_t b[4];
+        /*uint8_t b[4];
         b[0] = (uint8_t) (v >> 24u);
         b[1] = (uint8_t) (v >> 16u);
         b[2] = (uint8_t) (v >> 8u);
         b[3] = (uint8_t) (v >> 0u);
-        v = *((uint32_t*)(b));
+        v = *((uint32_t*)(b));*/
 
         //printf("%08x\n", v);
         int cnt = (v >> 30) & 0x3;
@@ -129,7 +129,7 @@ void print_iq(uint32_t* array, int len)
 
 int main()
 {
-    int count = 4096;
+    /*int count = 4096;
     uint32_t buffer[count];
     uint8_t* b8 = (uint8_t*)buffer;
 
@@ -137,14 +137,11 @@ int main()
 
     caribou_smi_timeout_read(&dev, caribou_smi_address_read_900, b8, count*sizeof(uint32_t), 1000);
     dump_hex(b8, count*sizeof(uint32_t));
-
     print_iq(buffer, count);
-
-
     caribou_smi_close (&dev);
-    return 0;
+    return 0;*/
 
-
+    caribou_smi_init(&dev, caribou_smi_error_event, program_name);
     int stream_id = caribou_smi_setup_stream(&dev,
                                 caribou_smi_stream_type_read,
                                 caribou_smi_channel_900,

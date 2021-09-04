@@ -287,7 +287,7 @@ module top(
       .empty_o (w_rx_09_fifo_empty)
    );
 
-   /*lvds_rx lvds_rx_24_inst
+   lvds_rx lvds_rx_24_inst
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
@@ -309,7 +309,7 @@ module top(
       .rd_data_o (w_rx_24_fifo_pulled_data),
       .full_o (w_rx_24_fifo_full),
       .empty_o (w_rx_24_fifo_empty)
-   );*/
+   );
 
    smi_ctrl smi_ctrl_ins
    (
@@ -362,12 +362,12 @@ module top(
    // Testing - output the clock signal (positive and negative) to the PMOD
  //  assign io_pmod[0] = lvds_clock_buf;
    //assign io_pmod[1] = w_rx_09_fifo_data[30];
-   //assign io_pmod[2] = w_rx_09_fifo_data[31];
-   assign io_pmod[3] = w_rx_09_fifo_push;
-   assign io_pmod[4] = w_rx_09_fifo_pull;
-   assign io_pmod[5] = w_rx_09_fifo_empty;
-   assign io_pmod[6] = w_rx_09_fifo_full;
-   assign io_pmod[7] = i_smi_soe_se;
+   //assign io_pmod[2] = w_smi_read_req;
+   //assign io_pmod[3] = w_rx_09_fifo_push;
+   //assign io_pmod[4] = w_rx_09_fifo_pull;
+   //assign io_pmod[5] = w_rx_09_fifo_empty;
+   //assign io_pmod[6] = w_rx_09_fifo_full;
+   //assign io_pmod[7] = i_smi_soe_se;
 
    //assign io_pmod[7] = w_smi_addr[1];
 
