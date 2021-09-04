@@ -59,9 +59,6 @@ module lvds_rx
                 state_idle: begin
                     if (i_ddr_data == modem_i_sync ) begin
                         r_state_if <= state_i_phase;
-                        //r_data <= 0;
-                        //r_data[0] <= !r_cnt;
-                        //r_cnt = !r_cnt;
                     end
 
                     r_phase_count <= 3'b111;
@@ -100,4 +97,4 @@ module lvds_rx
 
     end
 
-endmodule // smi_ctrl
+endmodule
