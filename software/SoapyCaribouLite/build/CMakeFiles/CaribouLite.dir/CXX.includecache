@@ -1,0 +1,14 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/pi/projects/cariboulite/software/SoapyCaribouLite/SoapyCariboulite.cpp
+SoapySDR/Device.hpp
+-
+SoapySDR/Registry.hpp
+-
+

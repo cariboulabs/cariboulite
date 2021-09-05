@@ -38,10 +38,10 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
                 }*/
                 if ( byte_count > 0 )
                 {
-                    printf("CHUNK %d> %02x %02x %02x %02x...\n", c, buffer[0],
+                    /*printf("CHUNK %d> %02x %02x %02x %02x...\n", c, buffer[0],
                                                                    buffer[1],
                                                                     buffer[2],
-                                                                    buffer[3]);
+                                                                    buffer[3]);*/
 /*
                     printf("CUR %d CHUNK >  %02x %02x %02x %02x ... %02x %02x %02x %02x\n", c,
                                                                         buffer[0],
