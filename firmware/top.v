@@ -159,12 +159,12 @@ module top(
    // CONBINATORIAL ASSIGNMENTS
    //=========================================================================
    //assign w_clock_spi = r_counter[0];
-   //assign w_clock_sys = r_counter[0];
+   assign w_clock_sys = r_counter;
 
-   SB_GB sys_clk_buffer (          // Improve 'lvds_clock' fanout by pushing it into
+   /*SB_GB sys_clk_buffer (          // Improve 'lvds_clock' fanout by pushing it into
                                     // a global high-fanout buffer
       .USER_SIGNAL_TO_GLOBAL_BUFFER (r_counter),
-      .GLOBAL_BUFFER_OUTPUT(w_clock_sys) );
+      .GLOBAL_BUFFER_OUTPUT(w_clock_sys) );*/
 
    //=========================================================================
    // CLOCK AND DATA-FLOW
@@ -172,15 +172,12 @@ module top(
    always @(posedge i_glob_clock)
    begin
       r_counter <= !r_counter;
-   end
 
-   always @(posedge w_clock_sys)
-   begin
       case (w_cs)
          4'b0001: r_tx_data <= w_tx_data_sys;
          4'b0010: r_tx_data <= w_tx_data_io;
          4'b0100: r_tx_data <= w_tx_data_smi;
-         4'b1000: r_tx_data <= 8'b10100101;  // reserved
+         4'b1000: r_tx_data <= 8'b10100101;  // 0xA5: reserved
          4'b0000: r_tx_data <= 8'b00000000;  // no module selected
       endcase
    end
