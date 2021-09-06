@@ -11,6 +11,9 @@
 #include "io_utils/io_utils_sys_info.h"
 #include "ustimer/ustimer.h"
 
+// GENERAL SETTINGS
+#define MAX_PATH_LEN 512
+
 // PINOUT SPI
 #define CARIBOULITE_SPI_DEV 1
 #define CARIBOULITE_MOSI 20
@@ -49,6 +52,8 @@ typedef struct
 
     // Configuration
     int reset_fpga_on_startup;
+    char firmware_path_operational[MAX_PATH_LEN];
+    char firmware_path_testing[MAX_PATH_LEN];
 
     // Management
     caribou_fpga_versions_st fpga_versions;

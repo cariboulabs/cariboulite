@@ -25,7 +25,7 @@ module spi_slave
 
   // Purpose: Recover SPI Byte in SPI Clock Domain
   // Samples line on correct edge of SPI Clock
-  /*always @(posedge i_spi_sck or posedge i_spi_cs_b)
+  always @(posedge i_spi_sck/* or posedge i_spi_cs_b*/)
   begin
     if (i_spi_cs_b) begin
       r_rx_bit_count <= 0;
@@ -42,8 +42,8 @@ module spi_slave
       end
     end
   end
-  */
-  always @(posedge i_sys_clk)
+  
+  /*always @(posedge i_sys_clk)
   begin
     if (i_spi_cs_b) begin
       r_rx_bit_count <= 0;
@@ -59,7 +59,7 @@ module spi_slave
         r_rx_done <= 1'b0;
       end
     end
-  end
+  end*/
 
   // Purpose: Cross from SPI Clock Domain to main FPGA clock domain
   // Assert o_rx_data_valid for 1 clock cycle when o_rx_byte has valid data.

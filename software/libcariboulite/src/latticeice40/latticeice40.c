@@ -228,3 +228,20 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	return 0;
 }
 
+//---------------------------------------------------------------------------
+int latticeice40_hard_reset(latticeice40_st *dev, int level)
+{
+	if (level == 0 || level == -1)
+	{
+		ZF_LOGD("Resetting FPGA reset pin to 0");
+		io_utils_write_gpio_with_wait(dev->reset_pin, 0, 200);
+		io_utils_usleep(1000);
+	}
+	if (level == 1 || level == -1)
+	{
+		ZF_LOGD("Setting FPGA reset pin to 1");
+		io_utils_write_gpio_with_wait(dev->reset_pin, 1, 200);
+		io_utils_usleep(1000);
+	}
+	return 0;
+}

@@ -102,19 +102,34 @@ CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.c -o CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.s
 
+CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o: CMakeFiles/cariboulite.dir/flags.make
+CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o: ../src/cariboulite_events.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.c
+
+CMakeFiles/cariboulite.dir/src/cariboulite_events.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/cariboulite.dir/src/cariboulite_events.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.c > CMakeFiles/cariboulite.dir/src/cariboulite_events.c.i
+
+CMakeFiles/cariboulite.dir/src/cariboulite_events.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/cariboulite.dir/src/cariboulite_events.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.c -o CMakeFiles/cariboulite.dir/src/cariboulite_events.c.s
+
 # Object files for target cariboulite
 cariboulite_OBJECTS = \
 "CMakeFiles/cariboulite.dir/src/cariboulite.c.o" \
-"CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o"
+"CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o" \
+"CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o"
 
 # External object files for target cariboulite
 cariboulite_EXTERNAL_OBJECTS =
 
 libcariboulite.a: CMakeFiles/cariboulite.dir/src/cariboulite.c.o
 libcariboulite.a: CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o
+libcariboulite.a: CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o
 libcariboulite.a: CMakeFiles/cariboulite.dir/build.make
 libcariboulite.a: CMakeFiles/cariboulite.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C static library libcariboulite.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking C static library libcariboulite.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/cariboulite.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/cariboulite.dir/link.txt --verbose=$(VERBOSE)
 
