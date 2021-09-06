@@ -449,6 +449,33 @@ src/cariboulite.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.s
 .PHONY : src/cariboulite.c.s
 
+src/cariboulite_events.o: src/cariboulite_events.c.o
+
+.PHONY : src/cariboulite_events.o
+
+# target to build an object file
+src/cariboulite_events.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o
+.PHONY : src/cariboulite_events.c.o
+
+src/cariboulite_events.i: src/cariboulite_events.c.i
+
+.PHONY : src/cariboulite_events.i
+
+# target to preprocess a source file
+src/cariboulite_events.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_events.c.i
+.PHONY : src/cariboulite_events.c.i
+
+src/cariboulite_events.s: src/cariboulite_events.c.s
+
+.PHONY : src/cariboulite_events.s
+
+# target to generate assembly for a file
+src/cariboulite_events.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_events.c.s
+.PHONY : src/cariboulite_events.c.s
+
 src/cariboulite_setup.o: src/cariboulite_setup.c.o
 
 .PHONY : src/cariboulite_setup.o
@@ -564,6 +591,9 @@ help:
 	@echo "... src/cariboulite.o"
 	@echo "... src/cariboulite.i"
 	@echo "... src/cariboulite.s"
+	@echo "... src/cariboulite_events.o"
+	@echo "... src/cariboulite_events.i"
+	@echo "... src/cariboulite_events.s"
 	@echo "... src/cariboulite_setup.o"
 	@echo "... src/cariboulite_setup.i"
 	@echo "... src/cariboulite_setup.s"
