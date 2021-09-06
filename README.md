@@ -6,7 +6,7 @@ CaribouLite is an affordable, educational, open-source SDR platform that is also
     <td><img src="hardware/rev1/DSC_1044.jpg" alt="Top View"></td>
   </tr>
   <tr>
-    <td>CaribouLite SDR mounted on a RPI-Zero</td>
+    <td>CaribouLite Rev#1 SDR mounted on a RPI-Zero</td>
   </tr>
 </table>
 
@@ -22,7 +22,8 @@ In the meantime, a second revision of the board is being produced with the follo
 1. Image rejection filtering improvement - U10 and U12 (HPF & LPF) - have been replaced by integrated LTCC filters by MiniCircuits
 2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI.
 3. Board layout improvements and overlays (silkscreen) beautification (including logo)
-4. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
+4. A single system level 3.3V power (while the FPGA still receives 2.5V and 1.2V for its core). A linear regulator (rather than a switching DC-DC) was used to reduce conducted (power and ground) noise levels.
+5. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
 
 In CaribouLite-R2 the PCB design has been thoroughly re-thought to meet its educational needs. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
 
