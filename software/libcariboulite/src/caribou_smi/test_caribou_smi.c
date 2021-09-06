@@ -120,7 +120,7 @@ void print_iq(uint32_t* array, int len)
         if (i_val >= 0x1000) i_val-=0x2000;
         float fi = i_val, fq = q_val;
         float mod = sqrt(fi*fi + fq*fq);
-        float arg = atan(fq / fi);
+        float arg = atan2(fq, fi);
         printf("%d, %d, %d, %.4f, %.2f\n", cnt, i_val, q_val, mod, arg);
         last_cnt = cnt;
     }
