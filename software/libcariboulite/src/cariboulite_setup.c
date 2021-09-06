@@ -1,5 +1,12 @@
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
+#define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
+#define ZF_LOG_TAG "CARIBOULITE Setup"
+#include "zf_log/zf_log.h"
+
+
 #include <stdio.h>
 #include "cariboulite_setup.h"
+#include "cariboulite_events.h"
 
 //=======================================================================================
 // SYSTEM DEFINITIONS & CONFIGURATIONS
@@ -69,6 +76,8 @@ cariboulite_st sys =
     // Configurations
     //-----------------------------------------
     .reset_fpga_on_startup = 1,
+    .firmware_path_operational = "",
+    .firmware_path_testing = "",
 };
 
 //=======================================================================================
@@ -82,22 +91,13 @@ int cariboulite_setup_io ()
 
     if (sys.reset_fpga_on_startup)
     {
-        io_utils_set_gpio_mode(CARIBOULITE_FPGA_CRESET, io_utils_alt_gpio_out);
-        io_utils_write_gpio(CARIBOULITE_FPGA_CRESET, 0);
+        latticeice40_hard_reset(&sys.ice40, 0);
     }
 
     if (io_utils_spi_init(&sys.spi_dev) < 0)
     {
         printf("Error setting up io_utils_spi\n");
         io_utils_cleanup();
-        return -1;
-    }
-
-    if (caribou_smi_init(&sys.smi) < 0)
-    {
-        printf("Error setting up io_utils_spi\n");
-        io_utils_cleanup();
-        io_utils_spi_close(&sys.spi_dev);
         return -1;
     }
 
@@ -125,7 +125,6 @@ int cariboulite_setup_io ()
 //=======================================================================================
 int cariboulite_release_io ()
 {
-    caribou_smi_close(&sys.smi);
     io_utils_spi_close(&sys.spi_dev);
     io_utils_cleanup();
     return 0;
@@ -168,7 +167,8 @@ int cariboulite_init_submodules ()
 {
     int res = 0;
     printf("INFO @ cariboulite_init_submodules: initializing submodules.\n");
-
+    
+    // FPGA Init
     //------------------------------------------------------
     printf("INFO @ cariboulite_init_submodules: init FPGA communication\n");
     res = caribou_fpga_init(&sys.fpga, &sys.spi_dev);
@@ -180,8 +180,18 @@ int cariboulite_init_submodules ()
     // read out version information from the FPGA
     caribou_fpga_get_versions (&sys.fpga, &sys.fpga_versions);
     caribou_fpga_get_errors (&sys.fpga, &sys.fpga_error_status);
-
     //------------------------------------------------------
+
+    // SMI Init
+    //------------------------------------------------------
+    if (caribou_smi_init(&sys.smi, caribou_smi_error_event, &sys) < 0)
+    {
+        printf("Error setting up io_utils_spi\n");
+        io_utils_cleanup();
+        io_utils_spi_close(&sys.spi_dev);
+        return -1;
+    }
+
 
     return 0;
 
@@ -195,6 +205,11 @@ int cariboulite_release_submodules()
 {
     int res = 0;
 
+    // SMI Module
+    //------------------------------------------------------
+    caribou_smi_close(&sys.smi);
+
+    // FPGA Module
     //------------------------------------------------------
     printf("INFO @ cariboulite_release_submodules: releasing FPGA communication\n");
     res = caribou_fpga_close(&sys.fpga);

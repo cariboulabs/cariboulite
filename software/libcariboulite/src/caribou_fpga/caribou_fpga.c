@@ -119,7 +119,7 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
     ZF_LOGI("Initializing io_utils_spi");
     io_utils_hard_spi_st hard_dev_fpga = {  .spi_dev_id = dev->spi_dev,
                                             .spi_dev_channel = dev->spi_channel, };
-	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 4000000, 0, 0,
+	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 2000000, 0, 0,
                         						io_utils_spi_chip_type_fpga_comm,
                                                 &hard_dev_fpga);
 
