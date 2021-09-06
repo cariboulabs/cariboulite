@@ -3,6 +3,16 @@ CaribouLite is an affordable, educational, open-source SDR platform that is also
 
 <table>
   <tr>
+    <td><img src="hardware/rev2/pictures/DSC_1151.jpg" alt="Top View"></td>
+  </tr>
+  <tr>
+    <td>CaribouLite Rev#2 SDR mounted on a RPI-Zero</td>
+  </tr>
+</table>
+
+
+<table>
+  <tr>
     <td><img src="hardware/rev1/DSC_1044.jpg" alt="Top View"></td>
   </tr>
   <tr>
