@@ -47,4 +47,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/test_tsqueue.dir/DependInfo.cmake"
   "CMakeFiles/datatypes.dir/DependInfo.cmake"
+  "CMakeFiles/test_tiny_list.dir/DependInfo.cmake"
   )
