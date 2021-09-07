@@ -1,2 +1,2 @@
-/usr/bin/ar qc libdatatypes.a CMakeFiles/datatypes.dir/tiny_list.c.o
+/usr/bin/ar qc libdatatypes.a CMakeFiles/datatypes.dir/tsqueue.c.o CMakeFiles/datatypes.dir/tiny_list.c.o
 /usr/bin/ranlib libdatatypes.a

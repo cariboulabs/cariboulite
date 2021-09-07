@@ -215,17 +215,17 @@ ice40programmer/fast:
 .PHONY : ice40programmer/fast
 
 #=============================================================================
-# Target rules for targets named test_datatypes
+# Target rules for targets named test_tsqueue
 
 # Build rule for target.
-test_datatypes: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_datatypes
-.PHONY : test_datatypes
+test_tsqueue: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_tsqueue
+.PHONY : test_tsqueue
 
 # fast build rule for target.
-test_datatypes/fast:
-	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_datatypes.dir/build.make src/datatypes/CMakeFiles/test_datatypes.dir/build
-.PHONY : test_datatypes/fast
+test_tsqueue/fast:
+	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tsqueue.dir/build.make src/datatypes/CMakeFiles/test_tsqueue.dir/build
+.PHONY : test_tsqueue/fast
 
 #=============================================================================
 # Target rules for targets named datatypes
@@ -239,6 +239,19 @@ datatypes: cmake_check_build_system
 datatypes/fast:
 	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/build
 .PHONY : datatypes/fast
+
+#=============================================================================
+# Target rules for targets named test_tiny_list
+
+# Build rule for target.
+test_tiny_list: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_tiny_list
+.PHONY : test_tiny_list
+
+# fast build rule for target.
+test_tiny_list/fast:
+	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tiny_list.dir/build.make src/datatypes/CMakeFiles/test_tiny_list.dir/build
+.PHONY : test_tiny_list/fast
 
 #=============================================================================
 # Target rules for targets named test_ustimer
@@ -582,9 +595,10 @@ help:
 	@echo "... test_at86rf215"
 	@echo "... test_caribou_fpga"
 	@echo "... test_caribou_smi"
-	@echo "... test_datatypes"
 	@echo "... test_io_utils"
 	@echo "... test_rffc507x"
+	@echo "... test_tiny_list"
+	@echo "... test_tsqueue"
 	@echo "... test_ustimer"
 	@echo "... ustimer"
 	@echo "... zf_log"

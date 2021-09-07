@@ -102,6 +102,8 @@ test/ice40programmer: libcariboulite.a
 test/ice40programmer: src/datatypes/libdatatypes.a
 test/ice40programmer: src/ustimer/libustimer.a
 test/ice40programmer: src/caribou_fpga/libcaribou_fpga.a
+test/ice40programmer: src/at86rf215/libat86rf215.a
+test/ice40programmer: src/rffc507x/librffc507x.a
 test/ice40programmer: src/caribou_smi/libcaribou_smi.a
 test/ice40programmer: src/latticeice40/liblatticeice40.a
 test/ice40programmer: src/io_utils/libio_utils.a

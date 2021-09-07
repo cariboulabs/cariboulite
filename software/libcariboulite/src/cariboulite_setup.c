@@ -181,29 +181,36 @@ int cariboulite_init_submodules ()
         ZF_LOGE("FPGA communication init failed");
         goto cariboulite_init_submodules_fail;
     }
-    // read out version information from the FPGA
-    caribou_fpga_get_versions (&sys.fpga, &sys.fpga_versions);
-    caribou_fpga_get_errors (&sys.fpga, &sys.fpga_error_status);
-    //------------------------------------------------------
 
     // SMI Init
     //------------------------------------------------------
     ZF_LOGD("INIT FPGA SMI communication");
-    if (caribou_smi_init(&sys.smi, caribou_smi_error_event, &sys) < 0)
+    res = caribou_smi_init(&sys.smi, caribou_smi_error_event, &sys);
+    if (res < 0)
     {
-        ZF_LOGE("Error setting up io_utils_spi");
+        ZF_LOGE("Error setting up smi submodule");
         goto cariboulite_init_submodules_fail;
     }
 
     // AT86RF215
     //------------------------------------------------------
     ZF_LOGD("INIT MODEM - AT86RF215");
-    // TBD
+    res = at86rf215_init(&sys.modem, &sys.spi_dev);
+    if (res < 0)
+    {
+        ZF_LOGE("Error initializing modem 'at86rf215'");
+        goto cariboulite_init_submodules_fail;
+    }
 
     // RFFC5072
     //------------------------------------------------------
     ZF_LOGD("INIT MIXER - RFFC5072");
-    // TBD
+    res = rffc507x_init(&sys.mixer, &sys.spi_dev);
+    if (res < 0)
+    {
+        ZF_LOGE("Error initializing mixer 'rffc5072'");
+        goto cariboulite_init_submodules_fail;
+    }
 
     ZF_LOGI("Cariboulite submodules successfully initialized");
     return 0;
@@ -212,6 +219,17 @@ cariboulite_init_submodules_fail:
     // release the resources
     cariboulite_release_submodules();
 	return -1;
+}
+
+//=======================================================================================
+int cariboulite_self_test()
+{
+    ZF_LOGI("Testing FPGA communication and versions...");
+    // read out version information from the FPGA
+    caribou_fpga_get_versions (&sys.fpga, &sys.fpga_versions);
+    caribou_fpga_get_errors (&sys.fpga, &sys.fpga_error_status);
+    
+    //------------------------------------------------------
 }
 
 //=======================================================================================
@@ -227,12 +245,12 @@ int cariboulite_release_submodules()
     // AT86RF215
     //------------------------------------------------------
     ZF_LOGD("CLOSE MODEM - AT86RF215");
-    // TBD
+    at86rf215_close(&sys.modem);
 
     // RFFC5072
     //------------------------------------------------------
     ZF_LOGD("CLOSE MIXER - RFFC5072");
-    // TBD
+    rffc507x_release(&sys.mixer);
 
     // FPGA Module
     //------------------------------------------------------
@@ -243,10 +261,6 @@ int cariboulite_release_submodules()
         ZF_LOGE("FPGA communication release failed (%d)", res);
         return -1;
     }
-    //------------------------------------------------------
 
     return 0;
-
-cariboulite_release_submodules_lg_fail:
-	return -1;
 }

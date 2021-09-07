@@ -99,27 +99,6 @@ install/local/fast: preinstall/fast
 	/usr/local/lib/python3.7/dist-packages/cmake/data/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
 .PHONY : install/local/fast
 
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/local/lib/python3.7/dist-packages/cmake/data/bin/cmake --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
-
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
-
-.PHONY : rebuild_cache/fast
-
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-
-.PHONY : list_install_components/fast
-
 # Special rule for the target install
 install: preinstall
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
@@ -142,6 +121,27 @@ edit_cache:
 edit_cache/fast: edit_cache
 
 .PHONY : edit_cache/fast
+
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/usr/local/lib/python3.7/dist-packages/cmake/data/bin/cmake --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+
+.PHONY : rebuild_cache/fast
+
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+
+.PHONY : list_install_components/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -176,19 +176,19 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
-src/datatypes/CMakeFiles/test_datatypes.dir/rule:
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/datatypes/CMakeFiles/test_datatypes.dir/rule
-.PHONY : src/datatypes/CMakeFiles/test_datatypes.dir/rule
+src/datatypes/CMakeFiles/test_tsqueue.dir/rule:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/datatypes/CMakeFiles/test_tsqueue.dir/rule
+.PHONY : src/datatypes/CMakeFiles/test_tsqueue.dir/rule
 
 # Convenience name for target.
-test_datatypes: src/datatypes/CMakeFiles/test_datatypes.dir/rule
+test_tsqueue: src/datatypes/CMakeFiles/test_tsqueue.dir/rule
 
-.PHONY : test_datatypes
+.PHONY : test_tsqueue
 
 # fast build rule for target.
-test_datatypes/fast:
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_datatypes.dir/build.make src/datatypes/CMakeFiles/test_datatypes.dir/build
-.PHONY : test_datatypes/fast
+test_tsqueue/fast:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tsqueue.dir/build.make src/datatypes/CMakeFiles/test_tsqueue.dir/build
+.PHONY : test_tsqueue/fast
 
 # Convenience name for target.
 src/datatypes/CMakeFiles/datatypes.dir/rule:
@@ -205,32 +205,74 @@ datatypes/fast:
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/build
 .PHONY : datatypes/fast
 
-main.o: main.c.o
+# Convenience name for target.
+src/datatypes/CMakeFiles/test_tiny_list.dir/rule:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/datatypes/CMakeFiles/test_tiny_list.dir/rule
+.PHONY : src/datatypes/CMakeFiles/test_tiny_list.dir/rule
 
-.PHONY : main.o
+# Convenience name for target.
+test_tiny_list: src/datatypes/CMakeFiles/test_tiny_list.dir/rule
+
+.PHONY : test_tiny_list
+
+# fast build rule for target.
+test_tiny_list/fast:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tiny_list.dir/build.make src/datatypes/CMakeFiles/test_tiny_list.dir/build
+.PHONY : test_tiny_list/fast
+
+test_tiny_list.o: test_tiny_list.c.o
+
+.PHONY : test_tiny_list.o
 
 # target to build an object file
-main.c.o:
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_datatypes.dir/build.make src/datatypes/CMakeFiles/test_datatypes.dir/main.c.o
-.PHONY : main.c.o
+test_tiny_list.c.o:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tiny_list.dir/build.make src/datatypes/CMakeFiles/test_tiny_list.dir/test_tiny_list.c.o
+.PHONY : test_tiny_list.c.o
 
-main.i: main.c.i
+test_tiny_list.i: test_tiny_list.c.i
 
-.PHONY : main.i
+.PHONY : test_tiny_list.i
 
 # target to preprocess a source file
-main.c.i:
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_datatypes.dir/build.make src/datatypes/CMakeFiles/test_datatypes.dir/main.c.i
-.PHONY : main.c.i
+test_tiny_list.c.i:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tiny_list.dir/build.make src/datatypes/CMakeFiles/test_tiny_list.dir/test_tiny_list.c.i
+.PHONY : test_tiny_list.c.i
 
-main.s: main.c.s
+test_tiny_list.s: test_tiny_list.c.s
 
-.PHONY : main.s
+.PHONY : test_tiny_list.s
 
 # target to generate assembly for a file
-main.c.s:
-	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_datatypes.dir/build.make src/datatypes/CMakeFiles/test_datatypes.dir/main.c.s
-.PHONY : main.c.s
+test_tiny_list.c.s:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tiny_list.dir/build.make src/datatypes/CMakeFiles/test_tiny_list.dir/test_tiny_list.c.s
+.PHONY : test_tiny_list.c.s
+
+test_tsqueue.o: test_tsqueue.c.o
+
+.PHONY : test_tsqueue.o
+
+# target to build an object file
+test_tsqueue.c.o:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tsqueue.dir/build.make src/datatypes/CMakeFiles/test_tsqueue.dir/test_tsqueue.c.o
+.PHONY : test_tsqueue.c.o
+
+test_tsqueue.i: test_tsqueue.c.i
+
+.PHONY : test_tsqueue.i
+
+# target to preprocess a source file
+test_tsqueue.c.i:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tsqueue.dir/build.make src/datatypes/CMakeFiles/test_tsqueue.dir/test_tsqueue.c.i
+.PHONY : test_tsqueue.c.i
+
+test_tsqueue.s: test_tsqueue.c.s
+
+.PHONY : test_tsqueue.s
+
+# target to generate assembly for a file
+test_tsqueue.c.s:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tsqueue.dir/build.make src/datatypes/CMakeFiles/test_tsqueue.dir/test_tsqueue.c.s
+.PHONY : test_tsqueue.c.s
 
 tiny_list.o: tiny_list.c.o
 
@@ -259,6 +301,33 @@ tiny_list.c.s:
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.s
 .PHONY : tiny_list.c.s
 
+tsqueue.o: tsqueue.c.o
+
+.PHONY : tsqueue.o
+
+# target to build an object file
+tsqueue.c.o:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.o
+.PHONY : tsqueue.c.o
+
+tsqueue.i: tsqueue.c.i
+
+.PHONY : tsqueue.i
+
+# target to preprocess a source file
+tsqueue.c.i:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.i
+.PHONY : tsqueue.c.i
+
+tsqueue.s: tsqueue.c.s
+
+.PHONY : tsqueue.s
+
+# target to generate assembly for a file
+tsqueue.c.s:
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build && $(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.s
+.PHONY : tsqueue.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -272,13 +341,20 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... datatypes"
-	@echo "... test_datatypes"
-	@echo "... main.o"
-	@echo "... main.i"
-	@echo "... main.s"
+	@echo "... test_tiny_list"
+	@echo "... test_tsqueue"
+	@echo "... test_tiny_list.o"
+	@echo "... test_tiny_list.i"
+	@echo "... test_tiny_list.s"
+	@echo "... test_tsqueue.o"
+	@echo "... test_tsqueue.i"
+	@echo "... test_tsqueue.s"
 	@echo "... tiny_list.o"
 	@echo "... tiny_list.i"
 	@echo "... tiny_list.s"
+	@echo "... tsqueue.o"
+	@echo "... tsqueue.i"
+	@echo "... tsqueue.s"
 .PHONY : help
 
 

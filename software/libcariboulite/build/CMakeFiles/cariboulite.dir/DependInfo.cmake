@@ -28,6 +28,8 @@ set(CMAKE_TARGET_LINKED_INFO_FILES
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes/CMakeFiles/datatypes.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/ustimer/CMakeFiles/ustimer.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_fpga/CMakeFiles/caribou_fpga.dir/DependInfo.cmake"
+  "/home/pi/projects/cariboulite/software/libcariboulite/build/src/at86rf215/CMakeFiles/at86rf215.dir/DependInfo.cmake"
+  "/home/pi/projects/cariboulite/software/libcariboulite/build/src/rffc507x/CMakeFiles/rffc507x.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi/CMakeFiles/caribou_smi.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/latticeice40/CMakeFiles/latticeice40.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/io_utils/CMakeFiles/io_utils.dir/DependInfo.cmake"
