@@ -83,9 +83,10 @@ cariboulite_st sys =
 //=======================================================================================
 int cariboulite_setup_io ()
 {
+    ZF_LOGI("Setting up board I/Os");
     if (io_utils_setup() < 0)
     {
-        printf("Error setting up io_utils\n");
+        ZF_LOGE("Error setting up io_utils");
         return -1;
     }
 
@@ -96,7 +97,7 @@ int cariboulite_setup_io ()
 
     if (io_utils_spi_init(&sys.spi_dev) < 0)
     {
-        printf("Error setting up io_utils_spi\n");
+        ZF_LOGE("Error setting up io_utils_spi");
         io_utils_cleanup();
         return -1;
     }
@@ -125,6 +126,7 @@ int cariboulite_setup_io ()
 //=======================================================================================
 int cariboulite_release_io ()
 {
+    ZF_LOGI("Releasing board I/Os");
     io_utils_spi_close(&sys.spi_dev);
     io_utils_cleanup();
     return 0;
@@ -135,11 +137,13 @@ int cariboulite_configure_fpga (char* fpga_bin_path)
 {
     int res = 0;
 
+    ZF_LOGI("Configuring the FPGA from '%s'", fpga_bin_path);
+    
     // Init FPGA programming
     res = latticeice40_init(&sys.ice40, &sys.spi_dev);
     if (res < 0)
     {
-        printf("ERROR @ cariboulite_configure_fpga: lattice ice40 init failed\n");
+        ZF_LOGE("lattice ice40 init failed");
         return -1;
     }
 
@@ -147,7 +151,7 @@ int cariboulite_configure_fpga (char* fpga_bin_path)
     res = latticeice40_configure(&sys.ice40, fpga_bin_path);
     if (res < 0)
     {
-        printf("ERROR @ cariboulite_configure_fpga: lattice ice40 configuration failed\n");
+        ZF_LOGE("lattice ice40 configuration failed");
         // do not exit the function - releasing resources is needed anyway
     }
 
@@ -155,7 +159,7 @@ int cariboulite_configure_fpga (char* fpga_bin_path)
     res = latticeice40_release(&sys.ice40);
     if (res < 0)
     {
-        printf("ERROR @ cariboulite_configure_fpga: lattice ice40 release failed\n");
+        ZF_LOGE("lattice ice40 release failed");
         return -1;
     }
 
@@ -166,16 +170,16 @@ int cariboulite_configure_fpga (char* fpga_bin_path)
 int cariboulite_init_submodules ()
 {
     int res = 0;
-    printf("INFO @ cariboulite_init_submodules: initializing submodules.\n");
+    ZF_LOGI("initializing submodules");
     
     // FPGA Init
     //------------------------------------------------------
-    printf("INFO @ cariboulite_init_submodules: init FPGA communication\n");
+    ZF_LOGD("INIT FPGA SPI communication");
     res = caribou_fpga_init(&sys.fpga, &sys.spi_dev);
     if (res < 0)
     {
-        printf("ERROR @ cariboulite_init_submodules: FPGA init failed\n");
-        return -1;
+        ZF_LOGE("FPGA communication init failed");
+        goto cariboulite_init_submodules_fail;
     }
     // read out version information from the FPGA
     caribou_fpga_get_versions (&sys.fpga, &sys.fpga_versions);
@@ -184,19 +188,29 @@ int cariboulite_init_submodules ()
 
     // SMI Init
     //------------------------------------------------------
+    ZF_LOGD("INIT FPGA SMI communication");
     if (caribou_smi_init(&sys.smi, caribou_smi_error_event, &sys) < 0)
     {
-        printf("Error setting up io_utils_spi\n");
-        io_utils_cleanup();
-        io_utils_spi_close(&sys.spi_dev);
-        return -1;
+        ZF_LOGE("Error setting up io_utils_spi");
+        goto cariboulite_init_submodules_fail;
     }
 
+    // AT86RF215
+    //------------------------------------------------------
+    ZF_LOGD("INIT MODEM - AT86RF215");
+    // TBD
 
+    // RFFC5072
+    //------------------------------------------------------
+    ZF_LOGD("INIT MIXER - RFFC5072");
+    // TBD
+
+    ZF_LOGI("Cariboulite submodules successfully initialized");
     return 0;
 
 cariboulite_init_submodules_fail:
-	printf("ERROR @ cariboulite_init_submodules\n");
+    // release the resources
+    cariboulite_release_submodules();
 	return -1;
 }
 
@@ -207,15 +221,26 @@ int cariboulite_release_submodules()
 
     // SMI Module
     //------------------------------------------------------
+    ZF_LOGD("CLOSE SMI");
     caribou_smi_close(&sys.smi);
+
+    // AT86RF215
+    //------------------------------------------------------
+    ZF_LOGD("CLOSE MODEM - AT86RF215");
+    // TBD
+
+    // RFFC5072
+    //------------------------------------------------------
+    ZF_LOGD("CLOSE MIXER - RFFC5072");
+    // TBD
 
     // FPGA Module
     //------------------------------------------------------
-    printf("INFO @ cariboulite_release_submodules: releasing FPGA communication\n");
+    printf("CLOSE FPGA communication");
     res = caribou_fpga_close(&sys.fpga);
     if (res < 0)
     {
-        printf("ERROR @ cariboulite_release_submodules: FPGA release failed\n");
+        ZF_LOGE("FPGA communication release failed (%d)", res);
         return -1;
     }
     //------------------------------------------------------
@@ -223,6 +248,5 @@ int cariboulite_release_submodules()
     return 0;
 
 cariboulite_release_submodules_lg_fail:
-	printf("ERROR @ cariboulite_release_submodules\n");
 	return -1;
 }
