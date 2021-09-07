@@ -43,10 +43,11 @@ CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit 
 
 # Hardware Revisions
 The board first prototyping (**Red**) revision ([REV1](hardware/rev1)) has been produced and tested to meet our vision on the board's capabilities. This revision was used to test its RF parts, the digital parts, and to develop its firmware and software support over the RPI.
-The second revision was then designed to further refine the design as described below:
-1. Image rejection filtering improvement - U10 and U12 (HPF & LPF) - have been replaced by integrated LTCC filters by MiniCircuits
-2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI.
-3. Board layout improvements and overlays (silkscreen) beautification (including logo)
+
+The second revision ([REV2](hardware/rev2)) - **White** - was then designed to further refine the design as described below:
+1. Image rejection filtering improvement - U10 and U12 (HPF & LPF) - have been replaced by integrated LTCC filters by MiniCircuits with much better out-of-band rejection than the former ones.
+2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI. Even if we have a whole library of custom made FPGA firmware files, switching between them is as simple and fast as a single linux command.
+3. Board layout improvements and overlays (silkscreen) beautification (including logo).
 4. A single system level 3.3V power (while the FPGA still receives 2.5V and 1.2V for its core). A linear regulator (rather than a switching DC-DC) was used to reduce conducted (power and ground) noise levels.
 5. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
 
@@ -54,10 +55,13 @@ In summary, in CaribouLite-Rev#2 PCB design has been thoroughly re-thought to me
 
 <table>
   <tr>
-    <td><img src="hardware/rev2/pictures/cad_image_bw.png" alt="Top View"></td>
+    <td><img src="hardware/rev2/pictures/DSC_1127.jpg" alt="Top View"></td>
   </tr>
   <tr>
-    <td>Top & Bottom view, Production Rev2</td>
+    <td><img src="hardware/rev2/pictures/DSC_1132.jpg" alt="Top View"></td>
+  </tr>
+  <tr>
+    <td>Top and Bottom views of CaribouLite Rev#2</td>
   </tr>
 </table>
 
@@ -119,6 +123,10 @@ Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MH
 11. User custom switch + RPI HAT EEPROM reconfiguration (write-enable) switch
 12. Wide band SMA connector
 13. Sub 1-GHz SMA connector
+
+
+# Getting Started & Installation
+TBD
 
 # Disclaimer
 CaribouLite is a test equipment for RF systems. You are responsible for using your CaribouLite legally.
