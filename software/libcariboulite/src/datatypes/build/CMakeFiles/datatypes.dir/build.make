@@ -89,17 +89,32 @@ CMakeFiles/datatypes.dir/tsqueue.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/datatypes.dir/tsqueue.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.c -o CMakeFiles/datatypes.dir/tsqueue.c.s
 
+CMakeFiles/datatypes.dir/tiny_list.c.o: CMakeFiles/datatypes.dir/flags.make
+CMakeFiles/datatypes.dir/tiny_list.c.o: ../tiny_list.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/datatypes.dir/tiny_list.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/datatypes.dir/tiny_list.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tiny_list.c
+
+CMakeFiles/datatypes.dir/tiny_list.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/datatypes.dir/tiny_list.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tiny_list.c > CMakeFiles/datatypes.dir/tiny_list.c.i
+
+CMakeFiles/datatypes.dir/tiny_list.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/datatypes.dir/tiny_list.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tiny_list.c -o CMakeFiles/datatypes.dir/tiny_list.c.s
+
 # Object files for target datatypes
 datatypes_OBJECTS = \
-"CMakeFiles/datatypes.dir/tsqueue.c.o"
+"CMakeFiles/datatypes.dir/tsqueue.c.o" \
+"CMakeFiles/datatypes.dir/tiny_list.c.o"
 
 # External object files for target datatypes
 datatypes_EXTERNAL_OBJECTS =
 
 libdatatypes.a: CMakeFiles/datatypes.dir/tsqueue.c.o
+libdatatypes.a: CMakeFiles/datatypes.dir/tiny_list.c.o
 libdatatypes.a: CMakeFiles/datatypes.dir/build.make
 libdatatypes.a: CMakeFiles/datatypes.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C static library libdatatypes.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C static library libdatatypes.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/datatypes.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/datatypes.dir/link.txt --verbose=$(VERBOSE)
 

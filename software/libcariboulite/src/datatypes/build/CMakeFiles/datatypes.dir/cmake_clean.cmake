@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/datatypes.dir/tiny_list.c.o"
   "CMakeFiles/datatypes.dir/tsqueue.c.o"
   "libdatatypes.a"
   "libdatatypes.pdb"

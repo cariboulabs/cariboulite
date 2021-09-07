@@ -201,6 +201,46 @@ datatypes/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/datatypes.dir/build.make CMakeFiles/datatypes.dir/build
 .PHONY : datatypes/fast
 
+#=============================================================================
+# Target rules for targets named test_tiny_list
+
+# Build rule for target.
+test_tiny_list: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_tiny_list
+.PHONY : test_tiny_list
+
+# fast build rule for target.
+test_tiny_list/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tiny_list.dir/build.make CMakeFiles/test_tiny_list.dir/build
+.PHONY : test_tiny_list/fast
+
+test_tiny_list.o: test_tiny_list.c.o
+
+.PHONY : test_tiny_list.o
+
+# target to build an object file
+test_tiny_list.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tiny_list.dir/build.make CMakeFiles/test_tiny_list.dir/test_tiny_list.c.o
+.PHONY : test_tiny_list.c.o
+
+test_tiny_list.i: test_tiny_list.c.i
+
+.PHONY : test_tiny_list.i
+
+# target to preprocess a source file
+test_tiny_list.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tiny_list.dir/build.make CMakeFiles/test_tiny_list.dir/test_tiny_list.c.i
+.PHONY : test_tiny_list.c.i
+
+test_tiny_list.s: test_tiny_list.c.s
+
+.PHONY : test_tiny_list.s
+
+# target to generate assembly for a file
+test_tiny_list.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tiny_list.dir/build.make CMakeFiles/test_tiny_list.dir/test_tiny_list.c.s
+.PHONY : test_tiny_list.c.s
+
 test_tsqueue.o: test_tsqueue.c.o
 
 .PHONY : test_tsqueue.o
@@ -227,6 +267,33 @@ test_tsqueue.s: test_tsqueue.c.s
 test_tsqueue.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_tsqueue.dir/build.make CMakeFiles/test_tsqueue.dir/test_tsqueue.c.s
 .PHONY : test_tsqueue.c.s
+
+tiny_list.o: tiny_list.c.o
+
+.PHONY : tiny_list.o
+
+# target to build an object file
+tiny_list.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/datatypes.dir/build.make CMakeFiles/datatypes.dir/tiny_list.c.o
+.PHONY : tiny_list.c.o
+
+tiny_list.i: tiny_list.c.i
+
+.PHONY : tiny_list.i
+
+# target to preprocess a source file
+tiny_list.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/datatypes.dir/build.make CMakeFiles/datatypes.dir/tiny_list.c.i
+.PHONY : tiny_list.c.i
+
+tiny_list.s: tiny_list.c.s
+
+.PHONY : tiny_list.s
+
+# target to generate assembly for a file
+tiny_list.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/datatypes.dir/build.make CMakeFiles/datatypes.dir/tiny_list.c.s
+.PHONY : tiny_list.c.s
 
 tsqueue.o: tsqueue.c.o
 
@@ -268,10 +335,17 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... datatypes"
+	@echo "... test_tiny_list"
 	@echo "... test_tsqueue"
+	@echo "... test_tiny_list.o"
+	@echo "... test_tiny_list.i"
+	@echo "... test_tiny_list.s"
 	@echo "... test_tsqueue.o"
 	@echo "... test_tsqueue.i"
 	@echo "... test_tsqueue.s"
+	@echo "... tiny_list.o"
+	@echo "... tiny_list.i"
+	@echo "... tiny_list.s"
 	@echo "... tsqueue.o"
 	@echo "... tsqueue.i"
 	@echo "... tsqueue.s"
