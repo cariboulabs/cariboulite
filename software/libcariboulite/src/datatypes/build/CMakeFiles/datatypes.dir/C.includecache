@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.c
+tsqueue.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.h
+string.h
+-
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.h
+stdlib.h
+-
+stdio.h
+-
+pthread.h
+-
+semaphore.h
+-
+stdint.h
+-
+
