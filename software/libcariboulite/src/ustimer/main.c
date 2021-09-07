@@ -2,7 +2,7 @@
 #include "ustimer.h"
 
 
-static void test_ustimer_handler(unsigned int id,struct timeval iv)
+static void test_ustimer_handler(unsigned int id, struct timeval iv)
 {
     printf("Got Timer event: %d, %d, %d\n", id, iv.tv_sec, iv.tv_usec);
 }

@@ -102,6 +102,8 @@ test/fpgacomm: libcariboulite.a
 test/fpgacomm: src/datatypes/libdatatypes.a
 test/fpgacomm: src/ustimer/libustimer.a
 test/fpgacomm: src/caribou_fpga/libcaribou_fpga.a
+test/fpgacomm: src/at86rf215/libat86rf215.a
+test/fpgacomm: src/rffc507x/librffc507x.a
 test/fpgacomm: src/caribou_smi/libcaribou_smi.a
 test/fpgacomm: src/latticeice40/liblatticeice40.a
 test/fpgacomm: src/io_utils/libio_utils.a

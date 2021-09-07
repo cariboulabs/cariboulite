@@ -4,3 +4,6 @@
 src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.o: ../src/datatypes/tiny_list.c
 src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.o: ../src/datatypes/tiny_list.h
 
+src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.o: ../src/datatypes/tsqueue.c
+src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.o: ../src/datatypes/tsqueue.h
+

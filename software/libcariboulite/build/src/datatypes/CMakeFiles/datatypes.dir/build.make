@@ -76,9 +76,22 @@ include src/datatypes/CMakeFiles/datatypes.dir/progress.make
 # Include the compile flags for this target's objects.
 include src/datatypes/CMakeFiles/datatypes.dir/flags.make
 
+src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.o: src/datatypes/CMakeFiles/datatypes.dir/flags.make
+src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.o: ../src/datatypes/tsqueue.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.o"
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/datatypes.dir/tsqueue.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.c
+
+src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/datatypes.dir/tsqueue.c.i"
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.c > CMakeFiles/datatypes.dir/tsqueue.c.i
+
+src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/datatypes.dir/tsqueue.c.s"
+	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.c -o CMakeFiles/datatypes.dir/tsqueue.c.s
+
 src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.o: src/datatypes/CMakeFiles/datatypes.dir/flags.make
 src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.o: ../src/datatypes/tiny_list.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.o"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/datatypes.dir/tiny_list.c.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tiny_list.c
 
 src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.i: cmake_force
@@ -91,15 +104,17 @@ src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.s: cmake_force
 
 # Object files for target datatypes
 datatypes_OBJECTS = \
+"CMakeFiles/datatypes.dir/tsqueue.c.o" \
 "CMakeFiles/datatypes.dir/tiny_list.c.o"
 
 # External object files for target datatypes
 datatypes_EXTERNAL_OBJECTS =
 
+src/datatypes/libdatatypes.a: src/datatypes/CMakeFiles/datatypes.dir/tsqueue.c.o
 src/datatypes/libdatatypes.a: src/datatypes/CMakeFiles/datatypes.dir/tiny_list.c.o
 src/datatypes/libdatatypes.a: src/datatypes/CMakeFiles/datatypes.dir/build.make
 src/datatypes/libdatatypes.a: src/datatypes/CMakeFiles/datatypes.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C static library libdatatypes.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C static library libdatatypes.a"
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes && $(CMAKE_COMMAND) -P CMakeFiles/datatypes.dir/cmake_clean_target.cmake
 	cd /home/pi/projects/cariboulite/software/libcariboulite/build/src/datatypes && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/datatypes.dir/link.txt --verbose=$(VERBOSE)
 
