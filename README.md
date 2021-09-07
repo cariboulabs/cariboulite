@@ -1,9 +1,9 @@
 # CaribouLite
-CaribouLite is an affordable, educational, open-source SDR platform that is also a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the SDR current eco-systems offering with a scalable, standalone dual-channel software-defined radio. 
+CaribouLite is an affordable, educational, open-source SDR platform that is also a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio. 
 
 <table>
   <tr>
-    <td><img src="hardware/rev2/pictures/DSC_1151.jpg" alt="Top View"></td>
+    <td><img src="hardware/rev2/pictures/DSC_1151.jpg" alt="CaribouLite R2"></td>
   </tr>
   <tr>
     <td>CaribouLite Rev#2 SDR mounted on a RPI-Zero</td>
@@ -13,29 +13,44 @@ CaribouLite is an affordable, educational, open-source SDR platform that is also
 
 <table>
   <tr>
-    <td><img src="hardware/rev1/DSC_1044.jpg" alt="Top View"></td>
+    <td><img src="hardware/rev1/DSC_1044.jpg" alt="CaribouLite R1"></td>
+    <td><img src="hardware/rev2/pictures/DSC_1146.jpg" alt="CaribouLite Connectors"></td>
   </tr>
   <tr>
-    <td>CaribouLite Rev#1 SDR mounted on a RPI-Zero</td>
+    <td>CaribouLite Rev#1 - the prototype version</td>
+    <td>CaribouLite Rev#2 - connectors view</td>
   </tr>
 </table>
 
-Unlike many other HAT projects, CaribouLite utilizes the <B>SMI</B> (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface contributes to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500Mbit/s between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
+Unlike many other HAT projects, CaribouLite utilizes the <B>SMI</B> (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500Mbit/s between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
 
-In our application, each ADC sample contains 13 bit (I) and 13 bit (Q), that are streamed with a maximal sample rate of 4 MSPS from the AT86RF215 IC. This channel requires 4 bytes (samples padded to 32-bit) per sample (and I/Q pair) => 16 MBytes/sec which are 128 MBits/sec. In addition to the 13 bit for each of I/Q, the Tx/Rx streams of data contain flow control and configuration bits. The modem (AT86RF215) IC by Microchip contains two RX I/Q outputs from its ADCs (one for each physical channel - sub-1GHz and 2.4GHz), and a single TX I/Q intput directed to the DACs.
+The SMI interface can be accessed from the user space Linux applications as shown in [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/), but it also provides a neat minimal charachter device interface in the `/dev` directory using the `open`, `close`, `write`, `read`, and `ioctl` system calls. More on this interesting interface in the [designated readme file](software/libcariboulite/src/caribou_smi/index.md).
+
+The SMI interface is used as memory interface that pipes the I/Q complex samples from the CaribouLite to the RPI Broadcomm SoC (on RX) and from the Broadcomm SoC to the board (on TX).
+A single ADC sample contains 13 bit (I) and 13 bit (Q), that are streamed with a maximal sample rate of 4 MSPS from the AT86RF215 IC to an FPGA. The FPGA emulated SMI compliant memory interface for the RPI SoC.
+Each RF channel (CaribouLite has two of them) requires 4 bytes (samples padded to 32-bit) per sample (and I/Q pair) => 16 MBytes/sec which are 128 MBits/sec. In addition to the 13 bit for each of I/Q, the Tx/Rx streams of data contain flow control and configuration bits. The modem (AT86RF215) IC by Microchip contains two RX I/Q outputs from its ADCs (one for each physical channel - sub-1GHz and 2.4GHz), and a single TX I/Q intput directed to the DACs.
 
 CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit our page](https://www.crowdsupply.com/cariboulabs/cariboulite)
 
+<table>
+  <tr>
+    <td><img src="hardware/rev2/pictures/DSC_1102.jpg" alt="Top View"></td>
+  </tr>
+  <tr>
+    <td>Cariboulite /w RPI Zero, two channels occupied</td>
+  </tr>
+</table>
+
 # Hardware Revisions
-**A working prototype version** of the board ([REV1](hardware/rev1)) has been produced and tested to meet product requirements. 
-In the meantime, a second revision of the board is being produced with the following main updates (see picture below):
+The board first prototyping (**Red**) revision ([REV1](hardware/rev1)) has been produced and tested to meet our vision on the board's capabilities. This revision was used to test its RF parts, the digital parts, and to develop its firmware and software support over the RPI.
+The second revision was then designed to further refine the design as described below:
 1. Image rejection filtering improvement - U10 and U12 (HPF & LPF) - have been replaced by integrated LTCC filters by MiniCircuits
 2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI.
 3. Board layout improvements and overlays (silkscreen) beautification (including logo)
 4. A single system level 3.3V power (while the FPGA still receives 2.5V and 1.2V for its core). A linear regulator (rather than a switching DC-DC) was used to reduce conducted (power and ground) noise levels.
 5. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
 
-In CaribouLite-R2 the PCB design has been thoroughly re-thought to meet its educational needs. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
+In summary, in CaribouLite-Rev#2 PCB design has been thoroughly re-thought to meet its educational needs. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
 
 <table>
   <tr>
