@@ -230,7 +230,14 @@ int cariboulite_self_test()
     // read out version information from the FPGA
     caribou_fpga_get_versions (&sys.fpga, &sys.fpga_versions);
     caribou_fpga_get_errors (&sys.fpga, &sys.fpga_error_status);
-    
+    ZF_LOGI("FPGA Versions: sys: %d, manu.id: %d, sys_ctrl_mod: %d, io_ctrl_mod: %d, smi_ctrl_mot: %d", 
+                sys.fpga_versions.sys_ver, 
+                sys.fpga_versions.sys_manu_id, 
+                sys.fpga_versions.sys_ctrl_mod_ver, 
+                sys.fpga_versions.io_ctrl_mod_ver, 
+                sys.fpga_versions.smi_ctrl_mod_ver);
+    ZF_LOGI("FPGA Errors: %02X", sys.fpga_error_status);
+
     //------------------------------------------------------
 
     ZF_LOGI("Self-test process finished successfully!");

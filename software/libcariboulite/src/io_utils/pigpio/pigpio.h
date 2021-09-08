@@ -585,6 +585,7 @@ typedef void *(gpioThreadFunc_t) (void *);
 
 // Added David Michaeli
 typedef int (*pigpioSigHandler) (int);
+void change_sigaction_unhandled_condition(pigpioSigHandler handler);
 // Added David Michaeli
 
 /* gpio: 0-53 */
