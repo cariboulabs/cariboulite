@@ -60,10 +60,11 @@ typedef struct
     uint8_t fpga_error_status;
 } cariboulite_st;
 
-int cariboulite_setup_io (void);
+int cariboulite_setup_io (void* sighandler);
 int cariboulite_release_io (void);
 int cariboulite_configure_fpga (char* fpga_bin_path);
 int cariboulite_init_submodules (void);
 int cariboulite_release_submodules(void);
+int cariboulite_self_test();
 
 #endif // __CARIBOULITE_SETUP_H__

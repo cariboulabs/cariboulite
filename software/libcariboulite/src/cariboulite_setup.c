@@ -76,15 +76,15 @@ cariboulite_st sys =
     // Configurations
     //-----------------------------------------
     .reset_fpga_on_startup = 1,
-    .firmware_path_operational = "",
-    .firmware_path_testing = "",
+    .firmware_path_operational = "../../firmware/top.bin",
+    .firmware_path_testing = "../../firmware/top.bin",
 };
 
 //=======================================================================================
-int cariboulite_setup_io ()
+int cariboulite_setup_io (void* sighandler)
 {
     ZF_LOGI("Setting up board I/Os");
-    if (io_utils_setup() < 0)
+    if (io_utils_setup(sighandler) < 0)
     {
         ZF_LOGE("Error setting up io_utils");
         return -1;
@@ -136,6 +136,7 @@ int cariboulite_release_io ()
 int cariboulite_configure_fpga (char* fpga_bin_path)
 {
     int res = 0;
+    int error = 0;
 
     ZF_LOGI("Configuring the FPGA from '%s'", fpga_bin_path);
     
@@ -153,6 +154,7 @@ int cariboulite_configure_fpga (char* fpga_bin_path)
     {
         ZF_LOGE("lattice ice40 configuration failed");
         // do not exit the function - releasing resources is needed anyway
+        error = 1;
     }
 
     // release the programming specific resources
@@ -163,7 +165,7 @@ int cariboulite_configure_fpga (char* fpga_bin_path)
         return -1;
     }
 
-    return 0;
+    return -error;
 }
 
 //=======================================================================================
@@ -230,6 +232,9 @@ int cariboulite_self_test()
     caribou_fpga_get_errors (&sys.fpga, &sys.fpga_error_status);
     
     //------------------------------------------------------
+
+    ZF_LOGI("Self-test process finished successfully!");
+    return 0;
 }
 
 //=======================================================================================

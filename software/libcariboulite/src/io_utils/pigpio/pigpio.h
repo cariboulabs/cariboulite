@@ -583,6 +583,9 @@ typedef void (*gpioGetSamplesFuncEx_t) (const gpioSample_t *samples,
 
 typedef void *(gpioThreadFunc_t) (void *);
 
+// Added David Michaeli
+typedef int (*pigpioSigHandler) (int);
+// Added David Michaeli
 
 /* gpio: 0-53 */
 

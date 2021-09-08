@@ -111,6 +111,16 @@ install/fast: preinstall/fast
 	/usr/local/lib/python3.7/dist-packages/cmake/data/bin/cmake -P cmake_install.cmake
 .PHONY : install/fast
 
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+
+.PHONY : list_install_components/fast
+
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
@@ -121,16 +131,6 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 
 .PHONY : rebuild_cache/fast
-
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-
-.PHONY : list_install_components/fast
 
 # Special rule for the target edit_cache
 edit_cache:
@@ -176,6 +176,32 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named ice40programmer
+
+# Build rule for target.
+ice40programmer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ice40programmer
+.PHONY : ice40programmer
+
+# fast build rule for target.
+ice40programmer/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/build
+.PHONY : ice40programmer/fast
+
+#=============================================================================
+# Target rules for targets named main
+
+# Build rule for target.
+main: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 main
+.PHONY : main
+
+# fast build rule for target.
+main/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
+.PHONY : main/fast
+
+#=============================================================================
 # Target rules for targets named cariboulite
 
 # Build rule for target.
@@ -200,19 +226,6 @@ fpgacomm: cmake_check_build_system
 fpgacomm/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fpgacomm.dir/build.make CMakeFiles/fpgacomm.dir/build
 .PHONY : fpgacomm/fast
-
-#=============================================================================
-# Target rules for targets named ice40programmer
-
-# Build rule for target.
-ice40programmer: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ice40programmer
-.PHONY : ice40programmer
-
-# fast build rule for target.
-ice40programmer/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/build
-.PHONY : ice40programmer/fast
 
 #=============================================================================
 # Target rules for targets named test_tsqueue
@@ -441,6 +454,7 @@ src/cariboulite.o: src/cariboulite.c.o
 
 # target to build an object file
 src/cariboulite.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/cariboulite.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.o
 .PHONY : src/cariboulite.c.o
 
@@ -450,6 +464,7 @@ src/cariboulite.i: src/cariboulite.c.i
 
 # target to preprocess a source file
 src/cariboulite.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/cariboulite.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.i
 .PHONY : src/cariboulite.c.i
 
@@ -459,6 +474,7 @@ src/cariboulite.s: src/cariboulite.c.s
 
 # target to generate assembly for a file
 src/cariboulite.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/cariboulite.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.s
 .PHONY : src/cariboulite.c.s
 
@@ -591,6 +607,7 @@ help:
 	@echo "... ice40programmer"
 	@echo "... io_utils"
 	@echo "... latticeice40"
+	@echo "... main"
 	@echo "... rffc507x"
 	@echo "... test_at86rf215"
 	@echo "... test_caribou_fpga"

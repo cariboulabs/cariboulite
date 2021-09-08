@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
         printf("Programming bin file '%s'\n", argv[1]);
     }
 
-    cariboulite_setup_io ();
+    cariboulite_setup_io (NULL);
     cariboulite_configure_fpga (argv[1]);
     cariboulite_release_io ();
 
