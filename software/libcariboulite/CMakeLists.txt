@@ -42,12 +42,15 @@ target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # ----------------------------------
 set(SOURCES_ICE40_PROGRAMMER test/ice40_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
+set(SOURCES_MAIN src/cariboulite.c)
 
 add_executable(ice40programmer ${SOURCES_ICE40_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
+add_executable(main ${SOURCES_MAIN})
 
 target_link_libraries(ice40programmer cariboulite pthread m rt)
 target_link_libraries(fpgacomm cariboulite pthread m rt)
+target_link_libraries(main cariboulite pthread m rt)
 
 set_target_properties( ice40programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)

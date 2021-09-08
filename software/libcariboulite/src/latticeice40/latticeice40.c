@@ -128,7 +128,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	if(!(fd = fopen(bitfilename, "r")))
 	{
 		ZF_LOGI("open file %s failed", bitfilename);
-		return 0;
+		return -1;
 	}
 	else
 	{

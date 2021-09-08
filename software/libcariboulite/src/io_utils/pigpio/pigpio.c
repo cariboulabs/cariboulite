@@ -1415,6 +1415,15 @@ static uint32_t old_spi_cntl1;
 
 static uint32_t bscFR;
 
+// Addition David Michaeli
+static pigpioSigHandler unhandled_signal_from_app = NULL;
+
+void change_sigaction_unhandled_condition(pigpioSigHandler handler)
+{
+   unhandled_signal_from_app = handler;
+}
+// Addition David Michaeli
+
 /* const --------------------------------------------------------- */
 
 static const uint8_t clkDef[PI_MAX_GPIO + 1] =
@@ -5632,9 +5641,20 @@ static void sigHandler(int signum)
                break;
 
             default:
-               DBG(DBG_ALWAYS, "Unhandled signal %d, terminating\n", signum);
-               gpioTerminate();
-               exit(-1);
+            {
+               // Added David Michaeli
+               if (unhandled_signal_from_app != NULL)
+               {
+                  int res = unhandled_signal_from_app(signum);
+                  if (res != 0)
+                  {
+                     DBG(DBG_ALWAYS, "Unhandled signal %d, terminating\n", signum);
+                     gpioTerminate();
+                     exit(-1);
+                  }
+               }
+               // Added David Michaeli
+            }   
          }
       }
    }

@@ -18,7 +18,7 @@ static char *io_utils_gpio_mode_strs[] = {"IN","OUT","ALT5","ALT4","ALT0","ALT1"
 #define IO_UTILS_SHORT_WAIT(N)   {for (int i=0; i<(N); i++) { asm volatile("nop"); }}
 
 //=============================================================================================
-int io_utils_setup()
+int io_utils_setup(pigpioSigHandler sigHandler)
 {
    ZF_LOGI("initializing pigpio");
    int status = gpioInitialise();
@@ -28,6 +28,11 @@ int io_utils_setup()
       return -1;
    }
    ZF_LOGI("pigpio version %d", status);
+
+   if (sigHandler != NULL)
+   {
+      change_sigaction_unhandled_condition(sigHandler);
+   }
    return 0;
 }
 
