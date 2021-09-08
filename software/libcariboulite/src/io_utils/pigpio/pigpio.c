@@ -5643,15 +5643,16 @@ static void sigHandler(int signum)
             default:
             {
                // Added David Michaeli
+               int res = -1;
                if (unhandled_signal_from_app != NULL)
                {
-                  int res = unhandled_signal_from_app(signum);
-                  if (res != 0)
-                  {
-                     DBG(DBG_ALWAYS, "Unhandled signal %d, terminating\n", signum);
-                     gpioTerminate();
-                     exit(-1);
-                  }
+                  res = unhandled_signal_from_app(signum);
+               }
+               if (res != 0)
+               {
+                  DBG(DBG_ALWAYS, "Unhandled signal %d, terminating\n", signum);
+                  gpioTerminate();
+                  exit(-1);
                }
                // Added David Michaeli
             }   
