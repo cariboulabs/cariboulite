@@ -72,6 +72,16 @@ unistd.h
 caribou_smi/caribou_smi.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
 
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.c
+zf_log/zf_log.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/zf_log/zf_log.h
+stdio.h
+-
+cariboulite_setup.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.h
+cariboulite_events.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.h
+
 /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.h
 latticeice40/latticeice40.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40/latticeice40.h

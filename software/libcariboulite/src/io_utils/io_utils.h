@@ -32,7 +32,7 @@ typedef enum
     io_utils_alt_5 = 2,
 } io_utils_alt_en;
 
-int cariboulite_setup_io (void* sighandler);
+int io_utils_setup(pigpioSigHandler sigHandler);
 void io_utils_cleanup();
 void io_utils_set_pullupdn(int gpio, io_utils_pull_en pud);
 void io_utils_setup_gpio(int gpio, io_utils_dir_en direction, io_utils_pull_en pud);
