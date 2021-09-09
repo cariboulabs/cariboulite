@@ -27,18 +27,27 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeGenericSystem.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeInitializeConfigs.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeLanguageInformation.cmake"
+  "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeParseArguments.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeSystemSpecificInformation.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CMakeSystemSpecificInitialize.cmake"
+  "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CheckCXXCompilerFlag.cmake"
+  "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/CheckCXXSourceCompiles.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Compiler/GNU-C.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Compiler/GNU-CXX.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Compiler/GNU.cmake"
+  "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/GNUInstallDirs.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Internal/CMakeCheckCompilerFlag.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Platform/Linux-GNU-C.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Platform/Linux-GNU-CXX.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Platform/Linux-GNU.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Platform/Linux.cmake"
   "/usr/local/lib/python3.7/dist-packages/cmake/data/share/cmake-3.18/Modules/Platform/UnixPaths.cmake"
+  "/usr/local/share/cmake/SoapySDR/SoapySDRConfig.cmake"
+  "/usr/local/share/cmake/SoapySDR/SoapySDRConfigVersion.cmake"
+  "/usr/local/share/cmake/SoapySDR/SoapySDRExport-release.cmake"
+  "/usr/local/share/cmake/SoapySDR/SoapySDRExport.cmake"
+  "/usr/local/share/cmake/SoapySDR/SoapySDRUtil.cmake"
   )
 
 # The corresponding makefile is:
@@ -63,10 +72,11 @@ set(CMAKE_MAKEFILE_PRODUCTS
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
-  "CMakeFiles/ice40programmer.dir/DependInfo.cmake"
-  "CMakeFiles/main.dir/DependInfo.cmake"
   "CMakeFiles/cariboulite.dir/DependInfo.cmake"
+  "CMakeFiles/cariboulite_app.dir/DependInfo.cmake"
+  "CMakeFiles/ice40programmer.dir/DependInfo.cmake"
   "CMakeFiles/fpgacomm.dir/DependInfo.cmake"
+  "CMakeFiles/SoapyCariboulite.dir/DependInfo.cmake"
   "src/datatypes/CMakeFiles/test_tsqueue.dir/DependInfo.cmake"
   "src/datatypes/CMakeFiles/datatypes.dir/DependInfo.cmake"
   "src/datatypes/CMakeFiles/test_tiny_list.dir/DependInfo.cmake"

@@ -1,6 +1,10 @@
 #ifndef __TSQUEUE_H__
 #define __TSQUEUE_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -85,5 +89,9 @@ int tsqueue_reset_dropped_counter(tsqueue_st* q);
  * to insufficient capacity
  */
 int tsqueue_get_number_of_dropped(tsqueue_st* q);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __TSQUEUE_H__

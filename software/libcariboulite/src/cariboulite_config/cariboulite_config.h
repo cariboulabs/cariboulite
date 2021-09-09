@@ -1,6 +1,12 @@
 #ifndef __CARIBOULITE_CONFIG_H__
 #define __CARIBOULITE_CONFIG_H__
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "latticeice40/latticeice40.h"
 #include "caribou_fpga/caribou_fpga.h"
 #include "at86rf215/at86rf215.h"
@@ -36,6 +42,10 @@ typedef struct
     caribou_fpga_versions_st fpga_versions;
     uint8_t fpga_error_status;
 } cariboulite_st;
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif // __CARIBOULITE_CONFIG_H__

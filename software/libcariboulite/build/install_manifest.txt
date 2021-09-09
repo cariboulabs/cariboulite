@@ -1,0 +1,1 @@
+/usr/local/lib/SoapySDR/modules0.8/libSoapyCariboulite.so

@@ -4,7 +4,14 @@
 
 #include "zf_log/zf_log.h"
 #include "caribou_smi.h"
-#include "bcm2835_smi.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+    #include "bcm2835_smi.h"
+#ifdef __cplusplus
+}
+#endif
 
 #include <string.h>
 #include <fcntl.h>

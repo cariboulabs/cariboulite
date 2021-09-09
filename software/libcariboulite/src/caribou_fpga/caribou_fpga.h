@@ -1,6 +1,10 @@
 #ifndef __CARIBOU_FPGA_H__
 #define __CARIBOU_FPGA_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include "io_utils/io_utils.h"
@@ -99,5 +103,9 @@ int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin
 int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins);
 
 int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_smi_fifo_status_st *status);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __CARIBOU_FPGA_H__

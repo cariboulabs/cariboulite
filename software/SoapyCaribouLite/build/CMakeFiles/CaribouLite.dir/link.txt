@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -O3 -DNDEBUG -shared  -o libCaribouLite.so CMakeFiles/CaribouLite.dir/SoapyCariboulite.cpp.o  -Wl,-rpath,/usr/local/lib: -l... /usr/local/lib/libSoapySDR.so.0.8.0 -Wl,--no-undefined -pthread 

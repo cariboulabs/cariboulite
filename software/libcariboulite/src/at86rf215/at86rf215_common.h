@@ -1,13 +1,16 @@
 #ifndef __AT86RF215_COMMON_H__
 #define __AT86RF215_COMMON_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-//#include <lgpio.h>
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_spi.h"
 #include "at86rf215_regs.h"
@@ -131,5 +134,8 @@ int at86rf215_write_fifo(at86rf215_st* dev, uint8_t *buffer, uint8_t size );
 int at86rf215_read_fifo(at86rf215_st* dev, uint8_t *buffer, uint8_t size );
 void at86rf215_get_irqs(at86rf215_st* dev, at86rf215_irq_st* irq, int verbose);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __AT86RF215_COMMON_H__

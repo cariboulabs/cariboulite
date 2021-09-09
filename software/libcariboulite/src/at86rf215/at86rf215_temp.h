@@ -1,6 +1,10 @@
 #ifndef _AT86RF215_H_
 #define _AT86RF215_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
@@ -231,5 +235,9 @@ void AT86RF215RxSetBBFSK(uint32_t freq);
 void AT86RF215Initialize(uint32_t freq);
 void AT86RF215SetTXBBFSK(uint32_t freq);
 void AT86RF215SetXOCTrim(uint8_t trim);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

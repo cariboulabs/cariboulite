@@ -23,6 +23,10 @@
 #ifndef __RFFC507X_REGS_DEF
 #define __RFFC507X_REGS_DEF
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 
@@ -256,5 +260,9 @@ __MREG__(RFFC507X_LFSR,30,9,1)
 __MREG__(RFFC507X_TSEL,30,10,2)
 __MREG__(RFFC507X_TMUX,30,12,3)
 __MREG__(RFFC507X_TEN,30,15,1)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __RFFC507X_REGS_DEF

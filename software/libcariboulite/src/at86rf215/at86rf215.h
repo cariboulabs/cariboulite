@@ -1,6 +1,10 @@
 #ifndef __AT86RF215_H__
 #define __AT86RF215_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "at86rf215_common.h"
 
 int at86rf215_init(at86rf215_st* dev,
@@ -28,4 +32,9 @@ void at86rf215_setup_iq_radio_dac_value_override (at86rf215_st* dev, at86rf215_r
                                                     uint8_t tx_power );
 int at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                     uint32_t freq_hz);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif // __AT86RF215_H__

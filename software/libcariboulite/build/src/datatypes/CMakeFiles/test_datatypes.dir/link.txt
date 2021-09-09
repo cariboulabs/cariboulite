@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_datatypes.dir/main.c.o -o test_datatypes  libdatatypes.a 
