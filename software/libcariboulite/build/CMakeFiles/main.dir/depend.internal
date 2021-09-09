@@ -9,6 +9,7 @@ CMakeFiles/main.dir/src/cariboulite.c.o
  /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite.h
+ /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_config/cariboulite_config.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils.h

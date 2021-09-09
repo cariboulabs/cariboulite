@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/cariboulite.dir/src/cariboulite.c.o"
+  "CMakeFiles/cariboulite.dir/src/cariboulite_config/cariboulite_config_operational.c.o"
   "CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o"
   "CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o"
   "libcariboulite.a"

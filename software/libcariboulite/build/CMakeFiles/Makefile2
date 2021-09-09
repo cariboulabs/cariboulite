@@ -295,12 +295,12 @@ CMakeFiles/ice40programmer.dir/all: src/rffc507x/CMakeFiles/rffc507x.dir/all
 CMakeFiles/ice40programmer.dir/all: src/zf_log/CMakeFiles/zf_log.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=19,20 "Built target ice40programmer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=20,21 "Built target ice40programmer"
 .PHONY : CMakeFiles/ice40programmer.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/ice40programmer.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 32
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 33
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/ice40programmer.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 0
 .PHONY : CMakeFiles/ice40programmer.dir/rule
@@ -331,12 +331,12 @@ CMakeFiles/main.dir/all: src/rffc507x/CMakeFiles/rffc507x.dir/all
 CMakeFiles/main.dir/all: src/zf_log/CMakeFiles/zf_log.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=29,30 "Built target main"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=30,31 "Built target main"
 .PHONY : CMakeFiles/main.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/main.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 32
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 33
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/main.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 0
 .PHONY : CMakeFiles/main.dir/rule
@@ -366,12 +366,12 @@ CMakeFiles/cariboulite.dir/all: src/rffc507x/CMakeFiles/rffc507x.dir/all
 CMakeFiles/cariboulite.dir/all: src/zf_log/CMakeFiles/zf_log.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=10,11,12,13 "Built target cariboulite"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=10,11,12,13,14 "Built target cariboulite"
 .PHONY : CMakeFiles/cariboulite.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/cariboulite.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 30
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 31
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/cariboulite.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 0
 .PHONY : CMakeFiles/cariboulite.dir/rule
@@ -402,12 +402,12 @@ CMakeFiles/fpgacomm.dir/all: src/rffc507x/CMakeFiles/rffc507x.dir/all
 CMakeFiles/fpgacomm.dir/all: src/zf_log/CMakeFiles/zf_log.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fpgacomm.dir/build.make CMakeFiles/fpgacomm.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fpgacomm.dir/build.make CMakeFiles/fpgacomm.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=17,18 "Built target fpgacomm"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=18,19 "Built target fpgacomm"
 .PHONY : CMakeFiles/fpgacomm.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/fpgacomm.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 32
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 33
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/fpgacomm.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles 0
 .PHONY : CMakeFiles/fpgacomm.dir/rule
@@ -429,7 +429,7 @@ CMakeFiles/fpgacomm.dir/clean:
 src/datatypes/CMakeFiles/test_tsqueue.dir/all: src/datatypes/CMakeFiles/datatypes.dir/all
 	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tsqueue.dir/build.make src/datatypes/CMakeFiles/test_tsqueue.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tsqueue.dir/build.make src/datatypes/CMakeFiles/test_tsqueue.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=52,53 "Built target test_tsqueue"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=53,54 "Built target test_tsqueue"
 .PHONY : src/datatypes/CMakeFiles/test_tsqueue.dir/all
 
 # Build rule for subdir invocation for target.
@@ -456,7 +456,7 @@ src/datatypes/CMakeFiles/test_tsqueue.dir/clean:
 src/datatypes/CMakeFiles/datatypes.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/datatypes.dir/build.make src/datatypes/CMakeFiles/datatypes.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=14,15,16 "Built target datatypes"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=15,16,17 "Built target datatypes"
 .PHONY : src/datatypes/CMakeFiles/datatypes.dir/all
 
 # Build rule for subdir invocation for target.
@@ -483,7 +483,7 @@ src/datatypes/CMakeFiles/datatypes.dir/clean:
 src/datatypes/CMakeFiles/test_tiny_list.dir/all: src/datatypes/CMakeFiles/datatypes.dir/all
 	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tiny_list.dir/build.make src/datatypes/CMakeFiles/test_tiny_list.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/datatypes/CMakeFiles/test_tiny_list.dir/build.make src/datatypes/CMakeFiles/test_tiny_list.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=50,51 "Built target test_tiny_list"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=51,52 "Built target test_tiny_list"
 .PHONY : src/datatypes/CMakeFiles/test_tiny_list.dir/all
 
 # Build rule for subdir invocation for target.
@@ -510,7 +510,7 @@ src/datatypes/CMakeFiles/test_tiny_list.dir/clean:
 src/ustimer/CMakeFiles/test_ustimer.dir/all: src/ustimer/CMakeFiles/ustimer.dir/all
 	$(MAKE) $(MAKESILENT) -f src/ustimer/CMakeFiles/test_ustimer.dir/build.make src/ustimer/CMakeFiles/test_ustimer.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/ustimer/CMakeFiles/test_ustimer.dir/build.make src/ustimer/CMakeFiles/test_ustimer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=54,55 "Built target test_ustimer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=55,56 "Built target test_ustimer"
 .PHONY : src/ustimer/CMakeFiles/test_ustimer.dir/all
 
 # Build rule for subdir invocation for target.
@@ -537,7 +537,7 @@ src/ustimer/CMakeFiles/test_ustimer.dir/clean:
 src/ustimer/CMakeFiles/ustimer.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/ustimer/CMakeFiles/ustimer.dir/build.make src/ustimer/CMakeFiles/ustimer.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/ustimer/CMakeFiles/ustimer.dir/build.make src/ustimer/CMakeFiles/ustimer.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=56,57 "Built target ustimer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=57,58 "Built target ustimer"
 .PHONY : src/ustimer/CMakeFiles/ustimer.dir/all
 
 # Build rule for subdir invocation for target.
@@ -564,7 +564,7 @@ src/ustimer/CMakeFiles/ustimer.dir/clean:
 src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/build.make src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/build.make src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=39,40,41 "Built target test_caribou_fpga"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=40,41,42 "Built target test_caribou_fpga"
 .PHONY : src/caribou_fpga/CMakeFiles/test_caribou_fpga.dir/all
 
 # Build rule for subdir invocation for target.
@@ -618,7 +618,7 @@ src/caribou_fpga/CMakeFiles/caribou_fpga.dir/clean:
 src/at86rf215/CMakeFiles/test_at86rf215.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/at86rf215/CMakeFiles/test_at86rf215.dir/build.make src/at86rf215/CMakeFiles/test_at86rf215.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/at86rf215/CMakeFiles/test_at86rf215.dir/build.make src/at86rf215/CMakeFiles/test_at86rf215.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=33,34,35,36,37,38 "Built target test_at86rf215"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=34,35,36,37,38,39 "Built target test_at86rf215"
 .PHONY : src/at86rf215/CMakeFiles/test_at86rf215.dir/all
 
 # Build rule for subdir invocation for target.
@@ -672,7 +672,7 @@ src/at86rf215/CMakeFiles/at86rf215.dir/clean:
 src/caribou_smi/CMakeFiles/test_caribou_smi.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/test_caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/test_caribou_smi.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/caribou_smi/CMakeFiles/test_caribou_smi.dir/build.make src/caribou_smi/CMakeFiles/test_caribou_smi.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=42,43,44 "Built target test_caribou_smi"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=43,44,45 "Built target test_caribou_smi"
 .PHONY : src/caribou_smi/CMakeFiles/test_caribou_smi.dir/all
 
 # Build rule for subdir invocation for target.
@@ -726,7 +726,7 @@ src/caribou_smi/CMakeFiles/caribou_smi.dir/clean:
 src/latticeice40/CMakeFiles/latticeice40.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/latticeice40/CMakeFiles/latticeice40.dir/build.make src/latticeice40/CMakeFiles/latticeice40.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/latticeice40/CMakeFiles/latticeice40.dir/build.make src/latticeice40/CMakeFiles/latticeice40.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=27,28 "Built target latticeice40"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=28,29 "Built target latticeice40"
 .PHONY : src/latticeice40/CMakeFiles/latticeice40.dir/all
 
 # Build rule for subdir invocation for target.
@@ -753,7 +753,7 @@ src/latticeice40/CMakeFiles/latticeice40.dir/clean:
 src/io_utils/CMakeFiles/test_io_utils.dir/all: src/io_utils/CMakeFiles/io_utils.dir/all
 	$(MAKE) $(MAKESILENT) -f src/io_utils/CMakeFiles/test_io_utils.dir/build.make src/io_utils/CMakeFiles/test_io_utils.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/io_utils/CMakeFiles/test_io_utils.dir/build.make src/io_utils/CMakeFiles/test_io_utils.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=45,46 "Built target test_io_utils"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=46,47 "Built target test_io_utils"
 .PHONY : src/io_utils/CMakeFiles/test_io_utils.dir/all
 
 # Build rule for subdir invocation for target.
@@ -780,7 +780,7 @@ src/io_utils/CMakeFiles/test_io_utils.dir/clean:
 src/io_utils/CMakeFiles/io_utils.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/io_utils/CMakeFiles/io_utils.dir/build.make src/io_utils/CMakeFiles/io_utils.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/io_utils/CMakeFiles/io_utils.dir/build.make src/io_utils/CMakeFiles/io_utils.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=21,22,23,24,25,26 "Built target io_utils"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=22,23,24,25,26,27 "Built target io_utils"
 .PHONY : src/io_utils/CMakeFiles/io_utils.dir/all
 
 # Build rule for subdir invocation for target.
@@ -807,7 +807,7 @@ src/io_utils/CMakeFiles/io_utils.dir/clean:
 src/rffc507x/CMakeFiles/test_rffc507x.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/rffc507x/CMakeFiles/test_rffc507x.dir/build.make src/rffc507x/CMakeFiles/test_rffc507x.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/rffc507x/CMakeFiles/test_rffc507x.dir/build.make src/rffc507x/CMakeFiles/test_rffc507x.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=47,48,49 "Built target test_rffc507x"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=48,49,50 "Built target test_rffc507x"
 .PHONY : src/rffc507x/CMakeFiles/test_rffc507x.dir/all
 
 # Build rule for subdir invocation for target.
@@ -834,7 +834,7 @@ src/rffc507x/CMakeFiles/test_rffc507x.dir/clean:
 src/rffc507x/CMakeFiles/rffc507x.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/rffc507x/CMakeFiles/rffc507x.dir/build.make src/rffc507x/CMakeFiles/rffc507x.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/rffc507x/CMakeFiles/rffc507x.dir/build.make src/rffc507x/CMakeFiles/rffc507x.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=31,32 "Built target rffc507x"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=32,33 "Built target rffc507x"
 .PHONY : src/rffc507x/CMakeFiles/rffc507x.dir/all
 
 # Build rule for subdir invocation for target.
@@ -861,7 +861,7 @@ src/rffc507x/CMakeFiles/rffc507x.dir/clean:
 src/zf_log/CMakeFiles/zf_log.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/zf_log/CMakeFiles/zf_log.dir/build.make src/zf_log/CMakeFiles/zf_log.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/zf_log/CMakeFiles/zf_log.dir/build.make src/zf_log/CMakeFiles/zf_log.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=58,59 "Built target zf_log"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=59,60 "Built target zf_log"
 .PHONY : src/zf_log/CMakeFiles/zf_log.dir/all
 
 # Build rule for subdir invocation for target.
