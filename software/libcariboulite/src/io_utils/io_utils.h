@@ -1,6 +1,10 @@
 #ifndef __IO_UTILS_H__
 #define __IO_UTILS_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -47,5 +51,8 @@ int io_utils_setup_interrupt( int gpio,
                               void* context);
 void io_utils_usleep(int usec);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __IO_UTILS_H__

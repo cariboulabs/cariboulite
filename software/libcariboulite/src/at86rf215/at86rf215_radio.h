@@ -1,6 +1,10 @@
 #ifndef __AT86RF215_RADIO_H__
 #define __AT86RF215_RADIO_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include "at86rf215_common.h"
@@ -358,5 +362,9 @@ void at86rf215_radio_get_tx_dac_input_iq(at86rf215_st* dev, at86rf215_rf_channel
                                                 int *enable_dac_q_dc, int *dac_q_val);
 int at86rf215_radio_get_good_channel(float wanted_frequency_hz, at86rf215_radio_channel_mode_en *mode,
                                                                 at86rf215_rf_channel_en *ch);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __AT86RF215_RADIO_H__

@@ -14,7 +14,7 @@
 
 struct sigaction act;
 int program_running = 1;
-
+CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
 
 //=================================================
 int stop_program ()
@@ -42,48 +42,13 @@ int sighandler(int signum)
 }
 
 //=================================================
-int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb)
-{
-    ZF_LOGI("driver initializing");
-    if (cariboulite_setup_io (sys, signal_handler_cb) != 0)
-    {
-        return -1;
-    }
-
-    if (cariboulite_configure_fpga (sys, sys->firmware_path_operational) != 0)
-    {
-        cariboulite_release_io (sys);
-        return -2;
-    }
-
-    if (cariboulite_init_submodules (sys) != 0)
-    {
-        cariboulite_release_io (sys);
-        return -3;
-    }
-
-    if (cariboulite_self_test(sys) != 0)
-    {
-
-    }
-
-    return 0;
-}
-
-//=================================================
-int cariboulite_release_driver(cariboulite_st *sys)
-{
-    ZF_LOGI("driver releasing");
-
-    cariboulite_release_submodules(sys);
-    cariboulite_release_io (sys);
-}
-
-//=================================================
 int main(int argc, char *argv[])
 {
+    strcpy(cariboulite_sys.firmware_path_operational, "top.bin");
+    strcpy(cariboulite_sys.firmware_path_testing, "top.bin");
+
     // init the program
-    if (cariboulite_init_driver(&sys, sighandler)!=0)
+    if (cariboulite_init_driver(&cariboulite_sys, sighandler)!=0)
     {
         ZF_LOGE("driver init failed, terminating...");
         return -1;
@@ -96,6 +61,6 @@ int main(int argc, char *argv[])
     }
 
     // close the driver and release resources
-    cariboulite_release_driver(&sys);
+    cariboulite_release_driver(&cariboulite_sys);
     return 0;
 }

@@ -205,3 +205,58 @@ int cariboulite_release_submodules(cariboulite_st* sys)
 
     return 0;
 }
+
+//=================================================
+int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb)
+{
+    ZF_LOGI("driver initializing");
+    if (cariboulite_setup_io (sys, signal_handler_cb) != 0)
+    {
+        return -1;
+    }
+
+    if (cariboulite_configure_fpga (sys, sys->firmware_path_operational) != 0)
+    {
+        cariboulite_release_io (sys);
+        return -2;
+    }
+
+    if (cariboulite_init_submodules (sys) != 0)
+    {
+        cariboulite_release_io (sys);
+        return -3;
+    }
+
+    if (cariboulite_self_test(sys) != 0)
+    {
+
+    }
+
+    return 0;
+}
+
+//=================================================
+int cariboulite_release_driver(cariboulite_st *sys)
+{
+    ZF_LOGI("driver releasing");
+
+    cariboulite_release_submodules(sys);
+    cariboulite_release_io (sys);
+}
+
+//=================================================
+int cariboulite_get_serial_number(cariboulite_st *sys, uint32_t* serial_number, int *count)
+{
+    // TBD
+    if (serial_number) *serial_number = 0xAA55AA55; 
+    if (count) *count = 1;
+    return 0;
+}
+
+//=================================================
+void cariboulite_lib_version(cariboulite_lib_version_st* v)
+{
+    v->major_version = CARIBOULITE_MAJOR_VERSION;
+    v->minor_version = CARIBOULITE_MINOR_VERSION;
+    v->revision = CARIBOULITE_REVISION;
+}

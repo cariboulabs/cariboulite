@@ -1,12 +1,14 @@
 #ifndef __CARIBOULITE_H__
 #define __CARIBOULITE_H__
 
-#include "cariboulite_config/cariboulite_config.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern cariboulite_st sys;
+#include "cariboulite_config/cariboulite_config_default.h"
 
-
-int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb);
-int cariboulite_release_driver(cariboulite_st *sys);
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __CARIBOULITE_H__

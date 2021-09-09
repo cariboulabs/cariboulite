@@ -1,6 +1,10 @@
 #ifndef ___USTIMER_H__
 #define ___USTIMER_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -38,5 +42,9 @@ int ustimer_register_function 	( ustimer_handler func,// IN: the handler functio
 								  int *id );			// OUT: the specific timer id [0..WH_TIMER_NUM_SLOTS-1]
 int ustimer_unregister 			( int id );
 int ustimer_start 				( unsigned int run );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //___USTIMER_H__

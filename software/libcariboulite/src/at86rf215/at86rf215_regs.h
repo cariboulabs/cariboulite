@@ -1,6 +1,10 @@
 #ifndef _AT86RF215_REGS_H_
 #define _AT86RF215_REGS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*!
  * ============================================================================
  * AT86RF215 Internal registers Address
@@ -285,5 +289,8 @@ typedef enum
 #define T_RX_TXPREP_ns				200
 #define T_TX_Start_Delay_us			4
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

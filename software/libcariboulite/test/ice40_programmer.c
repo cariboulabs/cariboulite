@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include "cariboulite.h"
 #include "cariboulite_setup.h"
-#include "cariboulite_config/cariboulite_config.h"
+#include "cariboulite_config/cariboulite_config_default.h"
 
-extern cariboulite_st sys;
+CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
 
 int main(int argc, char *argv[])
 {
@@ -20,9 +20,9 @@ int main(int argc, char *argv[])
         printf("Programming bin file '%s'\n", argv[1]);
     }
 
-    cariboulite_setup_io (&sys, NULL);
-    cariboulite_configure_fpga (&sys, argv[1]);
-    cariboulite_release_io (&sys);
+    cariboulite_setup_io (&cariboulite_sys, NULL);
+    cariboulite_configure_fpga (&cariboulite_sys, argv[1]);
+    cariboulite_release_io (&cariboulite_sys);
 
     return 0;
 }

@@ -1,6 +1,10 @@
 #ifndef __IO_UTILS_SYS_INFO_H__
 #define __IO_UTILS_SYS_INFO_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -39,5 +43,9 @@ typedef struct
 
 int io_utils_get_rpi_info(io_utils_sys_info_st *info);
 void io_utils_print_rpi_info(io_utils_sys_info_st *info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __IO_UTILS_SYS_INFO_H__

@@ -9,8 +9,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 # ------------------------------------
 # MAIN - Source files for main library
 # ------------------------------------
-set(SOURCES_LIB src/cariboulite.c src/cariboulite_setup.c src/cariboulite_events.c)
-set(SOURCES_CONFIG src/cariboulite_config/cariboulite_config_operational.c)
+set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c)
 
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
@@ -23,20 +22,49 @@ add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 
-add_library(cariboulite STATIC ${SOURCES_LIB} ${SOURCES_CONFIG})
-target_link_libraries(cariboulite   datatypes 
-                                    ustimer 
-                                    caribou_fpga 
-                                    at86rf215 
-                                    rffc507x 
-                                    caribou_smi 
-                                    latticeice40 
-                                    io_utils 
-                                    m 
-                                    rt 
-                                    pthread 
+
+# Create the library LibCaribouLite
+add_library(cariboulite STATIC ${SOURCES_LIB})
+target_link_libraries(cariboulite   datatypes
+                                    ustimer
+                                    caribou_fpga
+                                    at86rf215
+                                    rffc507x
+                                    caribou_smi
+                                    latticeice40
+                                    io_utils
                                     zf_log)
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# create the Soapy shared object
+find_package(SoapySDR CONFIG)
+if (NOT SoapySDR_FOUND)
+    message(WARNING "SoapySDR development files not found - skipping support")
+    return()
+endif ()
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    include(CheckCXXCompilerFlag)
+    CHECK_CXX_COMPILER_FLAG("-std=c++11" HAS_STD_CXX11)
+    if(HAS_STD_CXX11)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    else(HAS_STD_CXX11)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+    endif()
+    #Thread support enabled (not the same as -lpthread)
+    list(APPEND SOAPY_CARIBOULITE_LIBRARIES)
+    #disable warnings for unused parameters
+    add_definitions(-Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses)
+endif(CMAKE_COMPILER_IS_GNUCXX)
+
+SOAPY_SDR_MODULE_UTIL(
+    TARGET SoapyCariboulite
+    SOURCES 
+        src/soapy_api/SoapyCariboulite.cpp 
+        src/soapy_api/Cariboulite.cpp
+        src/soapy_api/Cariboulite.hpp
+    LIBRARIES cariboulite
+)
 
 # ----------------------------------
 # TESTS - source files for the tests
@@ -47,11 +75,11 @@ set(SOURCES_MAIN src/cariboulite.c)
 
 add_executable(ice40programmer ${SOURCES_ICE40_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
-add_executable(main ${SOURCES_MAIN})
+add_executable(cariboulite_app ${SOURCES_MAIN})
 
 target_link_libraries(ice40programmer cariboulite pthread m rt)
 target_link_libraries(fpgacomm cariboulite pthread m rt)
-target_link_libraries(main cariboulite pthread m rt)
+target_link_libraries(cariboulite_app cariboulite pthread m rt)
 
 set_target_properties( ice40programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
@@ -61,4 +89,4 @@ set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 # ------------
 # Set the location for library installation -- i.e., /usr/lib in this case
 # not really necessary in this example. Use "sudo make install" to apply
-install(TARGETS cariboulite DESTINATION /usr/lib)
+#install(TARGETS cariboulite DESTINATION /usr/lib)

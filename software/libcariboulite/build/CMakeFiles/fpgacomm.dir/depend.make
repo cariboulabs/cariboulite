@@ -8,6 +8,7 @@ CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/at86rf215/at86rf215_regs
 CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/caribou_fpga/caribou_fpga.h
 CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/cariboulite_config/cariboulite_config.h
+CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/cariboulite_config/cariboulite_config_default.h
 CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/cariboulite_setup.h
 CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/io_utils/io_utils.h
 CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o: ../src/io_utils/io_utils_spi.h

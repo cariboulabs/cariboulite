@@ -1,6 +1,10 @@
 #ifndef __IO_UTILS_SPI_H__
 #define __IO_UTILS_SPI_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include <pthread.h>
@@ -68,5 +72,9 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
 							size_t length,
                             io_utils_spi_dir_en dir);
 void io_utils_spi_print_setup(io_utils_spi_st* dev);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __IO_UTILS_SPI_H__

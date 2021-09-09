@@ -24,6 +24,10 @@
 #ifndef __RFFC507X_H
 #define __RFFC507X_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include "io_utils/io_utils.h"
@@ -79,5 +83,9 @@ void rffc507x_disable(rffc507x_st* dev);
 void rffc507x_set_gpo(rffc507x_st* dev, uint8_t gpo);
 void rffc507x_setup_pin_functions(rffc507x_st* dev);
 void rffc507x_readback(rffc507x_st* dev, uint16_t *readback_buff, int buf_len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __RFFC507X_H

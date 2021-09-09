@@ -70,6 +70,10 @@ io_utils/io_utils_sys_info.h
 ustimer/ustimer.h
 ../src/cariboulite_config/ustimer/ustimer.h
 
+../src/cariboulite_config/cariboulite_config_default.h
+cariboulite_config.h
+../src/cariboulite_config/cariboulite_config.h
+
 ../src/cariboulite_setup.h
 latticeice40/latticeice40.h
 ../src/latticeice40/latticeice40.h
@@ -203,6 +207,6 @@ cariboulite.h
 /home/pi/projects/cariboulite/software/libcariboulite/test/cariboulite.h
 cariboulite_setup.h
 /home/pi/projects/cariboulite/software/libcariboulite/test/cariboulite_setup.h
-cariboulite_config/cariboulite_config.h
-/home/pi/projects/cariboulite/software/libcariboulite/test/cariboulite_config/cariboulite_config.h
+cariboulite_config/cariboulite_config_default.h
+/home/pi/projects/cariboulite/software/libcariboulite/test/cariboulite_config/cariboulite_config_default.h
 

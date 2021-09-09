@@ -1,6 +1,10 @@
 #ifndef __TINY_LIST_H__
 #define __TINY_LIST_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
@@ -44,5 +48,9 @@ void tiny_list_print (tiny_list_st* list);
 tiny_list_node_st* tiny_list_create_node (void *data, unsigned int len);
 tiny_list_node_st* tiny_list_destroy_node (tiny_list_node_st* node);
 void tiny_list_print_node (tiny_list_node_st* node);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TINY_LIST_H__

@@ -1,6 +1,10 @@
 #ifndef __AT86RF215_BASEBAND_H__
 #define __AT86RF215_BASEBAND_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct at86rf215_BBC_regs
 {
     uint16_t RG_IRQS;
@@ -201,5 +205,8 @@ typedef struct
 void at86rf215_bb_set_phy_control (at86rf215_st *dev, at86rf215_rf_channel_en ch, at86rf215_bb_phy_control_st* pc);
 void at86rf215_bb_get_phy_control (at86rf215_st *dev, at86rf215_rf_channel_en ch, at86rf215_bb_phy_control_st* pc);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __AT86RF215_BASEBAND_H__

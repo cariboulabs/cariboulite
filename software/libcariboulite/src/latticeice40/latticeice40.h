@@ -1,6 +1,10 @@
 #ifndef __LATTICEICE40_H__
 #define __LATTICEICE40_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <linux/types.h>
 #include "io_utils/io_utils.h"
@@ -30,5 +34,9 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename);
 		   if 0 / 1 => the pin is reset or set accordingly
  */
 int latticeice40_hard_reset(latticeice40_st *dev, int level);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __LATTICEICE40_H__

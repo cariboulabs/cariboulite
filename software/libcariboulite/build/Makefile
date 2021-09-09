@@ -111,16 +111,6 @@ install/fast: preinstall/fast
 	/usr/local/lib/python3.7/dist-packages/cmake/data/bin/cmake -P cmake_install.cmake
 .PHONY : install/fast
 
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-
-.PHONY : list_install_components/fast
-
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
@@ -131,6 +121,16 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 
 .PHONY : rebuild_cache/fast
+
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+
+.PHONY : list_install_components/fast
 
 # Special rule for the target edit_cache
 edit_cache:
@@ -176,32 +176,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named ice40programmer
-
-# Build rule for target.
-ice40programmer: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ice40programmer
-.PHONY : ice40programmer
-
-# fast build rule for target.
-ice40programmer/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/build
-.PHONY : ice40programmer/fast
-
-#=============================================================================
-# Target rules for targets named main
-
-# Build rule for target.
-main: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 main
-.PHONY : main
-
-# fast build rule for target.
-main/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
-.PHONY : main/fast
-
-#=============================================================================
 # Target rules for targets named cariboulite
 
 # Build rule for target.
@@ -215,6 +189,32 @@ cariboulite/fast:
 .PHONY : cariboulite/fast
 
 #=============================================================================
+# Target rules for targets named cariboulite_app
+
+# Build rule for target.
+cariboulite_app: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cariboulite_app
+.PHONY : cariboulite_app
+
+# fast build rule for target.
+cariboulite_app/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite_app.dir/build.make CMakeFiles/cariboulite_app.dir/build
+.PHONY : cariboulite_app/fast
+
+#=============================================================================
+# Target rules for targets named ice40programmer
+
+# Build rule for target.
+ice40programmer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ice40programmer
+.PHONY : ice40programmer
+
+# fast build rule for target.
+ice40programmer/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ice40programmer.dir/build.make CMakeFiles/ice40programmer.dir/build
+.PHONY : ice40programmer/fast
+
+#=============================================================================
 # Target rules for targets named fpgacomm
 
 # Build rule for target.
@@ -226,6 +226,19 @@ fpgacomm: cmake_check_build_system
 fpgacomm/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fpgacomm.dir/build.make CMakeFiles/fpgacomm.dir/build
 .PHONY : fpgacomm/fast
+
+#=============================================================================
+# Target rules for targets named SoapyCariboulite
+
+# Build rule for target.
+SoapyCariboulite: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 SoapyCariboulite
+.PHONY : SoapyCariboulite
+
+# fast build rule for target.
+SoapyCariboulite/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/build
+.PHONY : SoapyCariboulite/fast
 
 #=============================================================================
 # Target rules for targets named test_tsqueue
@@ -454,8 +467,7 @@ src/cariboulite.o: src/cariboulite.c.o
 
 # target to build an object file
 src/cariboulite.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/cariboulite.c.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite_app.dir/build.make CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o
 .PHONY : src/cariboulite.c.o
 
 src/cariboulite.i: src/cariboulite.c.i
@@ -464,8 +476,7 @@ src/cariboulite.i: src/cariboulite.c.i
 
 # target to preprocess a source file
 src/cariboulite.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/cariboulite.c.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite_app.dir/build.make CMakeFiles/cariboulite_app.dir/src/cariboulite.c.i
 .PHONY : src/cariboulite.c.i
 
 src/cariboulite.s: src/cariboulite.c.s
@@ -474,36 +485,8 @@ src/cariboulite.s: src/cariboulite.c.s
 
 # target to generate assembly for a file
 src/cariboulite.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/cariboulite.c.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite_app.dir/build.make CMakeFiles/cariboulite_app.dir/src/cariboulite.c.s
 .PHONY : src/cariboulite.c.s
-
-src/cariboulite_config/cariboulite_config_operational.o: src/cariboulite_config/cariboulite_config_operational.c.o
-
-.PHONY : src/cariboulite_config/cariboulite_config_operational.o
-
-# target to build an object file
-src/cariboulite_config/cariboulite_config_operational.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_config/cariboulite_config_operational.c.o
-.PHONY : src/cariboulite_config/cariboulite_config_operational.c.o
-
-src/cariboulite_config/cariboulite_config_operational.i: src/cariboulite_config/cariboulite_config_operational.c.i
-
-.PHONY : src/cariboulite_config/cariboulite_config_operational.i
-
-# target to preprocess a source file
-src/cariboulite_config/cariboulite_config_operational.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_config/cariboulite_config_operational.c.i
-.PHONY : src/cariboulite_config/cariboulite_config_operational.c.i
-
-src/cariboulite_config/cariboulite_config_operational.s: src/cariboulite_config/cariboulite_config_operational.c.s
-
-.PHONY : src/cariboulite_config/cariboulite_config_operational.s
-
-# target to generate assembly for a file
-src/cariboulite_config/cariboulite_config_operational.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_config/cariboulite_config_operational.c.s
-.PHONY : src/cariboulite_config/cariboulite_config_operational.c.s
 
 src/cariboulite_events.o: src/cariboulite_events.c.o
 
@@ -558,6 +541,60 @@ src/cariboulite_setup.s: src/cariboulite_setup.c.s
 src/cariboulite_setup.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.s
 .PHONY : src/cariboulite_setup.c.s
+
+src/soapy_api/Cariboulite.o: src/soapy_api/Cariboulite.cpp.o
+
+.PHONY : src/soapy_api/Cariboulite.o
+
+# target to build an object file
+src/soapy_api/Cariboulite.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o
+.PHONY : src/soapy_api/Cariboulite.cpp.o
+
+src/soapy_api/Cariboulite.i: src/soapy_api/Cariboulite.cpp.i
+
+.PHONY : src/soapy_api/Cariboulite.i
+
+# target to preprocess a source file
+src/soapy_api/Cariboulite.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.i
+.PHONY : src/soapy_api/Cariboulite.cpp.i
+
+src/soapy_api/Cariboulite.s: src/soapy_api/Cariboulite.cpp.s
+
+.PHONY : src/soapy_api/Cariboulite.s
+
+# target to generate assembly for a file
+src/soapy_api/Cariboulite.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.s
+.PHONY : src/soapy_api/Cariboulite.cpp.s
+
+src/soapy_api/SoapyCariboulite.o: src/soapy_api/SoapyCariboulite.cpp.o
+
+.PHONY : src/soapy_api/SoapyCariboulite.o
+
+# target to build an object file
+src/soapy_api/SoapyCariboulite.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o
+.PHONY : src/soapy_api/SoapyCariboulite.cpp.o
+
+src/soapy_api/SoapyCariboulite.i: src/soapy_api/SoapyCariboulite.cpp.i
+
+.PHONY : src/soapy_api/SoapyCariboulite.i
+
+# target to preprocess a source file
+src/soapy_api/SoapyCariboulite.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.i
+.PHONY : src/soapy_api/SoapyCariboulite.cpp.i
+
+src/soapy_api/SoapyCariboulite.s: src/soapy_api/SoapyCariboulite.cpp.s
+
+.PHONY : src/soapy_api/SoapyCariboulite.s
+
+# target to generate assembly for a file
+src/soapy_api/SoapyCariboulite.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.s
+.PHONY : src/soapy_api/SoapyCariboulite.cpp.s
 
 test/fpga_comm_test.o: test/fpga_comm_test.c.o
 
@@ -625,16 +662,17 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... SoapyCariboulite"
 	@echo "... at86rf215"
 	@echo "... caribou_fpga"
 	@echo "... caribou_smi"
 	@echo "... cariboulite"
+	@echo "... cariboulite_app"
 	@echo "... datatypes"
 	@echo "... fpgacomm"
 	@echo "... ice40programmer"
 	@echo "... io_utils"
 	@echo "... latticeice40"
-	@echo "... main"
 	@echo "... rffc507x"
 	@echo "... test_at86rf215"
 	@echo "... test_caribou_fpga"
@@ -649,15 +687,18 @@ help:
 	@echo "... src/cariboulite.o"
 	@echo "... src/cariboulite.i"
 	@echo "... src/cariboulite.s"
-	@echo "... src/cariboulite_config/cariboulite_config_operational.o"
-	@echo "... src/cariboulite_config/cariboulite_config_operational.i"
-	@echo "... src/cariboulite_config/cariboulite_config_operational.s"
 	@echo "... src/cariboulite_events.o"
 	@echo "... src/cariboulite_events.i"
 	@echo "... src/cariboulite_events.s"
 	@echo "... src/cariboulite_setup.o"
 	@echo "... src/cariboulite_setup.i"
 	@echo "... src/cariboulite_setup.s"
+	@echo "... src/soapy_api/Cariboulite.o"
+	@echo "... src/soapy_api/Cariboulite.i"
+	@echo "... src/soapy_api/Cariboulite.s"
+	@echo "... src/soapy_api/SoapyCariboulite.o"
+	@echo "... src/soapy_api/SoapyCariboulite.i"
+	@echo "... src/soapy_api/SoapyCariboulite.s"
 	@echo "... test/fpga_comm_test.o"
 	@echo "... test/fpga_comm_test.i"
 	@echo "... test/fpga_comm_test.s"

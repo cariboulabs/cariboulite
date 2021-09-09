@@ -1,6 +1,10 @@
 #ifndef __CARIBOU_SMI_H__
 #define __CARIBOU_SMI_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <pthread.h>
 #include <stdint.h>
 
@@ -98,5 +102,9 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
 char* caribou_smi_get_error_string(caribou_smi_error_en err);
 void dump_hex(const void* data, size_t size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __CARIBOU_SMI_H__
