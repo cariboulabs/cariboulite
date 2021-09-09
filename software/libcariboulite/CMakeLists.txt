@@ -10,6 +10,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 # MAIN - Source files for main library
 # ------------------------------------
 set(SOURCES_LIB src/cariboulite.c src/cariboulite_setup.c src/cariboulite_events.c)
+set(SOURCES_CONFIG src/cariboulite_config/cariboulite_config_operational.c)
 
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
@@ -22,7 +23,7 @@ add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 
-add_library(cariboulite STATIC ${SOURCES_LIB})
+add_library(cariboulite STATIC ${SOURCES_LIB} ${SOURCES_CONFIG})
 target_link_libraries(cariboulite   datatypes 
                                     ustimer 
                                     caribou_fpga 

@@ -478,6 +478,33 @@ src/cariboulite.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite.c.s
 .PHONY : src/cariboulite.c.s
 
+src/cariboulite_config/cariboulite_config_operational.o: src/cariboulite_config/cariboulite_config_operational.c.o
+
+.PHONY : src/cariboulite_config/cariboulite_config_operational.o
+
+# target to build an object file
+src/cariboulite_config/cariboulite_config_operational.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_config/cariboulite_config_operational.c.o
+.PHONY : src/cariboulite_config/cariboulite_config_operational.c.o
+
+src/cariboulite_config/cariboulite_config_operational.i: src/cariboulite_config/cariboulite_config_operational.c.i
+
+.PHONY : src/cariboulite_config/cariboulite_config_operational.i
+
+# target to preprocess a source file
+src/cariboulite_config/cariboulite_config_operational.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_config/cariboulite_config_operational.c.i
+.PHONY : src/cariboulite_config/cariboulite_config_operational.c.i
+
+src/cariboulite_config/cariboulite_config_operational.s: src/cariboulite_config/cariboulite_config_operational.c.s
+
+.PHONY : src/cariboulite_config/cariboulite_config_operational.s
+
+# target to generate assembly for a file
+src/cariboulite_config/cariboulite_config_operational.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cariboulite.dir/build.make CMakeFiles/cariboulite.dir/src/cariboulite_config/cariboulite_config_operational.c.s
+.PHONY : src/cariboulite_config/cariboulite_config_operational.c.s
+
 src/cariboulite_events.o: src/cariboulite_events.c.o
 
 .PHONY : src/cariboulite_events.o
@@ -622,6 +649,9 @@ help:
 	@echo "... src/cariboulite.o"
 	@echo "... src/cariboulite.i"
 	@echo "... src/cariboulite.s"
+	@echo "... src/cariboulite_config/cariboulite_config_operational.o"
+	@echo "... src/cariboulite_config/cariboulite_config_operational.i"
+	@echo "... src/cariboulite_config/cariboulite_config_operational.s"
 	@echo "... src/cariboulite_events.o"
 	@echo "... src/cariboulite_events.i"
 	@echo "... src/cariboulite_events.s"
