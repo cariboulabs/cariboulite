@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_cariboulite_eeprom.dir/cariboulite_eeprom.c.o CMakeFiles/test_cariboulite_eeprom.dir/test_cariboulite_eeprom.c.o -o test_cariboulite_eeprom  -lrt -lpthread ../../io_utils/build/libio_utils.a ../../zf_log/build/libzf_log.a 
