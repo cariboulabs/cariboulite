@@ -1,0 +1,40 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../../zf_log/zf_log.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.c
+zf_log/zf_log.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/zf_log/zf_log.h
+stdio.h
+-
+stdlib.h
+-
+ctype.h
+-
+string.h
+-
+stdbool.h
+-
+endian.h
+-
+unistd.h
+-
+sys/stat.h
+-
+sys/wait.h
+-
+sys/types.h
+-
+cariboulite_eeprom.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.h
+stdint.h
+-
+
