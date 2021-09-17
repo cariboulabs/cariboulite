@@ -8,24 +8,17 @@ cariboulite_eeprom_st ee =
     .eeprom_type = eeprom_type_24c32,
 };
 
-int main(int argc, char *argv[]) {
-	/*int ret;
-	
-	if (argc<3) {
-		printf("Wrong input format.\n");
-		printf("Try 'eepdump input_file output_file'\n");
-		return 0;
-	}
-	
-	
-	ret = cariboulite_eeprom_read_from_file(&ee, argv[1], argv[2]);
-	if (ret) {
-		printf("Error reading input, aborting\n");
-		return 0;
-	}
-	*/
+int main(int argc, char *argv[]) 
+{
+    if (cariboulite_eeprom_init(&ee) != 0)
+    {
+        printf("error\n");
+        return 0;
+    }
 
-    //test();
+    cariboulite_eeprom_print(&ee);
+
+    cariboulite_eeprom_close(&ee);
 
 	return 0;
 }

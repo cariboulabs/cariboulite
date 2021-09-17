@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/generate_bin_blob.dir/generate_bin_blob.c.o -o generate_bin_blob 

@@ -16,7 +16,7 @@ set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a ${SUPER_DIR}/zf_log/bu
 #Generate the static library from the sources
 add_library(rffc507x STATIC ${SOURCES_LIB})
 add_executable(test_rffc507x ${SOURCES})
-target_link_libraries(test_rffc507x rt pthread lgpio ${EXTERN_LIBS})
+target_link_libraries(test_rffc507x rt pthread ${EXTERN_LIBS})
 
 #Set the location for library installation -- i.e., /usr/lib in this case
 # not really necessary in this example. Use "sudo make install" to apply
