@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/pi/projects/cariboulite/software/utils/generate_bin_blob.c
+stdio.h
+-
+sys/stat.h
+-
+sys/types.h
+-
+stdint.h
+-
+string.h
+-
+time.h
+-
+

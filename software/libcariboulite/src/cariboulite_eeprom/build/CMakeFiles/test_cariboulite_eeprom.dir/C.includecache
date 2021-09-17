@@ -8,6 +8,14 @@
 
 ../../zf_log/zf_log.h
 
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_dtbo.h
+stdio.h
+-
+stdint.h
+-
+time.h
+-
+
 /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.c
 zf_log/zf_log.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/zf_log/zf_log.h
@@ -23,6 +31,8 @@ stdbool.h
 -
 endian.h
 -
+fcntl.h
+-
 unistd.h
 -
 sys/stat.h
@@ -33,6 +43,8 @@ sys/types.h
 -
 cariboulite_eeprom.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.h
+cariboulite_dtbo.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_dtbo.h
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.h
 stdint.h
