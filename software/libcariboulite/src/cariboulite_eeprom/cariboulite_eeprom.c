@@ -40,7 +40,11 @@ static int write_to_file(char* fname, char* data, int size_of_data)
 	FILE* fid = NULL;
 
 	fid = fopen(fname, "wb");
-	if (fid == NULL) return -1;
+	if (fid == NULL) 
+	{
+		ZF_LOGE("opening file '%s' for writing failed", fname);
+		return -1;
+	}
 	int wrote = fwrite(data, 1, size_of_data, fid);
 	if (wrote != size_of_data)
 	{
@@ -48,8 +52,7 @@ static int write_to_file(char* fname, char* data, int size_of_data)
 		fclose(fid);
 		return -1;
 	}
-	fclose(fid);
-	return 0;
+	return fclose(fid);
 }
 
 //===========================================================
@@ -58,7 +61,11 @@ static int read_from_file(char* fname, char* data, int len_to_read)
 	FILE* fid = NULL;
 
 	fid = fopen(fname, "rb");
-	if (fid == NULL) return -1;
+	if (fid == NULL) 
+	{
+		ZF_LOGE("opening file '%s' for reading failed", fname);
+		return -1;
+	}
 	int bytes_read = fread(data, 1, len_to_read, fid);
 	if (bytes_read != len_to_read)
 	{
@@ -66,8 +73,7 @@ static int read_from_file(char* fname, char* data, int len_to_read)
 		fclose(fid);
 		return -1;
 	}
-	fclose(fid);
-	return 0;
+	return fclose(fid);
 }
 
 //===========================================================
@@ -266,8 +272,13 @@ static int init_eeprom_device(char* eeprom_type, uint8_t i2c_addr)
 		sprintf(dev_type, "%s 0x%x", eeprom_type, i2c_addr);
 		if (write_to_file(sys_dir_bus_new_dev, dev_type, strlen(dev_type) + 1) != 0)
 		{
-			ZF_LOGE("EEPROM on addr 0x%x probing failed", i2c_addr);
-			return -1;
+			ZF_LOGE("EEPROM on addr 0x%x probing failed, retrying...", i2c_addr);
+
+			if (write_to_file(sys_dir_bus_new_dev, dev_type, strlen(dev_type) + 1) != 0)
+			{
+				ZF_LOGE("EEPROM on addr 0x%x probing failed", i2c_addr);
+				return -1;
+			}
 		}
 	}
 
@@ -496,14 +507,14 @@ static int cariboulite_eeprom_valid(cariboulite_eeprom_st *ee)
 			return 0;	// not valid
 		}
 
-		if ((offset + 10 + atom->dlen) > ee->eeprom_buffer_total_size)
+		if ((offset + ATOM_TOTAL_SIZE(atom)) > ee->eeprom_buffer_total_size)
 		{
 			ZF_LOGD("Atom #%d data length + crc16 don't fit into eeprom");
 			return 0;	// not valid
 		}
 
 		// calculate crc
-		uint16_t calc_crc = getcrc((char*)atom, 8 + atom->dlen);
+		uint16_t calc_crc = getcrc((char*)atom, ATOM_DATA_SIZE(atom));
 		uint16_t actual_crc = ATOM_CRC(atom);
 		if (actual_crc != calc_crc)
 		{
@@ -512,8 +523,8 @@ static int cariboulite_eeprom_valid(cariboulite_eeprom_st *ee)
 			return 0;	// not valid
 		}
 
-		location += 10 + atom->dlen;
-		offset += 10 + atom->dlen;
+		location += ATOM_TOTAL_SIZE(atom);
+		offset += ATOM_TOTAL_SIZE(atom);
 	}
 
 	if (header->eeplen != offset)
@@ -585,15 +596,16 @@ static int cariboulite_eeprom_contents_parse(cariboulite_eeprom_st *ee)
 			//-------------------------------------------------------------
 			case ATOM_DT_TYPE:
 				{
-					ee->dt_data.dt_data = (uint8_t*)malloc(atom->dlen);
+					ZF_LOGD("Atom datalength = %d", atom->dlen - 2);		// substruct the crc16 size from the dlen
+					ee->dt_data.dt_data = (uint8_t*)malloc(atom->dlen - 2);
 					if (ee->dt_data.dt_data == NULL)
 					{
 						ZF_LOGE("Failed allocating dt data.");
 						return -1;
 					}
-					ee->dt_data.dt_data_size = atom->dlen;
-					memcpy(&ee->dt_data.dt_data, atom_data, ee->dt_data.dt_data_size);
-				}
+					ee->dt_data.dt_data_size = atom->dlen - 2;
+					memcpy(ee->dt_data.dt_data, atom_data, ee->dt_data.dt_data_size);
+				} break;
 
 			//-------------------------------------------------------------
 			default:
@@ -660,8 +672,8 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	}
 
 	atom->type = ATOM_VENDOR_TYPE;
-	atom->count = 0;
-	atom->dlen = VENDOR_INFO_COMPACT_SIZE(vinf);
+	atom->count = header->numatoms;
+	atom->dlen = VENDOR_INFO_COMPACT_SIZE(vinf) + 2;
 	ATOM_CRC(atom) = getcrc((uint8_t*)atom, ATOM_DATA_SIZE(atom));
 	header->eeplen += ATOM_TOTAL_SIZE(atom);
 	header->numatoms += 1;
@@ -671,8 +683,8 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	location += ATOM_TOTAL_SIZE(atom);
 	atom = (struct atom_t*)location;
 	atom->type = ATOM_GPIO_TYPE;
-	atom->count = 1;
-	atom->dlen = GPIO_MAP_SIZE;
+	atom->count = header->numatoms;
+	atom->dlen = GPIO_MAP_SIZE + 2;
 	struct gpio_map_t* gpio = (struct gpio_map_t*)(location+ATOM_HEADER_SIZE);
 	gpio->flags = 0;  	// drive, slew, hysteresis  =>  0=leave at default
 	gpio->power = 0;	// 0 = no back power
@@ -709,17 +721,18 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 
 	// Device Tree information
 	// -------------------------------------------------------
-	/*location += ATOM_TOTAL_SIZE(atom);
+	location += ATOM_TOTAL_SIZE(atom);
 	atom = (struct atom_t*)location;
 	atom->type = ATOM_DT_TYPE;
-	atom->count = 2;
-	atom->dlen = sizeof(cariboulite_dtbo);
+	atom->count = header->numatoms;
+	atom->dlen = sizeof(cariboulite_dtbo) + 2;
 	uint8_t *dt_data = (uint8_t *)(location+ATOM_HEADER_SIZE);
-	memcpy(dt_data, cariboulite_dtbo, atom->dlen);
+	memcpy(dt_data, cariboulite_dtbo, sizeof(cariboulite_dtbo));
+	ATOM_CRC(atom) = getcrc((uint8_t*)atom, ATOM_DATA_SIZE(atom));
+
 	header->eeplen += ATOM_TOTAL_SIZE(atom);
 	header->numatoms += 1;
-*/
-
+	
 	ee->eeprom_buffer_to_write_used_size = header->eeplen;
 	return 0;
 }
