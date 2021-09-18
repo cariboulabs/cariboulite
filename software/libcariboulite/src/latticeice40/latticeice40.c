@@ -100,43 +100,11 @@ int latticeice40_release(latticeice40_st *dev)
 }
 
 //---------------------------------------------------------------------------
-int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
+static int latticeice40_configure_prepare(latticeice40_st *dev)
 {
-	FILE *fd = NULL;
 	long ct;
-	int read;
 	uint8_t byte = 0xFF;
 	uint8_t rxbyte = 0;
-	unsigned char dummybuf[LATTICE_ICE40_BUFSIZE];
-	char readbuf[LATTICE_ICE40_BUFSIZE];
-	int progress = 0;
-	long file_length = 0;
-
-	if (dev == NULL)
-	{
-		ZF_LOGE("device pointer NULL");
-		return -1;
-	}
-
-	if (!dev->initialized)
-	{
-		ZF_LOGE("device not initialized");
-		return -1;
-	}
-
-	// open file or return error
-	if(!(fd = fopen(bitfilename, "r")))
-	{
-		ZF_LOGI("open file %s failed", bitfilename);
-		return -1;
-	}
-	else
-	{
-		fseek(fd, 0L, SEEK_END);
-		file_length = ftell(fd);
-		ZF_LOGI("opened bitstream file %s", bitfilename);
-		fseek(fd, 0L, SEEK_SET);
-	}
 
 	// set SS low for spi config
 	io_utils_write_gpio_with_wait(dev->cs_pin, 0, 200);
@@ -165,26 +133,16 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	io_utils_write_gpio_with_wait(dev->cs_pin, 1, 200);
 	io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle, &byte, &rxbyte, 1, io_utils_spi_write);
 
-	// Read file & send bitstream to FPGA via SPI with CS LOW
-	ZF_LOGI("Sending bitstream\n");
-	ct = 0;
-	io_utils_write_gpio_with_wait(dev->cs_pin, 0, 200);
-	while( (read=fread(readbuf, sizeof(char), LATTICE_ICE40_BUFSIZE, fd)) > 0 )
-	{
-		// Send bitstream
-		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
-								(unsigned char *)readbuf,
-								dummybuf,
-								read,
-								io_utils_spi_write);
-		ct += read;
+	return 0;
+}
 
-		// progress
-		progress = (ct * 100) / file_length;
-		printf("[%2d%%]\r", progress); fflush(stdout);
-	}
-	io_utils_write_gpio_with_wait(dev->cs_pin, 1, 200);
-
+//---------------------------------------------------------------------------
+static int latticeice40_configure_finish(latticeice40_st *dev)
+{
+	int ct = 0;
+	uint8_t byte = 0xFF;
+	uint8_t rxbyte = 0;
+	unsigned char dummybuf[10];
 	// Transmit at least 49 clock cycles of clock
 	io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
 								dummybuf,
@@ -192,10 +150,6 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 								8,
 								io_utils_spi_write);
 
-	/* close file */
-	ZF_LOGI("sent %ld bytes", ct);
-	ZF_LOGI("bitstream sent, closing file");
-	fclose(fd);
 
 	/* send dummy data while waiting for DONE */
  	ZF_LOGI("sending dummy clocks, waiting for CDONE to rise (or fail)");
@@ -220,6 +174,156 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	if (latticeice40_check_if_programmed(dev)==0)
 	{
 		ZF_LOGE("config failed - CDONE not high");
+		return -1;
+	}
+	return 0;
+}
+
+//---------------------------------------------------------------------------
+int latticeice40_configure_from_buffer(	latticeice40_st *dev, 
+										uint8_t *buffer, 
+										uint32_t buffer_size)
+{
+	int ct = 0;
+	int progress = 0;
+
+	if (dev == NULL)
+	{
+		ZF_LOGE("device pointer NULL");
+		return -1;
+	}
+
+	if (!dev->initialized)
+	{
+		ZF_LOGE("device not initialized");
+		return -1;
+	}
+
+	// CONFIGURATION PROLOG
+	// --------------------
+	if (latticeice40_configure_prepare(	dev ) != 0)
+	{
+		ZF_LOGE("Preparation for bitstream sending to fpga failed");
+		return -1;
+	}
+
+	// CONFIGURATION
+	// -------------
+	// Read file & send bitstream to FPGA via SPI with CS LOW
+	ZF_LOGI("Sending bitstream of size %d", buffer_size);
+	ct = 0;
+	io_utils_write_gpio_with_wait(dev->cs_pin, 0, 200);
+	while( ct < buffer_size )
+	{
+		unsigned char dummybuf[LATTICE_ICE40_BUFSIZE];
+		char* readbuf = (char*)(buffer + ct);
+		int length = (buffer_size-ct)<LATTICE_ICE40_BUFSIZE ? buffer_size-ct : LATTICE_ICE40_BUFSIZE;
+
+		// Send bitstream
+		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
+								(unsigned char *)readbuf,
+								dummybuf,
+								length,
+								io_utils_spi_write);
+		ct += length;
+
+		// progress
+		progress = (ct * 100) / buffer_size;
+		printf("[%2d%%]\r", progress); fflush(stdout);
+	}
+	io_utils_write_gpio_with_wait(dev->cs_pin, 1, 200);
+	ZF_LOGI("bitstream sent %ld bytes", ct);
+
+	// CONFIGURATION EPILOGUE
+	// ----------------------
+	if (latticeice40_configure_finish(dev) != 0)
+	{
+		ZF_LOGE("Finishing the bitstream sending to fpga failed");
+		return -1;
+	}
+
+	ZF_LOGI("FPGA programming - Success!\n");
+
+	return 0;
+}
+
+//---------------------------------------------------------------------------
+int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
+{
+	FILE *fd = NULL;
+	int ct = 0;
+	int read;
+	unsigned char dummybuf[LATTICE_ICE40_BUFSIZE];
+	char readbuf[LATTICE_ICE40_BUFSIZE];
+	int progress = 0;
+	long file_length = 0;
+
+	if (dev == NULL)
+	{
+		ZF_LOGE("device pointer NULL");
+		return -1;
+	}
+
+	if (!dev->initialized)
+	{
+		ZF_LOGE("device not initialized");
+		return -1;
+	}
+
+	// FILE OPENING
+	// ------------
+	if(!(fd = fopen(bitfilename, "r")))
+	{
+		ZF_LOGE("open file %s failed", bitfilename);
+		return -1;
+	}
+	else
+	{
+		fseek(fd, 0L, SEEK_END);
+		file_length = ftell(fd);
+		ZF_LOGI("opened bitstream file %s", bitfilename);
+		fseek(fd, 0L, SEEK_SET);
+	}
+
+	// CONFIGURATION PROLOG
+	// --------------------
+	if (latticeice40_configure_prepare(	dev ) != 0)
+	{
+		ZF_LOGE("Preparation for bitstream sending to fpga failed");
+		return -1;
+	}
+
+	// CONFIGURATION
+	// -------------
+	// Read file & send bitstream to FPGA via SPI with CS LOW
+	ZF_LOGI("Sending bitstream of size %d", file_length);
+	ct = 0;
+	io_utils_write_gpio_with_wait(dev->cs_pin, 0, 200);
+	while( (read=fread(readbuf, sizeof(char), LATTICE_ICE40_BUFSIZE, fd)) > 0 )
+	{
+		// Send bitstream
+		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
+								(unsigned char *)readbuf,
+								dummybuf,
+								read,
+								io_utils_spi_write);
+		ct += read;
+
+		// progress
+		progress = (ct * 100) / file_length;
+		printf("[%2d%%]\r", progress); fflush(stdout);
+	}
+	io_utils_write_gpio_with_wait(dev->cs_pin, 1, 200);
+	
+	// close file
+	ZF_LOGI("bitstream sent, closing file - sent %ld bytes", ct);
+	fclose(fd);
+
+	// CONFIGURATION EPILOGUE
+	// ----------------------
+	if (latticeice40_configure_finish(dev) != 0)
+	{
+		ZF_LOGE("Finishing the bitstream sending to fpga failed");
 		return -1;
 	}
 
