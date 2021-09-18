@@ -50,3 +50,9 @@ cariboulite_dtbo.h
 stdint.h
 -
 
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/test_cariboulite_eeprom.c
+stdio.h
+-
+cariboulite_eeprom.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.h
+

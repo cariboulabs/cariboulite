@@ -61,7 +61,7 @@ struct atom_t
 
 #define ATOM_HEADER_SIZE  		( 8 )
 #define ATOM_CRC_SIZE  			( 2 )
-#define ATOM_DATA_SIZE(a) 		( ATOM_HEADER_SIZE + ((a)->dlen) )
+#define ATOM_DATA_SIZE(a) 		( ATOM_HEADER_SIZE + ((a)->dlen) - 2 )		// at the dlen includes the CRC16 size
 #define ATOM_CRC(a)  			( *(uint16_t*)( ((uint8_t*)(a)) + ATOM_DATA_SIZE(a) ) )
 #define ATOM_TOTAL_SIZE(a) 		( ATOM_DATA_SIZE(a)  + ATOM_CRC_SIZE)
 
