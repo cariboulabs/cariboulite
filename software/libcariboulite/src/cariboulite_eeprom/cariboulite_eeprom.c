@@ -377,9 +377,18 @@ static void eeprom_print_header(struct header_t *header)
 static void eeprom_print_vendor(struct vendor_info_t * vinf)
 {
 	ZF_LOGI("Vendor info: product_uuid %08x-%04x-%04x-%04x-%04x%08x", 
-							vinf->serial_4, vinf->serial_3>>16, 
-							vinf->serial_3 & 0xffff, vinf->serial_2>>16, 
-							vinf->serial_2 & 0xffff, vinf->serial_1);
+							vinf->serial_4, 
+							vinf->serial_3>>16, 
+							vinf->serial_3 & 0xffff, 
+							vinf->serial_2>>16, 
+							vinf->serial_2 & 0xffff, 
+							vinf->serial_1);
+
+	ZF_LOGI("Vendor info: raw serial numbers %08x %08x %08x %08x", 
+							vinf->serial_4, 
+							vinf->serial_3, 
+							vinf->serial_2, 
+							vinf->serial_1);
 	ZF_LOGI("Vendor info: product_id 0x%04x", vinf->pid);
 	ZF_LOGI("Vendor info: product_ver 0x%04x", vinf->pver);
 	ZF_LOGI("Vendor info: vendor \"%s\"   # length=%u", vinf->vstr, vinf->vslen);
@@ -647,7 +656,7 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	strcpy(VENDOR_VSTR_POINT(vinf), "CaribouLabs.co");
 	strcpy(VENDOR_PSTR_POINT(vinf), "CaribouLite RPI Hat");
 
-	//read 128 random bits from /dev/urandom
+	// read 128 random bits from /dev/urandom
 	int random_file = open("/dev/urandom", O_RDONLY);
 	ssize_t result = read(random_file, &vinf->serial_1, 16);
 	close(random_file);
@@ -660,15 +669,17 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	else 
 	{
 		//put in the version
-		vinf->serial_3 = (ee->vinf.serial_3 & 0xffff0fff) | 0x00004000;
+		vinf->serial_3 = (vinf->serial_3 & 0xffff0fff) | 0x00004000;
+
 		//put in the variant
-		vinf->serial_2 = (ee->vinf.serial_2 & 0x3fffffff) | 0x80000000;
-		printf("Gen UUID=%08x-%04x-%04x-%04x-%04x%08x\n", vinf->serial_4, 
-														vinf->serial_3>>16, 
-														vinf->serial_3 & 0xffff, 
-														vinf->serial_2>>16, 
-														vinf->serial_2 & 0xffff, 
-														vinf->serial_1);
+		vinf->serial_2 = (vinf->serial_2 & 0x3fffffff) | 0x80000000;
+
+		printf("Gen UUID=%08x-%04x-%04x-%04x-%04x%08x\n", 	vinf->serial_4, 
+															vinf->serial_3>>16, 
+															vinf->serial_3 & 0xffff, 
+															vinf->serial_2>>16, 
+															vinf->serial_2 & 0xffff, 
+															vinf->serial_1);
 	}
 
 	atom->type = ATOM_VENDOR_TYPE;
@@ -779,7 +790,7 @@ int cariboulite_eeprom_init(cariboulite_eeprom_st *ee)
 		close_eeprom_device(ee->bus, ee->i2c_address);
 		return -1;
 	}
-	ee->eeprom_buffer_to_write_used_size = 0;;
+	ee->eeprom_buffer_to_write_used_size = 0;
 
 	ee->initialized = 1;
 
