@@ -24,7 +24,6 @@ add_subdirectory(src/cariboulite_config EXCLUDE_FROM_ALL)
 add_subdirectory(src/cariboulite_eeprom EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 
-
 # Create the library LibCaribouLite
 add_library(cariboulite STATIC ${SOURCES_LIB})
 target_link_libraries(cariboulite   datatypes
