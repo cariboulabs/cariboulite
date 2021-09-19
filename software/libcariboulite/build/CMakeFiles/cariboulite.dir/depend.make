@@ -13,6 +13,7 @@ CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/caribou_fpga/caribo
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/cariboulite_config/cariboulite_config.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/cariboulite_events.h
+CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/cariboulite_fpga_firmware.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/cariboulite_setup.c
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/cariboulite_setup.h
 CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o: ../src/io_utils/io_utils.h

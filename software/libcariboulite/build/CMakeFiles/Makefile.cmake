@@ -14,6 +14,8 @@ set(CMAKE_MAKEFILE_DEPENDS
   "../src/at86rf215/CMakeLists.txt"
   "../src/caribou_fpga/CMakeLists.txt"
   "../src/caribou_smi/CMakeLists.txt"
+  "../src/cariboulite_config/CMakeLists.txt"
+  "../src/cariboulite_eeprom/CMakeLists.txt"
   "../src/datatypes/CMakeLists.txt"
   "../src/io_utils/CMakeLists.txt"
   "../src/latticeice40/CMakeLists.txt"
@@ -67,6 +69,8 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "src/latticeice40/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/io_utils/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/rffc507x/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "src/cariboulite_config/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "src/cariboulite_eeprom/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/zf_log/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
@@ -93,5 +97,9 @@ set(CMAKE_DEPEND_INFO_FILES
   "src/io_utils/CMakeFiles/io_utils.dir/DependInfo.cmake"
   "src/rffc507x/CMakeFiles/test_rffc507x.dir/DependInfo.cmake"
   "src/rffc507x/CMakeFiles/rffc507x.dir/DependInfo.cmake"
+  "src/cariboulite_config/CMakeFiles/cariboulite_config.dir/DependInfo.cmake"
+  "src/cariboulite_config/CMakeFiles/test_cariboulite_config.dir/DependInfo.cmake"
+  "src/cariboulite_eeprom/CMakeFiles/cariboulite_eeprom.dir/DependInfo.cmake"
+  "src/cariboulite_eeprom/CMakeFiles/test_cariboulite_eeprom.dir/DependInfo.cmake"
   "src/zf_log/CMakeFiles/zf_log.dir/DependInfo.cmake"
   )

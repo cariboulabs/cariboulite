@@ -29,14 +29,30 @@ typedef struct
     int revision;
 } cariboulite_lib_version_st;
 
+typedef enum
+{
+    cariboulite_firmware_source_file = 0,
+    cariboulite_firmware_source_blob = 1,
+} cariboulite_firmware_source_en;
 
-int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb);
-int cariboulite_release_driver(cariboulite_st *sys);
+typedef enum
+{
+    cariboulite_ok                              = 0,
+    cariboulite_board_detection_failed          = -1,
+    cariboulite_io_setup_failed                 = -2,
+    cariboulite_fpga_configuration_failed       = -3,
+    cariboulite_submodules_init_failed          = -4,
+    cariboulite_self_test_failed                = -5,
+} cariboulite_errors_en;
+
+
+int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info);
+void cariboulite_release_driver(cariboulite_st *sys);
 void cariboulite_lib_version(cariboulite_lib_version_st* v);
 int cariboulite_get_serial_number(cariboulite_st *sys, uint32_t* serial_number, int *count);
 int cariboulite_setup_io (cariboulite_st* sys, void* sighandler);
 int cariboulite_release_io (cariboulite_st* sys);
-int cariboulite_configure_fpga (cariboulite_st* sys, char* fpga_bin_path);
+int cariboulite_configure_fpga (cariboulite_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path);
 int cariboulite_init_submodules (cariboulite_st* sys);
 int cariboulite_release_submodules(cariboulite_st* sys);
 int cariboulite_self_test(cariboulite_st* sys);

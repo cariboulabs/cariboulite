@@ -24,7 +24,7 @@ CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
 //========================================================
 Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
 {
-    cariboulite_init_driver(&cariboulite_sys, NULL);
+    cariboulite_init_driver(&cariboulite_sys, NULL, NULL);
 }
 
 //========================================================

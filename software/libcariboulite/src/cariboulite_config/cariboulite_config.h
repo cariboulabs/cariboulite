@@ -19,9 +19,26 @@ extern "C" {
 
 // GENERAL SETTINGS
 #define MAX_PATH_LEN 512
+#define INFO_MAX_LEN 64
 
 typedef struct
 {
+    char category_name[INFO_MAX_LEN];
+    char product_name[INFO_MAX_LEN];
+    char product_id[INFO_MAX_LEN];
+    char product_version[INFO_MAX_LEN];
+    char product_uuid[INFO_MAX_LEN];
+    char product_vendor[INFO_MAX_LEN];
+
+    uint32_t numeric_serial_number;
+    uint32_t numeric_version;
+    uint32_t numeric_product_id;
+} cariboulite_board_info_st;
+
+typedef struct
+{
+    cariboulite_board_info_st board_info;
+
     // Chip level
     io_utils_spi_st spi_dev;
     caribou_smi_st smi;
@@ -42,6 +59,9 @@ typedef struct
     caribou_fpga_versions_st fpga_versions;
     uint8_t fpga_error_status;
 } cariboulite_st;
+
+int cariboulite_config_detect_board(cariboulite_board_info_st *info);
+void cariboulite_config_print_board_info(cariboulite_board_info_st *info);
 
 #ifdef __cplusplus
 }

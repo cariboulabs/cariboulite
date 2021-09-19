@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include "cariboulite_setup.h"
 #include "cariboulite_events.h"
-
+#include "cariboulite_fpga_firmware.h"
 
 //=======================================================================================
 int cariboulite_setup_io (cariboulite_st* sys, void* sighandler)
@@ -62,13 +62,11 @@ int cariboulite_release_io (cariboulite_st* sys)
 }
 
 //=======================================================================================
-int cariboulite_configure_fpga (cariboulite_st* sys, char* fpga_bin_path)
+int cariboulite_configure_fpga (cariboulite_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path)
 {
     int res = 0;
     int error = 0;
 
-    ZF_LOGI("Configuring the FPGA from '%s'", fpga_bin_path);
-    
     // Init FPGA programming
     res = latticeice40_init(&sys->ice40, &sys->spi_dev);
     if (res < 0)
@@ -77,13 +75,35 @@ int cariboulite_configure_fpga (cariboulite_st* sys, char* fpga_bin_path)
         return -1;
     }
 
-    // push in the firmware / bitstream
-    res = latticeice40_configure(&sys->ice40, fpga_bin_path);
-    if (res < 0)
+    if (src == cariboulite_firmware_source_file)
     {
-        ZF_LOGE("lattice ice40 configuration failed");
-        // do not exit the function - releasing resources is needed anyway
-        error = 1;
+        ZF_LOGI("Configuring the FPGA from '%s'", fpga_bin_path);
+        // push in the firmware / bitstream
+        res = latticeice40_configure(&sys->ice40, fpga_bin_path);
+        if (res < 0)
+        {
+            ZF_LOGE("lattice ice40 configuration failed");
+            // do not exit the function - releasing resources is needed anyway
+            error = 1;
+        }
+    }
+    else if (src == cariboulite_firmware_source_blob)
+    {
+        ZF_LOGI("Configuring the FPGA a internal firmware blob");
+        // push in the firmware / bitstream
+        res = latticeice40_configure_from_buffer(&sys->ice40, cariboulite_firmware, sizeof(cariboulite_firmware));
+        if (res < 0)
+        {
+            ZF_LOGE("lattice ice40 configuration failed");
+            // do not exit the function - releasing resources is needed anyway
+            error = 1;
+        }
+    }
+    else
+    {
+        ZF_LOGE("lattice ice40 configuration source is invalid");
+            // do not exit the function - releasing resources is needed anyway
+            error = 1;
     }
 
     // release the programming specific resources
@@ -207,36 +227,53 @@ int cariboulite_release_submodules(cariboulite_st* sys)
 }
 
 //=================================================
-int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb)
+int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info)
 {
     ZF_LOGI("driver initializing");
+    if (info == NULL)
+    {
+        int detected = cariboulite_config_detect_board(&sys->board_info);
+        if (!detected)
+        {
+            ZF_LOGE("The RPI HAT interface didn't detect any connected boards");
+            return -cariboulite_board_detection_failed;
+        }
+    }
+    else
+    {
+        memcpy(&sys->board_info, info, sizeof(cariboulite_board_info_st));
+    }
+    ZF_LOGI("Detected Board Information:");
+    cariboulite_config_print_board_info(&sys->board_info);
+    
     if (cariboulite_setup_io (sys, signal_handler_cb) != 0)
     {
-        return -1;
+        return -cariboulite_io_setup_failed;
     }
 
-    if (cariboulite_configure_fpga (sys, sys->firmware_path_operational) != 0)
+    if (cariboulite_configure_fpga (sys, cariboulite_firmware_source_blob, NULL/*sys->firmware_path_operational*/) != 0)
     {
         cariboulite_release_io (sys);
-        return -2;
+        return -cariboulite_fpga_configuration_failed;
     }
 
     if (cariboulite_init_submodules (sys) != 0)
     {
         cariboulite_release_io (sys);
-        return -3;
+        return -cariboulite_submodules_init_failed;
     }
 
     if (cariboulite_self_test(sys) != 0)
     {
-
+        cariboulite_release_io (sys);
+        return -cariboulite_self_test_failed;
     }
 
-    return 0;
+    return cariboulite_ok;
 }
 
 //=================================================
-int cariboulite_release_driver(cariboulite_st *sys)
+void cariboulite_release_driver(cariboulite_st *sys)
 {
     ZF_LOGI("driver releasing");
 

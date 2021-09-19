@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcariboulite_eeprom.a CMakeFiles/cariboulite_eeprom.dir/cariboulite_eeprom.c.o
+/usr/bin/ranlib libcariboulite_eeprom.a

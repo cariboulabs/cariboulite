@@ -14,6 +14,7 @@ CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o
  /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_config/cariboulite_config.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.h
+ /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_fpga_firmware.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils.h
