@@ -284,8 +284,7 @@ void cariboulite_release_driver(cariboulite_st *sys)
 //=================================================
 int cariboulite_get_serial_number(cariboulite_st *sys, uint32_t* serial_number, int *count)
 {
-    // TBD
-    if (serial_number) *serial_number = 0xAA55AA55; 
+    if (serial_number) *serial_number = sys->board_info.numeric_serial_number;
     if (count) *count = 1;
     return 0;
 }

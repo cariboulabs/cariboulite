@@ -8,33 +8,31 @@
  **********************************************************************/
 SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
 {
+    int count = 0;
+    cariboulite_board_info_st board_info;
     std::vector<SoapySDR::Kwargs> results;
     
     cariboulite_lib_version_st lib_version;
     cariboulite_lib_version(&lib_version);
     
-    // SoapySDR_setLogLevel(SOAPY_SDR_DEBUG);
-    
     SoapySDR_logf(SOAPY_SDR_DEBUG, "CaribouLite Lib v%d.%d rev %d", 
                 lib_version.major_version, lib_version.minor_version, lib_version.revision);
 
-    uint32_t serial_number[5] = {0};
     // When multiboard will be supported, change this to enumertion with count >1
-    int count = 0;
-    if (cariboulite_get_serial_number(NULL, serial_number, &count) != 0)
+    
+    if ( ( count = cariboulite_config_detect_board(&board_info) ) <= 0)
     {
         SoapySDR_logf(SOAPY_SDR_DEBUG, "No Cariboulite boards found");
         return results;
     }
     
     int devId = 0;
-    
     for (int i = 0; i < count; i++) 
     {
         std::stringstream serialstr;
         
         serialstr.str("");
-        serialstr << std::hex << serial_number[i];
+        serialstr << std::hex << board_info.numeric_serial_number;
         
         SoapySDR_logf(SOAPY_SDR_DEBUG, "Serial %s", serialstr.str().c_str());        
 
@@ -43,10 +41,16 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
         soapyInfo["device_id"] = std::to_string(devId);
         soapyInfo["label"] = "Cariboulite [" + serialstr.str() + "]";
         soapyInfo["serial"] = serialstr.str();
+        soapyInfo["name"] = board_info.product_name;
+        soapyInfo["vendor"] = board_info.product_vendor;
+        soapyInfo["uuid"] = board_info.product_uuid;
+        soapyInfo["version"] = board_info.product_version;
         devId++;
 
-        if (args.count("device_id") != 0) {
-            if (args.at("device_id") != soapyInfo.at("device_id")) {
+        if (args.count("device_id") != 0) 
+        {
+            if (args.at("device_id") != soapyInfo.at("device_id")) 
+            {
                 continue;
             }
             SoapySDR_logf(SOAPY_SDR_DEBUG, "Found device by device_id %s", soapyInfo.at("device_id").c_str());
