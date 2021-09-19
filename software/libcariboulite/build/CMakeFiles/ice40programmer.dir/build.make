@@ -107,6 +107,8 @@ test/ice40programmer: src/rffc507x/librffc507x.a
 test/ice40programmer: src/caribou_smi/libcaribou_smi.a
 test/ice40programmer: src/latticeice40/liblatticeice40.a
 test/ice40programmer: src/io_utils/libio_utils.a
+test/ice40programmer: src/cariboulite_config/libcariboulite_config.a
+test/ice40programmer: src/cariboulite_eeprom/libcariboulite_eeprom.a
 test/ice40programmer: src/zf_log/libzf_log.a
 test/ice40programmer: CMakeFiles/ice40programmer.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable test/ice40programmer"

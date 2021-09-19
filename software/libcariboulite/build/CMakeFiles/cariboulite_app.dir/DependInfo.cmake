@@ -32,6 +32,8 @@ set(CMAKE_TARGET_LINKED_INFO_FILES
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/caribou_smi/CMakeFiles/caribou_smi.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/latticeice40/CMakeFiles/latticeice40.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/io_utils/CMakeFiles/io_utils.dir/DependInfo.cmake"
+  "/home/pi/projects/cariboulite/software/libcariboulite/build/src/cariboulite_config/CMakeFiles/cariboulite_config.dir/DependInfo.cmake"
+  "/home/pi/projects/cariboulite/software/libcariboulite/build/src/cariboulite_eeprom/CMakeFiles/cariboulite_eeprom.dir/DependInfo.cmake"
   "/home/pi/projects/cariboulite/software/libcariboulite/build/src/zf_log/CMakeFiles/zf_log.dir/DependInfo.cmake"
   )
 

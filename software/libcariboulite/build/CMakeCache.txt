@@ -261,10 +261,10 @@ CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 SoapySDR_DIR:PATH=/usr/local/share/cmake/SoapySDR
 
 //Value Computed by CMake
-cariboulite_BINARY_DIR:STATIC=/home/pi/projects/cariboulite/software/libcariboulite/build/src/rffc507x
+cariboulite_BINARY_DIR:STATIC=/home/pi/projects/cariboulite/software/libcariboulite/build/src/cariboulite_eeprom
 
 //Value Computed by CMake
-cariboulite_SOURCE_DIR:STATIC=/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x
+cariboulite_SOURCE_DIR:STATIC=/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom
 
 
 ########################
@@ -403,7 +403,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=10
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=12
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

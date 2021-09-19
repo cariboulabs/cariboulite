@@ -20,6 +20,8 @@ add_subdirectory(src/caribou_smi EXCLUDE_FROM_ALL)
 add_subdirectory(src/latticeice40 EXCLUDE_FROM_ALL)
 add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
+add_subdirectory(src/cariboulite_config EXCLUDE_FROM_ALL)
+add_subdirectory(src/cariboulite_eeprom EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 
 
@@ -33,6 +35,8 @@ target_link_libraries(cariboulite   datatypes
                                     caribou_smi
                                     latticeice40
                                     io_utils
+                                    cariboulite_config
+                                    cariboulite_eeprom
                                     zf_log)
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -107,6 +107,8 @@ cariboulite_app: src/rffc507x/librffc507x.a
 cariboulite_app: src/caribou_smi/libcaribou_smi.a
 cariboulite_app: src/latticeice40/liblatticeice40.a
 cariboulite_app: src/io_utils/libio_utils.a
+cariboulite_app: src/cariboulite_config/libcariboulite_config.a
+cariboulite_app: src/cariboulite_eeprom/libcariboulite_eeprom.a
 cariboulite_app: src/zf_log/libzf_log.a
 cariboulite_app: CMakeFiles/cariboulite_app.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking C executable cariboulite_app"

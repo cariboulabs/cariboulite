@@ -123,6 +123,8 @@ libSoapyCariboulite.so: src/rffc507x/librffc507x.a
 libSoapyCariboulite.so: src/caribou_smi/libcaribou_smi.a
 libSoapyCariboulite.so: src/latticeice40/liblatticeice40.a
 libSoapyCariboulite.so: src/io_utils/libio_utils.a
+libSoapyCariboulite.so: src/cariboulite_config/libcariboulite_config.a
+libSoapyCariboulite.so: src/cariboulite_eeprom/libcariboulite_eeprom.a
 libSoapyCariboulite.so: src/zf_log/libzf_log.a
 libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX shared module libSoapyCariboulite.so"

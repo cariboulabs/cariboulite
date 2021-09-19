@@ -449,6 +449,58 @@ rffc507x/fast:
 .PHONY : rffc507x/fast
 
 #=============================================================================
+# Target rules for targets named cariboulite_config
+
+# Build rule for target.
+cariboulite_config: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cariboulite_config
+.PHONY : cariboulite_config
+
+# fast build rule for target.
+cariboulite_config/fast:
+	$(MAKE) $(MAKESILENT) -f src/cariboulite_config/CMakeFiles/cariboulite_config.dir/build.make src/cariboulite_config/CMakeFiles/cariboulite_config.dir/build
+.PHONY : cariboulite_config/fast
+
+#=============================================================================
+# Target rules for targets named test_cariboulite_config
+
+# Build rule for target.
+test_cariboulite_config: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cariboulite_config
+.PHONY : test_cariboulite_config
+
+# fast build rule for target.
+test_cariboulite_config/fast:
+	$(MAKE) $(MAKESILENT) -f src/cariboulite_config/CMakeFiles/test_cariboulite_config.dir/build.make src/cariboulite_config/CMakeFiles/test_cariboulite_config.dir/build
+.PHONY : test_cariboulite_config/fast
+
+#=============================================================================
+# Target rules for targets named cariboulite_eeprom
+
+# Build rule for target.
+cariboulite_eeprom: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cariboulite_eeprom
+.PHONY : cariboulite_eeprom
+
+# fast build rule for target.
+cariboulite_eeprom/fast:
+	$(MAKE) $(MAKESILENT) -f src/cariboulite_eeprom/CMakeFiles/cariboulite_eeprom.dir/build.make src/cariboulite_eeprom/CMakeFiles/cariboulite_eeprom.dir/build
+.PHONY : cariboulite_eeprom/fast
+
+#=============================================================================
+# Target rules for targets named test_cariboulite_eeprom
+
+# Build rule for target.
+test_cariboulite_eeprom: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cariboulite_eeprom
+.PHONY : test_cariboulite_eeprom
+
+# fast build rule for target.
+test_cariboulite_eeprom/fast:
+	$(MAKE) $(MAKESILENT) -f src/cariboulite_eeprom/CMakeFiles/test_cariboulite_eeprom.dir/build.make src/cariboulite_eeprom/CMakeFiles/test_cariboulite_eeprom.dir/build
+.PHONY : test_cariboulite_eeprom/fast
+
+#=============================================================================
 # Target rules for targets named zf_log
 
 # Build rule for target.
@@ -668,6 +720,8 @@ help:
 	@echo "... caribou_smi"
 	@echo "... cariboulite"
 	@echo "... cariboulite_app"
+	@echo "... cariboulite_config"
+	@echo "... cariboulite_eeprom"
 	@echo "... datatypes"
 	@echo "... fpgacomm"
 	@echo "... ice40programmer"
@@ -677,6 +731,8 @@ help:
 	@echo "... test_at86rf215"
 	@echo "... test_caribou_fpga"
 	@echo "... test_caribou_smi"
+	@echo "... test_cariboulite_config"
+	@echo "... test_cariboulite_eeprom"
 	@echo "... test_io_utils"
 	@echo "... test_rffc507x"
 	@echo "... test_tiny_list"

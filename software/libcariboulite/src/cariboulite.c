@@ -44,11 +44,11 @@ int sighandler(int signum)
 //=================================================
 int main(int argc, char *argv[])
 {
-    strcpy(cariboulite_sys.firmware_path_operational, "top.bin");
-    strcpy(cariboulite_sys.firmware_path_testing, "top.bin");
+    //strcpy(cariboulite_sys.firmware_path_operational, "top.bin");
+    //strcpy(cariboulite_sys.firmware_path_testing, "top.bin");
 
     // init the program
-    if (cariboulite_init_driver(&cariboulite_sys, sighandler)!=0)
+    if (cariboulite_init_driver(&cariboulite_sys, sighandler, NULL)!=0)
     {
         ZF_LOGE("driver init failed, terminating...");
         return -1;

@@ -35,6 +35,7 @@ extern "C" {
 //=======================================================================================
 #define CARIBOULITE_CONFIG_DEFAULT(a)                                   \
                 cariboulite_st(a)={                                     \
+                    .board_info = {0},                                  \
                     .spi_dev =                                          \
                     {                                                   \
                         .miso = CARIBOULITE_MISO,                       \
