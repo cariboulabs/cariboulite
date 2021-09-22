@@ -11,6 +11,8 @@
 ../src/at86rf215/at86rf215.h
 at86rf215_common.h
 ../src/at86rf215/at86rf215_common.h
+at86rf215_radio.h
+../src/at86rf215/at86rf215_radio.h
 
 ../src/at86rf215/at86rf215_common.h
 stdio.h
@@ -31,6 +33,14 @@ io_utils/io_utils_spi.h
 ../src/at86rf215/io_utils/io_utils_spi.h
 at86rf215_regs.h
 ../src/at86rf215/at86rf215_regs.h
+
+../src/at86rf215/at86rf215_radio.h
+stdio.h
+-
+stdint.h
+-
+at86rf215_common.h
+../src/at86rf215/at86rf215_common.h
 
 ../src/at86rf215/at86rf215_regs.h
 

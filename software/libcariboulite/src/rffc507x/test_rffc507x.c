@@ -27,7 +27,7 @@ rffc507x_st dev =
 
 int main ()
 {
-	io_utils_setup();
+	io_utils_setup(NULL);
 	io_utils_set_gpio_mode(FPGA_RESET, io_utils_alt_gpio_out);
     io_utils_set_gpio_mode(ICE40_CS, io_utils_alt_gpio_out);
 	io_utils_setup_gpio(CARIBOULITE_MXR_RESET, io_utils_dir_output, io_utils_pull_up);
@@ -52,8 +52,25 @@ int main ()
 		printf("REG #%d => %04X\n", i, reg_val);
 	}
 
-	uint16_t readback_buff[16] = {0};
-	rffc507x_readback(&dev, readback_buff, 16);
+	rffc507x_device_id_st dev_id;
+	rffc507x_device_status_st stat;
+	rffc507x_readback_status(&dev, &dev_id, &stat);
+	rffc507x_print_dev_id(&dev_id);
+	rffc507x_print_stat(&stat);
+
+	rffc507x_set_frequency(&dev, 85e6);
+	rffc507x_set_frequency(&dev, 314159265);
+	rffc507x_set_frequency(&dev, 915e6);
+	rffc507x_set_frequency(&dev, 1200e6);
+	rffc507x_set_frequency(&dev, 4600e6);
+	rffc507x_set_frequency(&dev, 5600e6);
+
+	for (int i = 0; i<5; i++)
+	{
+		rffc507x_readback_status(&dev, NULL, &stat);
+		rffc507x_print_stat(&stat);
+		io_utils_usleep(100000);
+	}
 
 	rffc507x_release(&dev);
 	io_utils_spi_close(&io_spi_dev);

@@ -63,6 +63,8 @@ stdint.h
 -
 string.h
 -
+math.h
+-
 zf_log/zf_log.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/zf_log/zf_log.h
 rffc507x.h

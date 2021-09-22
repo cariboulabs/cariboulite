@@ -621,6 +621,33 @@ src/soapy_api/Cariboulite.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.s
 .PHONY : src/soapy_api/Cariboulite.cpp.s
 
+src/soapy_api/CaribouliteStream.o: src/soapy_api/CaribouliteStream.cpp.o
+
+.PHONY : src/soapy_api/CaribouliteStream.o
+
+# target to build an object file
+src/soapy_api/CaribouliteStream.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o
+.PHONY : src/soapy_api/CaribouliteStream.cpp.o
+
+src/soapy_api/CaribouliteStream.i: src/soapy_api/CaribouliteStream.cpp.i
+
+.PHONY : src/soapy_api/CaribouliteStream.i
+
+# target to preprocess a source file
+src/soapy_api/CaribouliteStream.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.i
+.PHONY : src/soapy_api/CaribouliteStream.cpp.i
+
+src/soapy_api/CaribouliteStream.s: src/soapy_api/CaribouliteStream.cpp.s
+
+.PHONY : src/soapy_api/CaribouliteStream.s
+
+# target to generate assembly for a file
+src/soapy_api/CaribouliteStream.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.s
+.PHONY : src/soapy_api/CaribouliteStream.cpp.s
+
 src/soapy_api/SoapyCariboulite.o: src/soapy_api/SoapyCariboulite.cpp.o
 
 .PHONY : src/soapy_api/SoapyCariboulite.o
@@ -752,6 +779,9 @@ help:
 	@echo "... src/soapy_api/Cariboulite.o"
 	@echo "... src/soapy_api/Cariboulite.i"
 	@echo "... src/soapy_api/Cariboulite.s"
+	@echo "... src/soapy_api/CaribouliteStream.o"
+	@echo "... src/soapy_api/CaribouliteStream.i"
+	@echo "... src/soapy_api/CaribouliteStream.s"
 	@echo "... src/soapy_api/SoapyCariboulite.o"
 	@echo "... src/soapy_api/SoapyCariboulite.i"
 	@echo "... src/soapy_api/SoapyCariboulite.s"

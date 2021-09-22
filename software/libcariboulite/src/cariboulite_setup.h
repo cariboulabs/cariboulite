@@ -45,6 +45,12 @@ typedef enum
     cariboulite_self_test_failed                = -5,
 } cariboulite_errors_en;
 
+typedef enum
+{
+    cariboulite_channel_s1g = 0,
+    cariboulite_channel_6g = 1,
+} cariboulite_channel_en;
+
 
 int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info);
 void cariboulite_release_driver(cariboulite_st *sys);

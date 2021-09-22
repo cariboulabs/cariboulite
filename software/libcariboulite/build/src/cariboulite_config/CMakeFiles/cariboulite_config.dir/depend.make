@@ -3,6 +3,7 @@
 
 src/cariboulite_config/CMakeFiles/cariboulite_config.dir/cariboulite_config.c.o: ../src/at86rf215/at86rf215.h
 src/cariboulite_config/CMakeFiles/cariboulite_config.dir/cariboulite_config.c.o: ../src/at86rf215/at86rf215_common.h
+src/cariboulite_config/CMakeFiles/cariboulite_config.dir/cariboulite_config.c.o: ../src/at86rf215/at86rf215_radio.h
 src/cariboulite_config/CMakeFiles/cariboulite_config.dir/cariboulite_config.c.o: ../src/at86rf215/at86rf215_regs.h
 src/cariboulite_config/CMakeFiles/cariboulite_config.dir/cariboulite_config.c.o: ../src/caribou_fpga/caribou_fpga.h
 src/cariboulite_config/CMakeFiles/cariboulite_config.dir/cariboulite_config.c.o: ../src/caribou_smi/caribou_smi.h
