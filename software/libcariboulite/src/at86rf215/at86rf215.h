@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "at86rf215_common.h"
+#include "at86rf215_radio.h"
 
 int at86rf215_init(at86rf215_st* dev,
 					io_utils_spi_st* io_spi);

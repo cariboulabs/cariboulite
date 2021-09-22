@@ -57,7 +57,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     #Thread support enabled (not the same as -lpthread)
     list(APPEND SOAPY_CARIBOULITE_LIBRARIES)
     #disable warnings for unused parameters
-    add_definitions(-Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses)
+    add_definitions(-Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-psabi)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 SOAPY_SDR_MODULE_UTIL(
@@ -66,6 +66,7 @@ SOAPY_SDR_MODULE_UTIL(
         src/soapy_api/SoapyCariboulite.cpp 
         src/soapy_api/Cariboulite.cpp
         src/soapy_api/Cariboulite.hpp
+        src/soapy_api/CaribouliteStream.cpp
     LIBRARIES cariboulite
 )
 

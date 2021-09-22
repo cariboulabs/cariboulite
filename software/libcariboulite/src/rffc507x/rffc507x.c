@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 #include "zf_log/zf_log.h"
 #include "rffc507x.h"
 #include "rffc507x_regs.h" // private register def macros
@@ -39,8 +40,8 @@
 #endif
 
 
-#define LO_MAX 5400
-#define REF_FREQ 26
+#define LO_MAX_HZ (5400000000.0)
+#define REF_FREQ 26000000.0
 #define FREQ_ONE_MHZ (1000*1000)
 
 //===========================================================================
@@ -121,6 +122,8 @@ int rffc507x_init(  rffc507x_st* dev,
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 
 	/* set to known state */
+	io_utils_write_gpio(dev->reset_pin, 0);
+	io_utils_usleep(10000);
 	io_utils_write_gpio(dev->reset_pin, 1);
 
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
@@ -129,31 +132,57 @@ int rffc507x_init(  rffc507x_st* dev,
 	ZF_LOGI("Received spi handle %d", dev->io_spi_handle);
 
 	// initial setup
+	// SDI CTRL set of configurations
+	set_RFFC507X_SIPIN(dev, 1);	// ENBL and MODE physical pins are ignores
+								// controlling their functionality from the 3-wire spi
+								// interface
+	
+	set_RFFC507X_ENBL(dev, 0);	// The device is disabled
+	set_RFFC507X_MODE(dev, 1);	// Select the PLL bank - in RFFC5072
+								// we have only PLL2, so MODE = 1 always
+	set_RFFC507X_4WIRE(dev, 0);	// Only 3-wire operation
+	set_RFFC507X_ADDR(dev, 0);	// No address sllicing enabled - single device
+	set_RFFC507X_RESET(dev, 0);	// No reset
+
+	// GPO configurations
+	set_RFFC507X_P2GPO(dev, 0);	// The mode pin is disabled
+	set_RFFC507X_P1GPO(dev, 0);	// The mode pin is disabled
+	set_RFFC507X_GATE(dev, 1);	// When ENBL is low, do not force other	
+								// GPOs to go LOW as well
+	set_RFFC507X_LOCK(dev, 0);	// Do not sent the lock signal to GPO4
+
 	// put zeros in freq contol registers
 	set_RFFC507X_P2N(dev, 0);
 	set_RFFC507X_P2LODIV(dev, 0);
 	set_RFFC507X_P2PRESC(dev, 0);
 	set_RFFC507X_P2VCOSEL(dev, 0);
 
-	set_RFFC507X_P2N(dev, 0);
-	set_RFFC507X_P2LODIV(dev, 0);
-	set_RFFC507X_P2PRESC(dev, 0);
-	set_RFFC507X_P2VCOSEL(dev, 0);
+	//set_RFFC507X_P1N(dev, 0);
+	//set_RFFC507X_P1LODIV(dev, 0);
+	//set_RFFC507X_P1PRESC(dev, 0);
+	//set_RFFC507X_P1VCOSEL(dev, 0);
 
-	set_RFFC507X_P2N(dev, 0);
-	set_RFFC507X_P2LODIV(dev, 0);
-	set_RFFC507X_P2PRESC(dev, 0);
-	set_RFFC507X_P2VCOSEL(dev, 0);
+	// Commit the current batch
+	rffc507x_regs_commit(dev);
 
-	// set ENBL and MODE to be configured via 4-wire interface, not control pins.
-	set_RFFC507X_RESET(dev, 0);
-	set_RFFC507X_ADDR(dev, 0);
-	set_RFFC507X_4WIRE(dev, 0);
-	set_RFFC507X_MODE(dev, 0);
-	set_RFFC507X_ENBL(dev, 0);
-	set_RFFC507X_SIPIN(dev, 0);
-	set_RFFC507X_LOCK(dev, 0);
-	set_RFFC507X_GATE(dev, 0);
+	// VCO_AUTO selection
+	set_RFFC507X_AUTO(dev, 1);
+	set_RFFC507X_CTMAX(dev, 127);
+	set_RFFC507X_CTMIN(dev, 0);
+
+	// CT_CAL1/2
+	set_RFFC507X_P2CTV(dev, 12);	
+	set_RFFC507X_P1CTV(dev, 12);
+
+	// TEST control - bypassing TBD
+	set_RFFC507X_RGBYP(dev, 1);
+
+	// Full duplex disabled
+	set_RFFC507X_FULLD(dev, 0);
+
+	// Mixer linearity values - we need to understand the actual value
+	set_RFFC507X_P1MIXIDD(dev, 4);
+	set_RFFC507X_P2MIXIDD(dev, 4);
 
 	// Write default register values to chip.
 	int ret = rffc507x_regs_commit(dev);
@@ -196,15 +225,6 @@ int rffc507x_release(rffc507x_st* dev)
 }
 
 //===========================================================================
-static void rffc507x_serial_delay(void)
-{
-	uint32_t i;
-
-	for (i = 0; i < 2; i++)
-		__asm__("nop");
-}
-
-//===========================================================================
 uint16_t rffc507x_reg_read(rffc507x_st* dev, uint8_t r)
 {
 	uint8_t vout = r;
@@ -240,39 +260,6 @@ void rffc507x_reg_write(rffc507x_st* dev, uint8_t r, uint16_t v)
 }
 
 //===========================================================================
-void rffc507x_tx(rffc507x_st* dev)
-{
-	ZF_LOGD("rffc507x_tx");
-	set_RFFC507X_ENBL(dev, 0);
-	set_RFFC507X_FULLD(dev, 0);
-	set_RFFC507X_MODE(dev, 1); // mixer 2 used for both RX and TX
-	rffc507x_regs_commit(dev);
-}
-
-//===========================================================================
-void rffc507x_rx(rffc507x_st* dev)
-{
-	ZF_LOGD("rffc507x_rx");
-	set_RFFC507X_ENBL(dev, 0);
-	set_RFFC507X_FULLD(dev, 0);
-	set_RFFC507X_MODE(dev, 1); // mixer 2 used for both RX and TX
-	rffc507x_regs_commit(dev);
-}
-
-//===========================================================================
-// This function turns on both mixer (full-duplex) on the RFFC507X, but our
-// current hardware designs do not support full-duplex operation.
-void rffc507x_rxtx(rffc507x_st* dev)
-{
-	ZF_LOGD("rfc5071_rxtx");
-	set_RFFC507X_ENBL(dev, 0);
-	set_RFFC507X_FULLD(dev, 1); // mixer 1 and mixer 2 (RXTX)
-	rffc507x_regs_commit(dev);
-
-	rffc507x_enable(dev);
-}
-
-//===========================================================================
 void rffc507x_disable(rffc507x_st* dev)
 {
 	ZF_LOGD("rfc5071_disable");
@@ -289,37 +276,45 @@ void rffc507x_enable(rffc507x_st* dev)
 }
 
 //===========================================================================
-// configure frequency synthesizer in integer mode (lo in MHz)
-uint64_t rffc507x_config_synth_int(rffc507x_st* dev, uint16_t lo)
+void rffc507x_calculate_freq_params(uint8_t lodiv, double fvco, uint8_t fbkdiv, uint16_t *n, uint16_t *p1nmsb, uint8_t *p1nlsb, double* act_freq_hz)
 {
+	double n_div = fvco / fbkdiv / REF_FREQ;
+	*n = (uint16_t)(n_div);
+
+	double temp_p1nmsb = ( (double)(1<<16) ) * ( n_div - (double)(*n) );
+	*p1nmsb = (uint16_t)(temp_p1nmsb) & 0xFFFF;
+	*p1nlsb = (uint8_t)( round(( temp_p1nmsb- *p1nmsb ) * ((double)(1<<8)))) & 0xFF;
+
+	uint32_t n_div24_bit = (uint32_t)(round(n_div * (1<<24))) & 0xFFFFFFFF;
+
+	if (act_freq_hz) *act_freq_hz = (REF_FREQ * n_div24_bit * fbkdiv) / ((double)(lodiv) * (double)(1<<24));
+}
+
+//===========================================================================
+double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
+{
+	//uint32_t tune_freq;
 	uint8_t lodiv;
-	uint16_t fvco;
+	double fvco;
 	uint8_t fbkdiv;
 	uint16_t n;
-	uint64_t tune_freq_hz;
+	double tune_freq_hz;
 	uint16_t p1nmsb;
 	uint8_t p1nlsb;
 
-	ZF_LOGD("config_synth_int");
+	rffc507x_disable(dev);
 
 	// Calculate n_lo
-	uint8_t n_lo = 0;
-	uint16_t x = LO_MAX / lo;
-	while ((x > 1) && (n_lo < 5))
-	{
-		n_lo++;
-		x >>= 1;
-	}
-
-	lodiv = 1 << n_lo;
-	fvco = lodiv * lo;
+	uint8_t n_lo = (uint8_t)log2(LO_MAX_HZ / lo_hz);
+	lodiv = 1 << n_lo;							// lodiv = 2^(n_lo)
+	fvco = lodiv * lo_hz;						// in Hz!
 
 	/* higher divider and charge pump current required above
 	 * 3.2GHz. Programming guide says these values (fbkdiv, n,
 	 * maybe pump?) can be changed back after enable in order to
 	 * improve phase noise, since the VCO will already be stable
 	 * and will be unaffected. */
-	if (fvco > 3200)
+	if (fvco > 3200000000.0f)
 	{
 		fbkdiv = 4;
 		set_RFFC507X_PLLCPL(dev, 3);
@@ -330,23 +325,19 @@ uint64_t rffc507x_config_synth_int(rffc507x_st* dev, uint16_t lo)
 		set_RFFC507X_PLLCPL(dev, 2);
 	}
 
-	uint64_t tmp_n = ((uint64_t)fvco << 29ULL) / (fbkdiv*REF_FREQ) ;
-	n = tmp_n >> 29ULL;
+	rffc507x_calculate_freq_params(lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
 
-	p1nmsb = (tmp_n >> 13ULL) & 0xffff;
-	p1nlsb = (tmp_n >> 5ULL) & 0xff;
-
-	tune_freq_hz = (REF_FREQ * (tmp_n >> 5ULL) * fbkdiv * FREQ_ONE_MHZ)
-			/ (lodiv * (1 << 24ULL));
-	ZF_LOGD("lo=%d n_lo=%d lodiv=%d fvco=%d fbkdiv=%d n=%d tune_freq_hz=%d",
-				lo, n_lo, lodiv, fvco, fbkdiv, n, tune_freq_hz);
-
+	ZF_LOGD("----------------------------------------------------------");
+	ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
+	ZF_LOGD("fvco=%.2f fbkdiv=%d n=%d", fvco, fbkdiv, n);
+	ZF_LOGD("frac=%d, p1nmsb=%d, p1nlsb=%d, tune_freq_hz=%.2f", p1nmsb<<8 | p1nlsb, p1nmsb, p1nlsb, tune_freq_hz);
+	
 	// Path 1
-	set_RFFC507X_P1LODIV(dev, n_lo);
-	set_RFFC507X_P1N(dev, n);
-	set_RFFC507X_P1PRESC(dev, fbkdiv >> 1);
-	set_RFFC507X_P1NMSB(dev, p1nmsb);
-	set_RFFC507X_P1NLSB(dev, p1nlsb);
+	//set_RFFC507X_P1LODIV(dev, n_lo);
+	//set_RFFC507X_P1N(dev, n);
+	//set_RFFC507X_P1PRESC(dev, fbkdiv >> 1);
+	//set_RFFC507X_P1NMSB(dev, p1nmsb);
+	//set_RFFC507X_P1NLSB(dev, p1nlsb);
 
 	// Path 2
 	set_RFFC507X_P2LODIV(dev, n_lo);
@@ -357,20 +348,39 @@ uint64_t rffc507x_config_synth_int(rffc507x_st* dev, uint16_t lo)
 
 	rffc507x_regs_commit(dev);
 
-	return tune_freq_hz;
-}
-
-//===========================================================================
-// !!!!!!!!!!! hz is currently ignored !!!!!!!!!!!
-uint64_t rffc507x_set_frequency(rffc507x_st* dev, uint16_t mhz)
-{
-	uint32_t tune_freq;
-
-	rffc507x_disable(dev);
-	tune_freq = rffc507x_config_synth_int(dev, mhz);
 	rffc507x_enable(dev);
 
-	return tune_freq;
+	if (fbkdiv == 4)
+	{
+		// For optimum VCO phase noise the prescaler divider should be set to divide by 2. If the VCO frequency is 
+		// greater than 3.2GHz, it is necessary to set the ratio to 4 to allow the CT_cal algorithm to work. 
+		// After the device is enabled, the divider values can be reprogrammed with the prescaler divider ratio of 2 
+		// and the new n, nummsb, and numlsb values. Taking the previous example of an LO of 314.159265MHz:
+		fbkdiv = 2;
+		rffc507x_calculate_freq_params(lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
+
+		ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
+		ZF_LOGD("fvco=%.2f fbkdiv=%d n=%d", fvco, fbkdiv, n);
+		ZF_LOGD("frac=%d, p1nmsb=%d, p1nlsb=%d, tune_freq_hz=%.2f", p1nmsb<<8 | p1nlsb, p1nmsb, p1nlsb, tune_freq_hz);
+		ZF_LOGD("----------------------------------------------------------");
+
+		// Path 1
+		//set_RFFC507X_P1LODIV(dev, n_lo);
+		//set_RFFC507X_P1N(dev, n);
+		//set_RFFC507X_P1PRESC(dev, fbkdiv >> 1);
+		//set_RFFC507X_P1NMSB(dev, p1nmsb);
+		//set_RFFC507X_P1NLSB(dev, p1nlsb);
+
+		// Path 2
+		set_RFFC507X_P2LODIV(dev, n_lo);
+		set_RFFC507X_P2N(dev, n);
+		set_RFFC507X_P2PRESC(dev, fbkdiv >> 1);
+		set_RFFC507X_P2NMSB(dev, p1nmsb);
+		set_RFFC507X_P2NLSB(dev, p1nlsb);
+		rffc507x_regs_commit(dev);
+	}
+
+	return tune_freq_hz;
 }
 
 //===========================================================================
@@ -399,9 +409,55 @@ void rffc507x_readback(rffc507x_st* dev, uint16_t *readback_buff, int buf_len)
 		rffc507x_regs_commit(dev);
 		readback_buff[i] = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
 
-		printf ("READBACK #%d: %04X\n", i, readback_buff[i]);
+		//printf ("READBACK #%d: %04X\n", i, readback_buff[i]);
 	}
 }
+
+//===========================================================================
+void rffc507x_readback_status(rffc507x_st* dev, rffc507x_device_id_st* dev_id,
+                                                rffc507x_device_status_st* stat)
+{
+	uint16_t *dev_id_int = (uint16_t *)dev_id;
+	uint16_t *stat_int = (uint16_t *)stat;
+
+	if (dev_id_int)
+	{
+		set_RFFC507X_READSEL(dev, 0);
+		rffc507x_regs_commit(dev);
+		*dev_id_int = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
+		//printf("%04X\n", *dev_id_int);
+	}
+
+	if (stat_int)
+	{
+		set_RFFC507X_READSEL(dev, 1);
+		rffc507x_regs_commit(dev);
+		*stat_int = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
+		//printf("%04X\n", *stat_int);
+	} 
+}
+
+//===========================================================================
+void rffc507x_print_dev_id(rffc507x_device_id_st* dev_id)
+{
+	if (!dev_id) return;
+	uint16_t *temp = (uint16_t*)dev_id;
+	ZF_LOGI("RFFC507X DEVID: 0x%04X ID: 0x%04X, Rev: %d (%s)", *temp, 
+										dev_id->device_id, dev_id->device_rev, 
+										dev_id->device_rev==1?"RFFC507x":"RFFC507xA");
+}
+
+//===========================================================================
+void rffc507x_print_stat(rffc507x_device_status_st* stat)
+{
+	if (!stat) return;
+	uint16_t *temp = (uint16_t*)stat;
+	ZF_LOGI("RFFC507X STAT: 0x%04X PLL_LOCK: %d, CT_CAL: %d, KV_CAL: %d, CT_CAL_FAIL: %d",
+			*temp,
+			stat->pll_lock, stat->coarse_tune_cal_value, 
+			stat->kv_cal_value, stat->coarse_tune_cal_fail);
+}
+
 
 //===========================================================================
 void rffc507x_set_gpo(rffc507x_st* dev, uint8_t gpo)

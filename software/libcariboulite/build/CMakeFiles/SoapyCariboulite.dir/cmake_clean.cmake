@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o"
+  "CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o"
   "CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o"
   "libSoapyCariboulite.pdb"
   "libSoapyCariboulite.so"

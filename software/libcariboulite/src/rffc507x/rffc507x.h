@@ -39,6 +39,23 @@ extern "C" {
 #define RFFC507X_REG_SET_CLEAN(d,r) (d)->rffc507x_regs_dirty &= ~(1UL<<r)
 #define RFFC507X_REG_SET_DIRTY(d,r) (d)->rffc507x_regs_dirty |= (1UL<<r)
 
+
+#pragma pack(1)
+typedef struct  // readsel = 0000
+{
+    uint8_t device_rev  : 3;    // LSB
+    uint16_t device_id  : 13;   // MSB
+} rffc507x_device_id_st;
+
+typedef struct  // readsel = 0001
+{
+    uint8_t coarse_tune_cal_fail : 1;
+    uint8_t kv_cal_value : 6;
+    uint8_t coarse_tune_cal_value : 7;
+    uint8_t pll_lock :1;
+} rffc507x_device_status_st;
+#pragma pack()
+
 typedef struct
 {
     int cs_pin;
@@ -71,18 +88,18 @@ void rffc507x_reg_write(rffc507x_st* dev, uint8_t r, uint16_t v);
 int rffc507x_regs_commit(rffc507x_st* dev);
 
 // Set frequency (MHz)
-uint64_t rffc507x_set_frequency(rffc507x_st* dev, uint16_t mhz);
+double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz);
 
-// Set up rx only, tx only, or full duplex. Chip should be disabled
-// before _tx, _rx, or _rxtx are called.
-void rffc507x_tx(rffc507x_st* dev);
-void rffc507x_rx(rffc507x_st* dev);
-void rffc507x_rxtx(rffc507x_st* dev);
 void rffc507x_enable(rffc507x_st* dev);
 void rffc507x_disable(rffc507x_st* dev);
 void rffc507x_set_gpo(rffc507x_st* dev, uint8_t gpo);
 void rffc507x_setup_pin_functions(rffc507x_st* dev);
 void rffc507x_readback(rffc507x_st* dev, uint16_t *readback_buff, int buf_len);
+void rffc507x_readback_status(rffc507x_st* dev, rffc507x_device_id_st* dev_id,
+                                                rffc507x_device_status_st* stat);
+
+void rffc507x_print_dev_id(rffc507x_device_id_st* dev_id);
+void rffc507x_print_stat(rffc507x_device_status_st* stat);
 
 #ifdef __cplusplus
 }

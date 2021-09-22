@@ -153,6 +153,51 @@ int cariboulite_init_submodules (cariboulite_st* sys)
         goto cariboulite_init_submodules_fail;
     }
 
+    // Configure modem
+    //------------------------------------------------------
+    ZF_LOGD("Configuring modem initial state");
+    at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_26mhz);
+    at86rf215_setup_rf_irq(&sys->modem,  0, 1, at86rf215_drive_current_4ma);
+    at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_trx_off);
+    at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_trx_off);
+
+    at86rf215_radio_irq_st int_mask = {
+        .wake_up_por = 1,
+        .trx_ready = 1,
+        .energy_detection_complete = 1,
+        .battery_low = 1,
+        .trx_error = 1,
+        .IQ_if_sync_fail = 1,
+        .res = 0,
+    };
+    at86rf215_radio_setup_interrupt_mask(&sys->modem, at86rf215_rf_channel_900mhz, &int_mask);
+    at86rf215_radio_setup_interrupt_mask(&sys->modem, at86rf215_rf_channel_2400mhz, &int_mask);
+
+    at86rf215_iq_interface_config_st modem_iq_config = {
+        .loopback_enable = 0,
+        .drv_strength = at86rf215_iq_drive_current_2ma,
+        .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
+        .tx_control_with_iq_if = false,
+        .radio09_mode = at86rf215_iq_if_mode,
+        .radio24_mode = at86rf215_iq_if_mode,
+        .clock_skew = at86rf215_iq_clock_data_skew_1_906ns,
+    };
+    at86rf215_setup_iq_if(&sys->modem, &modem_iq_config);
+
+    at86rf215_radio_external_ctrl_st ext_ctrl = {
+        .ext_lna_bypass_available = 0,
+        .agc_backoff = 0,
+        .analog_voltage_external = 0,
+        .analog_voltage_enable_in_off = 0,
+        .int_power_amplifier_voltage = 2,
+        .fe_pad_configuration = 1,   
+    };
+    at86rf215_radio_setup_external_settings(&sys->modem, at86rf215_rf_channel_900mhz, &ext_ctrl);
+    at86rf215_radio_setup_external_settings(&sys->modem, at86rf215_rf_channel_2400mhz, &ext_ctrl);
+
+    at86rf215_setup_iq_radio_receive (&sys->modem, at86rf215_rf_channel_2400mhz, 2400e6, 
+                                            0, at86rf215_iq_clock_data_skew_1_906ns);
+
     // RFFC5072
     //------------------------------------------------------
     ZF_LOGD("INIT MIXER - RFFC5072");
@@ -162,6 +207,10 @@ int cariboulite_init_submodules (cariboulite_st* sys)
         ZF_LOGE("Error initializing mixer 'rffc5072'");
         goto cariboulite_init_submodules_fail;
     }
+
+    // Configure mixer
+    //------------------------------------------------------
+
 
     ZF_LOGI("Cariboulite submodules successfully initialized");
     return 0;
@@ -175,8 +224,12 @@ cariboulite_init_submodules_fail:
 //=======================================================================================
 int cariboulite_self_test(cariboulite_st* sys)
 {
+    int fpga_pass = 1;
+    int modem_pass = 1;
+    int mixer_pass = 1;
+
+    //------------------------------------------------------
     ZF_LOGI("Testing FPGA communication and versions...");
-    // read out version information from the FPGA
     caribou_fpga_get_versions (&sys->fpga, &sys->fpga_versions);
     caribou_fpga_get_errors (&sys->fpga, &sys->fpga_error_status);
     ZF_LOGI("FPGA Versions: sys: %d, manu.id: %d, sys_ctrl_mod: %d, io_ctrl_mod: %d, smi_ctrl_mot: %d", 
@@ -187,7 +240,28 @@ int cariboulite_self_test(cariboulite_st* sys)
                 sys->fpga_versions.smi_ctrl_mod_ver);
     ZF_LOGI("FPGA Errors: %02X", sys->fpga_error_status);
 
+    // check the FPGA returned values: TBD
+
     //------------------------------------------------------
+    ZF_LOGI("Testing modem communication and versions");
+    
+    uint8_t modem_pn = 0, modem_vn = 0;
+    at86rf215_get_versions(&sys->modem, &modem_pn, &modem_vn);
+    if (modem_pn != 0x34)
+    {
+        ZF_LOGI("The assembled modem is not AT86RF215 (product number: 0x%02x)", modem_pn);
+        modem_pass = 0;
+    }
+
+    //------------------------------------------------------
+    ZF_LOGI("Testing mixer communication and versions");
+    rffc507x_device_id_st dev_id;
+    rffc507x_readback_status(&sys->mixer, &dev_id, NULL);
+	if (dev_id.device_id != 0x1140 && dev_id.device_id != 0x11C0)
+    {
+        ZF_LOGI("The assembled mixer is not RFFC5071/2[A]");
+        mixer_pass = 0;
+    }
 
     ZF_LOGI("Self-test process finished successfully!");
     return 0;
@@ -206,6 +280,8 @@ int cariboulite_release_submodules(cariboulite_st* sys)
     // AT86RF215
     //------------------------------------------------------
     ZF_LOGD("CLOSE MODEM - AT86RF215");
+    at86rf215_stop_iq_radio_receive (&sys->modem, at86rf215_rf_channel_900mhz);
+    at86rf215_stop_iq_radio_receive (&sys->modem, at86rf215_rf_channel_2400mhz);
     at86rf215_close(&sys->modem);
 
     // RFFC5072

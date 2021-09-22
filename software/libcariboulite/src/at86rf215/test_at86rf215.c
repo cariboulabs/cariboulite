@@ -172,7 +172,7 @@ int main ()
     at86rf215_irq_st irq = {0};
 
     // Init GPIOs and set FPGA on reset
-	io_utils_setup();
+	io_utils_setup(NULL);
 
     #if NO_FPGA_MODE
     // When the FPGA wakes up non-programmed, it starts interogating
