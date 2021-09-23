@@ -14,19 +14,24 @@
 
 struct sigaction act;
 int program_running = 1;
+int signal_shown = 0;
 CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
 
 //=================================================
 int stop_program ()
 {
-    ZF_LOGD("program termination requested");
+    if (program_running) ZF_LOGD("program termination requested");
     program_running = 0;
 }
 
 //=================================================
 int sighandler(int signum)
 {
-    ZF_LOGI("Received signal %d", signum);
+    if (signal_shown != signum) 
+    {
+        ZF_LOGI("Received signal %d", signum);
+        signal_shown = signum;
+    }
 
     switch (signum)
     {
@@ -55,8 +60,17 @@ int main(int argc, char *argv[])
     }
 
     // dummy loop
+    double freq = 30e6;
+    double step = 10e6;
     while (program_running)
     {
+        double set_freq = freq;
+        cariboulite_setup_frequency(&cariboulite_sys, 
+                                    cariboulite_channel_6g, 
+                                    cariboulite_channel_dir_rx,
+                                    &set_freq);
+        freq += step;
+        if (freq > 6000e6) freq = 30e6;
         sleep(1);
     }
 

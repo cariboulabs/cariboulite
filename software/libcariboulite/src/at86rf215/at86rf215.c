@@ -349,7 +349,7 @@ void at86rf215_setup_iq_if(at86rf215_st* dev, at86rf215_iq_interface_config_st* 
 }
 
 //===================================================================
-int at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uint32_t freq_hz )
+int64_t at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uint32_t freq_hz )
 {
     if (dev->initialized == 0)
     {
@@ -369,7 +369,7 @@ int at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uin
     int channel_number = 0;
     float actual_freq = at86rf215_radio_get_frequency(mode, 1, freq_hz, &center_freq_25khz_res, &channel_number);
     at86rf215_radio_setup_channel(dev, ch, 1, center_freq_25khz_res, channel_number, mode);
-    return (int)actual_freq;
+    return (int64_t)actual_freq;
 }
 
 //===================================================================
