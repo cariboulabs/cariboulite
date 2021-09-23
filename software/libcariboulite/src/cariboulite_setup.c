@@ -156,7 +156,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
     // Configure modem
     //------------------------------------------------------
     ZF_LOGD("Configuring modem initial state");
-    at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_26mhz);
+    at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_26mhz);
     at86rf215_setup_rf_irq(&sys->modem,  0, 1, at86rf215_drive_current_4ma);
     at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_trx_off);
     at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_trx_off);
@@ -222,11 +222,9 @@ cariboulite_init_submodules_fail:
 }
 
 //=======================================================================================
-int cariboulite_self_test(cariboulite_st* sys)
+int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* res)
 {
-    int fpga_pass = 1;
-    int modem_pass = 1;
-    int mixer_pass = 1;
+    memset(res, 0, sizeof(cariboulite_self_test_result_st));
 
     //------------------------------------------------------
     ZF_LOGI("Testing FPGA communication and versions...");
@@ -240,7 +238,12 @@ int cariboulite_self_test(cariboulite_st* sys)
                 sys->fpga_versions.smi_ctrl_mod_ver);
     ZF_LOGI("FPGA Errors: %02X", sys->fpga_error_status);
 
-    // check the FPGA returned values: TBD
+    if (sys->fpga_versions.sys_ver != 0x01 || sys->fpga_versions.sys_manu_id != 0x01)
+    {
+        ZF_LOGI("FPGA firmware didn't pass - sys_ver = %02X, manu_id = %02X", 
+            sys->fpga_versions.sys_ver, sys->fpga_versions.sys_manu_id);
+        res->fpga_fail = 1;
+    }
 
     //------------------------------------------------------
     ZF_LOGI("Testing modem communication and versions");
@@ -250,7 +253,7 @@ int cariboulite_self_test(cariboulite_st* sys)
     if (modem_pn != 0x34)
     {
         ZF_LOGI("The assembled modem is not AT86RF215 (product number: 0x%02x)", modem_pn);
-        modem_pass = 0;
+        res->modem_fail = 1;
     }
 
     //------------------------------------------------------
@@ -260,10 +263,21 @@ int cariboulite_self_test(cariboulite_st* sys)
 	if (dev_id.device_id != 0x1140 && dev_id.device_id != 0x11C0)
     {
         ZF_LOGI("The assembled mixer is not RFFC5071/2[A]");
-        mixer_pass = 0;
+        res->mixer_fail = 1;
     }
 
-    ZF_LOGI("Self-test process finished successfully!");
+    //------------------------------------------------------
+    ZF_LOGI("Testing smi communication");
+    // TBD
+
+    // check and report problems
+    /*if (!memcmp(res, 0, sizeof(cariboulite_self_test_result_st)))
+    {
+        ZF_LOGI("Self-test process finished successfully!");
+        return 0;
+    }*/
+    
+    //ZF_LOGI("Self-test process finished with errors");
     return 0;
 }
 
@@ -339,7 +353,8 @@ int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, caribo
         return -cariboulite_submodules_init_failed;
     }
 
-    if (cariboulite_self_test(sys) != 0)
+    cariboulite_self_test_result_st self_tes_res = {0};
+    if (cariboulite_self_test(sys, &self_tes_res) != 0)
     {
         cariboulite_release_io (sys);
         return -cariboulite_self_test_failed;
@@ -351,7 +366,7 @@ int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, caribo
 //=================================================
 void cariboulite_release_driver(cariboulite_st *sys)
 {
-    ZF_LOGI("driver releasing");
+    ZF_LOGI("driver being released");
 
     cariboulite_release_submodules(sys);
     cariboulite_release_io (sys);
@@ -371,4 +386,209 @@ void cariboulite_lib_version(cariboulite_lib_version_st* v)
     v->major_version = CARIBOULITE_MAJOR_VERSION;
     v->minor_version = CARIBOULITE_MINOR_VERSION;
     v->revision = CARIBOULITE_REVISION;
+}
+
+//=================================================
+#define CARIBOULITE_MIN_MIX     (30.0e6)
+#define CARIBOULITE_MAX_MIX     (6000.0e6)
+#define CARIBOULITE_MIN_LO      (85.0e6)
+#define CARIBOULITE_MAX_LO      (4200.0e6)
+#define CARIBOULITE_2G4_MIN     (2400.0e6)
+#define CARIBOULITE_2G4_MAX     (2483.5e6)
+#define CARIBOULITE_S1G_MIN1    (389.5e6)
+#define CARIBOULITE_S1G_MAX1    (510.0e6)
+#define CARIBOULITE_S1G_MIN2    (779.0e6)
+#define CARIBOULITE_S1G_MAX2    (1020.0e6)
+
+int cariboulite_setup_frequency(    cariboulite_st *sys, 
+                                    cariboulite_channel_en ch, 
+                                    cariboulite_channel_dir_en dir,
+                                    double *freq)
+{
+    double f_rf = *freq;
+    double modem_act_freq = 0.0;
+    double lo_act_freq = 0.0;
+    double act_freq = 0.0;
+    int error = 0;
+    int conversion_direction = 0;
+
+    //--------------------------------------------------------------------------------
+    // SUB 1GHZ CONFIGURATION
+    //--------------------------------------------------------------------------------
+    if (ch == cariboulite_channel_s1g)
+    {
+        if ( (f_rf >= CARIBOULITE_S1G_MIN1 && f_rf <= CARIBOULITE_S1G_MAX1) ||
+             (f_rf >= CARIBOULITE_S1G_MIN2 && f_rf <= CARIBOULITE_S1G_MAX2)   )
+        {
+            // setup modem frequency <= f_rf
+            at86rf215_radio_set_state(  &sys->modem, 
+                                        at86rf215_rf_channel_900mhz, 
+                                        at86rf215_radio_state_cmd_trx_off);
+            modem_act_freq = at86rf215_setup_channel (&sys->modem, 
+                                                    at86rf215_rf_channel_900mhz, 
+                                                    (uint32_t)f_rf);
+            at86rf215_radio_set_state(  &sys->modem, 
+                                        at86rf215_rf_channel_900mhz, 
+                                        at86rf215_radio_state_cmd_rx);
+
+            // return actual frequency
+            *freq = modem_act_freq;
+        }
+        else
+        {
+            // error - unsupported frequency for S1G channel
+            ZF_LOGE("unsupported frequency for S1G channel - %.2f Hz", f_rf);
+            error = 1;
+        }
+    }
+    //--------------------------------------------------------------------------------
+    // 30-6GHz CONFIGURATION
+    //--------------------------------------------------------------------------------
+    else if (ch == cariboulite_channel_6g)
+    {
+        at86rf215_radio_set_state(  &sys->modem, 
+                                    at86rf215_rf_channel_2400mhz, 
+                                    at86rf215_radio_state_cmd_trx_off);
+
+        caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
+
+        //-------------------------------------
+            if ( f_rf >= CARIBOULITE_MIN_MIX && 
+                f_rf <= (CARIBOULITE_2G4_MIN - CARIBOULITE_MIN_LO) )
+        {
+            // region #1
+            // setup modem frequency <= CARIBOULITE_2G4_MIN
+            modem_act_freq = (double)at86rf215_setup_channel (&sys->modem, 
+                                                        at86rf215_rf_channel_2400mhz, 
+                                                        (uint32_t)(CARIBOULITE_2G4_MIN));
+            
+            // setup mixer LO <= CARIBOULITE_2G4_MIN - f_rf
+            lo_act_freq = rffc507x_set_frequency(&sys->mixer, modem_act_freq - f_rf);
+            act_freq = modem_act_freq - lo_act_freq;
+
+            // setup fpga RFFE <= upconvert (tx / rx)
+            conversion_direction = 1;
+        }
+        //-------------------------------------
+        else if ( f_rf > (CARIBOULITE_2G4_MIN - CARIBOULITE_MIN_LO) && 
+                f_rf < CARIBOULITE_2G4_MIN )
+        {
+            // region #2
+            // setup modem frequency <= f_rf + CARIBOULITE_MIN_LO
+            modem_act_freq = (double)at86rf215_setup_channel (&sys->modem, 
+                                                        at86rf215_rf_channel_2400mhz, 
+                                                        (uint32_t)(CARIBOULITE_MIN_LO + f_rf));
+
+            // setup mixer LO <= CARIBOULITE_MIN_LO
+            lo_act_freq = rffc507x_set_frequency(&sys->mixer, modem_act_freq - f_rf);
+            act_freq = modem_act_freq - lo_act_freq;
+
+            // setup fpga RFFE <= upconvert (tx / rx)
+            conversion_direction = 1;
+        }
+        //-------------------------------------
+        else if ( f_rf >= CARIBOULITE_2G4_MIN && 
+                f_rf <= CARIBOULITE_2G4_MAX )
+        {
+            // region #3 - bypass mode
+            // setup modem frequency <= f_rf
+            modem_act_freq = (double)at86rf215_setup_channel (&sys->modem, 
+                                                        at86rf215_rf_channel_2400mhz, 
+                                                        (uint32_t)f_rf);
+            act_freq = modem_act_freq;
+            conversion_direction = 2;
+        }
+        //-------------------------------------
+        else if ( f_rf > CARIBOULITE_2G4_MAX && 
+                f_rf <= (CARIBOULITE_2G4_MAX + CARIBOULITE_MIN_MIX) )
+        {
+            // region #4
+            // setup modem frequency <= f_rf - CARIBOULITE_MIN_LO
+            modem_act_freq = (double)at86rf215_setup_channel (&sys->modem, 
+                                                        at86rf215_rf_channel_2400mhz, 
+                                                        (uint32_t)(f_rf - CARIBOULITE_MIN_LO));
+
+            // setup mixer LO <= CARIBOULITE_MIN_LO
+            lo_act_freq = rffc507x_set_frequency(&sys->mixer, f_rf - modem_act_freq);
+            act_freq = modem_act_freq + lo_act_freq;
+
+            // setup fpga RFFE <= downconvert (tx / rx)
+            conversion_direction = 3;
+        }
+        //-------------------------------------
+        else if ( f_rf > (CARIBOULITE_2G4_MAX + CARIBOULITE_MIN_MIX) && 
+                f_rf <= CARIBOULITE_MAX_MIX )
+        {
+            // region #5
+            // here it would be beneficial to use lowest modem frequency - 2400 - TBD
+            // setup modem frequency <= CARIBOULITE_2G4_MAX
+            modem_act_freq = (double)at86rf215_setup_channel (&sys->modem, 
+                                                        at86rf215_rf_channel_2400mhz, 
+                                                        (uint32_t)(CARIBOULITE_2G4_MAX));
+
+            // setup mixer LO <= f_rf - CARIBOULITE_2G4_MAX
+            lo_act_freq = rffc507x_set_frequency(&sys->mixer, f_rf - modem_act_freq);
+            act_freq = modem_act_freq + lo_act_freq;
+
+            // setup fpga RFFE <= downconvert (tx / rx)
+            conversion_direction = 3;
+        }
+        //-------------------------------------
+        else
+        {
+            // error - unsupported frequency for 6G channel
+            ZF_LOGE("unsupported frequency for 6GHz channel - %.2f Hz", f_rf);
+            error = 1;
+        }
+        
+        *freq = act_freq;
+
+        rffc507x_device_status_st stat;
+        // wait for the mixer to lock
+        for (int i = 0; i<10; i++)
+        {
+            rffc507x_readback_status(&sys->mixer, NULL, &stat);
+            if (stat.pll_lock) break;
+            usleep(100000);
+        }
+        if (!stat.pll_lock)
+        {
+            ZF_LOGE("Mixer couldn't lock on LO = %.2f", lo_act_freq);
+            rffc507x_print_stat(&stat);
+            error = 3;
+        }
+
+        // Setup the frontend
+        switch (conversion_direction)
+        {
+            case 1: if (dir == 0) caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_rx_lowpass);
+                    else if (dir == 1) caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_hipass);
+                    break;
+            case 2: caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_bypass);
+                    break;
+            case 3: if (dir == 0) caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_rx_hipass);
+                    else if (dir == 1) caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
+                    break;
+            default: break;
+        }
+
+        // Activate the modem - this should be outside
+        at86rf215_radio_set_state(  &sys->modem, 
+                                    at86rf215_rf_channel_2400mhz, 
+                                    at86rf215_radio_state_cmd_rx);
+    }
+    else
+    {
+        // unknown channel
+        ZF_LOGE("The requested channel (%d) is unsupported", ch);
+        error = 2;
+    }
+
+    if (error == 0)
+    {
+        ZF_LOGD("Frequency setting CH: %d, Wanted: %.2f Hz, Set: %.2f Hz (MOD: %.2f, MIX: %.2f)", 
+                        ch, f_rf, act_freq, modem_act_freq, lo_act_freq);
+    }
+
+    return -error;
 }

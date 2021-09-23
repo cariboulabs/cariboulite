@@ -21,6 +21,13 @@ extern "C" {
 #define CARIBOULITE_MINOR_VERSION 0
 #define CARIBOULITE_REVISION 1
 
+typedef struct
+{
+    int fpga_fail;
+    int modem_fail;
+    int mixer_fail;
+    int smi_fail;
+} cariboulite_self_test_result_st;
 
 typedef struct
 {
@@ -47,6 +54,12 @@ typedef enum
 
 typedef enum
 {
+    cariboulite_channel_dir_rx = 0,
+    cariboulite_channel_dir_tx = 1,
+} cariboulite_channel_dir_en;
+
+typedef enum
+{
     cariboulite_channel_s1g = 0,
     cariboulite_channel_6g = 1,
 } cariboulite_channel_en;
@@ -61,8 +74,12 @@ int cariboulite_release_io (cariboulite_st* sys);
 int cariboulite_configure_fpga (cariboulite_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path);
 int cariboulite_init_submodules (cariboulite_st* sys);
 int cariboulite_release_submodules(cariboulite_st* sys);
-int cariboulite_self_test(cariboulite_st* sys);
-
+int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* res);
+int cariboulite_setup_frequency(    cariboulite_st *sys, 
+                                    cariboulite_channel_en ch, 
+                                    cariboulite_channel_dir_en dir,
+                                    double *freq);
+                                    
 #ifdef __cplusplus
 }
 #endif
