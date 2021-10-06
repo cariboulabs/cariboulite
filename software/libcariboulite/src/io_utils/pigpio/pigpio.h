@@ -6554,8 +6554,8 @@ after this command is issued.
 #define PI_DEFAULT_DMA_PRIMARY_CH_2711     7
 #define PI_DEFAULT_DMA_SECONDARY_CH_2711   6
 #define PI_DEFAULT_DMA_NOT_SET             15
-#define PI_DEFAULT_SOCKET_PORT             8888
-#define PI_DEFAULT_SOCKET_PORT_STR         "8888"
+#define PI_DEFAULT_SOCKET_PORT             8890
+#define PI_DEFAULT_SOCKET_PORT_STR         "8890"
 #define PI_DEFAULT_SOCKET_ADDR_STR         "localhost"
 #define PI_DEFAULT_UPDATE_MASK_UNKNOWN     0x0000000FFFFFFCLL
 #define PI_DEFAULT_UPDATE_MASK_B1          0x03E7CF93
