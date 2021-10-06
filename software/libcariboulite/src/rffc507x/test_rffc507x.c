@@ -59,17 +59,62 @@ int main ()
 	rffc507x_print_stat(&stat);
 
 	rffc507x_set_frequency(&dev, 85e6);
+
+	for (int i = 0; i<5; i++)
+	{
+		io_utils_usleep(10000);
+		rffc507x_readback_status(&dev, NULL, &stat);
+		rffc507x_print_stat(&stat);
+	}
+
+
+
 	rffc507x_set_frequency(&dev, 314159265);
+
+	for (int i = 0; i<5; i++)
+	{
+		io_utils_usleep(10000);
+		rffc507x_readback_status(&dev, NULL, &stat);
+		rffc507x_print_stat(&stat);
+	}
+
+
 	rffc507x_set_frequency(&dev, 915e6);
+
+	for (int i = 0; i<5; i++)
+	{
+		io_utils_usleep(10000);
+		rffc507x_readback_status(&dev, NULL, &stat);
+		rffc507x_print_stat(&stat);
+	}
+
 	rffc507x_set_frequency(&dev, 1200e6);
+
+	for (int i = 0; i<5; i++)
+	{
+		io_utils_usleep(10000);
+		rffc507x_readback_status(&dev, NULL, &stat);
+		rffc507x_print_stat(&stat);
+	}
+
+
 	rffc507x_set_frequency(&dev, 4600e6);
+
+	for (int i = 0; i<5; i++)
+	{
+		io_utils_usleep(10000);
+		rffc507x_readback_status(&dev, NULL, &stat);
+		rffc507x_print_stat(&stat);
+	}
+
+
 	rffc507x_set_frequency(&dev, 5600e6);
 
 	for (int i = 0; i<5; i++)
 	{
+		io_utils_usleep(10000);
 		rffc507x_readback_status(&dev, NULL, &stat);
 		rffc507x_print_stat(&stat);
-		io_utils_usleep(100000);
 	}
 
 	rffc507x_release(&dev);

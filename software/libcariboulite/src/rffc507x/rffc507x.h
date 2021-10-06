@@ -49,10 +49,11 @@ typedef struct  // readsel = 0000
 
 typedef struct  // readsel = 0001
 {
+    uint8_t dummy : 1;                  // LSB
     uint8_t coarse_tune_cal_fail : 1;
     uint8_t kv_cal_value : 6;
     uint8_t coarse_tune_cal_value : 7;
-    uint8_t pll_lock :1;
+    uint8_t pll_lock :1;                // MSB
 } rffc507x_device_status_st;
 #pragma pack()
 
@@ -100,6 +101,9 @@ void rffc507x_readback_status(rffc507x_st* dev, rffc507x_device_id_st* dev_id,
 
 void rffc507x_print_dev_id(rffc507x_device_id_st* dev_id);
 void rffc507x_print_stat(rffc507x_device_status_st* stat);
+void rffc507x_calibrate(rffc507x_st* dev);
+void rffc507x_relock(rffc507x_st* dev);
+void rffc507x_output_lo(rffc507x_st* dev, int state);
 
 #ifdef __cplusplus
 }

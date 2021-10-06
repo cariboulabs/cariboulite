@@ -31,6 +31,9 @@ void at86rf215_setup_iq_radio_continues_tx (at86rf215_st* dev, at86rf215_rf_chan
 void at86rf215_setup_iq_radio_dac_value_override (at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                     uint32_t freq_hz,
                                                     uint8_t tx_power );
+void at86rf215_setup_iq_radio_dac_value_override_no_freq (at86rf215_st* dev,
+                                                          at86rf215_rf_channel_en ch,
+                                                          uint8_t tx_power);
 int64_t at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uint32_t freq_hz );
 
 #ifdef __cplusplus

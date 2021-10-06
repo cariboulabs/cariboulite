@@ -82,7 +82,15 @@ ustimer/ustimer.h
 cariboulite_config.h
 ../src/cariboulite_config/cariboulite_config.h
 
+../src/cariboulite_radios.h
+cariboulite_config/cariboulite_config.h
+../src/cariboulite_config/cariboulite_config.h
+at86rf215/at86rf215.h
+../src/at86rf215/at86rf215.h
+
 ../src/cariboulite_setup.h
+cariboulite_radios.h
+../src/cariboulite_radios.h
 latticeice40/latticeice40.h
 ../src/latticeice40/latticeice40.h
 caribou_fpga/caribou_fpga.h
@@ -209,6 +217,8 @@ time.h
 -
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.cpp
+math.h
+-
 Cariboulite.hpp
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
 cariboulite_config/cariboulite_config_default.h
@@ -241,18 +251,6 @@ atomic
 -
 cariboulite_setup.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_setup.h
-
-/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteStream.cpp
-Cariboulite.hpp
-/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
-cariboulite_config/cariboulite_config_default.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_config/cariboulite_config_default.h
-
-/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/SoapyCariboulite.cpp
-SoapySDR/Device.hpp
--
-SoapySDR/Registry.hpp
--
-Cariboulite.hpp
-/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
+cariboulite_radios.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_radios.h
 

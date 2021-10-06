@@ -56,18 +56,6 @@ stdio.h
 pigpio.h
 -
 
-../../zf_log/zf_log.h
-
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.c
-stdio.h
--
-string.h
--
-zf_log/zf_log.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/zf_log/zf_log.h
-caribou_fpga.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.h
-
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.h
 stdio.h
 -
@@ -77,4 +65,10 @@ io_utils/io_utils.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/io_utils/io_utils.h
 io_utils/io_utils_spi.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/io_utils/io_utils_spi.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/test_caribou_fpga.c
+stdio.h
+-
+caribou_fpga.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.h
 

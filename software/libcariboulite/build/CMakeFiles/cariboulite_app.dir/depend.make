@@ -11,7 +11,9 @@ CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite.c
 CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite.h
 CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite_config/cariboulite_config.h
 CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite_config/cariboulite_config_default.h
+CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite_eeprom/cariboulite_eeprom.h
 CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite_events.h
+CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite_radios.h
 CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/cariboulite_setup.h
 CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/io_utils/io_utils.h
 CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o: ../src/io_utils/io_utils_spi.h
