@@ -9,6 +9,7 @@ CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/caribou_
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/cariboulite_config/cariboulite_config.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/cariboulite_config/cariboulite_config_default.h
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/cariboulite_radios.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/cariboulite_setup.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/io_utils/io_utils.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o: ../src/io_utils/io_utils_spi.h
@@ -28,6 +29,7 @@ CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/ca
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/cariboulite_config/cariboulite_config.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/cariboulite_config/cariboulite_config_default.h
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/cariboulite_radios.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/cariboulite_setup.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/io_utils/io_utils.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o: ../src/io_utils/io_utils_spi.h
@@ -46,6 +48,7 @@ CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/at8
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/caribou_fpga/caribou_fpga.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/cariboulite_config/cariboulite_config.h
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/cariboulite_radios.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/cariboulite_setup.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/io_utils/io_utils.h
 CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o: ../src/io_utils/io_utils_spi.h

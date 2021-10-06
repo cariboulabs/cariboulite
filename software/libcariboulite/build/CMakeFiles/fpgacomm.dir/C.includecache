@@ -84,7 +84,15 @@ ustimer/ustimer.h
 cariboulite_config.h
 ../src/cariboulite_config/cariboulite_config.h
 
+../src/cariboulite_radios.h
+cariboulite_config/cariboulite_config.h
+../src/cariboulite_config/cariboulite_config.h
+at86rf215/at86rf215.h
+../src/at86rf215/at86rf215.h
+
 ../src/cariboulite_setup.h
+cariboulite_radios.h
+../src/cariboulite_radios.h
 latticeice40/latticeice40.h
 ../src/latticeice40/latticeice40.h
 caribou_fpga/caribou_fpga.h

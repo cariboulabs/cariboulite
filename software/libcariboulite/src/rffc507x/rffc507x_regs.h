@@ -58,7 +58,7 @@ static inline void set_##n(rffc507x_st* dev, uint16_t v) {      \
 __MREG__(RFFC507X_PLLCPL,0,0,3)
 __MREG__(RFFC507X_P1CPDEF,0,3,6)
 __MREG__(RFFC507X_P2CPDEF,0,9,6)
-__MREG__(RFFC507X_IFACT,0,15,1)
+__MREG__(RFFC507X_LFACT,0,15,1)
 #define RFFC507X_
 
 /* REG 01 (1): XO */

@@ -5,6 +5,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
   "/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.c" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o"
+  "/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_radios.c" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o"
   "/home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.c" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o"
   )
 set(CMAKE_C_COMPILER_ID "GNU")

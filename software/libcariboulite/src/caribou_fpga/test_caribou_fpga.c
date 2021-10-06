@@ -31,7 +31,7 @@ int main ()
     printf("Hello from CaribouFPGA!\n");
 
     // Init GPIOs and set FPGA on reset
-	io_utils_setup();
+	io_utils_setup(NULL);
 
     // Init spi
 	io_utils_spi_init(&io_spi_dev);

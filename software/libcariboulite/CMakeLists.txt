@@ -9,7 +9,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 # ------------------------------------
 # MAIN - Source files for main library
 # ------------------------------------
-set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c)
+set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radios.c)
 
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)

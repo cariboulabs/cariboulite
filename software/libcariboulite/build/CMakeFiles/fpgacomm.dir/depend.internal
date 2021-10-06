@@ -11,6 +11,7 @@ CMakeFiles/fpgacomm.dir/test/fpga_comm_test.c.o
  ../src/caribou_smi/caribou_smi.h
  ../src/cariboulite_config/cariboulite_config.h
  ../src/cariboulite_config/cariboulite_config_default.h
+ ../src/cariboulite_radios.h
  ../src/cariboulite_setup.h
  ../src/io_utils/io_utils.h
  ../src/io_utils/io_utils_spi.h

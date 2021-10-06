@@ -12,7 +12,9 @@ CMakeFiles/cariboulite_app.dir/src/cariboulite.c.o
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_config/cariboulite_config.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_config/cariboulite_config_default.h
+ /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_eeprom/cariboulite_eeprom.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.h
+ /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_radios.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_setup.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/io_utils/io_utils_spi.h

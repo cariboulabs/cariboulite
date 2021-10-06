@@ -58,6 +58,34 @@ int test_at86rf215_read_chip_vn_pn(at86rf215_st* dev)
     printf("TEST:AT86RF215:VERSIONS:PASS=%d\n", pass);
     printf("TEST:AT86RF215:VERSIONS:INFO=The component PN is %s (0x%02X), Version %d\n", pn_st, pn, vn);
 
+    at86rf215_set_clock_output(dev, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_1mhz);
+    printf("Clock output 1MHz@2mA... Press enter to stop\n");
+    getchar();
+
+    at86rf215_set_clock_output(dev, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_1mhz);
+    printf("Clock output 1MHz@4mA... Press enter to stop\n");
+    getchar();
+
+    at86rf215_set_clock_output(dev, at86rf215_drive_current_6ma, at86rf215_clock_out_freq_1mhz);
+    printf("Clock output 1MHz@6mA... Press enter to stop\n");
+    getchar();
+
+    at86rf215_set_clock_output(dev, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_1mhz);
+    printf("Clock output 1MHz@8mA... Press enter to stop\n");
+    getchar();
+
+/*
+    at86rf215_clock_out_freq_26mhz = 1,
+    at86rf215_clock_out_freq_32mhz = 2,
+    at86rf215_clock_out_freq_16mhz = 3,
+    at86rf215_clock_out_freq_8mhz = 4,
+    at86rf215_clock_out_freq_4mhz = 5,
+    at86rf215_clock_out_freq_2mhz = 6,
+    at86rf215_clock_out_freq_1mhz = 7,
+*/
+
+    at86rf215_set_clock_output(dev, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_off);
+
     return pass;
 }
 
@@ -161,7 +189,7 @@ int test_at86rf215_continues_iq_loopback (at86rf215_st* dev, at86rf215_rf_channe
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
 #define TEST_IQ_RX_WIND     0
-#define TEST_IQ_LB_WIND     1
+#define TEST_IQ_LB_WIND     0
 
 // -----------------------------------------------------------------------------------------
 // MAIN

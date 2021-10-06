@@ -528,6 +528,34 @@ void at86rf215_setup_iq_radio_continues_tx (at86rf215_st* dev, at86rf215_rf_chan
     //    to 0, the transmission stops once the current PSDU transmission is completed
 }
 
+void at86rf215_setup_iq_radio_dac_value_override_no_freq (at86rf215_st* dev,
+                                                          at86rf215_rf_channel_en ch,
+                                                          uint8_t tx_power)
+{
+    at86rf215_radio_state_cmd_en state = at86rf215_radio_get_state(dev, ch);
+    if (state != at86rf215_radio_state_cmd_trx_off)
+    {
+        at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_trx_off);
+    }
+    at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_tx_prep);
+
+    at86rf215_radio_tx_ctrl_st tx_config =
+    {
+        .pa_ramping_time = at86rf215_radio_tx_pa_ramp_32usec,
+        .current_reduction = at86rf215_radio_pa_current_reduction_0ma,
+        .tx_power = tx_power,
+        .analog_bw = at86rf215_radio_tx_cut_off_80khz,
+        .digital_bw = at86rf215_radio_rx_f_cut_half_fs,
+        .fs = at86rf215_radio_rx_sample_rate_4000khz,
+        .direct_modulation = 0,
+    };
+    at86rf215_radio_setup_tx_ctrl(dev, ch, &tx_config);
+
+    at86rf215_radio_set_tx_dac_input_iq(dev, ch, 1, 0x7E, 1, 0x3F);
+    at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_tx);
+}
+
+
 void at86rf215_setup_iq_radio_dac_value_override (at86rf215_st* dev,
                                                     at86rf215_rf_channel_en ch,
                                                     uint32_t freq_hz,

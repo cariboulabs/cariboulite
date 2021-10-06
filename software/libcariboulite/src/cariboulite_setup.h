@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 
+#include "cariboulite_radios.h"
 #include "latticeice40/latticeice40.h"
 #include "caribou_fpga/caribou_fpga.h"
 #include "at86rf215/at86rf215.h"
@@ -51,19 +52,6 @@ typedef enum
     cariboulite_submodules_init_failed          = -4,
     cariboulite_self_test_failed                = -5,
 } cariboulite_errors_en;
-
-typedef enum
-{
-    cariboulite_channel_dir_rx = 0,
-    cariboulite_channel_dir_tx = 1,
-} cariboulite_channel_dir_en;
-
-typedef enum
-{
-    cariboulite_channel_s1g = 0,
-    cariboulite_channel_6g = 1,
-} cariboulite_channel_en;
-
 
 int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info);
 void cariboulite_release_driver(cariboulite_st *sys);

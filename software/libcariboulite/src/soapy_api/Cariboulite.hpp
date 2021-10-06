@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <atomic>
 #include "cariboulite_setup.h"
+#include "cariboulite_radios.h"
 
 #define BUF_LEN			262144
 #define BUF_NUM			15
@@ -91,8 +92,15 @@ public:
         /*******************************************************************
          * Gain API
          ******************************************************************/
-        bool hasGainMode(const int direction, const size_t channel) const { return (direction==SOAPY_SDR_RX?true:false); }
+        std::vector<std::string> listGains(const int direction, const size_t channel) const;
+        void setGain(const int direction, const size_t channel, const double value);
+        void setGain(const int direction, const size_t channel, const std::string &name, const double value);
+        double getGain(const int direction, const size_t channel) const;
+        double getGain(const int direction, const size_t channel, const std::string &name) const;
+        SoapySDR::Range getGainRange(const int direction, const size_t channel) const;
+        SoapySDR::Range getGainRange(const int direction, const size_t channel, const std::string &name) const;
         void setGainMode( const int direction, const size_t channel, const bool automatic );
+        bool hasGainMode(const int direction, const size_t channel) const;
         bool getGainMode( const int direction, const size_t channel ) const;
 
         /*******************************************************************
@@ -116,6 +124,7 @@ public:
 
 private:
         cariboulite_st cariboulite_sys;
+        cariboulite_radios_st radios;
 
         SoapySDR::Stream* const TX_STREAM09 = (SoapySDR::Stream*) 0x1;
 	SoapySDR::Stream* const RX_STREAM09 = (SoapySDR::Stream*) 0x2;

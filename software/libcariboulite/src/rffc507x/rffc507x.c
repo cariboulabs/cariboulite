@@ -39,9 +39,10 @@
 #define LOG(x,...)
 #endif
 
-
-#define LO_MAX_HZ (5400000000.0)
-#define REF_FREQ 26000000.0
+#define LO_MAX 5400
+#define LO_MAX_HZ (LO_MAX*1e6)
+#define REF_FREQ 32
+#define REF_FREQ_HZ (REF_FREQ*1e6)
 #define FREQ_ONE_MHZ (1000*1000)
 
 //===========================================================================
@@ -138,51 +139,23 @@ int rffc507x_init(  rffc507x_st* dev,
 								// interface
 	
 	set_RFFC507X_ENBL(dev, 0);	// The device is disabled
-	set_RFFC507X_MODE(dev, 1);	// Select the PLL bank - in RFFC5072
-								// we have only PLL2, so MODE = 1 always
-	set_RFFC507X_4WIRE(dev, 0);	// Only 3-wire operation
-	set_RFFC507X_ADDR(dev, 0);	// No address sllicing enabled - single device
-	set_RFFC507X_RESET(dev, 0);	// No reset
-
-	// GPO configurations
-	set_RFFC507X_P2GPO(dev, 0);	// The mode pin is disabled
-	set_RFFC507X_P1GPO(dev, 0);	// The mode pin is disabled
-	set_RFFC507X_GATE(dev, 1);	// When ENBL is low, do not force other	
-								// GPOs to go LOW as well
-	set_RFFC507X_LOCK(dev, 0);	// Do not sent the lock signal to GPO4
+	set_RFFC507X_MODE(dev, 1);
 
 	// put zeros in freq contol registers
-	set_RFFC507X_P2N(dev, 0);
-	set_RFFC507X_P2LODIV(dev, 0);
-	set_RFFC507X_P2PRESC(dev, 0);
 	set_RFFC507X_P2VCOSEL(dev, 0);
-
-	//set_RFFC507X_P1N(dev, 0);
-	//set_RFFC507X_P1LODIV(dev, 0);
-	//set_RFFC507X_P1PRESC(dev, 0);
-	//set_RFFC507X_P1VCOSEL(dev, 0);
-
-	// Commit the current batch
-	rffc507x_regs_commit(dev);
-
-	// VCO_AUTO selection
-	set_RFFC507X_AUTO(dev, 1);
 	set_RFFC507X_CTMAX(dev, 127);
 	set_RFFC507X_CTMIN(dev, 0);
-
-	// CT_CAL1/2
 	set_RFFC507X_P2CTV(dev, 12);	
 	set_RFFC507X_P1CTV(dev, 12);
-
-	// TEST control - bypassing TBD
 	set_RFFC507X_RGBYP(dev, 1);
+	set_RFFC507X_P2MIXIDD(dev, 1);
+	set_RFFC507X_P1MIXIDD(dev, 1);
+	
+	// Others
+	set_RFFC507X_LDEN(dev, 1);
+	set_RFFC507X_LDLEV(dev, 1);
 
-	// Full duplex disabled
-	set_RFFC507X_FULLD(dev, 0);
-
-	// Mixer linearity values - we need to understand the actual value
-	set_RFFC507X_P1MIXIDD(dev, 4);
-	set_RFFC507X_P2MIXIDD(dev, 4);
+	set_RFFC507X_BYPAS(dev, 0);
 
 	// Write default register values to chip.
 	int ret = rffc507x_regs_commit(dev);
@@ -231,7 +204,7 @@ uint16_t rffc507x_reg_read(rffc507x_st* dev, uint8_t r)
 	uint16_t vin = 0;
 
 	// Readback register is not cached.
-	//if (r == RFFC507X_READBACK_REG)
+	if (r == RFFC507X_READBACK_REG)
 	{
 		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle, &vout, (uint8_t*)&vin, 2, io_utils_spi_read);
 		return vin;
@@ -239,10 +212,11 @@ uint16_t rffc507x_reg_read(rffc507x_st* dev, uint8_t r)
 
 	// Discard uncommited write when reading. This shouldn't
 	// happen, and probably has not been tested.
-	if ((dev->rffc507x_regs_dirty >> r) & 0x1)
-	{
-		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle, &vout, (uint8_t*)&vin, 2, io_utils_spi_read);
-	}
+	//if ((dev->rffc507x_regs_dirty >> r) & 0x1)
+	//{
+		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle, &vout, (uint8_t*)&(dev->rffc507x_regs[r]), 
+							2, io_utils_spi_read);
+	//}
 	return dev->rffc507x_regs[r];
 }
 
@@ -278,22 +252,23 @@ void rffc507x_enable(rffc507x_st* dev)
 //===========================================================================
 void rffc507x_calculate_freq_params(uint8_t lodiv, double fvco, uint8_t fbkdiv, uint16_t *n, uint16_t *p1nmsb, uint8_t *p1nlsb, double* act_freq_hz)
 {
-	double n_div = fvco / fbkdiv / REF_FREQ;
+	double n_div = fvco / fbkdiv / REF_FREQ_HZ;
 	*n = (uint16_t)(n_div);
 
 	double temp_p1nmsb = ( (double)(1<<16) ) * ( n_div - (double)(*n) );
 	*p1nmsb = (uint16_t)(temp_p1nmsb) & 0xFFFF;
 	*p1nlsb = (uint8_t)( round(( temp_p1nmsb- *p1nmsb ) * ((double)(1<<8)))) & 0xFF;
+	//*p1nlsb = (uint8_t)( (( temp_p1nmsb- *p1nmsb ) * ((double)(1<<8)))) & 0xFF;
 
 	uint32_t n_div24_bit = (uint32_t)(round(n_div * (1<<24))) & 0xFFFFFFFF;
+	//uint32_t n_div24_bit = (uint32_t)((n_div * (1<<24))) & 0xFFFFFFFF;
 
-	if (act_freq_hz) *act_freq_hz = (REF_FREQ * n_div24_bit * fbkdiv) / ((double)(lodiv) * (double)(1<<24));
+	if (act_freq_hz) *act_freq_hz = (REF_FREQ_HZ * n_div24_bit * fbkdiv) / ((double)(lodiv) * (double)(1<<24));
 }
 
 //===========================================================================
 double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 {
-	//uint32_t tune_freq;
 	uint8_t lodiv;
 	double fvco;
 	uint8_t fbkdiv;
@@ -309,11 +284,6 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 	lodiv = 1 << n_lo;							// lodiv = 2^(n_lo)
 	fvco = lodiv * lo_hz;						// in Hz!
 
-	/* higher divider and charge pump current required above
-	 * 3.2GHz. Programming guide says these values (fbkdiv, n,
-	 * maybe pump?) can be changed back after enable in order to
-	 * improve phase noise, since the VCO will already be stable
-	 * and will be unaffected. */
 	if (fvco > 3200000000.0f)
 	{
 		fbkdiv = 4;
@@ -327,27 +297,20 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 
 	rffc507x_calculate_freq_params(lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
 
-	ZF_LOGD("----------------------------------------------------------");
-	ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
-	ZF_LOGD("fvco=%.2f fbkdiv=%d n=%d", fvco, fbkdiv, n);
-	ZF_LOGD("frac=%d, p1nmsb=%d, p1nlsb=%d, tune_freq_hz=%.2f", p1nmsb<<8 | p1nlsb, p1nmsb, p1nlsb, tune_freq_hz);
-	
-	// Path 1
-	//set_RFFC507X_P1LODIV(dev, n_lo);
-	//set_RFFC507X_P1N(dev, n);
-	//set_RFFC507X_P1PRESC(dev, fbkdiv >> 1);
-	//set_RFFC507X_P1NMSB(dev, p1nmsb);
-	//set_RFFC507X_P1NLSB(dev, p1nlsb);
+	//ZF_LOGD("----------------------------------------------------------");
+	//ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
+	//ZF_LOGD("fvco=%.2f fbkdiv=%d n=%d", fvco, fbkdiv, n);
+	//ZF_LOGD("frac=%d, p1nmsb=%d, p1nlsb=%d, tune_freq_hz=%.2f", p1nmsb<<8 | p1nlsb, p1nmsb, p1nlsb, tune_freq_hz);
 
 	// Path 2
 	set_RFFC507X_P2LODIV(dev, n_lo);
 	set_RFFC507X_P2N(dev, n);
 	set_RFFC507X_P2PRESC(dev, fbkdiv >> 1);
+	set_RFFC507X_P2VCOSEL(dev, 2);
 	set_RFFC507X_P2NMSB(dev, p1nmsb);
 	set_RFFC507X_P2NLSB(dev, p1nlsb);
 
 	rffc507x_regs_commit(dev);
-
 	rffc507x_enable(dev);
 
 	if (fbkdiv == 4)
@@ -359,17 +322,10 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 		fbkdiv = 2;
 		rffc507x_calculate_freq_params(lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
 
-		ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
-		ZF_LOGD("fvco=%.2f fbkdiv=%d n=%d", fvco, fbkdiv, n);
-		ZF_LOGD("frac=%d, p1nmsb=%d, p1nlsb=%d, tune_freq_hz=%.2f", p1nmsb<<8 | p1nlsb, p1nmsb, p1nlsb, tune_freq_hz);
-		ZF_LOGD("----------------------------------------------------------");
-
-		// Path 1
-		//set_RFFC507X_P1LODIV(dev, n_lo);
-		//set_RFFC507X_P1N(dev, n);
-		//set_RFFC507X_P1PRESC(dev, fbkdiv >> 1);
-		//set_RFFC507X_P1NMSB(dev, p1nmsb);
-		//set_RFFC507X_P1NLSB(dev, p1nlsb);
+		//ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
+		//ZF_LOGD("fvco=%.2f fbkdiv=%d n=%d", fvco, fbkdiv, n);
+		//ZF_LOGD("frac=%d, p1nmsb=%d, p1nlsb=%d, tune_freq_hz=%.2f", p1nmsb<<8 | p1nlsb, p1nmsb, p1nlsb, tune_freq_hz);
+		//ZF_LOGD("----------------------------------------------------------");
 
 		// Path 2
 		set_RFFC507X_P2LODIV(dev, n_lo);
@@ -381,21 +337,6 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 	}
 
 	return tune_freq_hz;
-}
-
-//===========================================================================
-void rffc507x_setup_pin_functions(rffc507x_st* dev)
-{
-	ZF_LOGD("setting up gpio configurations (4-wire)");
-	set_RFFC507X_RESET(dev, 0);
-	set_RFFC507X_ADDR(dev, 0);
-	set_RFFC507X_4WIRE(dev, 1);
-	set_RFFC507X_MODE(dev, 1);
-	set_RFFC507X_ENBL(dev, 1);
-	set_RFFC507X_SIPIN(dev, 0);
-	set_RFFC507X_LOCK(dev, 0);
-	set_RFFC507X_GATE(dev, 0);
-	rffc507x_regs_commit(dev);
 }
 
 //===========================================================================
@@ -469,3 +410,39 @@ void rffc507x_set_gpo(rffc507x_st* dev, uint8_t gpo)
 	rffc507x_regs_commit(dev);
 }
 
+//===========================================================================
+void rffc507x_calibrate(rffc507x_st* dev)
+{
+	// CAL_TIME
+	set_RFFC507X_WAIT(dev, 1); 	// If high then the RF sections are not enabled until the PLL calibrations complete
+	set_RFFC507X_TCT(dev, 31);	// Duration of CT acquisition
+	set_RFFC507X_CTAVG(dev, 3);	// Number of samples averaged to compute final value during CT Calibration: 
+								//  0 = average 16 samples; 
+								// 	1 = average 32 samples; 
+								// 	2 = average 64 samples; 
+								// 	3 = average 128 samples
+	set_RFFC507X_KVAVG(dev, 3); // Number of samples averaged to compute final value during KV compensation
+	rffc507x_regs_commit(dev);
+
+	/*
+	set_RFFC507X_P2CT (dev, 1);	// VCO coarse tune enable, path2 mode
+	rffc507x_regs_commit(dev);
+	*/
+
+	set_RFFC507X_P1KV(dev, 0);
+	set_RFFC507X_P2KV(dev, 0);
+	rffc507x_regs_commit(dev);
+}
+
+//===========================================================================
+void rffc507x_relock(rffc507x_st* dev)
+{
+	set_RFFC507X_RELOK(dev, 1);
+	rffc507x_regs_commit(dev);
+}
+
+//===========================================================================
+void rffc507x_output_lo(rffc507x_st* dev, int state)
+{
+	set_RFFC507X_BYPAS(dev, state);
+}
