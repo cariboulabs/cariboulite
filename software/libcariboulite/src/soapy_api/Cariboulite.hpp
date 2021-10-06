@@ -122,6 +122,50 @@ public:
         double getBandwidth( const int direction, const size_t channel ) const;
         std::vector<double> listBandwidths( const int direction, const size_t channel ) const;
 
+        /*******************************************************************
+         * Sensors API
+         ******************************************************************/
+        /*!
+        * List the available channel readback sensors.
+        * A sensor can represent a reference lock, RSSI, temperature.
+        * \param direction the channel direction RX or TX
+        * \param channel an available channel on the device
+        * \return a list of available sensor string names
+        */
+        virtual std::vector<std::string> listSensors(const int direction, const size_t channel) const;
+
+        /*!
+        * Get meta-information about a channel sensor.
+        * Example: displayable name, type, range.
+        * \param direction the channel direction RX or TX
+        * \param channel an available channel on the device
+        * \param key the ID name of an available sensor
+        * \return meta-information about a sensor
+        */
+        virtual SoapySDR::ArgInfo getSensorInfo(const int direction, const size_t channel, const std::string &key) const;
+
+        /*!
+        * Readback a channel sensor given the name.
+        * The value returned is a string which can represent
+        * a boolean ("true"/"false"), an integer, or float.
+        * \param direction the channel direction RX or TX
+        * \param channel an available channel on the device
+        * \param key the ID name of an available sensor
+        * \return the current value of the sensor
+        */
+        virtual std::string readSensor(const int direction, const size_t channel, const std::string &key) const;
+
+        /*!
+        * Readback a channel sensor given the name.
+        * \tparam Type the return type for the sensor value
+        * \param direction the channel direction RX or TX
+        * \param channel an available channel on the device
+        * \param key the ID name of an available sensor
+        * \return the current value of the sensor as the specified type
+        */
+        template <typename Type>
+        Type readSensor(const int direction, const size_t channel, const std::string &key) const;
+
 private:
         cariboulite_st cariboulite_sys;
         cariboulite_radios_st radios;

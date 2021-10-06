@@ -498,7 +498,9 @@ bool cariboulite_wait_for_lock( cariboulite_radio_state_st* rad, bool *mod, bool
         int relock_retries = retries;
         do
         {
-            at86rf215_radio_get_pll_ctrl(&rad->cariboulite_sys->modem, at86rf215_rf_channel_900mhz, &cfg);
+            at86rf215_rf_channel_en ch = rad->type == cariboulite_channel_s1g ? 
+                        at86rf215_rf_channel_900mhz : at86rf215_rf_channel_2400mhz;
+            at86rf215_radio_get_pll_ctrl(&rad->cariboulite_sys->modem, ch, &cfg);
         } while (!cfg.pll_locked && relock_retries--);
 
         *mod = cfg.pll_locked;
@@ -562,7 +564,7 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
         {
             // error - unsupported frequency for S1G channel
             ZF_LOGE("unsupported frequency for S1G channel - %.2f Hz", f_rf);
-            error = 1;
+            error = -1;
         }
     }
     //--------------------------------------------------------------------------------
@@ -596,7 +598,7 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
             
             // setup mixer LO according to the actual modem frequency
             lo_act_freq = rffc507x_set_frequency(&rad->cariboulite_sys->mixer, modem_act_freq + f_rf);
-            act_freq = modem_act_freq - lo_act_freq;
+            act_freq = lo_act_freq - modem_act_freq;
 
             // setup fpga RFFE <= upconvert (tx / rx)
             conversion_direction = conversion_dir_up;
@@ -636,7 +638,7 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
         {
             // error - unsupported frequency for 6G channel
             ZF_LOGE("unsupported frequency for 6GHz channel - %.2f Hz", f_rf);
-            error = 1;
+            error = -1;
         }
 
         // Setup the frontend
@@ -671,12 +673,16 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
         }
 
         // Make sure the LO and the IF PLLs are locked
+        at86rf215_radio_set_state( &rad->cariboulite_sys->modem, 
+                                    GET_CH(channel), 
+                                    at86rf215_radio_state_cmd_tx_prep);
+        rad->state = at86rf215_radio_state_cmd_tx_prep;
 
         if (!cariboulite_wait_for_lock(rad, &rad->modem_pll_locked, &rad->lo_pll_locked, 100))
         {
             if (!rad->lo_pll_locked) ZF_LOGE("PLL MIXER failed to lock LO frequency (%.2f Hz)", lo_act_freq);
             if (!rad->modem_pll_locked) ZF_LOGE("PLL MODEM failed to lock IF frequency (%.2f Hz)", modem_act_freq);
-            error = 3;
+            error = 1;
         }
 
         // Update the actual frequencies
@@ -688,10 +694,10 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
         if (freq) *freq = act_freq;
 
         // activate the channel according to the new configuration
-        cariboulite_activate_channel(radios, channel);
+        //cariboulite_activate_channel(radios, channel);
     }
 
-    if (error == 0)
+    if (error >= 0)
     {
         ZF_LOGD("Frequency setting CH: %d, Wanted: %.2f Hz, Set: %.2f Hz (MOD: %.2f, MIX: %.2f)", 
                         channel, f_rf, act_freq, modem_act_freq, lo_act_freq);
@@ -718,12 +724,12 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
     cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
 
     // if the channel state is active, turn it off before reactivating
-    if (rad->state != at86rf215_radio_state_cmd_trx_off)
+    if (rad->state != at86rf215_radio_state_cmd_tx_prep)
     {
         at86rf215_radio_set_state( &rad->cariboulite_sys->modem, 
                                     GET_CH(channel), 
-                                    at86rf215_radio_state_cmd_trx_off);
-        rad->state = at86rf215_radio_state_cmd_trx_off;
+                                    at86rf215_radio_state_cmd_tx_prep);
+        rad->state = at86rf215_radio_state_cmd_tx_prep;
     }
 
     // Activate the channel according to the configurations
@@ -749,11 +755,6 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
             // make sure the mixer doesn't bypass the lo
             rffc507x_output_lo(&rad->cariboulite_sys->mixer, 0);
 
-            // TX preparation state - both channels need
-            at86rf215_radio_set_state(&rad->cariboulite_sys->modem, 
-                                        GET_CH(channel), 
-                                        at86rf215_radio_state_cmd_tx_prep);
-
             cariboulite_set_tx_bandwidth(radios, channel,
                         rad->cw_output?at86rf215_radio_tx_cut_off_80khz:rad->tx_bw);
 
@@ -775,23 +776,31 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
 }
 
 //======================================================================
-int cariboulite_setup_frequency_old(    cariboulite_st *sys, 
-                                    cariboulite_channel_en ch, 
-                                    cariboulite_channel_dir_en dir,
-                                    double *freq)
+int cariboulite_set_cw_outputs(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel, bool lo_out, bool cw_out)
 {
-            
-        /*// Activate the modem - this should be outside
-        if (dir == 0)
-        {
-            at86rf215_radio_set_state(  &sys->modem, 
-                                    at86rf215_rf_channel_2400mhz, 
-                                    at86rf215_radio_state_cmd_rx);
-        }
-        else
-        {
-            at86rf215_setup_iq_radio_dac_value_override_no_freq (&sys->modem,
-                                                        at86rf215_rf_channel_2400mhz,
-                                                        31);
-        }*/
+    cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
+
+    if (rad->lo_output && channel == cariboulite_channel_6g)
+    {
+        rad->lo_output = lo_out;
+    }
+    else
+    {
+        rad->lo_output = false;
+    }
+    rad->cw_output = cw_out;
+
+    return 0;
+}
+
+//======================================================================
+int cariboulite_get_cw_outputs(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel, bool *lo_out, bool *cw_out)
+{
+    cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
+    if (lo_out) *lo_out = rad->lo_output;
+    if (cw_out) *cw_out = rad->cw_output;
+
+    return 0;
 }

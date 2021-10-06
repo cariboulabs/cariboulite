@@ -167,6 +167,13 @@ int cariboulite_get_frequency(  cariboulite_radios_st* radios,
 int cariboulite_activate_channel(cariboulite_radios_st* radios, 
                                 cariboulite_channel_en channel);
 
+int cariboulite_set_cw_outputs(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel, bool lo_out, bool cw_out);
+
+int cariboulite_get_cw_outputs(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel, bool *lo_out, bool *cw_out);
+
+
 #ifdef __cplusplus
 }
 #endif
