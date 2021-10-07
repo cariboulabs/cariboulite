@@ -251,7 +251,7 @@ void* caribou_smi_thread(void *arg)
     caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
     caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
-    ZF_LOGD("Entered thread id %u", tid);
+    ZF_LOGD("Entered thread id %lu", tid);
 
     set_realtime_priority();
 
@@ -274,7 +274,7 @@ void* caribou_smi_thread(void *arg)
             continue;
         }
 
-        int ret = caribou_smi_timeout_read(dev, st->addr, st->current_smi_buffer, st->batch_length, 10);
+        int ret = caribou_smi_timeout_read(dev, st->addr, (char*)st->current_smi_buffer, st->batch_length, 10);
         if (ret < 0)
         {
             if (dev->error_cb) dev->error_cb(dev->cb_context, st->stream_id & 0x1, caribou_smi_error_read_failed);
@@ -289,7 +289,7 @@ void* caribou_smi_thread(void *arg)
                                     st->batch_length);
 
         st->current_smi_buffer_index ++;
-        if (st->current_smi_buffer_index >= st->num_of_buffers) st->current_smi_buffer_index = 0;
+        if (st->current_smi_buffer_index >= (int)(st->num_of_buffers)) st->current_smi_buffer_index = 0;
         st->current_smi_buffer = st->buffers[st->current_smi_buffer_index];
     }
 
@@ -301,7 +301,7 @@ void* caribou_smi_thread(void *arg)
                                         st->current_app_buffer,
                                         st->batch_length);
 
-    ZF_LOGD("Exiting thread id %u", tid);
+    ZF_LOGD("Exiting thread id %lu", tid);
     return NULL;
 }
 

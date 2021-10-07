@@ -38,6 +38,8 @@ target_link_libraries(cariboulite   datatypes
                                     cariboulite_eeprom
                                     zf_log)
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+#add_compile_options(-Wall -Wextra -pedantic -Werror)
+add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
 # create the Soapy shared object
 find_package(SoapySDR CONFIG)

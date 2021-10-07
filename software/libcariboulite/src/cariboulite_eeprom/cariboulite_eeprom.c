@@ -257,8 +257,8 @@ static int init_eeprom_device(char* eeprom_type, uint8_t i2c_addr)
 
 	// the sys dir path
 	char sys_dir_bus[128] = {0};
-	char sys_dir_bus_addr[128] = {0};
-	char sys_dir_bus_new_dev[128] = {0};
+	char sys_dir_bus_addr[160] = {0};
+	char sys_dir_bus_new_dev[160] = {0};
 	sprintf(sys_dir_bus, "/sys/class/i2c-adapter/i2c-%d", bus);
 	sprintf(sys_dir_bus_addr, "%s/%d-00%x", sys_dir_bus, bus, i2c_addr);
 	sprintf(sys_dir_bus_new_dev, "%s/new_device", sys_dir_bus);
@@ -299,8 +299,8 @@ static int close_eeprom_device(int bus, uint8_t i2c_addr)
 {
 	int dir = 0;
 	char sys_dir_bus[128] = {0};
-	char sys_dir_bus_addr[128] = {0};
-	char sys_dir_bus_del_dev[128] = {0};
+	char sys_dir_bus_addr[160] = {0};
+	char sys_dir_bus_del_dev[160] = {0};
 	sprintf(sys_dir_bus, "/sys/class/i2c-adapter/i2c-%d", bus);
 	sprintf(sys_dir_bus_addr, "%s/%d-00%x", sys_dir_bus, bus, i2c_addr);
 	sprintf(sys_dir_bus_del_dev, "%s/delete_device", sys_dir_bus);
@@ -460,7 +460,7 @@ static int cariboulite_eeprom_valid(cariboulite_eeprom_st *ee)
 		return -1;
 	}
 
-	uint8_t *location = ee->eeprom_buffer;
+	uint8_t *location = (uint8_t*)ee->eeprom_buffer;
 	uint32_t offset = 0;
 
 	// check the header
@@ -485,7 +485,7 @@ static int cariboulite_eeprom_valid(cariboulite_eeprom_st *ee)
 		return 0;	// not valid
 	}
 
-	if (header->eeplen > ee->eeprom_buffer_total_size)
+	if (header->eeplen > (uint32_t)(ee->eeprom_buffer_total_size))
 	{
 		ZF_LOGD("The declared data-size larger than eeprom size (%d > %d)", 
 							header->eeplen, ee->eeprom_buffer_total_size);
@@ -512,13 +512,13 @@ static int cariboulite_eeprom_valid(cariboulite_eeprom_st *ee)
 
 		if (atom->count != i)
 		{
-			ZF_LOGD("Atom #%d count inconcistent", i, atom->count);
+			ZF_LOGD("Atom #%d count inconcistent (%d)", i, atom->count);
 			return 0;	// not valid
 		}
 
-		if ((offset + ATOM_TOTAL_SIZE(atom)) > ee->eeprom_buffer_total_size)
+		if ((offset + ATOM_TOTAL_SIZE(atom)) > (uint32_t)(ee->eeprom_buffer_total_size))
 		{
-			ZF_LOGD("Atom #%d data length + crc16 don't fit into eeprom");
+			ZF_LOGD("Atom #%d data length + crc16 don't fit into eeprom", i);
 			return 0;	// not valid
 		}
 
@@ -570,7 +570,7 @@ static int cariboulite_eeprom_contents_parse(cariboulite_eeprom_st *ee)
 		return -1;
 	}
 
-	location = ee->eeprom_buffer;
+	location = (uint8_t*)ee->eeprom_buffer;
 	
 	// Header
 	memcpy(&ee->header, location, sizeof(ee->header));
@@ -606,7 +606,7 @@ static int cariboulite_eeprom_contents_parse(cariboulite_eeprom_st *ee)
 			case ATOM_DT_TYPE:
 				{
 					ZF_LOGD("Atom datalength = %d", atom->dlen - 2);		// substruct the crc16 size from the dlen
-					ee->dt_data.dt_data = (uint8_t*)malloc(atom->dlen - 2);
+					ee->dt_data.dt_data = (char*)malloc(atom->dlen - 2);
 					if (ee->dt_data.dt_data == NULL)
 					{
 						ZF_LOGE("Failed allocating dt data.");
@@ -632,7 +632,7 @@ static int cariboulite_eeprom_contents_parse(cariboulite_eeprom_st *ee)
 static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 {
 	struct atom_t *atom = NULL;
-	uint8_t *location = ee->eeprom_buffer_to_write;
+	uint8_t *location = (uint8_t *)ee->eeprom_buffer_to_write;
 	struct header_t* header = (struct header_t*)ee->eeprom_buffer_to_write;
 
 	// Header generation
@@ -685,7 +685,7 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	atom->type = ATOM_VENDOR_TYPE;
 	atom->count = header->numatoms;
 	atom->dlen = VENDOR_INFO_COMPACT_SIZE(vinf) + 2;
-	ATOM_CRC(atom) = getcrc((uint8_t*)atom, ATOM_DATA_SIZE(atom));
+	ATOM_CRC(atom) = getcrc((char*)atom, ATOM_DATA_SIZE(atom));
 	header->eeplen += ATOM_TOTAL_SIZE(atom);
 	header->numatoms += 1;
 
@@ -725,7 +725,7 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	gpio->pins[25] = GPIO_MAP_BITS(5,0,1);	// SMI WRITE_REQ
 	gpio->pins[26] = GPIO_MAP_BITS(1,0,1);	// FPGA RESET
 	gpio->pins[27] = GPIO_MAP_BITS(0,0,1);	// FPGA CDONE
-	ATOM_CRC(atom) = getcrc((uint8_t*)atom, ATOM_DATA_SIZE(atom));
+	ATOM_CRC(atom) = getcrc((char*)atom, ATOM_DATA_SIZE(atom));
 
 	header->eeplen += ATOM_TOTAL_SIZE(atom);
 	header->numatoms += 1;
@@ -739,7 +739,7 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	atom->dlen = sizeof(cariboulite_dtbo) + 2;
 	uint8_t *dt_data = (uint8_t *)(location+ATOM_HEADER_SIZE);
 	memcpy(dt_data, cariboulite_dtbo, sizeof(cariboulite_dtbo));
-	ATOM_CRC(atom) = getcrc((uint8_t*)atom, ATOM_DATA_SIZE(atom));
+	ATOM_CRC(atom) = getcrc((char*)atom, ATOM_DATA_SIZE(atom));
 
 	header->eeplen += ATOM_TOTAL_SIZE(atom);
 	header->numatoms += 1;
@@ -774,7 +774,7 @@ int cariboulite_eeprom_init(cariboulite_eeprom_st *ee)
 	ee->eeprom_buffer_to_write = NULL;
 
 	ee->eeprom_buffer_total_size = ee->eeprom_size > MAX_EEPROM_BUF_SIZE ? MAX_EEPROM_BUF_SIZE : ee->eeprom_size;
-	ee->eeprom_buffer = (uint8_t *)malloc(ee->eeprom_buffer_total_size);
+	ee->eeprom_buffer = (char *)malloc(ee->eeprom_buffer_total_size);
 	if (ee->eeprom_buffer == NULL)
 	{
 		ZF_LOGE("eeprom buffer allocation failed");
@@ -783,7 +783,7 @@ int cariboulite_eeprom_init(cariboulite_eeprom_st *ee)
 	}
 
 	ee->eeprom_buffer_to_write_total_size = ee->eeprom_size > MAX_EEPROM_BUF_SIZE ? MAX_EEPROM_BUF_SIZE : ee->eeprom_size;
-	ee->eeprom_buffer_to_write = (uint8_t *)malloc(ee->eeprom_buffer_to_write_total_size);
+	ee->eeprom_buffer_to_write = (char *)malloc(ee->eeprom_buffer_to_write_total_size);
 	if (ee->eeprom_buffer_to_write == NULL)
 	{
 		ZF_LOGE("eeprom buffer to write allocation failed");

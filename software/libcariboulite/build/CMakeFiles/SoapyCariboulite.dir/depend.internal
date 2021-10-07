@@ -12,6 +12,7 @@ CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o
  ../src/cariboulite_config/cariboulite_config_default.h
  ../src/cariboulite_radios.h
  ../src/cariboulite_setup.h
+ ../src/datatypes/tsqueue.h
  ../src/io_utils/io_utils.h
  ../src/io_utils/io_utils_spi.h
  ../src/io_utils/io_utils_sys_info.h
@@ -32,6 +33,7 @@ CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o
  ../src/cariboulite_config/cariboulite_config_default.h
  ../src/cariboulite_radios.h
  ../src/cariboulite_setup.h
+ ../src/datatypes/tsqueue.h
  ../src/io_utils/io_utils.h
  ../src/io_utils/io_utils_spi.h
  ../src/io_utils/io_utils_sys_info.h
@@ -51,6 +53,7 @@ CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o
  ../src/cariboulite_config/cariboulite_config.h
  ../src/cariboulite_radios.h
  ../src/cariboulite_setup.h
+ ../src/datatypes/tsqueue.h
  ../src/io_utils/io_utils.h
  ../src/io_utils/io_utils_spi.h
  ../src/io_utils/io_utils_sys_info.h

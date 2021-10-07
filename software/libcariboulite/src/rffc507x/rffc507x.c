@@ -99,6 +99,7 @@ int rffc507x_regs_commit(rffc507x_st* dev)
 			rffc507x_reg_commit(dev, r);
 		}
 	}
+	return 0;
 }
 
 //===========================================================================

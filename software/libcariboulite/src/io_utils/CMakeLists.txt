@@ -11,6 +11,9 @@ include_directories(${SUPER_DIR})
 set(SOURCES_LIB io_utils.c io_utils_spi.c io_utils_sys_info.c)
 set(SOURCES_PIG_LIB pigpio/pigpio.c pigpio/command.c)
 set(EXTERN_LIBS ${SUPER_DIR}/zf_log/build/libzf_log.a)
+#add_compile_options(-Wall -Wextra -pedantic -Werror)
+#add_compile_options(-Wall -Wextra)
+add_compile_options(-Wno-missing-braces)
 
 #Generate the static library from the sources
 add_library(io_utils STATIC ${SOURCES_LIB} ${SOURCES_PIG_LIB})

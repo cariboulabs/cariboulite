@@ -213,7 +213,7 @@ int latticeice40_configure_from_buffer(	latticeice40_st *dev,
 	ZF_LOGI("Sending bitstream of size %d", buffer_size);
 	ct = 0;
 	io_utils_write_gpio_with_wait(dev->cs_pin, 0, 200);
-	while( ct < buffer_size )
+	while( ct < (int)(buffer_size) )
 	{
 		unsigned char dummybuf[LATTICE_ICE40_BUFSIZE];
 		char* readbuf = (char*)(buffer + ct);
@@ -232,7 +232,7 @@ int latticeice40_configure_from_buffer(	latticeice40_st *dev,
 		printf("[%2d%%]\r", progress); fflush(stdout);
 	}
 	io_utils_write_gpio_with_wait(dev->cs_pin, 1, 200);
-	ZF_LOGI("bitstream sent %ld bytes", ct);
+	ZF_LOGI("bitstream sent %d bytes", ct);
 
 	// CONFIGURATION EPILOGUE
 	// ----------------------
@@ -296,7 +296,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	// CONFIGURATION
 	// -------------
 	// Read file & send bitstream to FPGA via SPI with CS LOW
-	ZF_LOGI("Sending bitstream of size %d", file_length);
+	ZF_LOGI("Sending bitstream of size %ld", file_length);
 	ct = 0;
 	io_utils_write_gpio_with_wait(dev->cs_pin, 0, 200);
 	while( (read=fread(readbuf, sizeof(char), LATTICE_ICE40_BUFSIZE, fd)) > 0 )
@@ -316,7 +316,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 	io_utils_write_gpio_with_wait(dev->cs_pin, 1, 200);
 	
 	// close file
-	ZF_LOGI("bitstream sent, closing file - sent %ld bytes", ct);
+	ZF_LOGI("bitstream sent, closing file - sent %d bytes", ct);
 	fclose(fd);
 
 	// CONFIGURATION EPILOGUE

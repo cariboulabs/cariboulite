@@ -164,8 +164,8 @@ void at86rf215_radio_set_state(at86rf215_st* dev, at86rf215_rf_channel_en ch, at
 
 static float _fine_freq_starts[] = {0, 377e6, 754e6, 2366e6, 2550e6};
 static float _fine_freq_pll_src[] = {0, 6.5e6, 13e6, 26e6};
-static int _fine_freq_ccf_min[] = {0, 126030, 126030, 85700};
-static int _fine_freq_ccf_max[] = {0, 1340967, 1340967, 296172};
+//static int _fine_freq_ccf_min[] = {0, 126030, 126030, 85700};
+//static int _fine_freq_ccf_max[] = {0, 1340967, 1340967, 296172};
 
 //==================================================================================
 int at86rf215_radio_get_good_channel(float wanted_frequency_hz, at86rf215_radio_channel_mode_en *mode,

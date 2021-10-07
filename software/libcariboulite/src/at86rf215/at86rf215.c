@@ -170,7 +170,7 @@ void at86rf215_get_versions(at86rf215_st* dev, uint8_t *pn, uint8_t *vn)
 //===================================================================
 int at86rf215_write_fifo(at86rf215_st* dev, uint8_t *buffer, uint8_t size )
 {
-    at86rf215_write_buffer(dev, 0, buffer, size);
+    return at86rf215_write_buffer(dev, 0, buffer, size);
 }
 
 //===================================================================
