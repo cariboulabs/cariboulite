@@ -13,11 +13,13 @@ extern "C" {
 void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_error_en err);
 
 //=================================================================
-void caribou_smi_data_event( void *ctx, caribou_smi_stream_type_en type,
-                                        caribou_smi_channel_en ch,
-                                        uint32_t byte_count,
-                                        uint8_t *buffer,
-                                        uint32_t buffer_len_bytes);
+void caribou_smi_data_event(void *ctx, 
+                            void *service_context,
+                            caribou_smi_stream_type_en type,
+                            caribou_smi_channel_en ch,
+                            uint32_t byte_count,
+                            uint8_t *buffer,
+                            uint32_t buffer_len_bytes);
 
 #ifdef __cplusplus
 }

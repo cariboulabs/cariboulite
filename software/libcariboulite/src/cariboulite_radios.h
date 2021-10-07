@@ -180,7 +180,8 @@ int cariboulite_get_cw_outputs(cariboulite_radios_st* radios,
 int cariboulite_create_smi_stream(cariboulite_radios_st* radios, 
                                cariboulite_channel_en channel,
                                cariboulite_channel_dir_en dir,
-                               int buffer_length);
+                               int buffer_length,
+                               void* context);
                                
 int cariboulite_destroy_smi_stream(cariboulite_radios_st* radios, 
                                cariboulite_channel_en channel,
