@@ -11,6 +11,8 @@ include_directories(${SUPER_DIR})
 set(SOURCES_LIB cariboulite_config.c)
 set(SOURCES ${SOURCES_LIB} test_cariboulite_config.c)
 set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a ${SUPER_DIR}/zf_log/build/libzf_log.a)
+#add_compile_options(-Wall -Wextra -pedantic -Werror)
+add_compile_options(-Wall -Wextra -Wno-missing-braces)
 
 #Generate the static library from the sources
 add_library(cariboulite_config STATIC ${SOURCES_LIB})

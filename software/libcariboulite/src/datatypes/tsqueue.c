@@ -52,6 +52,7 @@ int tsqueue_init(tsqueue_st* q, int item_size_bytes, int total_element_count)
     q->item_size_bytes = item_size_bytes;
     q->current_num_of_items = 0;
     q->num_items_dropped = 0;
+    return 0;
 }
 
 //=======================================================================
@@ -168,6 +169,7 @@ int tsqueue_reset_dropped_counter(tsqueue_st* q)
     pthread_mutex_lock(&q->mutex);
     q->num_items_dropped = 0;
     pthread_mutex_unlock(&q->mutex);
+    return 0;
 }
 
 //=======================================================================

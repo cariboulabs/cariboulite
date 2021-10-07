@@ -11,6 +11,8 @@ include_directories(${SUPER_DIR})
 set(SOURCES_LIB at86rf215.c at86rf215_events.c at86rf215_radio.c at86rf215_baseband.c)
 set(SOURCES ${SOURCES_LIB} test_at86rf215.c)
 set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a ${SUPER_DIR}/zf_log/build/libzf_log.a)
+#add_compile_options(-Wall -Wextra -pedantic -Werror)
+add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-missing-braces)
 
 #Generate the static library from the sources
 add_library(at86rf215 STATIC ${SOURCES_LIB})

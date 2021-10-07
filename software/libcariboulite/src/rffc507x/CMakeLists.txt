@@ -12,6 +12,8 @@ include_directories(${SUPER_DIR})
 set(SOURCES_LIB rffc507x.c)
 set(SOURCES rffc507x.c test_rffc507x.c)
 set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a ${SUPER_DIR}/zf_log/build/libzf_log.a)
+#add_compile_options(-Wall -Wextra -pedantic -Werror)
+add_compile_options(-Wall -Wextra -Wno-missing-braces)
 
 #Generate the static library from the sources
 add_library(rffc507x STATIC ${SOURCES_LIB})

@@ -274,5 +274,5 @@ void tiny_list_print_node (tiny_list_node_st* node)
 		return;
 	}
 	
-	printf("	PTR ADDR: %08llX, FIRST BYTE: %02X, LEN: %d\n", (long)(node->data), ((unsigned char*)(node->data))[0], node->len);
+	printf("	PTR ADDR: %08lX, FIRST BYTE: %02X, LEN: %d\n", (long)(node->data), ((unsigned char*)(node->data))[0], node->len);
 }

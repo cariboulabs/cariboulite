@@ -67,7 +67,7 @@ typedef struct
 void caribou_fpga_interrupt_handler (int event, int level, uint32_t tick, void *data)
 {
     //int i;
-    caribou_fpga_st* dev = (caribou_fpga_st*)data;
+    //caribou_fpga_st* dev = (caribou_fpga_st*)data;
 
     /*for (i=0; i<e; i++)
     {

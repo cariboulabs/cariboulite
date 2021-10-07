@@ -12,6 +12,7 @@
 #include <cstring>
 #include <algorithm>
 #include <atomic>
+#include "datatypes/tsqueue.h"
 #include "cariboulite_setup.h"
 #include "cariboulite_radios.h"
 
@@ -27,12 +28,12 @@ enum Cariboulite_Format
 	CARIBOULITE_FORMAT_FLOAT64      = 3,
 };
 
-class BufferQueue
+class SampleQueue
 {
 public:
-        BufferQueue(int item_size_bytes, int num_items);
-        ~BufferQueue();
-        Read
+        SampleQueue(int item_size_bytes, int num_items);
+        ~SampleQueue();
+        
 private:
         tsqueue_st queue;
 };
@@ -179,6 +180,4 @@ public:
 private:
         cariboulite_st cariboulite_sys;
         cariboulite_radios_st radios;
-
-        tsqueue_st
 };

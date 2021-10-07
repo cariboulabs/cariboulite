@@ -23,6 +23,7 @@ int stop_program ()
 {
     if (program_running) ZF_LOGD("program termination requested");
     program_running = 0;
+    return 0;
 }
 
 //=================================================
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
     //strcpy(cariboulite_sys.firmware_path_testing, "top.bin");
 
     // init the program
-    if (cariboulite_init_driver(&cariboulite_sys, sighandler, NULL)!=0)
+    if (cariboulite_init_driver(&cariboulite_sys, (void*)sighandler, NULL)!=0)
     {
         ZF_LOGE("driver init failed, terminating...");
         cariboulite_eeprom_init(&ee);
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
     sleep(1);
     while (program_running)
     {
-        double set_freq = freq;
+        //double set_freq = freq;
         /*cariboulite_setup_frequency(&cariboulite_sys, 
                                     cariboulite_channel_6g, 
                                     cariboulite_channel_dir_tx,

@@ -52,7 +52,8 @@ static int config_read_string_from_file(char* path, char* filename, char* data, 
 //===========================================================
 int cariboulite_config_serial_from_uuid(char* uuid, uint32_t *serial)
 {
-	uint32_t data0 = 0, data1 = 0, data2 = 0, data3 = 0, data4 = 0, data5 = 0;
+	uint32_t data0 = 0, data4 = 0;
+	uint16_t data1 = 0, data2 = 0, data3 = 0, data5 = 0;
 	uint32_t ser1, ser2, ser3, ser4;
 	if (sscanf(uuid, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
 				&data0, &data1, &data2,
@@ -98,16 +99,16 @@ int cariboulite_config_detect_board(cariboulite_board_info_st *info)
 	// numeric version
 	if (info->product_version[0] == '0' && (info->product_version[1] == 'x' ||
 											info->product_version[1] == 'X'))
-		sscanf(info->product_version, "0x%08hx", &info->numeric_version);
+		sscanf(info->product_version, "0x%08x", &info->numeric_version);
 	else
-		sscanf(info->product_version, "%08hx", &info->numeric_version);
+		sscanf(info->product_version, "%08x", &info->numeric_version);
 	
 	// numeric productid
 	if (info->product_id[0] == '0' && (info->product_id[1] == 'x' ||
 											info->product_id[1] == 'X'))
-		sscanf(info->product_id, "0x%08hx", &info->numeric_product_id);
+		sscanf(info->product_id, "0x%08x", &info->numeric_product_id);
 	else
-		sscanf(info->product_id, "%08hx", &info->numeric_product_id);
+		sscanf(info->product_id, "%08x", &info->numeric_product_id);
 
 	// seiral number
 	if (cariboulite_config_serial_from_uuid(info->product_uuid, &info->numeric_serial_number) != 0)

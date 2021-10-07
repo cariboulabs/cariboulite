@@ -81,8 +81,8 @@ struct vendor_info_t
 };
 
 #define VENDOR_STATIC_SIZE				( 4*sizeof(uint32_t) + 2*sizeof(uint16_t) + 2*sizeof(char) )
-#define VENDOR_VSTR_POINT(v)			( (uint8_t*)(v) + VENDOR_STATIC_SIZE )
-#define VENDOR_PSTR_POINT(v)			( (uint8_t*)(v) + VENDOR_STATIC_SIZE + (v)->vslen )
+#define VENDOR_VSTR_POINT(v)			( (char*)(v) + VENDOR_STATIC_SIZE )
+#define VENDOR_PSTR_POINT(v)			( (char*)(v) + VENDOR_STATIC_SIZE + (v)->vslen )
 #define VENDOR_INFO_COMPACT_SIZE(v)		( VENDOR_STATIC_SIZE + (v)->vslen + (v)->pslen )
 
 /* GPIO map atom data */
