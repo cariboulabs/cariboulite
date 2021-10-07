@@ -330,7 +330,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
     sample_queues.push_back(SampleQueue(getStreamMTU(NULL), 10));
     sample_queues.back().AttachStreamId(stream_id, direction, channel);
 
-    
+
 
     return (SoapySDR::Stream *)stream_id;
 }
@@ -344,6 +344,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
 void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
     printf("closeStream\n");
+    if (stream == NULL) return;
     int stream_id = (int)stream;
     int sample_queue_index = findSampleQueueById(stream_id);
     sample_queues.erase(sample_queues.begin() + sample_queue_index);
