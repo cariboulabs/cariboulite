@@ -12,6 +12,7 @@
 #include <sys/ioctl.h>
 
 #include "cariboulite_radios.h"
+#include "cariboulite_events.h"
 
 
 #define GET_RADIO_PTR(radio,chan)   ((chan)==cariboulite_channel_s1g?&((radio)->radio_sub1g):&((radio)->radio_6g))
@@ -65,6 +66,8 @@ int cariboulite_init_radios(cariboulite_radios_st* radios, cariboulite_st *sys)
     radios->radio_sub1g.type = cariboulite_channel_s1g;
     radios->radio_sub1g.cw_output = false;
     radios->radio_sub1g.lo_output = false;
+    radios->radio_sub1g.rx_stream_id = -1;
+    radios->radio_sub1g.tx_stream_id = -1;
 
     // Wide band channel
     radios->radio_6g.cariboulite_sys = sys;
@@ -73,6 +76,8 @@ int cariboulite_init_radios(cariboulite_radios_st* radios, cariboulite_st *sys)
     radios->radio_6g.type = cariboulite_channel_6g;
     radios->radio_6g.cw_output = false;
     radios->radio_6g.lo_output = false;
+    radios->radio_6g.rx_stream_id = -1;
+    radios->radio_6g.tx_stream_id = -1;
 
     cariboulite_sync_radio_information(radios);
 }
@@ -82,6 +87,27 @@ int cariboulite_dispose_radios(cariboulite_radios_st* radios)
 {
     radios->radio_sub1g.active = false;
     radios->radio_6g.active = false;
+
+    // If streams are active - destroy them
+    if (radios->radio_sub1g.rx_stream_id != -1)
+    {
+
+    }
+
+    if (radios->radio_sub1g.tx_stream_id != -1)
+    {
+
+    }
+
+    if (radios->radio_6g.rx_stream_id != -1)
+    {
+
+    }
+
+    if (radios->radio_6g.tx_stream_id != -1)
+    {
+        
+    }
 
     cariboulite_radio_state_st* rad_s1g = GET_RADIO_PTR(radios,cariboulite_channel_s1g);
     cariboulite_radio_state_st* rad_6g = GET_RADIO_PTR(radios,cariboulite_channel_6g);
@@ -804,3 +830,52 @@ int cariboulite_get_cw_outputs(cariboulite_radios_st* radios,
 
     return 0;
 }
+
+//=================================================
+int cariboulite_create_smi_stream(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel,
+                               cariboulite_channel_dir_en dir,
+                               int buffer_length)
+{
+    cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
+
+    caribou_smi_channel_en ch = (channel == cariboulite_channel_s1g) ? 
+                                    caribou_smi_channel_900 : caribou_smi_channel_2400;
+    caribou_smi_stream_type_en type = (dir == cariboulite_channel_dir_rx) ? 
+                                    caribou_smi_stream_type_read : caribou_smi_stream_type_write;
+
+    int stream_id = caribou_smi_setup_stream(&rad->cariboulite_sys->smi, type, ch,
+                                                buffer_length, 2,
+                                                // 4096x4x10 = ~10 milliseconds of I/Q sample (32 bit)
+                                                caribou_smi_data_event);
+    
+    // keep the stream ids
+    if (type == caribou_smi_stream_type_read)
+    {
+        rad->rx_stream_id = stream_id;
+    }
+    else if (type == caribou_smi_stream_type_write)
+    {
+        rad->tx_stream_id = stream_id;
+    }
+    return stream_id;
+}
+
+//=================================================
+int cariboulite_destroy_smi_stream(cariboulite_radios_st* radios,
+                               cariboulite_channel_en channel,
+                               cariboulite_channel_dir_en dir)
+{
+    // fetch the stream id
+    cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
+
+    int stream_id = (dir == cariboulite_channel_dir_rx) ? rad->rx_stream_id : rad->tx_stream_id;
+    if (stream_id == -1)
+    {
+        ZF_LOGE("The specified channel (%d) doesn't have open stream of type %d", channel, dir);
+        return -1;
+    }
+
+    caribou_smi_destroy_stream(&rad->cariboulite_sys->smi, stream_id);
+}
+    

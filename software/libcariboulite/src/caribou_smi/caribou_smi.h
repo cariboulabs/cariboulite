@@ -73,6 +73,7 @@ typedef struct
     uint8_t *current_app_buffer;        // the buffer that is currently analyzed / written by the application callback
 
     int active;                         // the thread is active
+    int running;                        // the stream state - is it running and fetching / pushing information
     int stream_id;                      // the stream id for the application - may be deleted later
     pthread_t stream_thread;            // thread id
     void* parent_dev;                   // the pointer to the owning SMI device
@@ -99,6 +100,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
                                 caribou_smi_channel_en channel,
                                 int batch_length, int num_buffers,
                                 caribou_smi_data_callback cb);
+int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run);
 int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
 char* caribou_smi_get_error_string(caribou_smi_error_en err);
 void dump_hex(const void* data, size_t size);
