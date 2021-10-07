@@ -27,6 +27,16 @@ enum Cariboulite_Format
 	CARIBOULITE_FORMAT_FLOAT64      = 3,
 };
 
+class BufferQueue
+{
+public:
+        BufferQueue(int item_size_bytes, int num_items);
+        ~BufferQueue();
+        Read
+private:
+        tsqueue_st queue;
+};
+
 /***********************************************************************
  * Device interface
  **********************************************************************/
@@ -170,74 +180,5 @@ private:
         cariboulite_st cariboulite_sys;
         cariboulite_radios_st radios;
 
-        SoapySDR::Stream* const TX_STREAM09 = (SoapySDR::Stream*) 0x1;
-	SoapySDR::Stream* const RX_STREAM09 = (SoapySDR::Stream*) 0x2;
-        SoapySDR::Stream* const TX_STREAM24 = (SoapySDR::Stream*) 0x1;
-	SoapySDR::Stream* const RX_STREAM24 = (SoapySDR::Stream*) 0x2;
-
-	struct Stream {
-		Stream(): 
-                        opened(false), 
-                        buf_num(BUF_NUM), 
-                        buf_len(BUF_LEN), 
-                        buf(nullptr),
-                        buf_head(0), 
-                        buf_tail(0), 
-                        buf_count(0),
-                        remainderHandle(-1), 
-                        remainderSamps(0), 
-                        remainderOffset(0), 
-                        remainderBuff(nullptr),
-                        format(CARIBOULITE_FORMAT_INT16) {}
-
-		bool opened;
-		uint32_t	buf_num;
-		uint32_t	buf_len;
-		int8_t		**buf;
-		uint32_t	buf_head;
-		uint32_t	buf_tail;
-		uint32_t	buf_count;
-
-		int32_t remainderHandle;
-		size_t remainderSamps;
-		size_t remainderOffset;
-		int8_t* remainderBuff;
-		uint32_t format;
-
-		~Stream() { clear_buffers(); }
-		void clear_buffers() {}
-		void allocate_buffers() {}
-	};
-
-	struct RXStream:Stream
-        {
-		uint32_t vga_gain;
-		uint32_t lna_gain;
-		uint8_t amp_gain;
-		double samplerate;
-		uint32_t bandwidth;
-		uint64_t frequency;
-		bool overflow;
-	};
-
-	struct TXStream:Stream
-        {
-		uint32_t vga_gain;
-		uint8_t amp_gain;
-		double samplerate;
-		uint32_t bandwidth;
-		uint64_t frequency;
-		bool bias;
-		bool underflow;
-		bool burst_end;
-		int32_t burst_samps;
-	} ;
-
-	RXStream _rx_stream;
-	TXStream _tx_stream;
-	bool _auto_bandwidth;
-	uint64_t _current_frequency;
-	double _current_samplerate;
-	uint32_t _current_bandwidth;
-	uint8_t _current_amp;
+        tsqueue_st
 };
