@@ -16,10 +16,6 @@
 #include "cariboulite_setup.h"
 #include "cariboulite_radios.h"
 
-#define BUF_LEN			262144
-#define BUF_NUM			15
-#define BYTES_PER_SAMPLE	2
-
 enum Cariboulite_Format 
 {
 	CARIBOULITE_FORMAT_FLOAT32	= 0,
@@ -31,7 +27,7 @@ enum Cariboulite_Format
 class SampleQueue
 {
 public:
-        SampleQueue(int item_size_bytes, int num_items);
+        SampleQueue(int mtu_size_bytes, int num_buffers);
         ~SampleQueue();
         
 private:

@@ -228,6 +228,14 @@ signal.h
 time.h
 -
 
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.cpp
+math.h
+-
+Cariboulite.hpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
+cariboulite_config/cariboulite_config_default.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_config/cariboulite_config_default.h
+
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
 SoapySDR/Device.hpp
 -
@@ -265,4 +273,12 @@ Cariboulite.hpp
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
 cariboulite_config/cariboulite_config_default.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_config/cariboulite_config_default.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/SoapyCariboulite.cpp
+SoapySDR/Device.hpp
+-
+SoapySDR/Registry.hpp
+-
+Cariboulite.hpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
 
