@@ -24,14 +24,23 @@ enum Cariboulite_Format
 	CARIBOULITE_FORMAT_FLOAT64      = 3,
 };
 
+#define GET_MTU_MS(ms)          (4096*4*(ms))
+
 class SampleQueue
 {
 public:
-        SampleQueue(int mtu_size_bytes, int num_buffers);
+        SampleQueue(int mtu_bytes, int num_buffers);
         ~SampleQueue();
-        
+        int AttachStreamId(int id, int dir, int channel);
+        int Write(uint8_t *buffer, size_t length, uint32_t meta);
+        int Read(uint8_t *buffer, size_t length, uint32_t *meta);
+
+        int stream_id;
+        int stream_dir;
+        int stream_channel;
 private:
         tsqueue_st queue;
+        size_t mtu_size_bytes;
 };
 
 /***********************************************************************
@@ -83,6 +92,9 @@ public:
                         int &flags,
                         long long &timeNs,
                         const long timeoutUs = 100000);
+
+        int findSampleQueue(const int direction, const size_t channel);
+        int findSampleQueueById(int stream_id);
 
         /*******************************************************************
          * Antenna API
@@ -173,7 +185,9 @@ public:
         template <typename Type>
         Type readSensor(const int direction, const size_t channel, const std::string &key) const;
 
-private:
+public:
         cariboulite_st cariboulite_sys;
         cariboulite_radios_st radios;
+
+        std::vector<SampleQueue> sample_queues;
 };

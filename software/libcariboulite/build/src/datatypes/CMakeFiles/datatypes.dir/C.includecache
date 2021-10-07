@@ -13,6 +13,8 @@ string.h
 -
 errno.h
 -
+time.h
+-
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.h
 stdlib.h

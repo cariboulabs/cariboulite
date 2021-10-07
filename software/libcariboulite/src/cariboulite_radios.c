@@ -835,7 +835,8 @@ int cariboulite_get_cw_outputs(cariboulite_radios_st* radios,
 int cariboulite_create_smi_stream(cariboulite_radios_st* radios, 
                                cariboulite_channel_en channel,
                                cariboulite_channel_dir_en dir,
-                               int buffer_length)
+                               int buffer_length,
+                               void* context)
 {
     cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
 
@@ -844,10 +845,11 @@ int cariboulite_create_smi_stream(cariboulite_radios_st* radios,
     caribou_smi_stream_type_en type = (dir == cariboulite_channel_dir_rx) ? 
                                     caribou_smi_stream_type_read : caribou_smi_stream_type_write;
 
-    int stream_id = caribou_smi_setup_stream(&rad->cariboulite_sys->smi, type, ch,
+    int stream_id = caribou_smi_setup_stream(&rad->cariboulite_sys->smi,
+                                                type, ch,
                                                 buffer_length, 2,
-                                                // 4096x4x10 = ~10 milliseconds of I/Q sample (32 bit)
-                                                caribou_smi_data_event);
+                                                caribou_smi_data_event,
+                                                context);
     
     // keep the stream ids
     if (type == caribou_smi_stream_type_read)

@@ -258,7 +258,7 @@ void* caribou_smi_thread(void *arg)
     st->active = 1;
 
     // start thread notification
-    if (st->data_cb != NULL) st->data_cb(dev->cb_context,
+    if (st->data_cb != NULL) st->data_cb(dev->cb_context, st->service_context, 
                                         caribou_smi_stream_start,
                                         ch,
                                         0,
@@ -282,6 +282,7 @@ void* caribou_smi_thread(void *arg)
 
         st->current_app_buffer = st->current_smi_buffer;
         if (st->data_cb) st->data_cb(dev->cb_context,
+                                    st->service_context,
                                     type,
                                     ch,
                                     ret,
@@ -295,6 +296,7 @@ void* caribou_smi_thread(void *arg)
 
     // exit thread notification
     if (st->data_cb != NULL) st->data_cb(dev->cb_context,
+                                        st->service_context,
                                         caribou_smi_stream_end,
                                         (caribou_smi_channel_en)(st->stream_id>>1),
                                         0,
@@ -309,8 +311,10 @@ void* caribou_smi_thread(void *arg)
 int caribou_smi_setup_stream(caribou_smi_st* dev,
                                 caribou_smi_stream_type_en type,
                                 caribou_smi_channel_en channel,
-                                int batch_length, int num_buffers,
-                                caribou_smi_data_callback cb)
+                                int batch_length, 
+                                int num_buffers,
+                                caribou_smi_data_callback cb,
+                                void* serviced_context)
 {
     int stream_id = CARIBOU_SMI_GET_STREAM_ID(type, channel);
     caribou_smi_stream_st* st = &dev->streams[stream_id];
@@ -334,6 +338,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
     st->current_smi_buffer_index = 0;
     st->current_smi_buffer = st->buffers[0];
     st->current_app_buffer = NULL;
+    st->service_context = serviced_context;
     st->running = 0;
 
     // create the reading thread
@@ -415,6 +420,7 @@ static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type
     st->batch_length = 1024;
     st->num_of_buffers = 2;
     st->data_cb = NULL;
+    st->service_context = NULL;
 
     st->buffers = NULL;
     st->current_smi_buffer_index = 0;

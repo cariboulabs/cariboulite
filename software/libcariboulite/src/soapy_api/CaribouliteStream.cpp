@@ -1,45 +1,140 @@
 #include "Cariboulite.hpp"
 #include "cariboulite_config/cariboulite_config_default.h"
 
-#define MTU (4096*4*10)                     // 10 milliseconds of buffer
-#define GET_MTU_MS(ms)      ((ms)*4096*4)   // buffer length for the number of milliseconds of data 
-                                            // taking 4096 as it is the closest power of 2 to the f_sample - 4MSPS
-                                            // while each sample is a complex 32 bits (2bytes I, 2bytes Q)
-
 //=================================================================
-SampleQueue::SampleQueue(int mtu_size_bytes, int num_buffers)
+SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
 {
-    tsqueue_init(&queue, mtu_size_bytes, num_buffers);
-    
+    tsqueue_init(&queue, mtu_bytes, num_buffers);
+    mtu_size_bytes = mtu_bytes;
+    stream_id = -1;
+    stream_dir = -1;
+    stream_channel = -1;
 }
 
 //=================================================================
 SampleQueue::~SampleQueue()
 {
+    stream_id = -1;
+    stream_dir = -1;
+    stream_channel = -1;
     tsqueue_release(&queue);
 }
 
 //=================================================================
-static void caribou_stream_data_event( void *ctx, caribou_smi_stream_type_en type,
+int SampleQueue::AttachStreamId(int id, int dir, int channel)
+{
+    if (stream_id != -1)
+    {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Cannot attach stream_id - already attached to %d", stream_id);
+        return -1;
+    }
+    stream_id = id;
+    stream_dir = dir;
+    stream_channel = channel;
+    return 0;
+}
+
+//=================================================================
+int SampleQueue::Write(uint8_t *buffer, size_t length, uint32_t meta)
+{
+    int num_of_buffers_to_write = length / mtu_size_bytes;
+    int residue = length % mtu_size_bytes;
+    if (residue != 0)
+    {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Currently only mtu size multiples are allowed");
+        return -1;
+    }
+
+    int num_pushed = 0;
+    for (int i = 0; i < num_of_buffers_to_write; i++)
+    {    
+        int res = tsqueue_insert_push_buffer(&queue, buffer + num_pushed, mtu_size_bytes, 
+                                                meta, 100);
+        switch (res)
+        {
+            case TSQUEUE_NOT_INITIALIZED:
+            case TSQUEUE_PUSH_SEM_FAILED: 
+                {
+                    SoapySDR_logf(SOAPY_SDR_ERROR, "pushing buffer n %d failed", i);
+                    return -1 * num_pushed;
+                } break;
+            case TSQUEUE_PUSH_TIMEOUT:
+            case TSQUEUE_PUSH_FAILED_FULL: return num_pushed; break;
+            default: break;
+        }
+        num_pushed += mtu_size_bytes;
+    }
+    return num_pushed;
+}
+
+//=================================================================
+int SampleQueue::Read(uint8_t *buffer, size_t length, uint32_t *meta)
+{
+    int num_of_buffers_to_read = length / mtu_size_bytes;
+    int residue = length % mtu_size_bytes;
+    if (residue != 0)
+    {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Currently only mtu size multiples are allowed");
+        //return -1;
+    }
+
+    int num_popped = 0;
+    tsqueue_item_st* item_ptr = NULL;
+
+    for (int i = 0; i < num_of_buffers_to_read; i++)
+    {
+        int res = tsqueue_pop_item(&queue, &item_ptr, 100);
+        switch (res)
+        {
+            case TSQUEUE_NOT_INITIALIZED:
+            case TSQUEUE_POP_SEM_FAILED: 
+                {
+                    SoapySDR_logf(SOAPY_SDR_ERROR, "popping buffer n %d failed", i);
+                    return -1;
+                } break;
+            case TSQUEUE_POP_TIMEOUT:
+            case TSQUEUE_POP_FAILED_EMPTY: return num_popped; break;
+            default: break;
+        }
+
+        // here there is a small weak point - what happens if the pusher
+        // pushed data that is amller than the MTU. in this case the consumer
+        // will get less data that what he expected. Thats the small problem.
+        // What happens if they push more?
+        // Fortunatelly all the queue stuff is controlled internlly by this module... or is it?
+        memcpy(&buffer[num_popped], item_ptr->data, item_ptr->length);
+        num_popped += item_ptr->length;
+    }
+
+    if (meta) *meta = item_ptr->metadata;
+
+    return num_popped;
+}
+
+//=================================================================
+static void caribou_stream_data_event( void *ctx, 
+                                        void *service_context,
+                                        caribou_smi_stream_type_en type,
                                         caribou_smi_channel_en ch,
                                         uint32_t byte_count,
                                         uint8_t *buffer,
                                         uint32_t buffer_len_bytes)
 {
     cariboulite_st* sys = (cariboulite_st*)ctx;
+    Cariboulite *obj = (Cariboulite*)service_context;
+
+    int dir = (type == caribou_smi_stream_type_read) ? SOAPY_SDR_RX : SOAPY_SDR_TX;
+    int channel = (ch == caribou_smi_channel_900) ? cariboulite_channel_s1g : cariboulite_channel_6g;
+
+    // find the right sample_queue
+    int sample_queue_index = obj->findSampleQueue(dir, channel);
+
     switch(type)
     {
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-                if (ch == caribou_smi_channel_900)
-                {
-
-                }
-                else if (ch == caribou_smi_channel_2400)
-                {
-
-                }
+                obj->sample_queues[sample_queue_index].Write(buffer, buffer_len_bytes, 0);
             }
             break;
 
@@ -126,6 +221,30 @@ SoapySDR::ArgInfoList Cariboulite::getStreamArgsInfo(const int direction, const 
 }
 
 //========================================================
+int Cariboulite::findSampleQueue(const int direction, const size_t channel)
+{
+    for (uint32_t i = 0; i < sample_queues.size(); i++)
+    {
+        if (sample_queues[i].stream_dir == direction &&
+            sample_queues[i].stream_channel == (int)channel)
+            return i;
+    }
+    return -1;
+}
+
+//========================================================
+int Cariboulite::findSampleQueueById(int stream_id)
+{
+    for (uint32_t i = 0; i < sample_queues.size(); i++)
+    {
+        if (sample_queues[i].stream_id == stream_id)
+            return i;
+    }
+    return -1;
+}
+
+
+//========================================================
 /*!
 * Initialize a stream given a list of channels and stream arguments.
 * The implementation may change switches or power-up components.
@@ -189,7 +308,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
 
     if (channels.size() > 1)
     {
-        SoapySDR_logf(SOAPY_SDR_ERROR, "activation of a number of channels at once is not supported");
+        SoapySDR_logf(SOAPY_SDR_ERROR, "activation of a many channels at once is not supported");
         return NULL;
     }
 
@@ -201,10 +320,18 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
     caribou_smi_channel_en channel = (ch == cariboulite_channel_s1g) ? 
                                     caribou_smi_channel_900 : caribou_smi_channel_2400;
 
+    // create the stream
     int stream_id = caribou_smi_setup_stream(&cariboulite_sys.smi,
                                 type, channel, 
                                 getStreamMTU(NULL), 1,
-                                caribou_stream_data_event);
+                                caribou_stream_data_event, 
+                                this);
+
+    sample_queues.push_back(SampleQueue(getStreamMTU(NULL), 10));
+    sample_queues.back().AttachStreamId(stream_id, direction, channel);
+
+    
+
     return (SoapySDR::Stream *)stream_id;
 }
 
@@ -218,6 +345,8 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
     printf("closeStream\n");
     int stream_id = (int)stream;
+    int sample_queue_index = findSampleQueueById(stream_id);
+    sample_queues.erase(sample_queues.begin() + sample_queue_index);
     caribou_smi_destroy_stream(&cariboulite_sys.smi, stream_id);
 }
 
@@ -314,6 +443,20 @@ int Cariboulite::readStream(
 {
     int stream_id = (int)stream;
     uint8_t* buffer = (uint8_t*)buffs[0];
-    
-    return 0;
+
+    int sample_queue_index = findSampleQueueById(stream_id);
+    if (sample_queue_index == -1)
+    {
+        // not found
+        return -1;
+    }
+
+    if (sample_queues[sample_queue_index].stream_dir != SOAPY_SDR_RX)
+    {
+        // wrong sample queue => wrong stream_id
+        return -1;
+    }
+
+    uint32_t metadata = 0;
+    return sample_queues[sample_queue_index].Read(buffer, numElems, &metadata);
 }

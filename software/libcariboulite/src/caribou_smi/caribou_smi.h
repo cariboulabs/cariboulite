@@ -45,7 +45,8 @@ typedef enum
                                     "reading from SMI source failed", \
                                 }
 
-typedef void (*caribou_smi_data_callback)( void *ctx,                                   // The context of the requesting application
+typedef void (*caribou_smi_data_callback)(      void *ctx,                              // The context of the requesting application
+                                                void *serviced_context,                 // the context of the session within the app
                                                 caribou_smi_stream_type_en type,        // which type of stream is it? read / write?
                                                 caribou_smi_channel_en ch,              // which channel (900 / 2400)
                                                 uint32_t byte_count,                    // for "read stream only" - number of read data bytes in buffer
@@ -77,6 +78,7 @@ typedef struct
     int stream_id;                      // the stream id for the application - may be deleted later
     pthread_t stream_thread;            // thread id
     void* parent_dev;                   // the pointer to the owning SMI device
+    void* service_context;              // the serviced session contect (SoapySDR...)
 } caribou_smi_stream_st;
 
 #define CARIBOU_SMI_MAX_NUM_STREAMS 6
@@ -99,7 +101,8 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
                                 caribou_smi_stream_type_en type,
                                 caribou_smi_channel_en channel,
                                 int batch_length, int num_buffers,
-                                caribou_smi_data_callback cb);
+                                caribou_smi_data_callback cb,
+                                void* serviced_context);
 int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run);
 int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
 char* caribou_smi_get_error_string(caribou_smi_error_en err);
