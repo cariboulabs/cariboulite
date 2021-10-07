@@ -1,7 +1,23 @@
 #include "Cariboulite.hpp"
 #include "cariboulite_config/cariboulite_config_default.h"
 
-#define MTU (4096*4*10)    // 10 milliseconds of buffer
+#define MTU (4096*4*10)                     // 10 milliseconds of buffer
+#define GET_MTU_MS(ms)      ((ms)*4096*4)   // buffer length for the number of milliseconds of data 
+                                            // taking 4096 as it is the closest power of 2 to the f_sample - 4MSPS
+                                            // while each sample is a complex 32 bits (2bytes I, 2bytes Q)
+
+//=================================================================
+SampleQueue::SampleQueue(int mtu_size_bytes, int num_buffers)
+{
+    tsqueue_init(&queue, mtu_size_bytes, num_buffers);
+    
+}
+
+//=================================================================
+SampleQueue::~SampleQueue()
+{
+    tsqueue_release(&queue);
+}
 
 //=================================================================
 static void caribou_stream_data_event( void *ctx, caribou_smi_stream_type_en type,
@@ -187,7 +203,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
 
     int stream_id = caribou_smi_setup_stream(&cariboulite_sys.smi,
                                 type, channel, 
-                                MTU, 1,
+                                getStreamMTU(NULL), 1,
                                 caribou_stream_data_event);
     return (SoapySDR::Stream *)stream_id;
 }
@@ -217,7 +233,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
      */
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    return MTU;
+    return GET_MTU_MS(10);      // 10 milliseconds of buffer
 }
 
 //========================================================

@@ -18,18 +18,23 @@ void *producer(void *param)
         /*int rNum = rand() / RAND_DIVISOR;
         sleep(rNum);
         */
+
+        //getchar();
        
         // generate a random number
         item = rand();
 
-        int res = tsqueue_insert_push_buffer(&q, (uint8_t*)&item, sizeof(item), 0);
+        int res = tsqueue_insert_push_buffer(&q, (uint8_t*)&item, sizeof(item), 0, 200);
         if (res != 0) 
         {
-            fprintf(stderr, " Producer report error condition\n");
+            if (res == TSQUEUE_NOT_INITIALIZED) fprintf(stderr, "Queue not inited\n");
+            if (res == TSQUEUE_PUSH_FAILED_FULL) fprintf(stderr, "Queue is full!\n");
+            if (res == TSQUEUE_PUSH_SEM_FAILED) fprintf(stderr, "Push semaphore failed\n");
+            if (res == TSQUEUE_PUSH_TIMEOUT) fprintf(stderr, "Push TIMEOUT\n");
         }
         else 
         {
-            printf("producer produced %d\n", item);
+            printf("producer produced and pushed %d\n", item);
         }
     }
 }
@@ -45,10 +50,15 @@ void *consumer(void *param)
         //int rNum = rand() / RAND_DIVISOR;
         //sleep(rNum);
 
-        int res = tsqueue_pop_item(&q, &item);
+        //getchar();
+
+        int res = tsqueue_pop_item(&q, &item, 200);
         if (res != 0) 
         {
-            fprintf(stderr, "Consumer report error condition\n");
+            if (res == TSQUEUE_NOT_INITIALIZED) fprintf(stderr, "Queue not inited\n");
+            if (res == TSQUEUE_POP_SEM_FAILED) fprintf(stderr, "Pop semaphore failed\n");
+            if (res == TSQUEUE_POP_FAILED_EMPTY) fprintf(stderr, "Pop failed - Empty!!\n");
+            if (res == TSQUEUE_POP_TIMEOUT) fprintf(stderr, "Pop TIMEOUT\n");
         }
         else 
         {

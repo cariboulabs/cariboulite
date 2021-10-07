@@ -6,28 +6,12 @@
 
 #IncludeRegexTransform: 
 
-/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tiny_list.c
-stdio.h
--
-pthread.h
--
-tiny_list.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tiny_list.h
-
-/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tiny_list.h
-stdio.h
--
-pthread.h
--
-string.h
--
-stdlib.h
--
-
 /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.c
 tsqueue.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.h
 string.h
+-
+errno.h
 -
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/tsqueue.h
