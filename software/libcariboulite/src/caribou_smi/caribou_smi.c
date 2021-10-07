@@ -268,6 +268,12 @@ void* caribou_smi_thread(void *arg)
     // thread main loop
     while (st->active)
     {
+        if (!st->running)
+        {
+            usleep(200000);
+            continue;
+        }
+
         int ret = caribou_smi_timeout_read(dev, st->addr, st->current_smi_buffer, st->batch_length, 10);
         if (ret < 0)
         {
@@ -328,6 +334,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
     st->current_smi_buffer_index = 0;
     st->current_smi_buffer = st->buffers[0];
     st->current_app_buffer = NULL;
+    st->running = 0;
 
     // create the reading thread
     st->stream_id = stream_id;
@@ -338,6 +345,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
         release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
         st->buffers = NULL;
         st->active = 0;
+        st->running = 0;
         return -1;
     }
 
@@ -345,6 +353,25 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 
     ZF_LOGI("successfully created read stream for channel %s", channel==caribou_smi_channel_900?"900MHz":"2400MHz");
     return stream_id;
+}
+
+//=========================================================================
+int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run)
+{
+    ZF_LOGD("desroying SMI stream %d", id);
+    if (id >= CARIBOU_SMI_MAX_NUM_STREAMS)
+    {
+        ZF_LOGE("wrong parameter id = %d >= %d", id, CARIBOU_SMI_MAX_NUM_STREAMS);
+        return -1;
+    }
+    if (dev->streams[id].active == 0)
+    {
+        ZF_LOGW("stream id = %d is not active", id);
+        return 0;
+    }
+
+    dev->streams[id].running = run;
+    return 0;
 }
 
 //=========================================================================
@@ -395,6 +422,7 @@ static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type
     st->current_app_buffer = NULL;
 
     st->active = 0;
+    st->running = 0;
     st->parent_dev = dev;
 }
 

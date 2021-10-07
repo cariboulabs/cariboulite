@@ -21,7 +21,6 @@ CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o: ../src/cariboulite_events
 CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o: ../src/zf_log/zf_log.h
 
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/caribou_fpga/caribou_fpga.h
-CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/io_utils/io_utils.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/io_utils/io_utils_spi.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/io_utils/io_utils_sys_info.h
@@ -33,7 +32,9 @@ CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/at86rf215/at86rf21
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/at86rf215/at86rf215_common.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/at86rf215/at86rf215_radio.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/at86rf215/at86rf215_regs.h
+CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/caribou_smi/caribou_smi.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/cariboulite_config/cariboulite_config.h
+CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/cariboulite_events.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/cariboulite_radios.c
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/cariboulite_radios.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o: ../src/zf_log/zf_log.h

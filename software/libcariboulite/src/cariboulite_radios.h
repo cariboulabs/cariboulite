@@ -59,6 +59,10 @@ typedef struct
     float                               requested_rf_frequency;
     float                               rf_frequency_error;
 
+    // SMI STREAMS
+    int                                 rx_stream_id;
+    int                                 tx_stream_id;
+
     // OTHERS
     uint8_t                             random_value;
     float                               rx_thermal_noise_floor;
@@ -173,6 +177,14 @@ int cariboulite_set_cw_outputs(cariboulite_radios_st* radios,
 int cariboulite_get_cw_outputs(cariboulite_radios_st* radios, 
                                cariboulite_channel_en channel, bool *lo_out, bool *cw_out);
 
+int cariboulite_create_smi_stream(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel,
+                               cariboulite_channel_dir_en dir,
+                               int buffer_length);
+                               
+int cariboulite_destroy_smi_stream(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel,
+                               cariboulite_channel_dir_en dir);
 
 #ifdef __cplusplus
 }

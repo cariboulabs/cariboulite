@@ -391,4 +391,3 @@ void cariboulite_lib_version(cariboulite_lib_version_st* v)
     v->minor_version = CARIBOULITE_MINOR_VERSION;
     v->revision = CARIBOULITE_REVISION;
 }
-

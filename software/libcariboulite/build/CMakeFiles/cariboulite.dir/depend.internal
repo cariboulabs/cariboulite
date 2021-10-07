@@ -22,7 +22,6 @@ CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o
  /home/pi/projects/cariboulite/software/libcariboulite/src/zf_log/zf_log.h
 CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o
  ../src/caribou_fpga/caribou_fpga.h
- ../src/caribou_smi/caribou_smi.h
  ../src/io_utils/io_utils.h
  ../src/io_utils/io_utils_spi.h
  ../src/io_utils/io_utils_sys_info.h
@@ -34,7 +33,9 @@ CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_common.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_radio.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/at86rf215_regs.h
+ /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_config/cariboulite_config.h
+ /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_events.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_radios.c
  /home/pi/projects/cariboulite/software/libcariboulite/src/cariboulite_radios.h
  /home/pi/projects/cariboulite/software/libcariboulite/src/zf_log/zf_log.h
