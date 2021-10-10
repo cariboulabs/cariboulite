@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = -I/. -I/home/pi/projects/cariboulite/software/libcariboulite/src/at86rf215/..
 
-C_FLAGS = -O3 -DNDEBUG
+C_FLAGS = -O3 -DNDEBUG -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-missing-braces
 

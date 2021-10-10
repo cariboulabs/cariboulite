@@ -7,22 +7,69 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+#include <unistd.h>
+#include <time.h>
 #include "caribou_smi.h"
 
 caribou_smi_st dev = {0};
+char program_name[] = "test_caribou_smi.c";
 
-void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_smi_channel_en ch,
-                            uint32_t byte_count, uint8_t *buffer, uint32_t buffer_len_bytes)
+#define NUM_MS          (5)
+#define NUM_SAMPLES     (NUM_MS * 4096)
+#define SIZE_OF_SAMPLE  (4)
+#define NUM_OF_BUFFERS  (2)
+
+
+//==============================================
+void swap_little_big (uint32_t *v)
 {
-    static int c = 1;
-    static uint8_t last_byte = 0;
-    static int err_count = 0;
+    uint8_t b[4];
+    b[0] = (uint8_t) ((*v) >> 24u);
+    b[1] = (uint8_t) ((*v) >> 16u);
+    b[2] = (uint8_t) ((*v) >> 8u);
+    b[3] = (uint8_t) ((*v) >> 0u);
+    *v = *((uint32_t*)(b));
+}
+
+//==============================================
+void print_iq(uint32_t* array, int len)
+{
+    printf("Values I/Q:\n");
+    for (int i=0; i<len; i++)
+    {
+        unsigned int v = array[i];
+        //swap_little_big (&v);
+
+        int16_t q_val = (v>> 1) & (0x1FFF);
+        int16_t i_val = (v>>17) & (0x1FFF);
+        if (q_val >= 0x1000) q_val-=0x2000;
+        if (i_val >= 0x1000) i_val-=0x2000;
+        float fi = i_val, fq = q_val;
+        float mod = sqrt(fi*fi + fq*fq);
+        float arg = atan2(fq, fi);
+        printf("%08X,   %d, %d, %.4f, %.2f\n", v, i_val, q_val, mod, arg);
+    }
+}
+
+
+//==============================================
+void caribou_smi_data_event(void *ctx, void* serviced_context, 
+                            caribou_smi_stream_type_en type, 
+                            caribou_smi_channel_en ch,
+                            uint32_t byte_count, 
+                            uint8_t *buffer, 
+                            uint32_t buffer_len_bytes)
+{
+    //static int c = 1;
+    //static uint8_t last_byte = 0;
+    //static int err_count = 0;
     switch(type)
     {
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-                //ZF_LOGD("data event: stream channel %d, received %d bytes\n", ch, byte_count);
+                ZF_LOGD("data event: stream channel %d, received %d bytes\n", ch, byte_count);
+                print_iq((uint32_t*)buffer, 8);
                 /*for (int i = 0; i< byte_count; i++)
                 {
                     uint8_t dist = (uint8_t)(buffer[i] - last_byte);
@@ -53,8 +100,6 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
                                                                         buffer[byte_count-2],
                                                                         buffer[byte_count-1]);*/
                 }
-                else printf("CUR %d MISSED\n", c);
-                c++;
             }
             break;
 
@@ -85,105 +130,66 @@ void caribou_smi_data_event(void *ctx, caribou_smi_stream_type_en type, caribou_
     }
 }
 
+//==============================================
 void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_error_en err)
 {
     ZF_LOGD("Error (from %s) occured in channel %d, err# %d (%s)\n", (char*)ctx, ch, err, caribou_smi_get_error_string(err));
 }
 
-char program_name[] = "test_caribou_smi.c";
+#if 1
+    caribou_smi_address_en address = caribou_smi_address_read_2400;
+    caribou_smi_channel_en channel = caribou_smi_channel_2400;
+#else
+    caribou_smi_address_en address = caribou_smi_address_read_900;
+    caribou_smi_channel_en channel = caribou_smi_channel_900;
+#endif
 
-void print_iq(uint32_t* array, int len)
+//==============================================
+int main_single_read()
 {
-    int last_cnt = 0;
-    int cnt_errors = 0;
-    printf("Values I/Q:\n");
-    for (int i=0; i<len; i++)
-    {
-        unsigned int v = array[i];
-        /*uint8_t b[4];
-        b[0] = (uint8_t) (v >> 24u);
-        b[1] = (uint8_t) (v >> 16u);
-        b[2] = (uint8_t) (v >> 8u);
-        b[3] = (uint8_t) (v >> 0u);
-        v = *((uint32_t*)(b));*/
-
-        //printf("%08x\n", v);
-        int cnt = (v >> 30) & 0x3;
-        int next_cnt_expected = (last_cnt + 1) & 0x3;
-        if (next_cnt_expected != cnt)
-        {
-            cnt_errors++;
-        }
-        int16_t q_val = (v>> 1) & (0x1FFF);
-        int16_t i_val = (v>>17) & (0x1FFF);
-        if (q_val >= 0x1000) q_val-=0x2000;
-        if (i_val >= 0x1000) i_val-=0x2000;
-        float fi = i_val, fq = q_val;
-        float mod = sqrt(fi*fi + fq*fq);
-        float arg = atan2(fq, fi);
-        printf("%d, %d, %d, %.4f, %.2f\n", cnt, i_val, q_val, mod, arg);
-        last_cnt = cnt;
-    }
-    printf("Count errors = %d\n", cnt_errors);
-}
-
-int main()
-{
-    int count = 4096;
-    uint32_t buffer[count];
-    uint8_t* b8 = (uint8_t*)buffer;
+    int read_count = 4096;
+    uint32_t buffer[read_count];
+    char* b8 = (char*)buffer;
 
     caribou_smi_init(&dev, caribou_smi_error_event, program_name);
 
-    caribou_smi_timeout_read(&dev, caribou_smi_address_read_900, b8, count*sizeof(uint32_t), 1000);
-    dump_hex(b8, count*sizeof(uint32_t));
-    print_iq(buffer, count);
+    caribou_smi_timeout_read(&dev, address, b8, read_count*sizeof(uint32_t), 1000);
+    dump_hex(b8, read_count*sizeof(uint32_t));
+    print_iq(buffer, read_count);
     caribou_smi_close (&dev);
     return 0;
+}
 
+
+//==============================================
+int main_stream_read()
+{
     caribou_smi_init(&dev, caribou_smi_error_event, program_name);
     int stream_id = caribou_smi_setup_stream(&dev,
                                 caribou_smi_stream_type_read,
-                                caribou_smi_channel_900,
-                                4096*4*10, 2,                      // ~10 milliseconds of I/Q sample (32 bit)
-                                caribou_smi_data_event);
+                                channel,
+                                NUM_SAMPLES * SIZE_OF_SAMPLE, 
+                                NUM_OF_BUFFERS,
+                                caribou_smi_data_event,
+                                NULL);
 
+    sleep(1);
+    caribou_smi_run_pause_stream (&dev, stream_id, 1);
+    printf("Listening on stream_id = %d\n", stream_id);
     printf("Press ENTER to exit...\n");
     getchar();
 
     printf("ENTER pressed...\n");
 
+    //caribou_smi_run_pause_stream (&dev, stream_id, 0);
     caribou_smi_destroy_stream(&dev, stream_id);
-
-    /*for (int j = 0; j < num_of_rounds; j++)
-    {
-        int ret = caribou_smi_timeout_read(&dev, caribou_smi_address_read_900, (uint8_t*)buffer, count*sizeof(uint32_t), 100);
-        if (ret > 0)
-        {
-            for (int i = 1; i<count*sizeof(uint32_t); i++)
-            {
-                hist[(uint8_t)(b8[i] - b8[i-1])] ++;
-            }
-        }
-        else
-        {
-            printf("'caribou_smi_timeout_read' returned %d\n", ret);
-        }
-    }
-
-    printf("Histogram , buffer[0] = %d, %d, %d, %d\n", ((uint8_t*)buffer)[0], ((uint8_t*)buffer)[1], ((uint8_t*)buffer)[2], ((uint8_t*)buffer)[3]);
-    int error_bytes = 0;
-    int total_bytes = 0;
-    for (int i =0; i<256; i++)
-    {
-        if (hist[i]>0)
-        {
-            if (i != 1) error_bytes += hist[i];
-            total_bytes += hist[i];
-            printf("  %d: %d\n", i, hist[i]);
-        }
-    }
-    printf(" Byte Error Rate: %.10g, %d total, %d errors\n", (float)(error_bytes) / (float)(total_bytes), total_bytes, error_bytes);
-    */
     caribou_smi_close (&dev);
+    return 0;
+}
+
+//==============================================
+int main()
+{
+    main_stream_read();
+    return 0;
 }
