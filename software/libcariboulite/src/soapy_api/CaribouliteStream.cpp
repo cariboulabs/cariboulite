@@ -302,11 +302,12 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
     printf("activateStream\n");
     int stream_id = (int)stream;
 
-    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 1);
-
-    return cariboulite_activate_channel(&radios, 
+    cariboulite_activate_channel(&radios, 
                                 (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
                                 true);
+
+    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 1);
+    return 0;
 }
 
 //========================================================
@@ -328,11 +329,14 @@ int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, con
 {
     printf("deactivateStream\n");
     int stream_id = (int)stream;
+
+    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 0);
+    sleep(1);
+
     cariboulite_activate_channel(&radios, 
                                 (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
                                 false);
-
-    return caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 0);
+    return 0;
 }
 
 //========================================================

@@ -91,23 +91,28 @@ int cariboulite_dispose_radios(cariboulite_radios_st* radios)
     // If streams are active - destroy them
     if (radios->radio_sub1g.rx_stream_id != -1)
     {
-
+        caribou_smi_destroy_stream(&radios->radio_sub1g.cariboulite_sys->smi, radios->radio_sub1g.rx_stream_id);
+        radios->radio_sub1g.rx_stream_id = -1;
     }
 
     if (radios->radio_sub1g.tx_stream_id != -1)
     {
-
+        caribou_smi_destroy_stream(&radios->radio_sub1g.cariboulite_sys->smi, radios->radio_sub1g.tx_stream_id);
+        radios->radio_sub1g.tx_stream_id = -1;
     }
 
     if (radios->radio_6g.rx_stream_id != -1)
     {
-
+        caribou_smi_destroy_stream(&radios->radio_6g.cariboulite_sys->smi, radios->radio_sub1g.rx_stream_id);
+        radios->radio_6g.rx_stream_id = -1;
     }
 
     if (radios->radio_6g.tx_stream_id != -1)
     {
-        
+        caribou_smi_destroy_stream(&radios->radio_6g.cariboulite_sys->smi, radios->radio_sub1g.tx_stream_id);
+        radios->radio_6g.tx_stream_id = -1;
     }
+    sleep(1);
 
     cariboulite_radio_state_st* rad_s1g = GET_RADIO_PTR(radios,cariboulite_channel_s1g);
     cariboulite_radio_state_st* rad_6g = GET_RADIO_PTR(radios,cariboulite_channel_6g);
