@@ -180,7 +180,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
         .tx_control_with_iq_if = false,
         .radio09_mode = at86rf215_iq_if_mode,
         .radio24_mode = at86rf215_iq_if_mode,
-        .clock_skew = at86rf215_iq_clock_data_skew_1_906ns,
+        .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
     };
     at86rf215_setup_iq_if(&sys->modem, &modem_iq_config);
 
@@ -291,6 +291,7 @@ int cariboulite_release_submodules(cariboulite_st* sys)
     //------------------------------------------------------
     ZF_LOGD("CLOSE SMI");
     caribou_smi_close(&sys->smi);
+    sleep(1);
 
     // AT86RF215
     //------------------------------------------------------
