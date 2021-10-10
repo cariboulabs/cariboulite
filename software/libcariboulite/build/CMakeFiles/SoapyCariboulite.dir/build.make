@@ -115,11 +115,53 @@ CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.s: cmake_for
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteStream.cpp -o CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.s
 
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o: CMakeFiles/SoapyCariboulite.dir/flags.make
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o: ../src/soapy_api/CaribouliteSampleQueue.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSampleQueue.cpp
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSampleQueue.cpp > CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.i
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSampleQueue.cpp -o CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.s
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o: CMakeFiles/SoapyCariboulite.dir/flags.make
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o: ../src/soapy_api/CaribouliteSession.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSession.cpp
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSession.cpp > CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.i
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSession.cpp -o CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.s
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o: CMakeFiles/SoapyCariboulite.dir/flags.make
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o: ../src/soapy_api/CaribouliteSensors.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o -c /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSensors.cpp
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSensors.cpp > CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.i
+
+CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSensors.cpp -o CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.s
+
 # Object files for target SoapyCariboulite
 SoapyCariboulite_OBJECTS = \
 "CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o" \
 "CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o" \
-"CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o"
+"CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o" \
+"CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o" \
+"CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o" \
+"CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o"
 
 # External object files for target SoapyCariboulite
 SoapyCariboulite_EXTERNAL_OBJECTS =
@@ -127,9 +169,12 @@ SoapyCariboulite_EXTERNAL_OBJECTS =
 libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o
 libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o
 libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o
+libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o
+libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o
+libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o
 libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/build.make
 libSoapyCariboulite.so: libcariboulite.a
-libSoapyCariboulite.so: /usr/local/lib/libSoapySDR.so.0.8.0
+libSoapyCariboulite.so: /usr/local/lib/libSoapySDR.so.0.8.1
 libSoapyCariboulite.so: src/datatypes/libdatatypes.a
 libSoapyCariboulite.so: src/ustimer/libustimer.a
 libSoapyCariboulite.so: src/caribou_fpga/libcaribou_fpga.a
@@ -142,7 +187,7 @@ libSoapyCariboulite.so: src/cariboulite_config/libcariboulite_config.a
 libSoapyCariboulite.so: src/cariboulite_eeprom/libcariboulite_eeprom.a
 libSoapyCariboulite.so: src/zf_log/libzf_log.a
 libSoapyCariboulite.so: CMakeFiles/SoapyCariboulite.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX shared module libSoapyCariboulite.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX shared module libSoapyCariboulite.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/SoapyCariboulite.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

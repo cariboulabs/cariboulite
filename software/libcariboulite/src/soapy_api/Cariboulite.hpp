@@ -3,6 +3,7 @@
 #include <SoapySDR/Device.hpp>
 #include <SoapySDR/Logger.h>
 #include <SoapySDR/Types.h>
+#include <SoapySDR/Formats.hpp>
 #include <stdexcept>
 #include <thread>
 #include <mutex>
@@ -24,7 +25,66 @@ enum Cariboulite_Format
 	CARIBOULITE_FORMAT_FLOAT64      = 3,
 };
 
-#define GET_MTU_MS(ms)          (4096*4*(ms))
+#define BUFFER_SIZE_MS                  ( 5 )
+#define NUM_SAMPLEQUEUE_BUFS            ( 10 )
+#define NUM_BYTES_PER_CPLX_ELEM         ( 4 )
+#define GET_MTU_MS(ms)                  ( 4096*(ms) )
+#define GET_MTU_MS_BYTES(ms)            ( GET_MTU_MS(ms) * NUM_BYTES_PER_CPLX_ELEM )
+
+#pragma pack(1)
+// associated with CS8 - total 2 bytes / element
+typedef struct
+{
+        int8_t i;                       // LSB
+        int8_t q;                       // MSB
+} sample_complex_int8;
+
+// associated with CS12 - total 3 bytes / element
+typedef struct
+{
+        int16_t i :12;                  // LSB
+        int16_t q :12;                  // MSB
+} sample_complex_int12;
+
+// associated with CS16 - total 4 bytes / element
+typedef struct
+{
+        int16_t i;                      // LSB
+        int16_t q;                      // MSB
+} sample_complex_int16;
+
+// associated with CS32 - total 8 bytes / element
+typedef struct
+{
+        int32_t i;                      // LSB
+        int32_t q;                      // MSB
+} sample_complex_int32;
+
+// associated with CF32 - total 8 bytes / element
+typedef struct
+{
+        float i;                        // LSB
+        float q;                        // MSB
+} sample_complex_float;
+
+// associated with CF64 - total 16 bytes / element
+typedef struct
+{
+        double i;                       // LSB
+        double q;                       // MSB
+} sample_complex_double;
+#pragma pack()
+
+class SoapyCaribouliteSession
+{
+public:
+	SoapyCaribouliteSession(void);
+	~SoapyCaribouliteSession(void);
+
+public:
+        cariboulite_st cariboulite_sys;
+};
+
 
 class SampleQueue
 {
@@ -32,15 +92,26 @@ public:
         SampleQueue(int mtu_bytes, int num_buffers);
         ~SampleQueue();
         int AttachStreamId(int id, int dir, int channel);
-        int Write(uint8_t *buffer, size_t length, uint32_t meta);
-        int Read(uint8_t *buffer, size_t length, uint32_t *meta);
+        int Write(uint8_t *buffer, size_t length, uint32_t meta, long timeout_us);
+        int Read(uint8_t *buffer, size_t length, uint32_t *meta, long timeout_us);
+
+        int ReadSamples(sample_complex_int16* buffer, size_t num_elements, long timeout_us);
+        int ReadSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us);
+        int ReadSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us);
+        int ReadSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
 
         int stream_id;
         int stream_dir;
         int stream_channel;
+        Cariboulite_Format chosen_format;
 private:
         tsqueue_st queue;
         size_t mtu_size_bytes;
+        uint8_t *partial_buffer;
+        int partial_buffer_start;
+        int partial_buffer_length;
+
+        sample_complex_int16 *interm_native_buffer;
 };
 
 /***********************************************************************
@@ -102,7 +173,6 @@ public:
         std::vector<std::string> listAntennas( const int direction, const size_t channel ) const;
         std::string getAntenna( const int direction, const size_t channel ) const;
 
-
         /*******************************************************************
          * Frontend corrections API
          ******************************************************************/
@@ -144,50 +214,16 @@ public:
         /*******************************************************************
          * Sensors API
          ******************************************************************/
-        /*!
-        * List the available channel readback sensors.
-        * A sensor can represent a reference lock, RSSI, temperature.
-        * \param direction the channel direction RX or TX
-        * \param channel an available channel on the device
-        * \return a list of available sensor string names
-        */
         virtual std::vector<std::string> listSensors(const int direction, const size_t channel) const;
-
-        /*!
-        * Get meta-information about a channel sensor.
-        * Example: displayable name, type, range.
-        * \param direction the channel direction RX or TX
-        * \param channel an available channel on the device
-        * \param key the ID name of an available sensor
-        * \return meta-information about a sensor
-        */
         virtual SoapySDR::ArgInfo getSensorInfo(const int direction, const size_t channel, const std::string &key) const;
-
-        /*!
-        * Readback a channel sensor given the name.
-        * The value returned is a string which can represent
-        * a boolean ("true"/"false"), an integer, or float.
-        * \param direction the channel direction RX or TX
-        * \param channel an available channel on the device
-        * \param key the ID name of an available sensor
-        * \return the current value of the sensor
-        */
         virtual std::string readSensor(const int direction, const size_t channel, const std::string &key) const;
-
-        /*!
-        * Readback a channel sensor given the name.
-        * \tparam Type the return type for the sensor value
-        * \param direction the channel direction RX or TX
-        * \param channel an available channel on the device
-        * \param key the ID name of an available sensor
-        * \return the current value of the sensor as the specified type
-        */
         template <typename Type>
         Type readSensor(const int direction, const size_t channel, const std::string &key) const;
 
 public:
-        cariboulite_st cariboulite_sys;
         cariboulite_radios_st radios;
+        SampleQueue* sample_queues[4];
 
-        std::vector<SampleQueue> sample_queues;
+        // Static load time initializations
+        static SoapyCaribouliteSession sess;
 };

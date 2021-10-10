@@ -11,18 +11,16 @@ extern "C" {
 #include <semaphore.h>
 #include <stdint.h>
 
-#define TSQUEUE_PUSH_TIMEOUT        (2)
-#define TSQUEUE_POP_TIMEOUT         (1)
+#define TSQUEUE_TIMEOUT             (1)
 #define TSQUEUE_OK                  (0)
 #define TSQUEUE_BUFFER_FULL         (-1)
 #define TSQUEUE_MEM_ALLOC_FAILED    (-2)
 #define TSQUEUE_SEM_INIT_FAILED     (-3)
 #define TSQUEUE_MUTEX_INIT_FAILED   (-4)
 #define TSQUEUE_NOT_INITIALIZED     (-5)
-#define TSQUEUE_PUSH_FAILED_FULL    (-6)
-#define TSQUEUE_POP_SEM_FAILED      (-7)
-#define TSQUEUE_POP_FAILED_EMPTY    (-8)
-#define TSQUEUE_PUSH_SEM_FAILED     (-9)
+#define TSQUEUE_FAILED_FULL         (-6)
+#define TSQUEUE_SEM_FAILED          (-7)
+#define TSQUEUE_FAILED_EMPTY        (-8)
 
 
 typedef struct
@@ -38,6 +36,8 @@ typedef struct
     int max_num_items;
     int item_size_bytes;
     int current_num_of_items;
+    int head;
+    int tail;
 
     // The mutex lock, and the semaphores
     pthread_mutex_t mutex;
@@ -68,14 +68,14 @@ int tsqueue_release(tsqueue_st* q);
  *       be changed by letting the function block until space is freed up in the queue. When there is not
  *       sufficient space in the queue, the item is dropped and the "dropped" counter is increased.
  */
-int tsqueue_insert_push_item(tsqueue_st* q, tsqueue_item_st* item, int timeout_ms);
+int tsqueue_insert_push_item(tsqueue_st* q, tsqueue_item_st* item, int timeout_us);
 
 /*
  * Push a buffer to the queue
  *  The same as before, but rather than an "item", a specific buffer, length and metadata are
  *  cloned into the internal item local copy, and pushed to the queue
  */
-int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint32_t metadata, int timeout_ms);
+int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint32_t metadata, int timeout_us);
 
 /*
  * Pop an item from the queue with timeout
@@ -87,7 +87,7 @@ int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint3
  *       hold the calling thread in a blocking condition.
  *       For no timeout option pass 0 to timeout_ms
  */
-int tsqueue_pop_item(tsqueue_st* q, tsqueue_item_st** item, int timeout_ms);
+int tsqueue_pop_item(tsqueue_st* q, tsqueue_item_st** item, int timeout_us);
 
 /*
  * Return the current number of items in the queue

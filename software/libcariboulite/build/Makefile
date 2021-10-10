@@ -648,6 +648,87 @@ src/soapy_api/Cariboulite.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.s
 .PHONY : src/soapy_api/Cariboulite.cpp.s
 
+src/soapy_api/CaribouliteSampleQueue.o: src/soapy_api/CaribouliteSampleQueue.cpp.o
+
+.PHONY : src/soapy_api/CaribouliteSampleQueue.o
+
+# target to build an object file
+src/soapy_api/CaribouliteSampleQueue.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o
+.PHONY : src/soapy_api/CaribouliteSampleQueue.cpp.o
+
+src/soapy_api/CaribouliteSampleQueue.i: src/soapy_api/CaribouliteSampleQueue.cpp.i
+
+.PHONY : src/soapy_api/CaribouliteSampleQueue.i
+
+# target to preprocess a source file
+src/soapy_api/CaribouliteSampleQueue.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.i
+.PHONY : src/soapy_api/CaribouliteSampleQueue.cpp.i
+
+src/soapy_api/CaribouliteSampleQueue.s: src/soapy_api/CaribouliteSampleQueue.cpp.s
+
+.PHONY : src/soapy_api/CaribouliteSampleQueue.s
+
+# target to generate assembly for a file
+src/soapy_api/CaribouliteSampleQueue.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.s
+.PHONY : src/soapy_api/CaribouliteSampleQueue.cpp.s
+
+src/soapy_api/CaribouliteSensors.o: src/soapy_api/CaribouliteSensors.cpp.o
+
+.PHONY : src/soapy_api/CaribouliteSensors.o
+
+# target to build an object file
+src/soapy_api/CaribouliteSensors.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o
+.PHONY : src/soapy_api/CaribouliteSensors.cpp.o
+
+src/soapy_api/CaribouliteSensors.i: src/soapy_api/CaribouliteSensors.cpp.i
+
+.PHONY : src/soapy_api/CaribouliteSensors.i
+
+# target to preprocess a source file
+src/soapy_api/CaribouliteSensors.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.i
+.PHONY : src/soapy_api/CaribouliteSensors.cpp.i
+
+src/soapy_api/CaribouliteSensors.s: src/soapy_api/CaribouliteSensors.cpp.s
+
+.PHONY : src/soapy_api/CaribouliteSensors.s
+
+# target to generate assembly for a file
+src/soapy_api/CaribouliteSensors.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.s
+.PHONY : src/soapy_api/CaribouliteSensors.cpp.s
+
+src/soapy_api/CaribouliteSession.o: src/soapy_api/CaribouliteSession.cpp.o
+
+.PHONY : src/soapy_api/CaribouliteSession.o
+
+# target to build an object file
+src/soapy_api/CaribouliteSession.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o
+.PHONY : src/soapy_api/CaribouliteSession.cpp.o
+
+src/soapy_api/CaribouliteSession.i: src/soapy_api/CaribouliteSession.cpp.i
+
+.PHONY : src/soapy_api/CaribouliteSession.i
+
+# target to preprocess a source file
+src/soapy_api/CaribouliteSession.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.i
+.PHONY : src/soapy_api/CaribouliteSession.cpp.i
+
+src/soapy_api/CaribouliteSession.s: src/soapy_api/CaribouliteSession.cpp.s
+
+.PHONY : src/soapy_api/CaribouliteSession.s
+
+# target to generate assembly for a file
+src/soapy_api/CaribouliteSession.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/SoapyCariboulite.dir/build.make CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.s
+.PHONY : src/soapy_api/CaribouliteSession.cpp.s
+
 src/soapy_api/CaribouliteStream.o: src/soapy_api/CaribouliteStream.cpp.o
 
 .PHONY : src/soapy_api/CaribouliteStream.o
@@ -809,6 +890,15 @@ help:
 	@echo "... src/soapy_api/Cariboulite.o"
 	@echo "... src/soapy_api/Cariboulite.i"
 	@echo "... src/soapy_api/Cariboulite.s"
+	@echo "... src/soapy_api/CaribouliteSampleQueue.o"
+	@echo "... src/soapy_api/CaribouliteSampleQueue.i"
+	@echo "... src/soapy_api/CaribouliteSampleQueue.s"
+	@echo "... src/soapy_api/CaribouliteSensors.o"
+	@echo "... src/soapy_api/CaribouliteSensors.i"
+	@echo "... src/soapy_api/CaribouliteSensors.s"
+	@echo "... src/soapy_api/CaribouliteSession.o"
+	@echo "... src/soapy_api/CaribouliteSession.i"
+	@echo "... src/soapy_api/CaribouliteSession.s"
 	@echo "... src/soapy_api/CaribouliteStream.o"
 	@echo "... src/soapy_api/CaribouliteStream.i"
 	@echo "... src/soapy_api/CaribouliteStream.s"

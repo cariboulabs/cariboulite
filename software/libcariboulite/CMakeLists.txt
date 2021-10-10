@@ -69,6 +69,9 @@ SOAPY_SDR_MODULE_UTIL(
         src/soapy_api/Cariboulite.cpp
         src/soapy_api/Cariboulite.hpp
         src/soapy_api/CaribouliteStream.cpp
+        src/soapy_api/CaribouliteSampleQueue.cpp
+        src/soapy_api/CaribouliteSession.cpp
+        src/soapy_api/CaribouliteSensors.cpp
     LIBRARIES cariboulite
 )
 

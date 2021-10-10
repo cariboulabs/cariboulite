@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = -I/home/pi/projects/cariboulite/software/libcariboulite/. -I/home/pi/projects/cariboulite/software/libcariboulite/./include -I/home/pi/projects/cariboulite/software/libcariboulite/src -I/. -I/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/.. -I/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes
 
-C_FLAGS = -O3 -DNDEBUG -Wall -Wextra -Wno-missing-braces
+C_FLAGS = -O3 -DNDEBUG -Wall -Wextra -pedantic -Wno-missing-braces
 

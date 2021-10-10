@@ -78,10 +78,6 @@ io_utils/io_utils_sys_info.h
 ustimer/ustimer.h
 ../src/cariboulite_config/ustimer/ustimer.h
 
-../src/cariboulite_config/cariboulite_config_default.h
-cariboulite_config.h
-../src/cariboulite_config/cariboulite_config.h
-
 ../src/cariboulite_radios.h
 cariboulite_config/cariboulite_config.h
 ../src/cariboulite_config/cariboulite_config.h
@@ -235,6 +231,8 @@ SoapySDR/Logger.h
 -
 SoapySDR/Types.h
 -
+SoapySDR/Formats.hpp
+-
 stdexcept
 -
 thread
@@ -260,9 +258,7 @@ cariboulite_setup.h
 cariboulite_radios.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_radios.h
 
-/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteStream.cpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSampleQueue.cpp
 Cariboulite.hpp
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
-cariboulite_config/cariboulite_config_default.h
-/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_config/cariboulite_config_default.h
 

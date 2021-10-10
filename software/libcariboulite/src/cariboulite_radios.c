@@ -745,7 +745,8 @@ int cariboulite_get_frequency(  cariboulite_radios_st* radios,
 
 //======================================================================
 int cariboulite_activate_channel(cariboulite_radios_st* radios, 
-                                cariboulite_channel_en channel)
+                                cariboulite_channel_en channel,
+                                bool active)
 {
     cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
 
@@ -756,6 +757,15 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
                                     GET_CH(channel), 
                                     at86rf215_radio_state_cmd_tx_prep);
         rad->state = at86rf215_radio_state_cmd_tx_prep;
+    }
+
+    if (!active)
+    {
+        at86rf215_radio_set_state( &rad->cariboulite_sys->modem, 
+                                    GET_CH(channel), 
+                                    at86rf215_radio_state_cmd_trx_off);
+        rad->state = at86rf215_radio_state_cmd_trx_off;
+        return 0;
     }
 
     // Activate the channel according to the configurations
@@ -880,4 +890,3 @@ int cariboulite_destroy_smi_stream(cariboulite_radios_st* radios,
 
     caribou_smi_destroy_stream(&rad->cariboulite_sys->smi, stream_id);
 }
-    

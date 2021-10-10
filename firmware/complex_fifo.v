@@ -1,5 +1,5 @@
 module complex_fifo #(
-    parameter ADDR_WIDTH = 9,
+    parameter ADDR_WIDTH = 10,
     parameter DATA_WIDTH = 16
 )
 (
