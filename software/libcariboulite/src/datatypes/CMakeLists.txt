@@ -10,7 +10,7 @@ include_directories(${SUPER_DIR})
 #However, the file(GLOB...) allows for wildcard additions:
 set(SOURCES_LIB tsqueue.c tiny_list.c)
 #add_compile_options(-Wall -Wextra -pedantic -Werror)
-add_compile_options(-Wall -Wextra -Wno-missing-braces)
+add_compile_options(-Wall -Wextra -pedantic -Wno-missing-braces)
 
 #Generate the static library from the sources
 add_library(datatypes STATIC ${SOURCES_LIB})

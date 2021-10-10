@@ -5,6 +5,9 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
   "/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.cpp" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/SoapyCariboulite.dir/src/soapy_api/Cariboulite.cpp.o"
+  "/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSampleQueue.cpp" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSampleQueue.cpp.o"
+  "/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSensors.cpp" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSensors.cpp.o"
+  "/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSession.cpp" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteSession.cpp.o"
   "/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteStream.cpp" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/SoapyCariboulite.dir/src/soapy_api/CaribouliteStream.cpp.o"
   "/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/SoapyCariboulite.cpp" "/home/pi/projects/cariboulite/software/libcariboulite/build/CMakeFiles/SoapyCariboulite.dir/src/soapy_api/SoapyCariboulite.cpp.o"
   )
@@ -20,7 +23,6 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "../."
   ".././include"
   "../src"
-  "../SoapySDR"
   "../"
   "../src/datatypes"
   "../src/ustimer"

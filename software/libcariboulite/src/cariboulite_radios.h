@@ -169,7 +169,8 @@ int cariboulite_get_frequency(  cariboulite_radios_st* radios,
                                 double *freq, double *lo, double* i_f);
 
 int cariboulite_activate_channel(cariboulite_radios_st* radios, 
-                                cariboulite_channel_en channel);
+                                cariboulite_channel_en channel,
+                                bool active);
 
 int cariboulite_set_cw_outputs(cariboulite_radios_st* radios, 
                                cariboulite_channel_en channel, bool lo_out, bool cw_out);
@@ -186,6 +187,11 @@ int cariboulite_create_smi_stream(cariboulite_radios_st* radios,
 int cariboulite_destroy_smi_stream(cariboulite_radios_st* radios, 
                                cariboulite_channel_en channel,
                                cariboulite_channel_dir_en dir);
+
+int cariboulite_run_pause_stream(cariboulite_radios_st* radios, 
+                               cariboulite_channel_en channel,
+                               cariboulite_channel_dir_en dir,
+                               bool run);
 
 #ifdef __cplusplus
 }

@@ -1,115 +1,6 @@
 #include "Cariboulite.hpp"
 #include "cariboulite_config/cariboulite_config_default.h"
 
-//=================================================================
-SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
-{
-    tsqueue_init(&queue, mtu_bytes, num_buffers);
-    mtu_size_bytes = mtu_bytes;
-    stream_id = -1;
-    stream_dir = -1;
-    stream_channel = -1;
-}
-
-//=================================================================
-SampleQueue::~SampleQueue()
-{
-    stream_id = -1;
-    stream_dir = -1;
-    stream_channel = -1;
-    tsqueue_release(&queue);
-}
-
-//=================================================================
-int SampleQueue::AttachStreamId(int id, int dir, int channel)
-{
-    if (stream_id != -1)
-    {
-        SoapySDR_logf(SOAPY_SDR_ERROR, "Cannot attach stream_id - already attached to %d", stream_id);
-        return -1;
-    }
-    stream_id = id;
-    stream_dir = dir;
-    stream_channel = channel;
-    return 0;
-}
-
-//=================================================================
-int SampleQueue::Write(uint8_t *buffer, size_t length, uint32_t meta)
-{
-    int num_of_buffers_to_write = length / mtu_size_bytes;
-    int residue = length % mtu_size_bytes;
-    if (residue != 0)
-    {
-        SoapySDR_logf(SOAPY_SDR_ERROR, "Currently only mtu size multiples are allowed");
-        return -1;
-    }
-
-    int num_pushed = 0;
-    for (int i = 0; i < num_of_buffers_to_write; i++)
-    {    
-        int res = tsqueue_insert_push_buffer(&queue, buffer + num_pushed, mtu_size_bytes, 
-                                                meta, 100);
-        switch (res)
-        {
-            case TSQUEUE_NOT_INITIALIZED:
-            case TSQUEUE_PUSH_SEM_FAILED: 
-                {
-                    SoapySDR_logf(SOAPY_SDR_ERROR, "pushing buffer n %d failed", i);
-                    return -1 * num_pushed;
-                } break;
-            case TSQUEUE_PUSH_TIMEOUT:
-            case TSQUEUE_PUSH_FAILED_FULL: return num_pushed; break;
-            default: break;
-        }
-        num_pushed += mtu_size_bytes;
-    }
-    return num_pushed;
-}
-
-//=================================================================
-int SampleQueue::Read(uint8_t *buffer, size_t length, uint32_t *meta)
-{
-    int num_of_buffers_to_read = length / mtu_size_bytes;
-    int residue = length % mtu_size_bytes;
-    if (residue != 0)
-    {
-        SoapySDR_logf(SOAPY_SDR_ERROR, "Currently only mtu size multiples are allowed");
-        //return -1;
-    }
-
-    int num_popped = 0;
-    tsqueue_item_st* item_ptr = NULL;
-
-    for (int i = 0; i < num_of_buffers_to_read; i++)
-    {
-        int res = tsqueue_pop_item(&queue, &item_ptr, 100);
-        switch (res)
-        {
-            case TSQUEUE_NOT_INITIALIZED:
-            case TSQUEUE_POP_SEM_FAILED: 
-                {
-                    SoapySDR_logf(SOAPY_SDR_ERROR, "popping buffer n %d failed", i);
-                    return -1;
-                } break;
-            case TSQUEUE_POP_TIMEOUT:
-            case TSQUEUE_POP_FAILED_EMPTY: return num_popped; break;
-            default: break;
-        }
-
-        // here there is a small weak point - what happens if the pusher
-        // pushed data that is amller than the MTU. in this case the consumer
-        // will get less data that what he expected. Thats the small problem.
-        // What happens if they push more?
-        // Fortunatelly all the queue stuff is controlled internlly by this module... or is it?
-        memcpy(&buffer[num_popped], item_ptr->data, item_ptr->length);
-        num_popped += item_ptr->length;
-    }
-
-    if (meta) *meta = item_ptr->metadata;
-
-    return num_popped;
-}
 
 //=================================================================
 static void caribou_stream_data_event( void *ctx, 
@@ -126,29 +17,21 @@ static void caribou_stream_data_event( void *ctx,
     int dir = (type == caribou_smi_stream_type_read) ? SOAPY_SDR_RX : SOAPY_SDR_TX;
     int channel = (ch == caribou_smi_channel_900) ? cariboulite_channel_s1g : cariboulite_channel_6g;
 
-    // find the right sample_queue
-    int sample_queue_index = obj->findSampleQueue(dir, channel);
-
     switch(type)
     {
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-                obj->sample_queues[sample_queue_index].Write(buffer, buffer_len_bytes, 0);
+                int sample_queue_index = CARIBOU_SMI_GET_STREAM_ID(type, ch);
+                obj->sample_queues[sample_queue_index]->Write(buffer, buffer_len_bytes, 0, 10000L);
             }
             break;
 
         //-------------------------------------------------------
         case caribou_smi_stream_type_write:
             {
-                if (ch == caribou_smi_channel_900)
-                {
-
-                }
-                else if (ch == caribou_smi_channel_2400)
-                {
-                    
-                }
+                int sample_queue_index = CARIBOU_SMI_GET_STREAM_ID(dir, channel);
+                printf("Wrote to sample_queue_index %d\n", sample_queue_index);
             }
             break;
 
@@ -185,7 +68,10 @@ std::vector<std::string> Cariboulite::getStreamFormats(const int direction, cons
 {
     printf("getStreamFormats\n");
     std::vector<std::string> formats;
-    formats.push_back("CS16");
+    formats.push_back(SOAPY_SDR_CS16);
+    formats.push_back(SOAPY_SDR_CS8);
+    formats.push_back(SOAPY_SDR_CF32);
+    formats.push_back(SOAPY_SDR_CF64);
 	return formats;
 }
 
@@ -203,7 +89,7 @@ std::string Cariboulite::getNativeStreamFormat(const int direction, const size_t
 {
     printf("getNativeStreamFormat\n");
     fullScale = (double)((1<<12)-1);
-    return "CS16";
+    return SOAPY_SDR_CS16;
 }
 
 //========================================================
@@ -223,10 +109,10 @@ SoapySDR::ArgInfoList Cariboulite::getStreamArgsInfo(const int direction, const 
 //========================================================
 int Cariboulite::findSampleQueue(const int direction, const size_t channel)
 {
-    for (uint32_t i = 0; i < sample_queues.size(); i++)
+    for (uint32_t i = 0; i < 4; i++)
     {
-        if (sample_queues[i].stream_dir == direction &&
-            sample_queues[i].stream_channel == (int)channel)
+        if (sample_queues[i]->stream_dir == direction &&
+            sample_queues[i]->stream_channel == (int)channel)
             return i;
     }
     return -1;
@@ -235,14 +121,13 @@ int Cariboulite::findSampleQueue(const int direction, const size_t channel)
 //========================================================
 int Cariboulite::findSampleQueueById(int stream_id)
 {
-    for (uint32_t i = 0; i < sample_queues.size(); i++)
+    for (uint32_t i = 0; i < 4; i++)
     {
-        if (sample_queues[i].stream_id == stream_id)
+        if (sample_queues[i]->stream_id == stream_id)
             return i;
     }
     return -1;
 }
-
 
 //========================================================
 /*!
@@ -299,39 +184,64 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
                             const std::vector<size_t> &channels, 
                             const SoapySDR::Kwargs &args)
 {
-    printf("setupStream\n");
-    if (format != "CS16") 
+    printf("setupStream: dir: %d, format: %s, channels: ", direction, format.c_str());
+    for (int i = 0; i < (int)channels.size(); i++) printf("%d, ", channels[i]);
+    printf("\n");
+
+    std::vector<size_t> channels_internal = channels;
+
+    /*if ( channels_internal.size() > 1 || ( channels_internal.size()>0 && channels_internal[0]!= 0 ) )
+	{
+		throw std::runtime_error( "setupStream invalid channel selection" );
+	}*/
+    if ( channels_internal.size() == 0 )
+    {
+        channels_internal.push_back(cariboulite_channel_s1g);
+    }
+
+    // currently we take only the first channel
+    size_t ch = channels_internal[0];
+
+    // calculate the stream_id
+    caribou_smi_stream_type_en type = (direction == SOAPY_SDR_RX) ? caribou_smi_stream_type_read : caribou_smi_stream_type_write;
+    caribou_smi_channel_en channel = (ch == cariboulite_channel_s1g) ? caribou_smi_channel_900 : caribou_smi_channel_2400;
+    int stream_id = CARIBOU_SMI_GET_STREAM_ID(type, channel);
+
+    // Setup the SampleQueue's format
+    if (format == SOAPY_SDR_CS16)
+    {
+        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_INT16;
+    }
+    else if (format == SOAPY_SDR_CS8)
+    {
+        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_INT8;
+    }
+    else if (format == SOAPY_SDR_CF32)
+    {
+        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_FLOAT32;
+    }
+    else if (format == SOAPY_SDR_CF64)
+    {
+        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_FLOAT64;
+    }
+    else
     {
         SoapySDR_logf(SOAPY_SDR_ERROR, "the specified format %s is not supported", format.c_str());
-        return NULL;
+        throw std::runtime_error( "setupStream invalid format " + format );
     }
-
-    if (channels.size() > 1)
-    {
-        SoapySDR_logf(SOAPY_SDR_ERROR, "activation of a many channels at once is not supported");
-        return NULL;
-    }
-
-    size_t ch = channels[0];
-
-    caribou_smi_stream_type_en type = (direction == SOAPY_SDR_RX) ? 
-                                    caribou_smi_stream_type_read : caribou_smi_stream_type_write;
-
-    caribou_smi_channel_en channel = (ch == cariboulite_channel_s1g) ? 
-                                    caribou_smi_channel_900 : caribou_smi_channel_2400;
 
     // create the stream
-    int stream_id = caribou_smi_setup_stream(&cariboulite_sys.smi,
+    stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
                                 type, channel, 
-                                getStreamMTU(NULL), 1,
+                                GET_MTU_MS_BYTES(BUFFER_SIZE_MS), 2,
                                 caribou_stream_data_event, 
                                 this);
-
-    sample_queues.push_back(SampleQueue(getStreamMTU(NULL), 10));
-    sample_queues.back().AttachStreamId(stream_id, direction, channel);
-
-
-
+    if (stream_id < 0)
+    {
+        throw std::runtime_error( "setupStream caribou_smi_setup_stream failed" );
+    }
+    
+    printf("finished setup stream, stream_id = %d\n", stream_id);
     return (SoapySDR::Stream *)stream_id;
 }
 
@@ -346,9 +256,8 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
     printf("closeStream\n");
     if (stream == NULL) return;
     int stream_id = (int)stream;
-    int sample_queue_index = findSampleQueueById(stream_id);
-    sample_queues.erase(sample_queues.begin() + sample_queue_index);
-    caribou_smi_destroy_stream(&cariboulite_sys.smi, stream_id);
+    
+    caribou_smi_destroy_stream(&sess.cariboulite_sys.smi, stream_id);
 }
 
 //========================================================
@@ -363,7 +272,8 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
      */
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    return GET_MTU_MS(10);      // 10 milliseconds of buffer
+    printf("getStreamMTU\n");
+    return GET_MTU_MS(BUFFER_SIZE_MS);      // # milliseconds of buffer
 }
 
 //========================================================
@@ -390,7 +300,13 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const size_t numElems)
 {
     printf("activateStream\n");
-    return caribou_smi_run_pause_stream (&cariboulite_sys.smi, (int)stream, 1);
+    int stream_id = (int)stream;
+
+    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 1);
+
+    return cariboulite_activate_channel(&radios, 
+                                (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
+                                true);
 }
 
 //========================================================
@@ -411,7 +327,12 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
     printf("deactivateStream\n");
-    return caribou_smi_run_pause_stream (&cariboulite_sys.smi, (int)stream, 0);
+    int stream_id = (int)stream;
+    cariboulite_activate_channel(&radios, 
+                                (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
+                                false);
+
+    return caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 0);
 }
 
 //========================================================
@@ -428,7 +349,8 @@ int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, con
      *
      * \param stream the opaque pointer to a stream handle
      * \param buffs an array of void* buffers num chans in size
-     * \param numElems the number of elements in each buffer
+     * \param numElems the number of elements in each buffer 
+     *                  (number of samples - for us its 4 bytes per sample)
      * \param flags optional flag indicators about the result
      * \param timeNs the buffer's timestamp in nanoseconds
      * \param timeoutUs the timeout in microseconds
@@ -442,22 +364,37 @@ int Cariboulite::readStream(
             long long &timeNs,
             const long timeoutUs)
 {
+    //printf("readStream\n");
     int stream_id = (int)stream;
-    uint8_t* buffer = (uint8_t*)buffs[0];
 
-    int sample_queue_index = findSampleQueueById(stream_id);
-    if (sample_queue_index == -1)
-    {
-        // not found
-        return -1;
-    }
-
-    if (sample_queues[sample_queue_index].stream_dir != SOAPY_SDR_RX)
+    if (sample_queues[stream_id]->stream_dir != SOAPY_SDR_RX)
     {
         // wrong sample queue => wrong stream_id
-        return -1;
+        return SOAPY_SDR_NOT_SUPPORTED;
     }
 
     uint32_t metadata = 0;
-    return sample_queues[sample_queue_index].Read(buffer, numElems, &metadata);
+    int res = 0;
+    switch(sample_queues[stream_id]->chosen_format)
+    {
+        case CARIBOULITE_FORMAT_FLOAT32: 
+            {
+                res = sample_queues[stream_id]->ReadSamples((sample_complex_float*)buffs[0], numElems, timeoutUs);
+                //sample_complex_float* samps = (sample_complex_float*)buffs[0];
+                //printf("res: %d, %.2f, %.2f\n", res, samps[0].i, samps[0].q);
+            }
+            break;
+	    case CARIBOULITE_FORMAT_INT16: 
+            res = sample_queues[stream_id]->ReadSamples((sample_complex_int16*)buffs[0], numElems, timeoutUs);
+            break;
+	    case CARIBOULITE_FORMAT_INT8: 
+            res = sample_queues[stream_id]->ReadSamples((sample_complex_int8*)buffs[0], numElems, timeoutUs);
+            break;
+	    case CARIBOULITE_FORMAT_FLOAT64: 
+            res = sample_queues[stream_id]->ReadSamples((sample_complex_double*)buffs[0], numElems, timeoutUs);
+            break;
+        default: return -1; break;
+    }
+
+    return res;
 }

@@ -363,7 +363,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 //=========================================================================
 int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run)
 {
-    ZF_LOGD("desroying SMI stream %d", id);
+    ZF_LOGD("%s SMI stream %d", run?"RUNNING":"PAUSING", id);
     if (id >= CARIBOU_SMI_MAX_NUM_STREAMS)
     {
         ZF_LOGE("wrong parameter id = %d >= %d", id, CARIBOU_SMI_MAX_NUM_STREAMS);
@@ -398,6 +398,7 @@ int caribou_smi_destroy_stream(caribou_smi_st* dev, int id)
     pthread_join(dev->streams[id].stream_thread, NULL);
 
     release_buffer_vec(dev->streams[id].buffers, dev->streams[id].num_of_buffers, dev->streams[id].batch_length);
+    
     dev->streams[id].buffers = NULL;
     dev->streams[id].current_smi_buffer = NULL;
     dev->streams[id].current_app_buffer = NULL;
