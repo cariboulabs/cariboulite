@@ -58,33 +58,7 @@ int test_at86rf215_read_chip_vn_pn(at86rf215_st* dev)
     printf("TEST:AT86RF215:VERSIONS:PASS=%d\n", pass);
     printf("TEST:AT86RF215:VERSIONS:INFO=The component PN is %s (0x%02X), Version %d\n", pn_st, pn, vn);
 
-    at86rf215_set_clock_output(dev, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_1mhz);
-    printf("Clock output 1MHz@2mA... Press enter to stop\n");
-    getchar();
-
-    at86rf215_set_clock_output(dev, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_1mhz);
-    printf("Clock output 1MHz@4mA... Press enter to stop\n");
-    getchar();
-
-    at86rf215_set_clock_output(dev, at86rf215_drive_current_6ma, at86rf215_clock_out_freq_1mhz);
-    printf("Clock output 1MHz@6mA... Press enter to stop\n");
-    getchar();
-
-    at86rf215_set_clock_output(dev, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_1mhz);
-    printf("Clock output 1MHz@8mA... Press enter to stop\n");
-    getchar();
-
-/*
-    at86rf215_clock_out_freq_26mhz = 1,
-    at86rf215_clock_out_freq_32mhz = 2,
-    at86rf215_clock_out_freq_16mhz = 3,
-    at86rf215_clock_out_freq_8mhz = 4,
-    at86rf215_clock_out_freq_4mhz = 5,
-    at86rf215_clock_out_freq_2mhz = 6,
-    at86rf215_clock_out_freq_1mhz = 7,
-*/
-
-    at86rf215_set_clock_output(dev, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_off);
+    at86rf215_set_clock_output(dev, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_32mhz);
 
     return pass;
 }
@@ -138,10 +112,14 @@ void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
 // Starting a reception window
 // usec_timeout - set up a timeout value in micro-seconds or -1 to wait for "enter" key
 int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en radio,
-                                        uint32_t freq_hz, int usec_timeout)
+                                        uint64_t freq_hz, int usec_timeout)
 {
-    at86rf215_setup_iq_radio_receive (dev, radio, freq_hz, 0, at86rf215_iq_clock_data_skew_1_906ns);
-    printf("Started I/Q RX session for Radio %d, Freq: %d Hz, timeout: %d usec (0=infinity)\n",
+    at86rf215_iq_clock_data_skew_en skew = radio == at86rf215_rf_channel_900mhz?
+                                            at86rf215_iq_clock_data_skew_4_906ns:
+                                            at86rf215_iq_clock_data_skew_4_906ns;
+
+    at86rf215_setup_iq_radio_receive (dev, radio, freq_hz, 0, skew);
+    printf("Started I/Q RX session for Radio %d, Freq: %llu Hz, timeout: %d usec (0=infinity)\n",
         radio, freq_hz, usec_timeout);
 
     if (usec_timeout>0)
@@ -188,7 +166,8 @@ int test_at86rf215_continues_iq_loopback (at86rf215_st* dev, at86rf215_rf_channe
 #define NO_FPGA_MODE        0
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
-#define TEST_IQ_RX_WIND     0
+#define TEST_IQ_RX_WIND     1
+#define TEST_IQ_RX_WIND_RAD 1
 #define TEST_IQ_LB_WIND     0
 
 // -----------------------------------------------------------------------------------------
@@ -232,7 +211,11 @@ int main ()
     #endif // TEST_FREQ_SWEEP
 
     #if TEST_IQ_RX_WIND
-        test_at86rf215_continues_iq_rx (&dev, at86rf215_rf_channel_900mhz, 900e6, -1);
+        #if TEST_IQ_RX_WIND_RAD==0
+            test_at86rf215_continues_iq_rx (&dev, at86rf215_rf_channel_900mhz, 900e6, -1);
+        #else
+            test_at86rf215_continues_iq_rx (&dev, at86rf215_rf_channel_2400mhz, 2400e6, -1);
+        #endif
     #endif // TEST_IQ_RX_WIND
 
     #if TEST_IQ_LB_WIND

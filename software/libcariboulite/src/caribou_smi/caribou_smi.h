@@ -96,7 +96,11 @@ typedef struct
 
 int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, void* context);
 int caribou_smi_close (caribou_smi_st* dev);
-int caribou_smi_timeout_read(caribou_smi_st* dev, int source, char* buffer, int size_of_buf, int timeout_num_millisec);
+int caribou_smi_timeout_read(caribou_smi_st* dev, 
+                            caribou_smi_address_en source, 
+                            char* buffer, 
+                            int size_of_buf, 
+                            int timeout_num_millisec);
 int caribou_smi_setup_stream(caribou_smi_st* dev,
                                 caribou_smi_stream_type_en type,
                                 caribou_smi_channel_en channel,

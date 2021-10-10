@@ -195,9 +195,6 @@ int cariboulite_init_submodules (cariboulite_st* sys)
     at86rf215_radio_setup_external_settings(&sys->modem, at86rf215_rf_channel_900mhz, &ext_ctrl);
     at86rf215_radio_setup_external_settings(&sys->modem, at86rf215_rf_channel_2400mhz, &ext_ctrl);
 
-    at86rf215_setup_iq_radio_receive (&sys->modem, at86rf215_rf_channel_2400mhz, 2400e6, 
-                                            0, at86rf215_iq_clock_data_skew_1_906ns);
-
     // RFFC5072
     //------------------------------------------------------
     ZF_LOGD("INIT MIXER - RFFC5072");

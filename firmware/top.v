@@ -224,7 +224,7 @@ module top(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
                                     // negedge of the input clock)
       .IO_STANDARD("SB_LVDS_INPUT"),// LVDS standard
-      .NEG_TRIGGER(1'b0)            // The signal is negated in hardware
+      .NEG_TRIGGER(1'b1)            // The signal is negated in hardware
    ) iq_rx_09 (
       .PACKAGE_PIN(i_iq_rx_09_p),
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
@@ -260,15 +260,25 @@ module top(
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
+      
+      // test reversed LSB / MSB
+      // -----------------------
       .i_ddr_data ({w_lvds_rx_09_d1, w_lvds_rx_09_d0}),
+      //.i_ddr_data ({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
+      
       .i_fifo_full (w_rx_09_fifo_full),
       .o_fifo_write_clk (w_rx_09_fifo_write_clk),
       .o_fifo_push (w_rx_09_fifo_push),
+      
+      // Test bypass input data to FIFO
+      // ------------------------------
       .o_fifo_data (w_rx_09_fifo_data),
+      //.o_fifo_data (),
+      
       .o_debug_state ()
    );
 
-   //assign w_rx_09_fifo_data = 32'b01011010110000111110011111110001;
+   //assign w_rx_09_fifo_data = 32'h5AC3E7F1;
    //assign w_rx_09_fifo_pulled_data = 32'b01011010110000111110011111110000;
 
    complex_fifo rx_09_fifo(
@@ -288,12 +298,25 @@ module top(
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
+
+      // test reversed LSB / MSB
+      // -----------------------
       .i_ddr_data ({w_lvds_rx_24_d1, w_lvds_rx_24_d0}),
+      //.i_ddr_data ({w_lvds_rx_24_d0, w_lvds_rx_24_d1}),
+
       .i_fifo_full (w_rx_24_fifo_full),
       .o_fifo_write_clk (w_rx_24_fifo_write_clk),
       .o_fifo_push (w_rx_24_fifo_push),
-      .o_fifo_data (w_rx_24_fifo_data)
+      
+      // Test bypass input data to FIFO
+      // ------------------------------
+      .o_fifo_data (w_rx_24_fifo_data),
+      //.o_fifo_data (),
+      
+      .o_debug_state ()
    );
+
+   //assign w_rx_24_fifo_data = 32'hA5A5A500;
 
    complex_fifo rx_24_fifo(
       .wr_rst_i (w_soft_reset),

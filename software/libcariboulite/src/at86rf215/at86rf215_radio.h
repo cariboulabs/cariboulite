@@ -301,9 +301,9 @@ at86rf215_radio_state_cmd_en at86rf215_radio_get_state(at86rf215_st* dev, at86rf
 
 void at86rf215_radio_set_state(at86rf215_st* dev, at86rf215_rf_channel_en ch, at86rf215_radio_state_cmd_en cmd);
 
-float at86rf215_radio_get_frequency( /*IN*/ at86rf215_radio_channel_mode_en mode,
+double at86rf215_radio_get_frequency( /*IN*/ at86rf215_radio_channel_mode_en mode,
                                      /*IN*/ int channel_spacing_25khz_res,
-                                     /*IN*/ float wanted_frequency_hz,
+                                     /*IN*/ double wanted_frequency_hz,
                                      /*OUT*/ int *center_freq_25khz_res,
                                      /*OUT*/ int *channel_number);
 
@@ -360,7 +360,7 @@ void at86rf215_radio_set_tx_dac_input_iq(at86rf215_st* dev, at86rf215_rf_channel
 void at86rf215_radio_get_tx_dac_input_iq(at86rf215_st* dev, at86rf215_rf_channel_en ch,
                                                 int *enable_dac_i_dc, int *dac_i_val,
                                                 int *enable_dac_q_dc, int *dac_q_val);
-int at86rf215_radio_get_good_channel(float wanted_frequency_hz, at86rf215_radio_channel_mode_en *mode,
+int at86rf215_radio_get_good_channel(double wanted_frequency_hz, at86rf215_radio_channel_mode_en *mode,
                                                                 at86rf215_rf_channel_en *ch);
 
 #ifdef __cplusplus

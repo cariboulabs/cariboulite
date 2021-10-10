@@ -23,6 +23,18 @@ linux/semaphore.h
 -
 
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/caribou_smi.c
+time.h
+-
+pthread.h
+-
+errno.h
+-
+stdlib.h
+-
+unistd.h
+-
+sys/select.h
+-
 zf_log/zf_log.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_smi/zf_log/zf_log.h
 caribou_smi.h

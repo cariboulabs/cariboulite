@@ -349,7 +349,7 @@ void at86rf215_setup_iq_if(at86rf215_st* dev, at86rf215_iq_interface_config_st* 
 }
 
 //===================================================================
-int64_t at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uint32_t freq_hz )
+int64_t at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uint64_t freq_hz )
 {
     if (dev->initialized == 0)
     {
@@ -403,7 +403,7 @@ void at86rf215_setup_iq_radio_transmit (at86rf215_st* dev, at86rf215_rf_channel_
 }
 
 //===================================================================
-void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio, uint32_t freq_hz,
+void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_en radio, uint64_t freq_hz,
                                         int iqloopback, at86rf215_iq_clock_data_skew_en skew)
 {
     /*
@@ -432,7 +432,7 @@ void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_e
     at86rf215_iq_interface_config_st iq_if_config =
     {
         .loopback_enable = iqloopback,
-        .drv_strength = at86rf215_iq_drive_current_2ma,
+        .drv_strength = at86rf215_iq_drive_current_4ma,
         .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
         .tx_control_with_iq_if = false,
         .radio09_mode = at86rf215_iq_if_mode,
