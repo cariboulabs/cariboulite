@@ -123,7 +123,7 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
                             int timeout_num_millisec)
 {
     fd_set set;
-    struct timeval timeout;
+    struct timeval timeout = {0};
     int rv;
 
     // set the address
@@ -147,17 +147,37 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
         return -1;
     }
 
-    FD_ZERO(&set);                  // clear the set
-    FD_SET(dev->filedesc, &set);    // add our file descriptor to the set
+    FD_ZERO(&set);                  // clear the set mask
+    FD_SET(dev->filedesc, &set);    // add our file descriptor to the set - and only it
 
     int num_sec = timeout_num_millisec / 1000;
     timeout.tv_sec = num_sec;
     timeout.tv_usec = (timeout_num_millisec - num_sec*1000) * 1000;
 
+again:
     rv = select(dev->filedesc + 1, &set, NULL, NULL, &timeout);
     if(rv == -1)
     {
-        ZF_LOGE("smi fd select error");
+        int error = errno;
+        switch(error)
+        {
+            case EBADF:         // An invalid file descriptor was given in one of the sets. 
+                                // (Perhaps a file descriptor that was already closed, or one on which an error has occurred.)
+                ZF_LOGE("SMI filedesc select error - invalid file descriptor in one of the sets");
+                break;
+            case EINTR:	        // A signal was caught.
+                ZF_LOGD("SMI filedesc select error - caught an interrupting signal");
+                goto again;
+                break;
+            case EINVAL:        // nfds is negative or the value contained within timeout is invalid.
+                ZF_LOGE("SMI filedesc select error - nfds is negative or invalid timeout");
+                break;
+            case ENOMEM:        // unable to allocate memory for internal tables.
+                ZF_LOGE("SMI filedesc select error - internal tables allocation failed");
+                break;
+            default: break;
+        };
+
         return -1;
     }
     else if(rv == 0)
@@ -165,8 +185,11 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
         ZF_LOGD("smi fd timeout");
         return 0;
     }
-
-    return read(dev->filedesc, buffer, size_of_buf);
+    else if (FD_ISSET(dev->filedesc, &set))
+    {
+        return read(dev->filedesc, buffer, size_of_buf);
+    }
+    return -1;
 }
 
 //=========================================================================
@@ -301,7 +324,7 @@ void* caribou_smi_thread(void *arg)
         }
 
         //ZF_LOGD("3");
-        int ret = caribou_smi_timeout_read(dev, st->addr, (char*)st->current_smi_buffer, st->batch_length, 10);
+        int ret = caribou_smi_timeout_read(dev, st->addr, (char*)st->current_smi_buffer, st->batch_length, 100);
         if (ret < 0)
         {
             ZF_LOGE("caribou_smi_timeout_read failed");
