@@ -374,7 +374,7 @@ module top(
 
    assign w_smi_test = 1'b0;
    assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
-   assign io_smi_data = (w_smi_writing)?w_smi_data_output:1'bZ;
+   assign io_smi_data = (w_smi_writing)?w_smi_data_output:8'bZ;
    assign w_smi_data_input = io_smi_data;
    assign o_smi_write_req = (w_smi_writing)?w_smi_write_req:1'bZ;
    assign o_smi_read_req = (w_smi_writing)?w_smi_read_req:1'bZ;

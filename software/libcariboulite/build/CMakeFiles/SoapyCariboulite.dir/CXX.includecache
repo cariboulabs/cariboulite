@@ -228,6 +228,14 @@ signal.h
 time.h
 -
 
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.cpp
+math.h
+-
+Cariboulite.hpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
+cariboulite_config/cariboulite_config_default.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_config/cariboulite_config_default.h
+
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
 SoapySDR/Device.hpp
 -
@@ -262,9 +270,37 @@ cariboulite_setup.h
 cariboulite_radios.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_radios.h
 
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSampleQueue.cpp
+Cariboulite.hpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSensors.cpp
+Cariboulite.hpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteSession.cpp
+Cariboulite.hpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
+cariboulite_config/cariboulite_config_default.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_config/cariboulite_config_default.h
+SoapySDR/Logger.hpp
+-
+mutex
+-
+cstddef
+-
+
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/CaribouliteStream.cpp
 Cariboulite.hpp
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
 cariboulite_config/cariboulite_config_default.h
 /home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/cariboulite_config/cariboulite_config_default.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/SoapyCariboulite.cpp
+SoapySDR/Device.hpp
+-
+SoapySDR/Registry.hpp
+-
+Cariboulite.hpp
+/home/pi/projects/cariboulite/software/libcariboulite/src/soapy_api/Cariboulite.hpp
 

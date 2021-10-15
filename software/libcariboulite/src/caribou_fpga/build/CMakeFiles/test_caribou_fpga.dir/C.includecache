@@ -56,6 +56,18 @@ stdio.h
 pigpio.h
 -
 
+../../zf_log/zf_log.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.c
+zf_log/zf_log.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/zf_log/zf_log.h
+stdio.h
+-
+string.h
+-
+caribou_fpga.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.h
+
 /home/pi/projects/cariboulite/software/libcariboulite/src/caribou_fpga/caribou_fpga.h
 stdio.h
 -

@@ -1,6 +1,27 @@
 #include "Cariboulite.hpp"
 
 
+//==============================================
+void print_iq(uint32_t* array, int len)
+{
+    printf("Values I/Q:\n");
+    for (int i=0; i<len; i++)
+    {
+        unsigned int v = array[i];
+        //swap_little_big (&v);
+
+        int16_t q_val = (v>> 1) & (0x1FFF);
+        int16_t i_val = (v>>17) & (0x1FFF);
+        if (q_val >= 0x1000) q_val-=0x2000;
+        if (i_val >= 0x1000) i_val-=0x2000;
+        float fi = i_val, fq = q_val;
+        float mod = sqrt(fi*fi + fq*fq);
+        float arg = atan2(fq, fi);
+        printf("(%d, %d), ", i_val, q_val);
+        if ((i % 32) == 0) printf("\n");
+    }
+}
+
 //=================================================================
 SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
 {
@@ -151,6 +172,7 @@ int SampleQueue::Read(uint8_t *buffer, size_t length, uint32_t *meta, long timeo
 //=================================================================
 int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, long timeout_us)
 {
+    static int once = 1;
     // this is the native method
     int tot_length = num_elements * sizeof(sample_complex_int16);
     int res = Read((uint8_t *)buffer, tot_length, NULL, timeout_us);
@@ -159,14 +181,18 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
         // todo!!
         return res;
     }
-
+    /*if (once)
+    {
+        print_iq((uint32_t*) buffer, num_elements);
+        once--;
+    }*/
     int tot_read_elements = res / sizeof(sample_complex_int16);
     for (int i = 0; i < tot_read_elements; i++)
     {
         buffer[i].i >>= 1;
         buffer[i].q >>= 1;
-        if (buffer[i].i > (int16_t)0x1000) buffer[i].i -= (int16_t)0x2000;
-        if (buffer[i].q > (int16_t)0x1000) buffer[i].q -= (int16_t)0x2000;
+        if (buffer[i].i >= (int16_t)0x1000) buffer[i].i -= (int16_t)0x2000;
+        if (buffer[i].q >= (int16_t)0x1000) buffer[i].q -= (int16_t)0x2000;
     }
 
     return tot_read_elements;  
@@ -191,12 +217,12 @@ int SampleQueue::ReadSamples(sample_complex_float* buffer, size_t num_elements, 
         return res;
     }
 
-    float max_val = (float)((1<<12) - 1);
+    float max_val = (float)(4095);
 
     for (int i = 0; i < res; i++)
     {
-        buffer[i].i = (float)interm_native_buffer[i].q / max_val;
-        buffer[i].q = (float)interm_native_buffer[i].i / max_val;
+        buffer[i].i = (float)interm_native_buffer[i].i / max_val;
+        buffer[i].q = (float)interm_native_buffer[i].q / max_val;
     }
 
     return res;
@@ -221,12 +247,12 @@ int SampleQueue::ReadSamples(sample_complex_double* buffer, size_t num_elements,
         return res;
     }
 
-    double max_val = (double)((1<<12) - 1);
+    double max_val = (double)(4095);
 
     for (int i = 0; i < res; i++)
     {
-        buffer[i].i = (double)interm_native_buffer[i].q / max_val;
-        buffer[i].q = (double)interm_native_buffer[i].i / max_val;
+        buffer[i].i = (double)interm_native_buffer[i].i / max_val;
+        buffer[i].q = (double)interm_native_buffer[i].q / max_val;
     }
 
     return res;
@@ -253,8 +279,8 @@ int SampleQueue::ReadSamples(sample_complex_int8* buffer, size_t num_elements, l
 
     for (int i = 0; i < res; i++)
     {
-        buffer[i].i = (int8_t)((interm_native_buffer[i].q >> 5)&0x00FF);
-        buffer[i].q = (int8_t)((interm_native_buffer[i].i >> 5)&0x00FF);
+        buffer[i].i = (int8_t)((interm_native_buffer[i].i >> 5)&0x00FF);
+        buffer[i].q = (int8_t)((interm_native_buffer[i].q >> 5)&0x00FF);
     }
 
     return res;

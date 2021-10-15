@@ -78,27 +78,27 @@ typedef enum
 
 typedef enum
 {
-    at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ = 0x0,
-    at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ = 0x1,
-    at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ = 0x2,
-    at86rf215_radio_rx_bw_BW320KHZ_IF500KHZ = 0x3,
-    at86rf215_radio_rx_bw_BW400KHZ_IF500KHZ = 0x4,
-    at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ = 0x5,
-    at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ = 0x6,
-    at86rf215_radio_rx_bw_BW800KHZ_IF1000KHZ = 0x7,
-    at86rf215_radio_rx_bw_BW1000KHZ_IF1000KHZ = 0x8,
-    at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ = 0x9,
-    at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ = 0xA,
-    at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ = 0xB,
+    at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ = 0x0,      // at86rf215_radio_rx_f_cut_0_25_half_fs
+    at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ = 0x1,      // at86rf215_radio_rx_f_cut_0_25_half_fs
+    at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ = 0x2,      // at86rf215_radio_rx_f_cut_0_25_half_fs
+    at86rf215_radio_rx_bw_BW320KHZ_IF500KHZ = 0x3,      // at86rf215_radio_rx_f_cut_0_25_half_fs
+    at86rf215_radio_rx_bw_BW400KHZ_IF500KHZ = 0x4,      // at86rf215_radio_rx_f_cut_0_25_half_fs
+    at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ = 0x5,      // at86rf215_radio_rx_f_cut_0_25_half_fs
+    at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ = 0x6,     // at86rf215_radio_rx_f_cut_0_375_half_fs
+    at86rf215_radio_rx_bw_BW800KHZ_IF1000KHZ = 0x7,     // at86rf215_radio_rx_f_cut_0_5_half_fs
+    at86rf215_radio_rx_bw_BW1000KHZ_IF1000KHZ = 0x8,    // at86rf215_radio_rx_f_cut_0_5_half_fs
+    at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ = 0x9,    // at86rf215_radio_rx_f_cut_0_75_half_fs
+    at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ = 0xA,    // at86rf215_radio_rx_f_cut_half_fs
+    at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ = 0xB,    // at86rf215_radio_rx_f_cut_half_fs
 } at86rf215_radio_rx_bw_en;
 
 typedef enum
 {
-    at86rf215_radio_rx_f_cut_0_25_half_fs = 0,
-    at86rf215_radio_rx_f_cut_0_375_half_fs = 1,
-    at86rf215_radio_rx_f_cut_0_5_half_fs = 2,
-    at86rf215_radio_rx_f_cut_0_75_half_fs = 3,
-    at86rf215_radio_rx_f_cut_half_fs = 4,
+    at86rf215_radio_rx_f_cut_0_25_half_fs = 0,      // whan 4MSPS => 500 KHz
+    at86rf215_radio_rx_f_cut_0_375_half_fs = 1,     // whan 4MSPS => 750 KHz
+    at86rf215_radio_rx_f_cut_0_5_half_fs = 2,       // whan 4MSPS => 1000 KHz
+    at86rf215_radio_rx_f_cut_0_75_half_fs = 3,      // whan 4MSPS => 1500 KHz
+    at86rf215_radio_rx_f_cut_half_fs = 4,           // whan 4MSPS => 2000 KHz
 } at86rf215_radio_f_cut_en;
 
 typedef enum

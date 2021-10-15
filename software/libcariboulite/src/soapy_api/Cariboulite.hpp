@@ -26,7 +26,7 @@ enum Cariboulite_Format
 };
 
 #define BUFFER_SIZE_MS                  ( 5 )
-#define NUM_SAMPLEQUEUE_BUFS            ( 10 )
+#define NUM_SAMPLEQUEUE_BUFS            ( 50 )
 #define NUM_BYTES_PER_CPLX_ELEM         ( 4 )
 #define GET_MTU_MS(ms)                  ( 4096*(ms) )
 #define GET_MTU_MS_BYTES(ms)            ( GET_MTU_MS(ms) * NUM_BYTES_PER_CPLX_ELEM )
@@ -56,22 +56,22 @@ typedef struct
 // associated with CS32 - total 8 bytes / element
 typedef struct
 {
-        int32_t i;                      // LSB
-        int32_t q;                      // MSB
+        int32_t q;                      // LSB
+        int32_t i;                      // MSB
 } sample_complex_int32;
 
 // associated with CF32 - total 8 bytes / element
 typedef struct
 {
-        float i;                        // LSB
-        float q;                        // MSB
+        float q;                        // LSB
+        float i;                        // MSB
 } sample_complex_float;
 
 // associated with CF64 - total 16 bytes / element
 typedef struct
 {
-        double i;                       // LSB
-        double q;                       // MSB
+        double q;                       // LSB
+        double i;                       // MSB
 } sample_complex_double;
 #pragma pack()
 

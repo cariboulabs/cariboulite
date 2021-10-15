@@ -167,7 +167,7 @@ int test_at86rf215_continues_iq_loopback (at86rf215_st* dev, at86rf215_rf_channe
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
 #define TEST_IQ_RX_WIND     1
-#define TEST_IQ_RX_WIND_RAD 0
+#define TEST_IQ_RX_WIND_RAD 1 
 #define TEST_IQ_LB_WIND     0
 
 // -----------------------------------------------------------------------------------------
