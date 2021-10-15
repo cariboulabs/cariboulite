@@ -253,13 +253,29 @@ int cariboulite_set_rx_bandwidth(cariboulite_radios_st* radios,
                                  at86rf215_radio_rx_bw_en rx_bw)
 {
     cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
+    at86rf215_radio_f_cut_en fcut = at86rf215_radio_rx_f_cut_half_fs;
+
+    // Automatically calculate the digital f_cut
+    if (rx_bw >= at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ && rx_bw <= at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ)
+        fcut = at86rf215_radio_rx_f_cut_0_25_half_fs;
+    else if (rx_bw >= at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ && rx_bw <= at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ)
+        fcut = at86rf215_radio_rx_f_cut_0_375_half_fs;
+    else if (rx_bw >= at86rf215_radio_rx_bw_BW800KHZ_IF1000KHZ && rx_bw <= at86rf215_radio_rx_bw_BW1000KHZ_IF1000KHZ)
+        fcut = at86rf215_radio_rx_f_cut_0_5_half_fs;
+    else if (rx_bw >= at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ && rx_bw <= at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ)
+        fcut = at86rf215_radio_rx_f_cut_0_75_half_fs;
+    else 
+        fcut = at86rf215_radio_rx_f_cut_half_fs;
+
+    rad->rx_fcut = fcut;
 
     at86rf215_radio_set_rx_bw_samp_st cfg = 
     {
         .inverter_sign_if = 0,
-        .shift_if_freq = 0,                 // A value of one configures the receiver to shift the IF frequency
+        .shift_if_freq = 1,                 // A value of one configures the receiver to shift the IF frequency
                                             // by factor of 1.25. This is useful to place the image frequency according
-                                            // to channel scheme.
+                                            // to channel scheme. This increases the IF frequency to max 2.5MHz
+                                            // thus places the internal LO fasr away from the signal => lower noise
         .bw = rx_bw,
         .fcut = rad->rx_fcut,               // keep the same
         .fs = rad->rx_fs,                   // keep the same
@@ -294,8 +310,9 @@ int cariboulite_set_rx_samp_cutoff(cariboulite_radios_st* radios,
 
     at86rf215_radio_set_rx_bw_samp_st cfg = 
     {
-        .inverter_sign_if = 0,
-        .shift_if_freq = 0,                 // A value of one configures the receiver to shift the IF frequency
+        .inverter_sign_if = 0,              // A value of one configures the receiver to implement the inverted-sign
+                                            // IF frequency. Use default setting for normal operation
+        .shift_if_freq = 1,                 // A value of one configures the receiver to shift the IF frequency
                                             // by factor of 1.25. This is useful to place the image frequency according
                                             // to channel scheme.
         .bw = rad->rx_bw,                   // keep the same
@@ -486,12 +503,12 @@ int cariboulite_get_rand_val(cariboulite_radios_st* radios, cariboulite_channel_
 
 
 //=================================================
-#define CARIBOULITE_MIN_MIX     (20.0e6)        // 30
+#define CARIBOULITE_MIN_MIX     (1.0e6)        // 30
 #define CARIBOULITE_MAX_MIX     (6000.0e6)      // 6000
 #define CARIBOULITE_MIN_LO      (85.0e6)
 #define CARIBOULITE_MAX_LO      (4200.0e6)
-#define CARIBOULITE_2G4_MIN     (2380.0e6)      // 2400
-#define CARIBOULITE_2G4_MAX     (2495.0e6)      // 2483.5
+#define CARIBOULITE_2G4_MIN     (2385.0e6)      // 2400
+#define CARIBOULITE_2G4_MAX     (2490.0e6)      // 2483.5
 #define CARIBOULITE_S1G_MIN1    (389.5e6)
 #define CARIBOULITE_S1G_MAX1    (510.0e6)
 #define CARIBOULITE_S1G_MIN2    (779.0e6)
@@ -725,7 +742,7 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
         if (freq) *freq = act_freq;
 
         // activate the channel according to the new configuration
-        //cariboulite_activate_channel(radios, channel);
+        cariboulite_activate_channel(radios, channel, 1);
     }
 
     if (error >= 0)
@@ -755,6 +772,7 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
 {
     cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
 
+    ZF_LOGD("Activating channel %d", channel);
     // if the channel state is active, turn it off before reactivating
     if (rad->state != at86rf215_radio_state_cmd_tx_prep)
     {
@@ -762,6 +780,7 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
                                     GET_CH(channel), 
                                     at86rf215_radio_state_cmd_tx_prep);
         rad->state = at86rf215_radio_state_cmd_tx_prep;
+        ZF_LOGD("Setup Modem state tx_prep");
     }
 
     if (!active)
@@ -770,6 +789,7 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
                                     GET_CH(channel), 
                                     at86rf215_radio_state_cmd_trx_off);
         rad->state = at86rf215_radio_state_cmd_trx_off;
+        ZF_LOGD("Setup Modem state trx_off");
         return 0;
     }
 
@@ -780,6 +800,7 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
         at86rf215_radio_set_state( &rad->cariboulite_sys->modem, 
                                 GET_CH(channel),
                                 at86rf215_radio_state_cmd_rx);
+        ZF_LOGD("Setup Modem state cmd_rx");
     }
     else if (rad->channel_direction == cariboulite_channel_dir_tx)
     {

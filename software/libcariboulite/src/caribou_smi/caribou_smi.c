@@ -137,7 +137,7 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
                 ZF_LOGE("failed setting smi address (idle / %d) to device", source);
                 return -1;
             }
-
+            printf("Set address to %d\n", source);
             dev->current_address = source;
         }
     }
@@ -153,6 +153,7 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
     int num_sec = timeout_num_millisec / 1000;
     timeout.tv_sec = num_sec;
     timeout.tv_usec = (timeout_num_millisec - num_sec*1000) * 1000;
+    //printf("tv_sec = %d, tv_usec = %d\n", timeout.tv_sec, timeout.tv_usec);
 
 again:
     rv = select(dev->filedesc + 1, &set, NULL, NULL, &timeout);
@@ -318,7 +319,7 @@ void* caribou_smi_thread(void *arg)
         if (!st->running)
         {
             //ZF_LOGD("1");
-            usleep(200000);
+            usleep(100000);
             //ZF_LOGD("2");
             continue;
         }
