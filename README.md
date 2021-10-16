@@ -1,5 +1,5 @@
 # CaribouLite
-CaribouLite is an affordable, educational, open-source SDR platform that is also a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio. 
+CaribouLite is an affordable, educational, open-source SDR platform and a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio.
 
 <table>
   <tr>
@@ -81,7 +81,7 @@ In summary, in CaribouLite-Rev#2 PCB design has been thoroughly re-thought to me
     <td style="text-align:center">Applicable spectra, S1G - sub-1GHz, WB - Wide tuning channel</td>
   </tr>
 </table>
-<B>Note</B>: 
+<B>Note</B>:
 The gaps are defined by the design constraints of the system and may not exist in real-life hardware. Actual modem synthesizer outputs test show wider margins at room temperature than those written in the datatsheet, but, as noted by Microchip, performance may suffer.
 
 
@@ -97,11 +97,11 @@ Parameter                  |  Sub-1GHz                    | Wide Tuning Channel
 ---------------------------|------------------------------|------------------------------------------------------------------
 Frequency tuner range      | 389.5-510 MHz / 779-1020 MHz | 30 MHz - 6 GHz (excluding 2398.5-2400 MHz and 2483.5-2485 MHz)
 Sample rate (ADC / DAC)    | 4 MSPS                       | 4 MSPS
-Analog bandwidth (Rx / Tx) | <4 MHz                       | <4 MHz
-Max Transmit power         | 14.5 dBm                     | >14 dBm @ 30-2400 MHz, >13 dBm @ 2400-6000 MHz
-Receive noise figure       | <4.5 dB                      | <4.5 dB @ 30-3500 MHz, <8 dB @ 3500-6000 MHz
+Analog bandwidth (Rx / Tx) | 2 MHz                        | 2 MHz
+Max Transmit power         | 14 dBm                       | >10 dBm @ 30-2400 MHz, >5 dBm @ 2400-6000 MHz
+Receive noise figure       | <5 dB                      | <6 dB @ 30-3500 MHz, <8 dB @ 3500-6000 MHz
 
-<B>Note</B>: 
+<B>Note</B>:
 (1) Feature comparison table with other SDR devices will be published shortly
 (2) Some of the above specifications are simulated rather than tested
 (3) Analog bandwidth controlled by the modem
