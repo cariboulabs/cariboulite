@@ -191,6 +191,10 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
     {
         buffer[i].i >>= 1;
         buffer[i].q >>= 1;
+
+        buffer[i].i = buffer[i].i & 0x1FFF;
+        buffer[i].q = buffer[i].q & 0x1FFF;
+
         if (buffer[i].i >= (int16_t)0x1000) buffer[i].i -= (int16_t)0x2000;
         if (buffer[i].q >= (int16_t)0x1000) buffer[i].q -= (int16_t)0x2000;
     }
