@@ -1,26 +1,43 @@
 # CaribouLite
 CaribouLite is an affordable, educational, open-source SDR platform and a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio.
 
-<table>
-  <tr>
-    <td><img src="hardware/rev2/pictures/DSC_1151.jpg" alt="CaribouLite R2"></td>
-  </tr>
-  <tr>
-    <td>CaribouLite Rev#2 SDR mounted on a RPI-Zero</td>
-  </tr>
-</table>
-
+CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit our page](https://www.crowdsupply.com/cariboulabs/cariboulite)
 
 <table>
   <tr>
-    <td><img src="hardware/rev1/DSC_1044.jpg" alt="CaribouLite R1"></td>
-    <td><img src="hardware/rev2/pictures/DSC_1146.jpg" alt="CaribouLite Connectors"></td>
+    <td><img src="hardware/rev2/pictures/DSC_1151.jpg" alt="CaribouLite R2" height="200"></td>
   </tr>
   <tr>
-    <td>CaribouLite Rev#1 - the prototype version</td>
-    <td>CaribouLite Rev#2 - connectors view</td>
+    <td>CaribouLite R2.5 SDR mounted on a RPI-Zero</td>
   </tr>
 </table>
+
+# Getting Started & Installation
+Use the following steps for successful installation of the CaribouLite on your choice of RPI board
+1. Mount the CaribouLite on a **un-powered** RPI device using the 40-pin header.
+2. Power the RPI device, wait for it to finish boot sequence.
+3. Clone this repository in your choice of directory
+```
+mkdir projects
+git clone https://github.com/cariboulabs/cariboulite
+cd cariboulite
+```
+4. Depending on whether you run on a headless (not monitor nor keyboard / mouse) system or not use the following setup command:
+    ```
+    sudo setup.sh gui
+    # or
+    sudo setup.sh
+    ```
+
+    The setup script requires internet connection and it follows the following automatic steps:
+    I. System type discovery and dependency check
+    II. Installation of the not-found dependencies
+    III. CaribouLite code compilation and installation
+    IV. EEPROM setup - boot time module's loading and device tree definition.
+
+Following these steps, the RPI has to be rebooted before starting using it as an SDR.
+
+# SMI Interface
 
 Unlike many other HAT projects, CaribouLite utilizes the <B>SMI</B> (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500Mbit/s between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
 
@@ -30,7 +47,7 @@ The SMI interface is used as memory interface that pipes the I/Q complex samples
 A single ADC sample contains 13 bit (I) and 13 bit (Q), that are streamed with a maximal sample rate of 4 MSPS from the AT86RF215 IC to an FPGA. The FPGA emulated SMI compliant memory interface for the RPI SoC.
 Each RF channel (CaribouLite has two of them) requires 4 bytes (samples padded to 32-bit) per sample (and I/Q pair) => 16 MBytes/sec which are 128 MBits/sec. In addition to the 13 bit for each of I/Q, the Tx/Rx streams of data contain flow control and configuration bits. The modem (AT86RF215) IC by Microchip contains two RX I/Q outputs from its ADCs (one for each physical channel - sub-1GHz and 2.4GHz), and a single TX I/Q intput directed to the DACs.
 
-CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit our page](https://www.crowdsupply.com/cariboulabs/cariboulite)
+
 
 <table>
   <tr>
@@ -43,6 +60,18 @@ CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit 
 
 # Hardware Revisions
 The board first prototyping (**Red**) revision ([REV1](hardware/rev1)) has been produced and tested to meet our vision on the board's capabilities. This revision was used to test its RF parts, the digital parts, and to develop its firmware and software support over the RPI.
+
+
+<table>
+  <tr>
+    <td><img src="hardware/rev1/DSC_1044.jpg" alt="CaribouLite R1"></td>
+    <td><img src="hardware/rev2/pictures/DSC_1146.jpg" alt="CaribouLite Connectors"></td>
+  </tr>
+  <tr>
+    <td>CaribouLite Rev#1 - the prototype version</td>
+    <td>CaribouLite Rev#2 - connectors view</td>
+  </tr>
+</table>
 
 The second revision ([REV2](hardware/rev2)) - **White** - was then designed to further refine the design as described below:
 1. Image rejection filtering improvement - U10 and U12 (HPF & LPF) - have been replaced by integrated LTCC filters by MiniCircuits with much better out-of-band rejection than the former ones.
@@ -123,10 +152,6 @@ Receive noise figure       | <5 dB                      | <6 dB @ 30-3500 MHz, <
 11. User custom switch + RPI HAT EEPROM reconfiguration (write-enable) switch
 12. Wide band SMA connector
 13. Sub 1-GHz SMA connector
-
-
-# Getting Started & Installation
-TBD
 
 # Disclaimer
 CaribouLite is a test equipment for RF systems. You are responsible for using your CaribouLite legally.
