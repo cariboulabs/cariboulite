@@ -31,7 +31,6 @@ Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
         sample_queues[i]->AttachStreamId(stream_id, dir, ch);
     }
 
-    
     cariboulite_init_radios(&radios, &sess.cariboulite_sys);
     
     // TODO: Exception when error

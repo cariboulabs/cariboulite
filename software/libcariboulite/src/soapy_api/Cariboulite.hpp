@@ -13,6 +13,9 @@
 #include <cstring>
 #include <algorithm>
 #include <atomic>
+
+#define ZF_LOG_LEVEL ZF_LOG_ERROR
+
 #include "datatypes/tsqueue.h"
 #include "cariboulite_setup.h"
 #include "cariboulite_radios.h"
