@@ -464,7 +464,7 @@ int cariboulite_get_rssi(cariboulite_radios_st* radios, cariboulite_channel_en c
 {
     cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
     float rssi = at86rf215_radio_get_rssi_dbm(&rad->cariboulite_sys->modem, GET_CH(channel));
-    if (rssi >= -127.0 && rssi <= -4)   // register only valid values
+    if (rssi >= -127.0 && rssi <= 4)   // register only valid values
     {
         rad->rx_rssi = rssi;
         if (rssi_dbm) *rssi_dbm = rssi;
@@ -482,7 +482,7 @@ int cariboulite_get_energy_det(cariboulite_radios_st* radios, cariboulite_channe
     at86rf215_radio_energy_detection_st det = {0};
     at86rf215_radio_get_energy_detection(&rad->cariboulite_sys->modem, GET_CH(channel), &det);
     
-    if (det.energy_detection_value >= -127.0 && det.energy_detection_value <= -4)   // register only valid values
+    if (det.energy_detection_value >= -127.0 && det.energy_detection_value <= 4)   // register only valid values
     {
         rad->rx_energy_detection_value = det.energy_detection_value;
         if (energy_det_val) *energy_det_val = rad->rx_energy_detection_value;

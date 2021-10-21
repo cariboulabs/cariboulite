@@ -506,7 +506,7 @@ SoapySDR::RangeList Cariboulite::getFrequencyRange( const int direction, const s
     }
     else if (channel == cariboulite_channel_6g) 
     {
-        return (SoapySDR::RangeList( 1, SoapySDR::Range( 50e6, 6000e6 ) ) );
+        return (SoapySDR::RangeList( 1, SoapySDR::Range( 1e6, 6000e6 ) ) );
     }
     throw std::runtime_error( "getFrequencyRange - unknown channel" );
 }

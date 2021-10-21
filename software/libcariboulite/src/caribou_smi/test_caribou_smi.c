@@ -136,7 +136,7 @@ void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_
     ZF_LOGD("Error (from %s) occured in channel %d, err# %d (%s)\n", (char*)ctx, ch, err, caribou_smi_get_error_string(err));
 }
 
-#if 0
+#if 1
     caribou_smi_address_en address = caribou_smi_address_read_2400;
     caribou_smi_channel_en channel = caribou_smi_channel_2400;
 #else

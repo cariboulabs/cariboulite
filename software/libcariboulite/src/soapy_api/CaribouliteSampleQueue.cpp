@@ -74,13 +74,13 @@ int SampleQueue::AttachStreamId(int id, int dir, int channel)
 int SampleQueue::Write(uint8_t *buffer, size_t length, uint32_t meta, long timeout_us)
 {
     int left_to_write = length;
-    int current_length = 0;
     int offset = 0;
     int chunk = 0;
 
+    //printf("Write: %dB\n", length);
     while (left_to_write)
     {
-        current_length = ( left_to_write < (int)mtu_size_bytes ) ? left_to_write : mtu_size_bytes;
+        int current_length = ( left_to_write < (int)mtu_size_bytes ) ? left_to_write : mtu_size_bytes;
 
         int res = tsqueue_insert_push_buffer(&queue, 
                                             buffer + offset, 
@@ -141,7 +141,7 @@ int SampleQueue::Read(uint8_t *buffer, size_t length, uint32_t *meta, long timeo
         if (meta) *meta = item_ptr->metadata;
 
         // if we need more or exactly the mtu size
-        if (left_to_read >= (int)mtu_size_bytes)
+        if (left_to_read >= item_ptr->length)
         {
             memcpy(&buffer[read_so_far], item_ptr->data, item_ptr->length);
             left_to_read -= item_ptr->length;
@@ -153,9 +153,12 @@ int SampleQueue::Read(uint8_t *buffer, size_t length, uint32_t *meta, long timeo
             // copy out only the amount that is needed
             memcpy(&buffer[read_so_far], item_ptr->data, left_to_read);
 
+            // we are left with "item_ptr->length - left_to_read" bytes
+            // which will be stored for future requests
+
             // store the residue in the partial buffer - for the next time
-            partial_buffer_start = left_to_read;
-            partial_buffer_length = (int)mtu_size_bytes - left_to_read;
+            partial_buffer_length = item_ptr->length - left_to_read;
+            partial_buffer_start = (int)mtu_size_bytes - partial_buffer_length;
             memcpy (partial_buffer + partial_buffer_start, 
                     item_ptr->data + left_to_read,
                     partial_buffer_length);
@@ -172,7 +175,7 @@ int SampleQueue::Read(uint8_t *buffer, size_t length, uint32_t *meta, long timeo
 //=================================================================
 int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, long timeout_us)
 {
-    static int once = 1;
+    static int once = 100;
     // this is the native method
     int tot_length = num_elements * sizeof(sample_complex_int16);
     int res = Read((uint8_t *)buffer, tot_length, NULL, timeout_us);
@@ -183,7 +186,7 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
     }
     /*if (once)
     {
-        print_iq((uint32_t*) buffer, num_elements);
+        print_iq((uint32_t*) buffer, 5);
         once--;
     }*/
     int tot_read_elements = res / sizeof(sample_complex_int16);
@@ -197,6 +200,11 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
 
         if (buffer[i].i >= (int16_t)0x1000) buffer[i].i -= (int16_t)0x2000;
         if (buffer[i].q >= (int16_t)0x1000) buffer[i].q -= (int16_t)0x2000;
+
+        /*if (i<5)
+        {
+            printf("i: %d, q: %d\n", buffer[i].i, buffer[i].q);
+        }*/
     }
 
     return tot_read_elements;  

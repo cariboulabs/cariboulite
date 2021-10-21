@@ -177,7 +177,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
 
     at86rf215_iq_interface_config_st modem_iq_config = {
         .loopback_enable = 0,
-        .drv_strength = at86rf215_iq_drive_current_2ma,
+        .drv_strength = at86rf215_iq_drive_current_4ma,
         .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
         .tx_control_with_iq_if = false,
         .radio09_mode = at86rf215_iq_if_mode,
