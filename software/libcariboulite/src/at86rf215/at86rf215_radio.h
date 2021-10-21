@@ -209,7 +209,7 @@ typedef enum
 typedef struct
 {
     // cmd
-    at86rf215_radio_energy_detection_mode_en mode;      // nergy Detection Mode
+    at86rf215_radio_energy_detection_mode_en mode;      // Energy Detection Mode
     float average_duration_us;                          // T[μs]=DF*DTB - the DTB will be calculated accordingly
 
     // status

@@ -189,11 +189,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
     printf("\n");
 
     std::vector<size_t> channels_internal = channels;
-
-    /*if ( channels_internal.size() > 1 || ( channels_internal.size()>0 && channels_internal[0]!= 0 ) )
-	{
-		throw std::runtime_error( "setupStream invalid channel selection" );
-	}*/
+    // default channel - sub1GHz
     if ( channels_internal.size() == 0 )
     {
         channels_internal.push_back(cariboulite_channel_s1g);
@@ -384,8 +380,6 @@ int Cariboulite::readStream(
         case CARIBOULITE_FORMAT_FLOAT32: 
             {
                 res = sample_queues[stream_id]->ReadSamples((sample_complex_float*)buffs[0], numElems, timeoutUs);
-                //sample_complex_float* samps = (sample_complex_float*)buffs[0];
-                //printf("res: %d, %.2f, %.2f\n", res, samps[0].i, samps[0].q);
             }
             break;
 	    case CARIBOULITE_FORMAT_INT16: 
