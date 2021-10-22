@@ -85,9 +85,9 @@ int tsqueue_release(tsqueue_st* q)
 }
 
 //=======================================================================
-int tsqueue_insert_push_item(tsqueue_st* q, tsqueue_item_st* item, int timeout_us)
+int tsqueue_insert_push_item(tsqueue_st* q, tsqueue_item_st* item, int timeout_us, int override)
 {
-    return tsqueue_insert_push_buffer(q, item->data, item->length, item->metadata, timeout_us);
+    return tsqueue_insert_push_buffer(q, item->data, item->length, item->metadata, timeout_us, override);
 }
 
 
@@ -145,14 +145,20 @@ int tsqueue_wait_on_sem(sem_t* sem, int timeout_us)
 }
 
 //=======================================================================
-int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint32_t metadata, int timeout_us)
+int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint32_t metadata, int timeout_us, int override)
 {
     int error = 0;
     if (q == NULL) return TSQUEUE_NOT_INITIALIZED;
 
-    int res = tsqueue_wait_on_sem(&q->empty, timeout_us);
-    if (res < 0) return res;
-    
+    if (!override)
+    {   
+        // wait until empty rises => someone poped an item thus some place was
+        // freed for a new item. immediatelly after catching the event, decrease empty (notice it is full)
+        // in the case of override - no waiting is needed
+        int res = tsqueue_wait_on_sem(&q->empty, timeout_us);
+        if (res < 0) return res;
+    }
+
     // acquire the mutex lock
     pthread_mutex_lock(&q->mutex);
 
@@ -173,7 +179,26 @@ int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint3
         if (q->head >= q->max_num_items) q->head = 0;
         q->current_num_of_items ++;
     } 
-    else 
+    else if (override)
+    {
+        int res = tsqueue_wait_on_sem(&q->full, timeout_us);
+        if (res < 0) return res;
+
+        int data_size = length;
+        q->items[q->head].metadata = metadata;
+        if (data_size > q->item_size_bytes)
+        {
+            printf("Incorrect item data size\n");
+            data_size = q->item_size_bytes;
+        }
+        memcpy (q->items[q->head].data, buffer, data_size);
+        q->items[q->head].length = data_size;
+        q->head ++;
+        if (q->head >= q->max_num_items) q->head = 0;
+        q->tail ++;
+        if (q->tail >= q->max_num_items) q->tail = 0;
+    }
+    else
     {
         error = TSQUEUE_FAILED_FULL;
     }
