@@ -68,14 +68,14 @@ int tsqueue_release(tsqueue_st* q);
  *       be changed by letting the function block until space is freed up in the queue. When there is not
  *       sufficient space in the queue, the item is dropped and the "dropped" counter is increased.
  */
-int tsqueue_insert_push_item(tsqueue_st* q, tsqueue_item_st* item, int timeout_us);
+int tsqueue_insert_push_item(tsqueue_st* q, tsqueue_item_st* item, int timeout_us, int override);
 
 /*
  * Push a buffer to the queue
  *  The same as before, but rather than an "item", a specific buffer, length and metadata are
  *  cloned into the internal item local copy, and pushed to the queue
  */
-int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint32_t metadata, int timeout_us);
+int tsqueue_insert_push_buffer(tsqueue_st* q, uint8_t* buffer, int length, uint32_t metadata, int timeout_us, int override);
 
 /*
  * Pop an item from the queue with timeout

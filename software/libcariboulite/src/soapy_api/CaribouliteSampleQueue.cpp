@@ -85,7 +85,8 @@ int SampleQueue::Write(uint8_t *buffer, size_t length, uint32_t meta, long timeo
         int res = tsqueue_insert_push_buffer(&queue, 
                                             buffer + offset, 
                                             current_length, 
-                                            meta, timeout_us);
+                                            meta, timeout_us, 
+                                            true);
         switch (res)
         {
             case TSQUEUE_NOT_INITIALIZED:
