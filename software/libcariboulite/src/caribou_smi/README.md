@@ -64,18 +64,13 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 `num_buffers` - is the number of batch buffers to allocate - for fluent buffer swapping
 `cb` - data callback function that is triggered every time a buffer is ready to be served.
 `serviced_context` - the data "requester" that is being serviced by the I/Q data. In most cases that is a higher layered driver / API.
+The returned integer is the stream ID used for further operations.
 
-Notes: Once the stream is created it is operational **but paused!** to activate it see below.
-
-
+Notes: Once the stream is created it is operational **but paused!** to activate it use the following function (on the specific stream ID). This function is used also for pausing the stream (run = 0).
 ```
 int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run);
 ```
-
+Gracefully disposing the stream is done using the "destroy" function
 ```
 int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
-```
-
-```
-char* caribou_smi_get_error_string(caribou_smi_error_en err);
 ```
