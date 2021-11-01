@@ -1,7 +1,14 @@
 # CaribouLite
-CaribouLite is an affordable, educational, open-source SDR platform and a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio.
+CaribouLite is an affordable, educational, open-source SDR evaluation platform and a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio.
 
 CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit our page](https://www.crowdsupply.com/cariboulabs/cariboulite)
+
+<table>
+  <tr>
+    <td><img src="hardware/rev2/pictures/oshwa.png" alt="Open source hardware association certificate"></td>
+    <td>This project has be certified by OSHWA</td>
+  </tr>
+</table>
 
 <table>
   <tr>
@@ -13,12 +20,13 @@ CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit 
 </table>
 
 # Getting Started & Installation
-Use the following steps for successful installation of the CaribouLite on your choice of RPI board
+Use the following steps to install the CaribouLite on your choice of RPI board
 1. Mount the CaribouLite on a **un-powered** RPI device using the 40-pin header.
 2. Power the RPI device, wait for it to finish boot sequence.
-3. Clone this repository in your choice of directory
+3. Clone this repository into a local directory of your choise (in this case `~/projects`)
 ```
-mkdir projects
+mkdir ~/projects
+cd ~/projects
 git clone https://github.com/cariboulabs/cariboulite
 cd cariboulite
 ```
@@ -39,14 +47,11 @@ Following these steps, the RPI has to be rebooted before starting using it as an
 
 # SMI Interface
 
-Unlike many other HAT projects, CaribouLite utilizes the <B>SMI</B> (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500Mbit/s between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
+Unlike many other HAT projects, CaribouLite utilizes the **SMI** (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500 Mbit/s (depending on the FPGA, data-bus width, etc.) between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
 
-The SMI interface can be accessed from the user space Linux applications as shown in [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/), but it also provides a neat minimal charachter device interface in the `/dev` directory using the `open`, `close`, `write`, `read`, and `ioctl` system calls. More on this interesting interface in the [designated readme file](software/libcariboulite/src/caribou_smi/index.md).
+The SMI interface can be accessed from the user space Linux applications as shown in [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/), but Broadcomm also provided a neat minimal charachter device interface in the `/dev` directory using the `open`, `close`, `write`, `read`, and `ioctl` system calls. More on this interesting interface in the [designated readme file](software/libcariboulite/src/caribou_smi/index.md). This device driver needs to be loaded using `modprobe`.
 
-The SMI interface is used as memory interface that pipes the I/Q complex samples from the CaribouLite to the RPI Broadcomm SoC (on RX) and from the Broadcomm SoC to the board (on TX).
-A single ADC sample contains 13 bit (I) and 13 bit (Q), that are streamed with a maximal sample rate of 4 MSPS from the AT86RF215 IC to an FPGA. The FPGA emulated SMI compliant memory interface for the RPI SoC.
-Each RF channel (CaribouLite has two of them) requires 4 bytes (samples padded to 32-bit) per sample (and I/Q pair) => 16 MBytes/sec which are 128 MBits/sec. In addition to the 13 bit for each of I/Q, the Tx/Rx streams of data contain flow control and configuration bits. The modem (AT86RF215) IC by Microchip contains two RX I/Q outputs from its ADCs (one for each physical channel - sub-1GHz and 2.4GHz), and a single TX I/Q intput directed to the DACs.
-
+More information on this interface can be found [here (HW side)](docs/smi/README.md) and [here (SW side)](software/libcariboulite/src/caribou_smi/README.md).
 
 
 <table>
@@ -126,7 +131,7 @@ Parameter                  |  Sub-1GHz                    | Wide Tuning Channel
 ---------------------------|------------------------------|------------------------------------------------------------------
 Frequency tuner range      | 389.5-510 MHz / 779-1020 MHz | 30 MHz - 6 GHz (excluding 2398.5-2400 MHz and 2483.5-2485 MHz)
 Sample rate (ADC / DAC)    | 4 MSPS                       | 4 MSPS
-Analog bandwidth (Rx / Tx) | 2 MHz                        | 2 MHz
+Analog bandwidth (Rx / Tx) | 2.5 MHz                      | 2.5 MHz
 Max Transmit power         | 14 dBm                       | >10 dBm @ 30-2400 MHz, >5 dBm @ 2400-6000 MHz
 Receive noise figure       | <5 dB                      | <6 dB @ 30-3500 MHz, <8 dB @ 3500-6000 MHz
 
