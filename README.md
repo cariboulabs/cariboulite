@@ -45,6 +45,8 @@ cd cariboulite
 
 Following these steps, the RPI has to be rebooted before starting using it as an SDR.
 
+To compile the API library and SoapySDR API from code please click [here](/software/libcariboulite/README.md)
+
 # SMI Interface
 
 Unlike many other HAT projects, CaribouLite utilizes the **SMI** (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500 Mbit/s (depending on the FPGA, data-bus width, etc.) between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
