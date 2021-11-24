@@ -1,9 +1,10 @@
 # CaribouLite Hardware Revisions
 CaribouLite board has two revisions:
 1. Rev1: A prototyping revision (the red board).
-2. Rev2: Production revision.
+2. Rev2: Production revision (currently R2.5 is the production-grade version).
+   1. Rev2_r2.4: pre-production revision
 
-This documentation shall cover the production revision board (rev2).
+This documentation shall cover the production-grade board (rev2).
 
 # System Diagram
 <table>
@@ -53,38 +54,21 @@ The MIXER can also be clocked from a separate dedicated TCXO (not assembled), or
 To enable the above clocking schemes, the MODEM clock input jumper should be cut, and the appropriate jumpers need to be shorted. Consult the schematics to learn more.
 
 ## PMOD Connector
-TBD
-Synchronization
-GPS
-Display
-Peripherals
-Maximal current
+Coming soon:
+
+* Synchronization
+* GPS PPS Signaling
+* Peripherals
+* Maximal current
 
 ## FPGA and LVDS
-TBD
+Coming soon - LVDS calculations
 
 ## SPI
-TBD
-
-## RF PATH
-TBD
-
-### LNA & PA
-TBD
-
-### Image Rejection and Filterring
-TBD
-
-### Mixer
-TBD
+Coming soon - SPI mapping
 
 ### Calibrations & Testing
-TBD
-Test points
-
-### Hacks
-TBD mixerless system
-
+Coming soon
 
 # License
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
