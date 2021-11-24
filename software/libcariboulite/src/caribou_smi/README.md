@@ -11,7 +11,8 @@ lsmod | grep smi
 
 you should be seeing the following output:
 ```
-TBD TBD
+bcm2835_smi_dev     16384   0
+bcm2835_smi         20480   1   bcm2835_smi_dev
 ```
 
 If you do not see these modules, please check:
