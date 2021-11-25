@@ -14,7 +14,8 @@
 #include <algorithm>
 #include <atomic>
 
-#define ZF_LOG_LEVEL ZF_LOG_ERROR
+//#define ZF_LOG_LEVEL ZF_LOG_ERROR
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 
 #include "datatypes/tsqueue.h"
 #include "cariboulite_setup.h"

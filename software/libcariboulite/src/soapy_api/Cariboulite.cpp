@@ -315,18 +315,18 @@ static at86rf215_radio_rx_bw_en convertRxBandwidth(double bw_numeric)
 static double convertRxBandwidth(at86rf215_radio_rx_bw_en bw_en)
 {
     float fact = 1.25;
-    if (at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ == bw_en) return 160000;
-    if (at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ == bw_en) return 200000;
-    if (at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ == bw_en) return 250000;
-    if (at86rf215_radio_rx_bw_BW320KHZ_IF500KHZ == bw_en) return 320000;
-    if (at86rf215_radio_rx_bw_BW400KHZ_IF500KHZ == bw_en) return 400000;
-    if (at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ == bw_en) return 500000;
-    if (at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ == bw_en) return 630000;
-    if (at86rf215_radio_rx_bw_BW800KHZ_IF1000KHZ == bw_en) return 800000;
-    if (at86rf215_radio_rx_bw_BW1000KHZ_IF1000KHZ == bw_en) return 1000000;
-    if (at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ == bw_en) return 1250000;
-    if (at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ == bw_en) return 1600000;
-    if (at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ == bw_en) return 2000000;
+    if (at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ == bw_en) return 160000 * fact;
+    if (at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ == bw_en) return 200000 * fact;
+    if (at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ == bw_en) return 250000 * fact;
+    if (at86rf215_radio_rx_bw_BW320KHZ_IF500KHZ == bw_en) return 320000 * fact;
+    if (at86rf215_radio_rx_bw_BW400KHZ_IF500KHZ == bw_en) return 400000 * fact;
+    if (at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ == bw_en) return 500000 * fact;
+    if (at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ == bw_en) return 630000 * fact;
+    if (at86rf215_radio_rx_bw_BW800KHZ_IF1000KHZ == bw_en) return 800000 * fact;
+    if (at86rf215_radio_rx_bw_BW1000KHZ_IF1000KHZ == bw_en) return 1000000 * fact;
+    if (at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ == bw_en) return 1250000 * fact;
+    if (at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ == bw_en) return 1600000 * fact;
+    if (at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ == bw_en) return 2000000 * fact;
     return 2000000 * fact;
 }
 
@@ -411,18 +411,19 @@ std::vector<double> Cariboulite::listBandwidths( const int direction, const size
     std::vector<double> options;
     if (direction == SOAPY_SDR_RX)
     {
-        options.push_back( 160000 );
-        options.push_back( 200000 );
-        options.push_back( 250000 );
-        options.push_back( 320000 );
-        options.push_back( 400000 );
-        options.push_back( 500000 );
-        options.push_back( 630000 );
-        options.push_back( 800000 );
-        options.push_back( 1000000 );
-        options.push_back( 1250000 );
-        options.push_back( 1600000 );
-        options.push_back( 2000000 );
+        float fact = 1.25;
+        options.push_back( 160000*fact );
+        options.push_back( 200000*fact );
+        options.push_back( 250000*fact );
+        options.push_back( 320000*fact );
+        options.push_back( 400000*fact );
+        options.push_back( 500000*fact );
+        options.push_back( 630000*fact );
+        options.push_back( 800000*fact );
+        options.push_back( 1000000*fact );
+        options.push_back( 1250000*fact );
+        options.push_back( 1600000*fact );
+        options.push_back( 2000000*fact );
     }
     else
     {
