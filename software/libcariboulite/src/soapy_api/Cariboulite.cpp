@@ -295,24 +295,26 @@ std::vector<double> Cariboulite::listSampleRates( const int direction, const siz
 //========================================================
 static at86rf215_radio_rx_bw_en convertRxBandwidth(double bw_numeric)
 {
-    if (fabs(bw_numeric - 160000) < 1) return at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ;
-    if (fabs(bw_numeric - 200000) < 1) return at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ;
-    if (fabs(bw_numeric - 250000) < 1) return at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ;
-    if (fabs(bw_numeric - 320000) < 1) return at86rf215_radio_rx_bw_BW320KHZ_IF500KHZ;
-    if (fabs(bw_numeric - 400000) < 1) return at86rf215_radio_rx_bw_BW400KHZ_IF500KHZ;
-    if (fabs(bw_numeric - 500000) < 1) return at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ;
-    if (fabs(bw_numeric - 630000) < 1) return at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ;
-    if (fabs(bw_numeric - 800000) < 1) return at86rf215_radio_rx_bw_BW800KHZ_IF1000KHZ;
-    if (fabs(bw_numeric - 1000000) < 1) return at86rf215_radio_rx_bw_BW1000KHZ_IF1000KHZ;
-    if (fabs(bw_numeric - 1250000) < 1) return at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ;
-    if (fabs(bw_numeric - 1600000) < 1) return at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ;
-    if (fabs(bw_numeric - 2000000) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ;
+    float fact = 1.25;
+    if (fabs(bw_numeric - (160000*fact)) < 1) return at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ;
+    if (fabs(bw_numeric - (200000*fact)) < 1) return at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ;
+    if (fabs(bw_numeric - (250000*fact)) < 1) return at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ;
+    if (fabs(bw_numeric - (320000*fact)) < 1) return at86rf215_radio_rx_bw_BW320KHZ_IF500KHZ;
+    if (fabs(bw_numeric - (400000*fact)) < 1) return at86rf215_radio_rx_bw_BW400KHZ_IF500KHZ;
+    if (fabs(bw_numeric - (500000*fact)) < 1) return at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ;
+    if (fabs(bw_numeric - (630000*fact)) < 1) return at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ;
+    if (fabs(bw_numeric - (800000*fact)) < 1) return at86rf215_radio_rx_bw_BW800KHZ_IF1000KHZ;
+    if (fabs(bw_numeric - (1000000*fact)) < 1) return at86rf215_radio_rx_bw_BW1000KHZ_IF1000KHZ;
+    if (fabs(bw_numeric - (1250000*fact)) < 1) return at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ;
+    if (fabs(bw_numeric - (1600000*fact)) < 1) return at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ;
+    if (fabs(bw_numeric - (2000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ;
     return at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ;
 }
 
 //========================================================
 static double convertRxBandwidth(at86rf215_radio_rx_bw_en bw_en)
 {
+    float fact = 1.25;
     if (at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ == bw_en) return 160000;
     if (at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ == bw_en) return 200000;
     if (at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ == bw_en) return 250000;
@@ -325,7 +327,7 @@ static double convertRxBandwidth(at86rf215_radio_rx_bw_en bw_en)
     if (at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ == bw_en) return 1250000;
     if (at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ == bw_en) return 1600000;
     if (at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ == bw_en) return 2000000;
-    return 2000000;
+    return 2000000 * fact;
 }
 
 //========================================================
