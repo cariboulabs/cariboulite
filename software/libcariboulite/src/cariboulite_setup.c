@@ -240,7 +240,7 @@ int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* 
 
     if (sys->fpga_versions.sys_ver != 0x01 || sys->fpga_versions.sys_manu_id != 0x01)
     {
-        ZF_LOGI("FPGA firmware didn't pass - sys_ver = %02X, manu_id = %02X", 
+        ZF_LOGE("FPGA firmware didn't pass - sys_ver = %02X, manu_id = %02X", 
             sys->fpga_versions.sys_ver, sys->fpga_versions.sys_manu_id);
         res->fpga_fail = 1;
         error_occured = 1;
@@ -253,7 +253,7 @@ int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* 
     at86rf215_get_versions(&sys->modem, &modem_pn, &modem_vn);
     if (modem_pn != 0x34)
     {
-        ZF_LOGI("The assembled modem is not AT86RF215 (product number: 0x%02x)", modem_pn);
+        ZF_LOGE("The assembled modem is not AT86RF215 (product number: 0x%02x)", modem_pn);
         res->modem_fail = 1;
         error_occured = 1;
     }
@@ -264,7 +264,7 @@ int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* 
     rffc507x_readback_status(&sys->mixer, &dev_id, NULL);
 	if (dev_id.device_id != 0x1140 && dev_id.device_id != 0x11C0)
     {
-        ZF_LOGI("The assembled mixer is not RFFC5071/2[A]");
+        ZF_LOGE("The assembled mixer is not RFFC5071/2[A]");
         res->mixer_fail = 1;
         error_occured = 1;
     }
@@ -280,7 +280,7 @@ int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* 
         return 0;
     }
     
-    ZF_LOGI("Self-test process finished with errors");
+    ZF_LOGE("Self-test process finished with errors");
     return -1;
 }
 
@@ -324,6 +324,7 @@ int cariboulite_release_submodules(cariboulite_st* sys)
 int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info)
 {
     zf_log_set_output_level(ZF_LOG_ERROR);
+    //zf_log_set_output_level(ZF_LOG_VERBOSE);
     
     ZF_LOGI("driver initializing");
     if (info == NULL)
