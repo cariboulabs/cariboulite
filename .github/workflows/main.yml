@@ -28,4 +28,5 @@ jobs:
     - name: ice40 synth
       run: |
         cd firmware
+        make clean
         nix-shell --command 'make top.bin'
