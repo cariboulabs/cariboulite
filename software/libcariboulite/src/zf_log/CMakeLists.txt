@@ -11,7 +11,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 if(MSVC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 /WX")
 else()
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -pedantic-errors")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 endif()
 
 add_library(zf_log ${HEADERS} ${SOURCES})
