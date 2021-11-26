@@ -13,7 +13,7 @@ sudo apt update
 sudo apt install gcc
 
 # We used libsoapysdr-dev version 0.6.1-4+
-sudo apt install libsoapysdr-dev
+sudo apt install libsoapysdr-dev libpthread-stubs0-dev
 
 # cmake version 3.15+
 sudo apt install cmake

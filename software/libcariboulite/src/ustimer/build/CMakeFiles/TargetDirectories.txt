@@ -1,9 +1,0 @@
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/install/strip.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/install/local.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/install.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/tests.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/edit_cache.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/ustimer.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/test_ustimer.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/rebuild_cache.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer/build/CMakeFiles/list_install_components.dir

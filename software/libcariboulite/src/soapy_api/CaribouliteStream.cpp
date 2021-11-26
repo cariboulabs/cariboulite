@@ -251,7 +251,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
     printf("closeStream\n");
     if (stream == NULL) return;
-    int stream_id = (int)stream;
+    int stream_id = (intptr_t)stream;
     
     caribou_smi_destroy_stream(&sess.cariboulite_sys.smi, stream_id);
 }
@@ -296,13 +296,13 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const size_t numElems)
 {
     printf("activateStream\n");
-    int stream_id = (int)stream;
+    int stream_id = (intptr_t)stream;
 
     cariboulite_activate_channel(&radios, 
                                 (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
                                 true);
 
-    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 1);
+    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 1);
     return 0;
 }
 
@@ -324,9 +324,9 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
     printf("deactivateStream\n");
-    int stream_id = (int)stream;
+    int stream_id = (intptr_t)stream;
 
-    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 0);
+    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 0);
     sleep(1);
 
     cariboulite_activate_channel(&radios, 
@@ -365,7 +365,7 @@ int Cariboulite::readStream(
             const long timeoutUs)
 {
     //printf("readStream\n");
-    int stream_id = (int)stream;
+    int stream_id = (intptr_t)stream;
 
     if (sample_queues[stream_id]->stream_dir != SOAPY_SDR_RX)
     {

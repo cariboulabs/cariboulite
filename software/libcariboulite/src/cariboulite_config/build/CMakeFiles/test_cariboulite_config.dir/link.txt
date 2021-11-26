@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_cariboulite_config.dir/cariboulite_config.c.o CMakeFiles/test_cariboulite_config.dir/test_cariboulite_config.c.o -o test_cariboulite_config  -lrt -lpthread ../../io_utils/build/libio_utils.a ../../zf_log/build/libzf_log.a 
