@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(cariboulite)
 set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Bring the headers
 include_directories(./ ./include)

@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblatticeice40.a CMakeFiles/latticeice40.dir/latticeice40.c.o
-/usr/bin/ranlib liblatticeice40.a
