@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcaribou_fpga.a CMakeFiles/caribou_fpga.dir/caribou_fpga.c.o
-/usr/bin/ranlib libcaribou_fpga.a
