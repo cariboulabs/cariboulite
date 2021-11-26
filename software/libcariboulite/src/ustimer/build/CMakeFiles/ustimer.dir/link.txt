@@ -1,2 +1,0 @@
-/usr/bin/ar qc libustimer.a CMakeFiles/ustimer.dir/ustimer.c.o
-/usr/bin/ranlib libustimer.a

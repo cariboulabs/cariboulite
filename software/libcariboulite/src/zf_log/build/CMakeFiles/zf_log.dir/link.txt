@@ -1,2 +1,0 @@
-/usr/bin/ar qc libzf_log.a CMakeFiles/zf_log.dir/zf_log.c.o
-/usr/bin/ranlib libzf_log.a
