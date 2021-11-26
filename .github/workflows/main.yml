@@ -1,0 +1,20 @@
+name: "Caribou"
+on: ['pull_request', 'push']
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2.2.0
+
+    - name: Environment
+      run: sudo apt-get install -y cmake libsoapysdr-dev libpthread-stubs0-dev
+
+    - name: libcaribou
+      run: |
+        cd software/libcariboulite/
+        mkdir build
+        cd build
+        cmake ..
+        make
