@@ -509,8 +509,8 @@ int cariboulite_get_rand_val(cariboulite_radios_st* radios, cariboulite_channel_
 #define CARIBOULITE_MAX_MIX     (6000.0e6)      // 6000
 #define CARIBOULITE_MIN_LO      (85.0e6)
 #define CARIBOULITE_MAX_LO      (4200.0e6)
-#define CARIBOULITE_2G4_MIN     (2385.0e6)      // 2400
-#define CARIBOULITE_2G4_MAX     (2490.0e6)      // 2483.5
+#define CARIBOULITE_2G4_MIN     (2395.0e6)      // 2400
+#define CARIBOULITE_2G4_MAX     (2485.0e6)      // 2483.5
 #define CARIBOULITE_S1G_MIN1    (389.5e6)
 #define CARIBOULITE_S1G_MAX1    (510.0e6)
 #define CARIBOULITE_S1G_MIN2    (779.0e6)
