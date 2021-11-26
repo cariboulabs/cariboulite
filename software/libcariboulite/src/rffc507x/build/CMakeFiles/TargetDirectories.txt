@@ -1,8 +1,0 @@
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/install/strip.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/install/local.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/test_rffc507x.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/install.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/rffc507x.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/edit_cache.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/rebuild_cache.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/rffc507x/build/CMakeFiles/list_install_components.dir
