@@ -1,3 +1,0 @@
-/home/pi/projects/cariboulite/software/libcariboulite/src/zf_log/build/CMakeFiles/rebuild_cache.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/zf_log/build/CMakeFiles/zf_log.dir
-/home/pi/projects/cariboulite/software/libcariboulite/src/zf_log/build/CMakeFiles/edit_cache.dir

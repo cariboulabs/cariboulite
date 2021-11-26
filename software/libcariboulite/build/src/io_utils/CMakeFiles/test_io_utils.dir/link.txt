@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_io_utils.dir/main.c.o -o test_io_utils  libio_utils.a -lpthread ../../../src/io_utils/../zf_log/build/libzf_log.a 

@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcariboulite.a CMakeFiles/cariboulite.dir/src/cariboulite_setup.c.o CMakeFiles/cariboulite.dir/src/cariboulite_events.c.o CMakeFiles/cariboulite.dir/src/cariboulite_radios.c.o
-/usr/bin/ranlib libcariboulite.a
