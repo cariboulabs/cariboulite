@@ -32,7 +32,7 @@ int soapy_sighandler(int signum)
 }
 
 
-
+//========================================================
 SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
@@ -51,6 +51,7 @@ SoapyCaribouliteSession::SoapyCaribouliteSession(void)
     sessionCount++;
 }
 
+//========================================================
 SoapyCaribouliteSession::~SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);

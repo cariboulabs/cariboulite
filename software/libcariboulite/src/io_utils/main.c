@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <signal.h>
-#include <lgpio.h>
 #include "io_utils.h"
 #include "io_utils_spi.h"
 #include "io_utils_sys_info.h"
@@ -45,7 +44,7 @@ int main(int argc, char *argv[])
 
     printf("----------------------------------------------------\n");
     printf("GPIO Init\n");
-    io_utils_setup();
+    io_utils_setup(NULL);
     // Reset the FPGA
     //io_utils_set_gpio_mode(FPGA_RESET, io_utils_alt_gpio_out);
     //io_utils_set_gpio_mode(ICE40_CS, io_utils_alt_gpio_out);
