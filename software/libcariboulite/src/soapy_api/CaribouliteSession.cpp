@@ -29,7 +29,7 @@ static size_t sessionCount = 0;
 SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
-    printf("SoapyCaribouliteSession, sessionCount: %d\n", sessionCount);
+    printf("SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
     if (sessionCount == 0)
     {
         CARIBOULITE_CONFIG_DEFAULT(temp);
@@ -47,7 +47,7 @@ SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 SoapyCaribouliteSession::~SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
-    printf("~SoapyCaribouliteSession, sessionCount: %d\n", sessionCount);
+    printf("~SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
     sessionCount--;
     if (sessionCount == 0)
     {

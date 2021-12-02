@@ -345,7 +345,7 @@ int caribou_fpga_get_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t *val)
 }
 
 //--------------------------------------------------------------
-int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st pins)
+int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_io_ctrl_rf_state");
     caribou_fpga_opcode_st oc =
@@ -354,7 +354,7 @@ int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin
         .mid = caribou_fpga_mid_io_ctrl,
         .ioc = IOC_IO_CTRL_RF_PIN
     };
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)&pins);
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)pins);
 }
 
 //--------------------------------------------------------------
