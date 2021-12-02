@@ -308,6 +308,12 @@ static at86rf215_radio_rx_bw_en convertRxBandwidth(double bw_numeric)
     if (fabs(bw_numeric - (1250000*fact)) < 1) return at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ;
     if (fabs(bw_numeric - (1600000*fact)) < 1) return at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ;
     if (fabs(bw_numeric - (2000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ;
+
+    if (fabs(bw_numeric - (2500000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFCCKHZ;
+    if (fabs(bw_numeric - (3000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFDDHZ;
+    if (fabs(bw_numeric - (4000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFEEKHZ;
+    if (fabs(bw_numeric - (5000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFFFKHZ;
+    
     return at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ;
 }
 
@@ -327,6 +333,12 @@ static double convertRxBandwidth(at86rf215_radio_rx_bw_en bw_en)
     if (at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ == bw_en) return 1250000 * fact;
     if (at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ == bw_en) return 1600000 * fact;
     if (at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ == bw_en) return 2000000 * fact;
+
+    if (at86rf215_radio_rx_bw_BW2000KHZ_IFCCKHZ == bw_en) return 2500000 * fact;
+    if (at86rf215_radio_rx_bw_BW2000KHZ_IFDDHZ == bw_en) return 3000000 * fact;
+    if (at86rf215_radio_rx_bw_BW2000KHZ_IFEEKHZ == bw_en) return 4000000 * fact;
+    if (at86rf215_radio_rx_bw_BW2000KHZ_IFFFKHZ == bw_en) return 5000000 * fact;
+    
     return 2000000 * fact;
 }
 
@@ -424,6 +436,11 @@ std::vector<double> Cariboulite::listBandwidths( const int direction, const size
         options.push_back( 1250000*fact );
         options.push_back( 1600000*fact );
         options.push_back( 2000000*fact );
+
+        options.push_back( 2500000*fact );
+        options.push_back( 3000000*fact );
+        options.push_back( 4000000*fact );
+        options.push_back( 5000000*fact );
     }
     else
     {

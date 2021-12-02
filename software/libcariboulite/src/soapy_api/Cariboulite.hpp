@@ -86,7 +86,9 @@ public:
 	~SoapyCaribouliteSession(void);
 
 public:
-        cariboulite_st cariboulite_sys;
+        static cariboulite_st cariboulite_sys;
+        static std::mutex sessionMutex;
+        static size_t sessionCount;
 };
 
 

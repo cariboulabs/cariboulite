@@ -5644,10 +5644,16 @@ static void sigHandler(int signum)
             {
                // Added David Michaeli
                int res = -1;
+
+               // first check if there is a signal handler from the application
                if (unhandled_signal_from_app != NULL)
                {
                   res = unhandled_signal_from_app(signum);
                }
+
+               // if there is no signal handler (==NULL) or 
+               // the sighandler from the app didn't handle the signal itself
+               // then let pigpio handle the signal itself
                if (res != 0)
                {
                   DBG(DBG_ALWAYS, "Unhandled signal %d, terminating\n", signum);

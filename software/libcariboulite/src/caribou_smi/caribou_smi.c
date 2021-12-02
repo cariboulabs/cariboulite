@@ -84,8 +84,8 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
         return -1;
     }
 
-    ZF_LOGD("Current SMI Settings:");
-    caribou_smi_print_smi_settings(&settings);
+    //ZF_LOGD("Current SMI Settings:");
+    //caribou_smi_print_smi_settings(&settings);
 
     // set the address to idle
     ret = ioctl(fd, BCM2835_SMI_IOC_ADDRESS, caribou_smi_address_idle);
