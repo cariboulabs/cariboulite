@@ -5,26 +5,33 @@
 #include <mutex>
 #include <cstddef>
 
+std::mutex SoapyCaribouliteSession::sessionMutex;
+size_t SoapyCaribouliteSession::sessionCount = 0;
+cariboulite_st SoapyCaribouliteSession::cariboulite_sys = {0};
+
 //========================================================
 int soapy_sighandler(int signum)
 {
     SoapySDR_logf(SOAPY_SDR_DEBUG, "Received signal %d", signum);
     switch (signum)
     {
-        case SIGINT: printf("Caught SIGINT\n"); break;
-        case SIGTERM: printf("Caught SIGTERM\n"); break;
-        case SIGABRT: printf("Caught SIGABRT\n"); break;
-        case SIGILL: printf("Caught SIGILL\n"); break;
-        case SIGSEGV: printf("Caught SIGSEGV\n"); break;
-        case SIGFPE:  printf("Caught SIGFPE\n"); break;
-        default: printf("Caught Unknown Signal %d\n", signum); return -1; break;
+        case SIGINT: printf("soapy_sighandler caught SIGINT\n"); break;
+        case SIGTERM: printf("soapy_sighandler caught SIGTERM\n"); break;
+        case SIGABRT: printf("soapy_sighandler caught SIGABRT\n"); break;
+        case SIGILL: printf("soapy_sighandler caught SIGILL\n"); break;
+        case SIGSEGV: printf("soapy_sighandler caught SIGSEGV\n"); break;
+        case SIGFPE:  printf("soapy_sighandler caught SIGFPE\n"); break;
+        default: printf("soapy_sighandler caught Unknown Signal %d\n", signum); return -1; break;
     }
 
-    return -1;
+    printf("soapy_sighandler killing soapy_cariboulite (cariboulite_release_driver)\n");
+    std::lock_guard<std::mutex> lock(SoapyCaribouliteSession::sessionMutex);
+    cariboulite_release_driver(&(SoapyCaribouliteSession::cariboulite_sys));
+    SoapyCaribouliteSession::sessionCount = 0;
+    return 0;
 }
 
-static std::mutex sessionMutex;
-static size_t sessionCount = 0;
+
 
 SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 {

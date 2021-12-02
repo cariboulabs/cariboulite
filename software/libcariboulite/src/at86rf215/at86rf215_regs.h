@@ -111,6 +111,10 @@ typedef enum
 #define RF_BW1250KHZ_IF2000KHZ              0x09
 #define RF_BW1600KHZ_IF2000KHZ              0x0A
 #define RF_BW2000KHZ_IF2000KHZ              0x0B
+#define RF_BW2000KHZ_IFCCKHZ                0x0C
+#define RF_BW2000KHZ_IFDDHZ                 0x0D
+#define RF_BW2000KHZ_IFEEKHZ                0x0E
+#define RF_BW2000KHZ_IFFFKHZ                0x0F
 
 /* different Skew values */
 #define RF_IQ_SKEW_pos_2		            0x00
