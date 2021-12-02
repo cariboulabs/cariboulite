@@ -57,9 +57,11 @@ int cariboulite_setup_io (cariboulite_st* sys, void* sighandler)
 //=======================================================================================
 int cariboulite_release_io (cariboulite_st* sys)
 {
-    ZF_LOGI("Releasing board I/Os");
+    ZF_LOGI("Releasing board I/Os - closing SPI");
     io_utils_spi_close(&sys->spi_dev);
-    io_utils_cleanup();
+
+    ZF_LOGI("Releasing board I/Os - io_utils_cleanup");
+    //io_utils_cleanup();
     return 0;
 }
 
@@ -309,7 +311,7 @@ int cariboulite_release_submodules(cariboulite_st* sys)
 
     // FPGA Module
     //------------------------------------------------------
-    printf("CLOSE FPGA communication");
+    ZF_LOGD("CLOSE FPGA communication");
     res = caribou_fpga_close(&sys->fpga);
     if (res < 0)
     {
@@ -377,6 +379,7 @@ void cariboulite_release_driver(cariboulite_st *sys)
 
     cariboulite_release_submodules(sys);
     cariboulite_release_io (sys);
+    ZF_LOGI("driver released");
 }
 
 //=================================================

@@ -25,7 +25,7 @@ void *producer(void *param)
         //item = rand();
         item ++;
 
-        int res = tsqueue_insert_push_buffer(&q, (uint8_t*)&item, sizeof(item), 0, 200);
+        int res = tsqueue_insert_push_buffer(&q, (uint8_t*)&item, sizeof(item), 0, 200, 1);
         if (res != 0) 
         {
             if (res == TSQUEUE_NOT_INITIALIZED) fprintf(stderr, "Queue not inited\n");
