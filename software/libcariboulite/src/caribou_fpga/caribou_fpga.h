@@ -99,7 +99,7 @@ int caribou_fpga_get_io_ctrl_pmod_dir (caribou_fpga_st* dev, uint8_t *dir);
 int caribou_fpga_set_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t val);
 int caribou_fpga_get_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t *val);
 
-int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st pins);
+int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins);
 int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins);
 
 int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_smi_fifo_status_st *status);

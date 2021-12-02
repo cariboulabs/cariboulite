@@ -185,7 +185,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
                             const SoapySDR::Kwargs &args)
 {
     printf("setupStream: dir: %d, format: %s, channels: ", direction, format.c_str());
-    for (int i = 0; i < (int)channels.size(); i++) printf("%d, ", channels[i]);
+    for (int i = 0; i < (int)channels.size(); i++) printf("%ld, ", channels[i]);
     printf("\n");
 
     std::vector<size_t> channels_internal = channels;
@@ -238,7 +238,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
     }
     
     printf("finished setup stream, stream_id = %d\n", stream_id);
-    return (SoapySDR::Stream *)stream_id;
+    return (SoapySDR::Stream *)((void*)stream_id);
 }
 
 //========================================================
