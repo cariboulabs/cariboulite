@@ -24,7 +24,7 @@ int soapy_sighandler(int signum)
         default: printf("soapy_sighandler caught Unknown Signal %d\n", signum); return -1; break;
     }
 
-    printf("soapy_sighandler killing soapy_cariboulite (cariboulite_release_driver)\n");
+    SoapySDR_logf(SOAPY_SDR_INFO, "soapy_sighandler killing soapy_cariboulite (cariboulite_release_driver)");
     std::lock_guard<std::mutex> lock(SoapyCaribouliteSession::sessionMutex);
     cariboulite_release_driver(&(SoapyCaribouliteSession::cariboulite_sys));
     SoapyCaribouliteSession::sessionCount = 0;
@@ -36,7 +36,8 @@ int soapy_sighandler(int signum)
 SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
-    printf("SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
+    //printf("SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
+    SoapySDR_logf(SOAPY_SDR_INFO, "SoapyCaribouliteSession, sessionCount: %ld", sessionCount);
     if (sessionCount == 0)
     {
         CARIBOULITE_CONFIG_DEFAULT(temp);
@@ -55,7 +56,8 @@ SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 SoapyCaribouliteSession::~SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
-    printf("~SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
+    //printf("~SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
+    SoapySDR_logf(SOAPY_SDR_INFO, "~SoapyCaribouliteSession, sessionCount: %ld", sessionCount);
     sessionCount--;
     if (sessionCount == 0)
     {

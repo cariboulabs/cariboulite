@@ -4,7 +4,7 @@
 //==============================================
 void print_iq(uint32_t* array, int len)
 {
-    printf("Values I/Q:\n");
+    //printf("Values I/Q:\n");
     for (int i=0; i<len; i++)
     {
         unsigned int v = array[i];
@@ -25,7 +25,7 @@ void print_iq(uint32_t* array, int len)
 //=================================================================
 SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
 {
-    printf("Creating SampleQueue MTU: %d bytes, NumBuffers: %d\n", mtu_bytes, num_buffers);
+    SoapySDR_logf(SOAPY_SDR_INFO, "Creating SampleQueue MTU: %d bytes, NumBuffers: %d", mtu_bytes, num_buffers);
     tsqueue_init(&queue, mtu_bytes, num_buffers);
     //printf("finished tsqueue\n");
     mtu_size_bytes = mtu_bytes;
@@ -46,7 +46,9 @@ SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
 //=================================================================
 SampleQueue::~SampleQueue()
 {
-    printf("~SampleQueue streamID: %d, dir: %d, channel: %d\n", stream_id, stream_dir, stream_channel);
+    //printf("~SampleQueue streamID: %d, dir: %d, channel: %d\n", stream_id, stream_dir, stream_channel);
+    SoapySDR_logf(SOAPY_SDR_INFO, "~SampleQueue streamID: %d, dir: %d, channel: %d", stream_id, stream_dir, stream_channel);
+
     stream_id = -1;
     stream_dir = -1;
     stream_channel = -1;
@@ -58,7 +60,7 @@ SampleQueue::~SampleQueue()
 //=================================================================
 int SampleQueue::AttachStreamId(int id, int dir, int channel)
 {
-    printf("SampleQueue::AttachStreamId\n");
+    //printf("SampleQueue::AttachStreamId\n");
     if (stream_id != -1)
     {
         SoapySDR_logf(SOAPY_SDR_ERROR, "Cannot attach stream_id - already attached to %d", stream_id);
