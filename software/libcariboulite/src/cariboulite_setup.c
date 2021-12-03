@@ -325,8 +325,8 @@ int cariboulite_release_submodules(cariboulite_st* sys)
 //=================================================
 int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info)
 {
-    //zf_log_set_output_level(ZF_LOG_ERROR);
-    zf_log_set_output_level(ZF_LOG_VERBOSE);
+    zf_log_set_output_level(ZF_LOG_ERROR);
+    //zf_log_set_output_level(ZF_LOG_VERBOSE);
     
     ZF_LOGI("driver initializing");
     if (info == NULL)
