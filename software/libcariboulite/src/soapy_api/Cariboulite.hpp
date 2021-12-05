@@ -14,7 +14,8 @@
 #include <algorithm>
 #include <atomic>
 
-#define ZF_LOG_LEVEL ZF_LOG_ERROR
+//#define ZF_LOG_LEVEL ZF_LOG_ERROR
+#define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 
 #include "datatypes/tsqueue.h"
 #include "cariboulite_setup.h"
@@ -28,8 +29,8 @@ enum Cariboulite_Format
 	CARIBOULITE_FORMAT_FLOAT64      = 3,
 };
 
-#define BUFFER_SIZE_MS                  ( 10 )
-#define NUM_SAMPLEQUEUE_BUFS            ( 30 )
+#define BUFFER_SIZE_MS                  ( 5 )
+#define NUM_SAMPLEQUEUE_BUFS            ( 10 )
 #define NUM_BYTES_PER_CPLX_ELEM         ( 4 )
 #define GET_MTU_MS(ms)                  ( 4096*(ms) )
 #define GET_MTU_MS_BYTES(ms)            ( GET_MTU_MS(ms) * NUM_BYTES_PER_CPLX_ELEM )
@@ -85,7 +86,9 @@ public:
 	~SoapyCaribouliteSession(void);
 
 public:
-        cariboulite_st cariboulite_sys;
+        static cariboulite_st cariboulite_sys;
+        static std::mutex sessionMutex;
+        static size_t sessionCount;
 };
 
 

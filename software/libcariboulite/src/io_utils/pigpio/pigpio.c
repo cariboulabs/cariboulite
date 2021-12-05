@@ -5644,10 +5644,16 @@ static void sigHandler(int signum)
             {
                // Added David Michaeli
                int res = -1;
+
+               // first check if there is a signal handler from the application
                if (unhandled_signal_from_app != NULL)
                {
                   res = unhandled_signal_from_app(signum);
                }
+
+               // if there is no signal handler (==NULL) or 
+               // the sighandler from the app didn't handle the signal itself
+               // then let pigpio handle the signal itself
                if (res != 0)
                {
                   DBG(DBG_ALWAYS, "Unhandled signal %d, terminating\n", signum);
@@ -8372,7 +8378,7 @@ int initInitialise(void)
 
    initClock(1); /* initialise main clock */
 
-   atexit(gpioTerminate);
+   //atexit(gpioTerminate);
 
    if (pthread_attr_init(&pthAttr))
       SOFT_ERROR(PI_INIT_FAILED, "pthread_attr_init failed (%m)");
@@ -8740,6 +8746,7 @@ void gpioTerminate(void)
 {
    int i;
 
+   printf("gpioTerminate\n");
    DBG(DBG_USER, "");
 
    if (!libInitialised) return;
@@ -8757,6 +8764,8 @@ void gpioTerminate(void)
       initKillDMA(dmaIn);
       initKillDMA(dmaOut);
    }
+
+   printf("gpioTerminate - reset DMA\n");
 
 #ifndef EMBEDDED_IN_VM
    if ((gpioCfg.internals & PI_CFG_STATS) &&
@@ -8795,10 +8804,12 @@ void gpioTerminate(void)
    }
 
 #endif
+   printf("gpioTerminate - initReleaseResources\n");
    initReleaseResources();
-
+   printf("gpioTerminate - initReleaseResources finished\n");
    fflush(NULL);
 
+   printf("gpioTerminate - finished FFlush\n");
    libInitialised = 0;
 }
 
