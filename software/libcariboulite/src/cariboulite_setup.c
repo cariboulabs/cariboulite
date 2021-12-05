@@ -160,8 +160,8 @@ int cariboulite_init_submodules (cariboulite_st* sys)
     // Configure modem
     //------------------------------------------------------
     ZF_LOGD("Configuring modem initial state");
-    at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_32mhz);
-    at86rf215_setup_rf_irq(&sys->modem,  0, 1, at86rf215_drive_current_4ma);
+    at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_32mhz);
+    at86rf215_setup_rf_irq(&sys->modem,  0, 1, at86rf215_drive_current_2ma);
     at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_trx_off);
     at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_trx_off);
 
@@ -211,6 +211,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
 
     // Configure mixer
     //------------------------------------------------------
+    rffc507x_setup_reference_freq(&sys->mixer, 32e6);
     rffc507x_calibrate(&sys->mixer);
 
     ZF_LOGI("Cariboulite submodules successfully initialized");
@@ -295,7 +296,7 @@ int cariboulite_release_submodules(cariboulite_st* sys)
     //------------------------------------------------------
     ZF_LOGD("CLOSE SMI");
     caribou_smi_close(&sys->smi);
-    sleep(1);
+    usleep(10000);
 
     // AT86RF215
     //------------------------------------------------------

@@ -43,8 +43,6 @@
 
 #define LO_MAX 5400
 #define LO_MAX_HZ (LO_MAX*1e6)
-#define REF_FREQ 32
-#define REF_FREQ_HZ (REF_FREQ*1e6)
 #define FREQ_ONE_MHZ (1000*1000)
 
 //===========================================================================
@@ -151,8 +149,8 @@ int rffc507x_init(  rffc507x_st* dev,
 	set_RFFC507X_P2CTV(dev, 12);	
 	set_RFFC507X_P1CTV(dev, 12);
 	set_RFFC507X_RGBYP(dev, 1);
-	set_RFFC507X_P2MIXIDD(dev, 6);
-	set_RFFC507X_P1MIXIDD(dev, 6);
+	set_RFFC507X_P2MIXIDD(dev, 5);
+	set_RFFC507X_P1MIXIDD(dev, 5);
 	
 	// Others
 	set_RFFC507X_LDEN(dev, 1);
@@ -253,9 +251,10 @@ void rffc507x_enable(rffc507x_st* dev)
 }
 
 //===========================================================================
-void rffc507x_calculate_freq_params(uint8_t lodiv, double fvco, uint8_t fbkdiv, uint16_t *n, uint16_t *p1nmsb, uint8_t *p1nlsb, double* act_freq_hz)
+void rffc507x_calculate_freq_params(double ref_freq_hz, uint8_t lodiv, double fvco, uint8_t fbkdiv, 
+									uint16_t *n, uint16_t *p1nmsb, uint8_t *p1nlsb, double* act_freq_hz)
 {
-	double n_div = fvco / fbkdiv / REF_FREQ_HZ;
+	double n_div = fvco / fbkdiv / ref_freq_hz;
 	*n = (uint16_t)(n_div);
 
 	double temp_p1nmsb = ( (double)(1<<16) ) * ( n_div - (double)(*n) );
@@ -266,7 +265,18 @@ void rffc507x_calculate_freq_params(uint8_t lodiv, double fvco, uint8_t fbkdiv, 
 	uint32_t n_div24_bit = (uint32_t)(round(n_div * (1<<24))) & 0xFFFFFFFF;
 	//uint32_t n_div24_bit = (uint32_t)((n_div * (1<<24))) & 0xFFFFFFFF;
 
-	if (act_freq_hz) *act_freq_hz = (REF_FREQ_HZ * n_div24_bit * fbkdiv) / ((double)(lodiv) * (double)(1<<24));
+	if (act_freq_hz) *act_freq_hz = (ref_freq_hz * n_div24_bit * fbkdiv) / ((double)(lodiv) * (double)(1<<24));
+}
+
+//===========================================================================
+int rffc507x_setup_reference_freq(rffc507x_st* dev, double ref_freq_hz)
+{
+	if (ref_freq_hz < 10e6 || ref_freq_hz > 104e6)
+	{
+		return -1;
+	}
+	dev->ref_freq_hz = ref_freq_hz;
+	return 0;
 }
 
 //===========================================================================
@@ -298,7 +308,7 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 		set_RFFC507X_PLLCPL(dev, 2);
 	}
 
-	rffc507x_calculate_freq_params(lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
+	rffc507x_calculate_freq_params(dev->ref_freq_hz, lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
 
 	//ZF_LOGD("----------------------------------------------------------");
 	//ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
@@ -323,7 +333,7 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 		// After the device is enabled, the divider values can be reprogrammed with the prescaler divider ratio of 2 
 		// and the new n, nummsb, and numlsb values. Taking the previous example of an LO of 314.159265MHz:
 		fbkdiv = 2;
-		rffc507x_calculate_freq_params(lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
+		rffc507x_calculate_freq_params(dev->ref_freq_hz, lodiv, fvco, fbkdiv, &n, &p1nmsb, &p1nlsb, &tune_freq_hz);
 
 		//ZF_LOGD("LO_HZ=%.2f n_lo=%d lodiv=%d", lo_hz, n_lo, lodiv);
 		//ZF_LOGD("fvco=%.2f fbkdiv=%d n=%d", fvco, fbkdiv, n);

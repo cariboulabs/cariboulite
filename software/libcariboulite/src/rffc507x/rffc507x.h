@@ -61,6 +61,7 @@ typedef struct
 {
     int cs_pin;
     int reset_pin;
+    double ref_freq_hz;
 
     io_utils_spi_st* io_spi;
 	int io_spi_handle;
@@ -104,6 +105,7 @@ void rffc507x_print_stat(rffc507x_device_status_st* stat);
 void rffc507x_calibrate(rffc507x_st* dev);
 void rffc507x_relock(rffc507x_st* dev);
 void rffc507x_output_lo(rffc507x_st* dev, int state);
+int rffc507x_setup_reference_freq(rffc507x_st* dev, double ref_freq_hz);
 
 #ifdef __cplusplus
 }

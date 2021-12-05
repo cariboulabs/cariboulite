@@ -184,12 +184,11 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
                             const std::vector<size_t> &channels, 
                             const SoapySDR::Kwargs &args)
 {
-    SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: dir: %d, format: %s, channels: ", direction, format.c_str());
-    for (int i = 0; i < (int)channels.size(); i++) 
-    {
-        SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: %d. %ld", i, channels[i]);
-    }
-
+    int cw = (args.count("CW") != 0) ? std::atoi(args.at("CW").c_str()) : 0;
+    SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: dir= %s, format= %s, is_cw= %d, ch= %d", 
+                                direction == SOAPY_SDR_TX?"TX":"RX", format.c_str(), cw, 
+                                channels.size()?channels[0]:0);
+    
     std::vector<size_t> channels_internal = channels;
     // default channel - sub1GHz
     if ( channels_internal.size() == 0 )
@@ -204,6 +203,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
     caribou_smi_stream_type_en type = (direction == SOAPY_SDR_RX) ? caribou_smi_stream_type_read : caribou_smi_stream_type_write;
     caribou_smi_channel_en channel = (ch == cariboulite_channel_s1g) ? caribou_smi_channel_900 : caribou_smi_channel_2400;
     int stream_id = CARIBOU_SMI_GET_STREAM_ID(type, channel);
+    sample_queues[stream_id]->is_cw  = cw;
 
     // Setup the SampleQueue's format
     if (format == SOAPY_SDR_CS16)
@@ -228,18 +228,26 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
         throw std::runtime_error( "setupStream invalid format " + format );
     }
 
-    // create the stream
-    stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
-                                type, channel, 
-                                GET_MTU_MS_BYTES(BUFFER_SIZE_MS), 1,
-                                caribou_stream_data_event, 
-                                this);
-    if (stream_id < 0)
+    // create the stream (only for non CW streams)
+    if (sample_queues[stream_id]->is_cw)
     {
-        throw std::runtime_error( "setupStream caribou_smi_setup_stream failed" );
+        cariboulite_set_cw_outputs(&radios, (cariboulite_channel_en)ch, false, true);
+    }
+    else
+    {
+        cariboulite_set_cw_outputs(&radios, (cariboulite_channel_en)ch, false, false);
+        stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
+                                    type, channel, 
+                                    GET_MTU_MS_BYTES(BUFFER_SIZE_MS), 1,
+                                    caribou_stream_data_event, 
+                                    this);
+        if (stream_id < 0)
+        {
+            throw std::runtime_error( "setupStream caribou_smi_setup_stream failed" );
+        }
     }
     
-    SoapySDR_logf(SOAPY_SDR_INFO, "finished setup stream, stream_id = %d", stream_id);
+    SoapySDR_logf(SOAPY_SDR_INFO, "finished setup stream, stream_id = %d, CW=%d", stream_id, cw);
     return (SoapySDR::Stream *)((void*)stream_id);
 }
 
@@ -305,7 +313,10 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                 (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
                                 true);
 
-    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 1);
+    if ((cariboulite_channel_en)sample_queues[stream_id]->is_cw == 0)
+    {
+        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 1);
+    }
     return 0;
 }
 
@@ -329,8 +340,11 @@ int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, con
     SoapySDR_logf(SOAPY_SDR_INFO, "deactivateStream");
     int stream_id = (intptr_t)stream;
 
-    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 0);
-    sleep(1);
+    if ((cariboulite_channel_en)sample_queues[stream_id]->is_cw == 0)
+    {
+        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 0);
+        sleep(1);
+    }
 
     cariboulite_activate_channel(&radios, 
                                 (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 

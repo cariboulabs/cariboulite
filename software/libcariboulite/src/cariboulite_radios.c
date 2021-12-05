@@ -114,7 +114,7 @@ int cariboulite_dispose_radios(cariboulite_radios_st* radios)
         caribou_smi_destroy_stream(&radios->radio_6g.cariboulite_sys->smi, radios->radio_sub1g.tx_stream_id);
         radios->radio_6g.tx_stream_id = -1;
     }
-    sleep(1);
+    usleep(100000);
 
     cariboulite_radio_state_st* rad_s1g = GET_RADIO_PTR(radios,cariboulite_channel_s1g);
     cariboulite_radio_state_st* rad_6g = GET_RADIO_PTR(radios,cariboulite_channel_6g);
@@ -774,7 +774,7 @@ int cariboulite_activate_channel(cariboulite_radios_st* radios,
 {
     cariboulite_radio_state_st* rad = GET_RADIO_PTR(radios,channel);
 
-    ZF_LOGD("Activating channel %d", channel);
+    ZF_LOGD("Activating channel %d, dir = %s, active = %d", channel, rad->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", active);
     // if the channel state is active, turn it off before reactivating
     if (rad->state != at86rf215_radio_state_cmd_tx_prep)
     {
@@ -854,6 +854,15 @@ int cariboulite_set_cw_outputs(cariboulite_radios_st* radios,
         rad->lo_output = false;
     }
     rad->cw_output = cw_out;
+
+    if (cw_out)
+    {
+        rad->channel_direction = cariboulite_channel_dir_tx;
+    }
+    else
+    {
+        rad->channel_direction = cariboulite_channel_dir_rx;
+    }
 
     return 0;
 }
