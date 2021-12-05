@@ -38,7 +38,7 @@ static void caribou_stream_data_event( void *ctx,
         //-------------------------------------------------------
         case caribou_smi_stream_start:
             {
-                SoapySDR_logf(SOAPY_SDR_DEBUG, "start event: stream channel %d, batch length: %d bytes\n", 
+                SoapySDR_logf(SOAPY_SDR_DEBUG, "start event: stream channel %d, batch length: %d bytes", 
                                     ch, buffer_len_bytes);
             }
             break;
@@ -46,7 +46,7 @@ static void caribou_stream_data_event( void *ctx,
         //-------------------------------------------------------
         case caribou_smi_stream_end:
             {
-                SoapySDR_logf(SOAPY_SDR_DEBUG, "end event: stream channel %d, batch length: %d bytes\n", 
+                SoapySDR_logf(SOAPY_SDR_DEBUG, "end event: stream channel %d, batch length: %d bytes", 
                                     ch, buffer_len_bytes);
             }
             break;
@@ -66,7 +66,7 @@ static void caribou_stream_data_event( void *ctx,
 */
 std::vector<std::string> Cariboulite::getStreamFormats(const int direction, const size_t channel) const
 {
-    printf("getStreamFormats\n");
+    //printf("getStreamFormats\n");
     std::vector<std::string> formats;
     formats.push_back(SOAPY_SDR_CS16);
     formats.push_back(SOAPY_SDR_CS8);
@@ -87,7 +87,7 @@ std::vector<std::string> Cariboulite::getStreamFormats(const int direction, cons
 */
 std::string Cariboulite::getNativeStreamFormat(const int direction, const size_t channel, double &fullScale) const
 {
-    printf("getNativeStreamFormat\n");
+    //printf("getNativeStreamFormat\n");
     fullScale = (double)((1<<12)-1);
     return SOAPY_SDR_CS16;
 }
@@ -101,7 +101,7 @@ std::string Cariboulite::getNativeStreamFormat(const int direction, const size_t
 */
 SoapySDR::ArgInfoList Cariboulite::getStreamArgsInfo(const int direction, const size_t channel) const
 {
-    printf("getStreamArgsInfo start\n");
+    //printf("getStreamArgsInfo start\n");
 	SoapySDR::ArgInfoList streamArgs;
 	return streamArgs;
 }
@@ -184,9 +184,11 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
                             const std::vector<size_t> &channels, 
                             const SoapySDR::Kwargs &args)
 {
-    printf("setupStream: dir: %d, format: %s, channels: ", direction, format.c_str());
-    for (int i = 0; i < (int)channels.size(); i++) printf("%d, ", channels[i]);
-    printf("\n");
+    SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: dir: %d, format: %s, channels: ", direction, format.c_str());
+    for (int i = 0; i < (int)channels.size(); i++) 
+    {
+        SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: %d. %ld", i, channels[i]);
+    }
 
     std::vector<size_t> channels_internal = channels;
     // default channel - sub1GHz
@@ -229,7 +231,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
     // create the stream
     stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
                                 type, channel, 
-                                GET_MTU_MS_BYTES(BUFFER_SIZE_MS), 2,
+                                GET_MTU_MS_BYTES(BUFFER_SIZE_MS), 1,
                                 caribou_stream_data_event, 
                                 this);
     if (stream_id < 0)
@@ -237,8 +239,8 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
         throw std::runtime_error( "setupStream caribou_smi_setup_stream failed" );
     }
     
-    printf("finished setup stream, stream_id = %d\n", stream_id);
-    return (SoapySDR::Stream *)stream_id;
+    SoapySDR_logf(SOAPY_SDR_INFO, "finished setup stream, stream_id = %d", stream_id);
+    return (SoapySDR::Stream *)((void*)stream_id);
 }
 
 //========================================================
@@ -249,9 +251,9 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
      */
 void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
-    printf("closeStream\n");
+    SoapySDR_logf(SOAPY_SDR_INFO, "closeStream");
     if (stream == NULL) return;
-    int stream_id = (int)stream;
+    int stream_id = (intptr_t)stream;
     
     caribou_smi_destroy_stream(&sess.cariboulite_sys.smi, stream_id);
 }
@@ -268,7 +270,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
      */
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    printf("getStreamMTU\n");
+    //printf("getStreamMTU\n");
     return GET_MTU_MS(BUFFER_SIZE_MS);      // # milliseconds of buffer
 }
 
@@ -295,14 +297,15 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const long long timeNs,
                                     const size_t numElems)
 {
-    printf("activateStream\n");
-    int stream_id = (int)stream;
+    //printf("activateStream\n");
+    SoapySDR_logf(SOAPY_SDR_INFO, "activateStream");
+    int stream_id = (intptr_t)stream;
 
     cariboulite_activate_channel(&radios, 
                                 (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
                                 true);
 
-    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 1);
+    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 1);
     return 0;
 }
 
@@ -323,10 +326,10 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
      */
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
-    printf("deactivateStream\n");
-    int stream_id = (int)stream;
+    SoapySDR_logf(SOAPY_SDR_INFO, "deactivateStream");
+    int stream_id = (intptr_t)stream;
 
-    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (int)stream, 0);
+    caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 0);
     sleep(1);
 
     cariboulite_activate_channel(&radios, 
@@ -365,7 +368,7 @@ int Cariboulite::readStream(
             const long timeoutUs)
 {
     //printf("readStream\n");
-    int stream_id = (int)stream;
+    int stream_id = (intptr_t)stream;
 
     if (sample_queues[stream_id]->stream_dir != SOAPY_SDR_RX)
     {

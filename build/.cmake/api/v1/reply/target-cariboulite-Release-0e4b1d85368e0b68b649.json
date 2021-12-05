@@ -1,0 +1,206 @@
+{
+	"archive" : {},
+	"artifacts" : 
+	[
+		{
+			"path" : "libcariboulite.a"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"target_link_libraries",
+			"include_directories",
+			"target_include_directories"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 29,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 30,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 7,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 8,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 41,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-O3 -DNDEBUG -fPIC   -Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-psabi"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 3,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/."
+				},
+				{
+					"backtrace" : 3,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/./include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src"
+				},
+				{
+					"backtrace" : 5,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/ustimer"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/latticeice40"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/io_utils"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/home/pi/projects/cariboulite/software/libcariboulite/src/zf_log"
+				}
+			],
+			"language" : "C",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "datatypes::@17436e0f6c3016b74870"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "ustimer::@9f10e8e79a157ba2a453"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "caribou_fpga::@7c799ef1f0b50b51bb5f"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "at86rf215::@e2babaa7f12c4067e898"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "caribou_smi::@75c208804627efeb13ab"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "latticeice40::@f36133e160067e638aed"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "io_utils::@2668814d5e0602d6a30f"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "rffc507x::@5b57ffb330ccf91358df"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "cariboulite_config::@ccf2d3933aeb90d23d9f"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "cariboulite_eeprom::@093c5ca94c22c645a0d7"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "zf_log::@b6b38f22f4a558956abc"
+		}
+	],
+	"id" : "cariboulite::@6890427a1f51a3e7e1df",
+	"name" : "cariboulite",
+	"nameOnDisk" : "libcariboulite.a",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/cariboulite_setup.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/cariboulite_events.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/cariboulite_radios.c",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "STATIC_LIBRARY"
+}
