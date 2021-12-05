@@ -80,6 +80,7 @@ extern "C" {
                     {                                                   \
                         .cs_pin = CARIBOULITE_MIXER_SS,                 \
                         .reset_pin = CARIBOULITE_MIXER_RESET,           \
+                        .ref_freq_hz = 32e6,                            \
                         .initialized = 0,                               \
                     },                                                  \
                     .reset_fpga_on_startup = 1,                         \

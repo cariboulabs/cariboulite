@@ -109,6 +109,7 @@ public:
         int stream_id;
         int stream_dir;
         int stream_channel;
+        int is_cw;
         Cariboulite_Format chosen_format;
 private:
         tsqueue_st queue;

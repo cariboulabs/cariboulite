@@ -40,7 +40,7 @@ SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
     // a buffer for conversion betwen native and emulated formats
     // the maximal size is the 2*(mtu_size in bytes)
     interm_native_buffer = new sample_complex_int16[2*mtu_size_bytes];
-    
+    is_cw = 0;
 }
 
 //=================================================================

@@ -23,6 +23,7 @@ rffc507x_st dev =
 {
     .cs_pin = CARIBOULITE_MXR_SS,
     .reset_pin = CARIBOULITE_MXR_RESET,
+	.ref_freq_hz = 32e6,
 };
 
 int main ()
