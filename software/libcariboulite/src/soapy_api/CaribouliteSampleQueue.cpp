@@ -240,6 +240,48 @@ int SampleQueue::ReadSamples(sample_complex_float* buffer, size_t num_elements, 
         buffer[i].q = (float)interm_native_buffer[i].q / max_val;
     }
 
+    double sumI = 0.0;
+    double sumQ = 0.0;
+    for (int i = 0; i < res; i++)
+    {
+        sumI += buffer[i].i;
+        sumQ += buffer[i].q;
+    }
+    sumI /= (double)res;
+    sumQ /= (double)res;
+
+    for (int i = 0; i < res; i++)
+    {
+        buffer[i].i -= sumI;
+        buffer[i].q -= sumQ;
+    }
+
+    double theta1 = 0.0;
+    double theta2 = 0.0;
+    double theta3 = 0.0;
+    for (int i = 0; i < res; i++)
+    {
+        int sign_I = (buffer[i].i > 0 ? 1 : -1);
+        int sign_Q = (buffer[i].q > 0 ? 1 : -1);
+        theta1 += sign_I * buffer[i].q;
+        theta2 += sign_I * buffer[i].i;
+        theta3 += sign_Q * buffer[i].q;
+    }
+    theta1 = - theta1 / (double)res;
+    theta2 /= (double)res;
+    theta3 /= (double)res;
+
+    double c1 = theta1 / theta2;
+    double c2 = sqrt( (theta3*theta3 - theta1*theta1) / (theta2*theta2) );
+
+    for (int i = 0; i < res; i++)
+    {
+        float ii = buffer[i].i;
+        float qq = buffer[i].q;
+        buffer[i].i = c2 * ii;
+        buffer[i].q = c1 * ii + qq;
+    }
+
     return res;
 }
 
