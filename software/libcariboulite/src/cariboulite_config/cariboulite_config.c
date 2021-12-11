@@ -105,7 +105,7 @@ int cariboulite_config_detect_board(cariboulite_board_info_st *info)
 		sscanf(info->product_version, "0x%08x", &info->numeric_version);
 	else
 		sscanf(info->product_version, "%08x", &info->numeric_version);
-	
+
 	// numeric productid
 	if (info->product_id[0] == '0' && (info->product_id[1] == 'x' ||
 											info->product_id[1] == 'X'))
@@ -113,6 +113,8 @@ int cariboulite_config_detect_board(cariboulite_board_info_st *info)
 	else
 		sscanf(info->product_id, "%08x", &info->numeric_product_id);
 
+	info->sys_type = (cariboulite_system_type_en)info->numeric_product_id;
+	
 	// seiral number
 	if (cariboulite_config_serial_from_uuid(info->product_uuid, &info->numeric_serial_number) != 0)
 	{
@@ -132,4 +134,5 @@ void cariboulite_config_print_board_info(cariboulite_board_info_st *info)
 	ZF_LOGI("# Board Info - Product Version: %s, Numeric: %d", info->product_version, info->numeric_version);
 	ZF_LOGI("# Board Info - Product UUID: %s, Numeric serial: 0x%08X", info->product_uuid, info->numeric_serial_number);
 	ZF_LOGI("# Board Info - Vendor: %s", info->product_vendor);
+	ZF_LOGI("# Board Info - Product Type: %s", info->sys_type == cariboulite_system_type_full? "CaribouLite FULL" : "CaribouLite ISM");
 }

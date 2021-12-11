@@ -43,7 +43,7 @@ def create_window():
         [Canvas(key='controls_cv')],
         [Column(
             layout=[
-                [Canvas(key='fig_cv', size=(300*2, 300))]
+                [Canvas(key='fig_cv', size=(300*3, 300))]
             ],
             background_color='#DAE0E6',
             pad=(0,0)
@@ -52,7 +52,7 @@ def create_window():
         [Canvas(key='controls_params_cv')],
         [Column(
             layout=[
-                [Canvas(key='params_cv', size=(200*3, 200))]
+                [Canvas(key='params_cv', size=(200*4, 200))]
             ],
             background_color='#DAE0E6',
             pad=(0,0)
@@ -62,34 +62,55 @@ def create_window():
     window = Window("CaribouLite PlayGround", layout, location=(800,400))
     return window
 
+def calculate_psd(I,Q, fs):
+    x = I + 1j*Q
+    N = 16384  # len(I)
+    x = x * np.hamming(len(x)) # apply a Hamming window
+    PSD = (np.abs(np.fft.fft(x))/N)**2
+    PSD_log = 10.0*np.log10(PSD)
+    PSD_shifted = np.fft.fftshift(PSD_log)
+    f = np.arange(fs/-2.0, fs/2.0, fs/N) # start, stop, step.  centered around 0 Hz
+    return f,PSD_shifted
+
 def update_iq_graphs(window, I,Q,I_new, Q_new):
     plt.figure(1).clf()
     fig = plt.gcf()
     DPI = fig.get_dpi()
-    fig.set_size_inches(304*2/float(DPI), 304/float(DPI))
-    plt.subplot(121)
+    fig.set_size_inches(304*4/float(DPI), 304/float(DPI))
+    axs = fig.add_subplot(131)
     plt.scatter(I, Q)
+    axs.set_aspect('equal', adjustable='box')
     plt.title('I/Q original')
-    plt.subplot(122)
+
+    axs = fig.add_subplot(132)
     plt.scatter(I_new, Q_new)
+    axs.set_aspect('equal', adjustable='box')
     plt.title('I/Q corrected')
+
+    f, psd = calculate_psd(I,Q, 4e6)
+    f_corrected, psd_corrected = calculate_psd(I_new,Q_new, 4e6)
+
+    plt.subplot(133)
+    plt.plot(f, psd)
+    plt.plot(f_corrected, psd_corrected)
+
     plt.grid()
     draw_figure_with_toolbar(window['fig_cv'].TKCanvas, fig, window['controls_cv'].TKCanvas)
 
-def update_est_graphs(window, freq_diff, alpha_vec, cos_phi_vec, rssi_vec):
+def update_est_graphs(window, freq_diff, g_vec, phi_vec, rssi_vec):
     plt.figure(2).clf()
     fig = plt.gcf()
     DPI = fig.get_dpi()
     fig.set_size_inches(204*3/float(DPI), 204/float(DPI))
     plt.subplot(131)
-    plt.plot(freq_diff, alpha_vec)
-    plt.title('Alpha')
+    plt.plot(freq_diff, g_vec)
+    plt.title('G')
     plt.subplot(132)
-    plt.plot(freq_diff, cos_phi_vec)
-    plt.title('cos(phi)')
+    plt.plot(freq_diff, phi_vec)
+    plt.title('phi')
     plt.subplot(133)
     plt.plot(freq_diff, rssi_vec)
-    plt.title('rssi')
+    plt.title('Relative Power')
     plt.grid()
     draw_figure_with_toolbar(window['params_cv'].TKCanvas, fig, window['controls_params_cv'].TKCanvas)
 
@@ -111,7 +132,7 @@ def fix_iq_blind(x):
     wQ = c1 * z.real + z.imag
     z_out = wI + 1j * wQ
 
-    return (z_out, c1, c2, p_in)
+    return (z_out, g, phi, p_in, c1, c2)
 
 
 def fix_iq_imbalance(x):
@@ -134,10 +155,10 @@ def fix_iq_imbalance(x):
 
     y = (I_new_p + 1j*Q_new_p)/cos_phi_est
 
-    print ('phase error:', np.arccos(cos_phi_est)*360/2/np.pi, 'degrees')
+    print ('phase error:', np.arccos(cos_phi_est)*180/np.pi, 'degrees')
     print ('amplitude error:', 20*np.log10(alpha_est), 'dB')
     z_out = y*np.sqrt(p_in/np.var(y))
-    return (z_out, alpha_est, cos_phi_est, p_in)
+    return (z_out, alpha_est, np.arccos(cos_phi_est), p_in, sin_phi_est, cos_phi_est)
 
 
 ## 
@@ -214,13 +235,14 @@ def main():
             s_real = rx_buff[::2].astype(np.float32)
             s_imag = rx_buff[1::2].astype(np.float32)
             z = s_real + 1j*s_imag
-            #(z_out, alpha_est, cos_phi_est, p_in) = fix_iq_imbalance(z)
-            (z_out, alpha_est, cos_phi_est, p_in) = fix_iq_blind(z)
+            (z_out, g, phi, p_in,a,b) = fix_iq_imbalance(z)
+            #(z_out, g, phi, p_in,a,b) = fix_iq_blind(z)
             rssi = 20*np.log10(p_in)
+            phi *= 180/np.pi
 
             window['rssi'].update('RSSI: %f dBm' % rssi)
-            window['alpha'].update('Alpha: %f' % alpha_est)
-            window['cos_phi'].update('Cos(Phi): %f' % cos_phi_est)
+            window['alpha'].update('Alpha: %f' % g)
+            window['cos_phi'].update('Phi: %f' % phi)
 
             update_iq_graphs(window, s_real, s_imag, z_out.real, z_out.imag)
 
@@ -232,15 +254,15 @@ def main():
 
             freq_num = 60
             tx_freq_vec = rx_freq + np.linspace(-bw/2, bw/2, freq_num)
-            alpha_est_vec = np.empty(tx_freq_vec.size, np.float32) 
-            cos_phi_vec = np.empty(tx_freq_vec.size, np.float32)
+            g_est_vec = np.empty(tx_freq_vec.size, np.float32) 
+            phi_vec = np.empty(tx_freq_vec.size, np.float32)
             rssi_vec = np.empty(tx_freq_vec.size, np.float32)
             
             index = 0
             for tx_freq in tx_freq_vec:
                 window['TxCWFreq'].update(tx_freq)
                 update_transmitter_freq(sdr, tx_stream, tx_chan, tx_freq)    
-                time.sleep(0.1)
+                time.sleep(1)
 
                 sr = sdr.readStream(rx_stream, [rx_buff], N, timeoutUs=int(5e6))
                 # Make sure that the proper number of samples was read
@@ -252,22 +274,22 @@ def main():
                 s_real = rx_buff[::2].astype(np.float32)
                 s_imag = rx_buff[1::2].astype(np.float32)
                 z = s_real + 1j*s_imag
-                #(z_out, alpha_est, cos_phi_est, p_in) = fix_iq_imbalance(z)
-                (z_out, alpha_est, cos_phi_est, p_in) = fix_iq_blind(z)
+                (z_out, g, phi, p_in, a,b) = fix_iq_imbalance(z)
+                #(z_out, g, phi, p_in, a,b) = fix_iq_blind(z)
 
-                alpha_est_vec[index] = 20*np.log10(alpha_est)
-                cos_phi_vec[index] = np.arccos(cos_phi_est)*360/2/np.pi
+                g_est_vec[index] = 20*np.log10(g)
+                phi_vec[index] = phi*180/np.pi
                 rssi_vec[index] = 20*np.log10(p_in)
 
                 window['rssi'].update('RSSI: %f dBm' % rssi_vec[index])
-                window['alpha'].update('Alpha: %f' % alpha_est_vec[index])
-                window['cos_phi'].update('Cos(Phi): %f' % cos_phi_vec[index])
+                window['alpha'].update('Alpha: %f' % g_est_vec[index])
+                window['cos_phi'].update('Phi: %f' % phi_vec[index])
 
                 update_iq_graphs(window, s_real, s_imag, z_out.real, z_out.imag)
                 index += 1
                 time.sleep(0.1)
             
-            update_est_graphs(window, tx_freq_vec-rx_freq, alpha_est_vec, cos_phi_vec, rssi_vec)
+            update_est_graphs(window, tx_freq_vec-rx_freq, g_est_vec, phi_vec, rssi_vec - np.max(rssi_vec))
 
 
     # Stop streaming and close the connection to the radio

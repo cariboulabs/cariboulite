@@ -75,6 +75,7 @@ extern "C" {
                         .spi_dev = CARIBOULITE_SPI_DEV,                 \
                         .spi_channel = CARIBOULITE_MODEM_SPI_CHANNEL,   \
                         .initialized = 0,                               \
+                        .override_cal = true,                           \
                     },                                                  \
                     .mixer =                                            \
                     {                                                   \

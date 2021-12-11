@@ -290,10 +290,12 @@ std::vector<double> Cariboulite::listSampleRates( const int direction, const siz
 	return(options);
 }
 
+#define BW_SHIFT_FACT   (1.25)
+
 //========================================================
 static at86rf215_radio_rx_bw_en convertRxBandwidth(double bw_numeric)
 {
-    float fact = 1.25;
+    float fact = BW_SHIFT_FACT;
     if (fabs(bw_numeric - (160000*fact)) < 1) return at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ;
     if (fabs(bw_numeric - (200000*fact)) < 1) return at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ;
     if (fabs(bw_numeric - (250000*fact)) < 1) return at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ;
@@ -318,7 +320,7 @@ static at86rf215_radio_rx_bw_en convertRxBandwidth(double bw_numeric)
 //========================================================
 static double convertRxBandwidth(at86rf215_radio_rx_bw_en bw_en)
 {
-    float fact = 1.25;
+    float fact = BW_SHIFT_FACT;
     if (at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ == bw_en) return 160000 * fact;
     if (at86rf215_radio_rx_bw_BW200KHZ_IF250KHZ == bw_en) return 200000 * fact;
     if (at86rf215_radio_rx_bw_BW250KHZ_IF250KHZ == bw_en) return 250000 * fact;
@@ -421,7 +423,7 @@ std::vector<double> Cariboulite::listBandwidths( const int direction, const size
     std::vector<double> options;
     if (direction == SOAPY_SDR_RX)
     {
-        float fact = 1.25;
+        float fact = BW_SHIFT_FACT;
         options.push_back( 160000*fact );
         options.push_back( 200000*fact );
         options.push_back( 250000*fact );

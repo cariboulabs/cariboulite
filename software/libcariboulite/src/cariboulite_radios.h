@@ -23,6 +23,24 @@ typedef enum
 
 typedef struct
 {
+    cariboulite_channel_en              type;
+    bool                                cw_out;
+    bool                                lo_out;
+    cariboulite_ext_ref_src_en          ext_ref_src;
+    uint32_t                            ext_ref_freq_hz;
+
+    double                              requested_freq;
+    double                              modem_actual_freq;
+    double                              mixer_actual_freq;
+    double                              actual_freq;
+    double                              actual_freq_error;
+
+    bool                                modem_lock;
+    bool                                mixer_lock;    
+} cariboulite_freq_construction_st;
+
+typedef struct
+{
     cariboulite_st*                     cariboulite_sys;
     cariboulite_channel_dir_en          channel_direction;
     cariboulite_channel_en              type;
@@ -53,11 +71,12 @@ typedef struct
     // FREQUENCY
     bool                                modem_pll_locked;
     bool                                lo_pll_locked;
-    float                               lo_frequency;
-    float                               if_frequency;
-    float                               actual_rf_frequency;
-    float                               requested_rf_frequency;
-    float                               rf_frequency_error;
+    double                              lo_frequency;
+    double                              if_frequency;
+    double                              actual_rf_frequency;
+    double                              requested_rf_frequency;
+    double                              rf_frequency_error;
+    //cariboulite_freq_construction_st    freq;
 
     // SMI STREAMS
     int                                 rx_stream_id;

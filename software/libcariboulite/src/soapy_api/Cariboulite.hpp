@@ -60,22 +60,22 @@ typedef struct
 // associated with CS32 - total 8 bytes / element
 typedef struct
 {
-        int32_t q;                      // LSB
-        int32_t i;                      // MSB
+        int32_t i;                      // LSB
+        int32_t q;                      // MSB
 } sample_complex_int32;
 
 // associated with CF32 - total 8 bytes / element
 typedef struct
 {
-        float q;                        // LSB
-        float i;                        // MSB
+        float i;                        // LSB
+        float q;                        // MSB
 } sample_complex_float;
 
 // associated with CF64 - total 16 bytes / element
 typedef struct
 {
-        double q;                       // LSB
-        double i;                       // MSB
+        double i;                       // LSB
+        double q;                       // MSB
 } sample_complex_double;
 #pragma pack()
 

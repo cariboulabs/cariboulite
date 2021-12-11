@@ -238,7 +238,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
         cariboulite_set_cw_outputs(&radios, (cariboulite_channel_en)ch, false, false);
         stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
                                     type, channel, 
-                                    GET_MTU_MS_BYTES(BUFFER_SIZE_MS), 1,
+                                    GET_MTU_MS_BYTES(BUFFER_SIZE_MS), 4,
                                     caribou_stream_data_event, 
                                     this);
         if (stream_id < 0)
