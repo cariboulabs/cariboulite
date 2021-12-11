@@ -105,6 +105,32 @@ typedef struct
 
 typedef struct
 {
+    int low_ch_i;
+    int low_ch_q;
+    int hi_ch_i;
+    int hi_ch_q;
+} at86rf215_cal_results_st;
+
+
+typedef struct 
+{
+    pthread_mutex_t ready_mutex;
+    pthread_cond_t ready_cond;
+    int ready;
+} event_st;
+
+typedef struct
+{
+    event_st lo_trx_ready_event;
+    event_st lo_energy_measure_event;
+    event_st hi_trx_ready_event;
+    event_st hi_energy_measure_event;
+} at86rf215_events_st;
+
+
+
+typedef struct
+{
     // pinout
     int reset_pin;
 	int irq_pin;
@@ -118,10 +144,9 @@ typedef struct
     io_utils_spi_st* io_spi;
 	int io_spi_handle;
     int initialized;
-
-    //at86rf215_radio_st       RF_Settings;
-    //BBC_Settings_t      BBC_Settings;
-    //bool                Continuous;
+    at86rf215_cal_results_st cal;
+    bool override_cal;
+    at86rf215_events_st events;
 } at86rf215_st;
 
 

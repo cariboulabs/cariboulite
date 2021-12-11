@@ -8,6 +8,39 @@
 #include <stdio.h>
 #include "zf_log/zf_log.h"
 #include "at86rf215_common.h"
+#include <pthread.h>
+
+
+void event_node_init(event_st* ev)
+{
+    pthread_cond_init(&ev->ready_cond, NULL);
+    pthread_mutex_init(&ev->ready_mutex, NULL);
+}
+
+void event_node_close(event_st* ev)
+{
+    pthread_cond_destroy(&ev->ready_cond);
+    pthread_mutex_destroy(&ev->ready_mutex);
+}
+
+void event_node_wait_ready(event_st* ev)
+{
+    pthread_mutex_lock(&ev->ready_mutex);
+    while (!ev->ready)
+    {
+        pthread_cond_wait(&ev->ready_cond, &ev->ready_mutex);
+    }
+    ev->ready = 0;
+    pthread_mutex_unlock(&ev->ready_mutex);
+}
+
+void event_node_signal_ready(event_st* ev, int ready)
+{
+    pthread_mutex_lock(&ev->ready_mutex);
+    ev->ready = ready;
+    pthread_cond_signal(&ev->ready_cond);
+    pthread_mutex_unlock(&ev->ready_mutex);
+}
 
 //===================================================================
 static void at86rf215_radio_event_handler (at86rf215_st* dev,
@@ -26,11 +59,15 @@ static void at86rf215_radio_event_handler (at86rf215_st* dev,
     if (events->trx_ready)
     {
         ZF_LOGD("INT @ RADIO%s: Transceiver ready", channel_st);
+        if (ch == at86rf215_rf_channel_900mhz) event_node_signal_ready(&dev->events.lo_trx_ready_event, 1);
+        else if (ch == at86rf215_rf_channel_2400mhz) event_node_signal_ready(&dev->events.hi_trx_ready_event, 1);
     }
 
     if (events->energy_detection_complete)
     {
         ZF_LOGD("INT @ RADIO%s: Energy detection complete", channel_st);
+        if (ch == at86rf215_rf_channel_900mhz) event_node_signal_ready(&dev->events.lo_energy_measure_event, 1);
+        else if (ch == at86rf215_rf_channel_2400mhz) event_node_signal_ready(&dev->events.hi_energy_measure_event, 1);
     }
 
     if (events->battery_low)

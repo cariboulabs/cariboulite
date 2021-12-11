@@ -179,6 +179,7 @@ int SampleQueue::Read(uint8_t *buffer, size_t length, uint32_t *meta, long timeo
 int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, long timeout_us)
 {
     static int once = 100;
+    static uint16_t last_q = 0;
     // this is the native method
     int tot_length = num_elements * sizeof(sample_complex_int16);
     int res = Read((uint8_t *)buffer, tot_length, NULL, timeout_us);
@@ -193,8 +194,21 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
         once--;
     }*/
     int tot_read_elements = res / sizeof(sample_complex_int16);
-    for (int i = 0; i < tot_read_elements; i++)
+
+    // shift q
+    //buffer[0].q = last_q;
+    for (int i = 1; i < tot_read_elements; i++)
     {
+        buffer[i-1].q = buffer[i].q;
+    }
+
+    /*for (int i = tot_read_elements-1; i >= 0; i--)
+    {
+        buffer[i].q = buffer[i-1].q;
+    }*/
+
+    for (int i = 0; i < tot_read_elements; i++)
+    {        
         buffer[i].i >>= 1;
         buffer[i].q >>= 1;
 
@@ -203,7 +217,6 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
 
         if (buffer[i].i >= (int16_t)0x1000) buffer[i].i -= (int16_t)0x2000;
         if (buffer[i].q >= (int16_t)0x1000) buffer[i].q -= (int16_t)0x2000;
-
         /*if (i<5)
         {
             printf("i: %d, q: %d\n", buffer[i].i, buffer[i].q);

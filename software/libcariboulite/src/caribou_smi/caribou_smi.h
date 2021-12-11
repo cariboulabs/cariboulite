@@ -77,6 +77,10 @@ typedef struct
     int running;                        // the stream state - is it running and fetching / pushing information
     int stream_id;                      // the stream id for the application - may be deleted later
     pthread_t stream_thread;            // thread id
+    pthread_t read_analysis_thread;     // read analysis thread
+    pthread_mutex_t read_analysis_lock; // read analysis thread locker mutex
+    int read_analysis_thread_running;
+    int read_ret_value;
     void* parent_dev;                   // the pointer to the owning SMI device
     void* service_context;              // the serviced session contect (SoapySDR...)
 } caribou_smi_stream_st;

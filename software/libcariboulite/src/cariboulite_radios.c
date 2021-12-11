@@ -15,6 +15,7 @@
 
 #include "cariboulite_radios.h"
 #include "cariboulite_events.h"
+#include "cariboulite_setup.h"
 
 
 #define GET_RADIO_PTR(radio,chan)   ((chan)==cariboulite_channel_s1g?&((radio)->radio_sub1g):&((radio)->radio_6g))
@@ -258,7 +259,7 @@ int cariboulite_set_rx_bandwidth(cariboulite_radios_st* radios,
     at86rf215_radio_f_cut_en fcut = at86rf215_radio_rx_f_cut_half_fs;
 
     // Automatically calculate the digital f_cut
-    if (rx_bw >= at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ && rx_bw <= at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ)
+    /*if (rx_bw >= at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ && rx_bw <= at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ)
         fcut = at86rf215_radio_rx_f_cut_0_25_half_fs;
     else if (rx_bw >= at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ && rx_bw <= at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ)
         fcut = at86rf215_radio_rx_f_cut_0_375_half_fs;
@@ -267,7 +268,7 @@ int cariboulite_set_rx_bandwidth(cariboulite_radios_st* radios,
     else if (rx_bw >= at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ && rx_bw <= at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ)
         fcut = at86rf215_radio_rx_f_cut_0_75_half_fs;
     else 
-        fcut = at86rf215_radio_rx_f_cut_half_fs;
+        fcut = at86rf215_radio_rx_f_cut_half_fs;*/
 
     rad->rx_fcut = fcut;
 
@@ -511,7 +512,8 @@ int cariboulite_get_rand_val(cariboulite_radios_st* radios, cariboulite_channel_
 #define CARIBOULITE_MAX_LO      (4200.0e6)
 #define CARIBOULITE_2G4_MIN     (2395.0e6)      // 2400
 #define CARIBOULITE_2G4_MAX     (2485.0e6)      // 2483.5
-#define CARIBOULITE_S1G_MIN1    (389.5e6)
+//#define CARIBOULITE_S1G_MIN1    (389.5e6)
+#define CARIBOULITE_S1G_MIN1    (350.0e6)
 #define CARIBOULITE_S1G_MAX1    (510.0e6)
 #define CARIBOULITE_S1G_MIN2    (779.0e6)
 #define CARIBOULITE_S1G_MAX2    (1020.0e6)
@@ -573,6 +575,7 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
     double lo_act_freq = 0.0;
     double act_freq = 0.0;
     int error = 0;
+    cariboulite_ext_ref_freq_en ext_ref_choice = cariboulite_ext_ref_off;
     conversion_dir_en conversion_direction = conversion_dir_none;
 
     //--------------------------------------------------------------------------------
@@ -635,20 +638,31 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
             caribou_fpga_set_io_ctrl_mode (&rad->cariboulite_sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
         }
 
+        // Calculate the best ext_ref
+        double f_rf_mod_32 = (f_rf / 32e6);
+        double f_rf_mod_26 = (f_rf / 26e6);
+        f_rf_mod_32 -= (uint64_t)(f_rf_mod_32);
+        f_rf_mod_26 -= (uint64_t)(f_rf_mod_26);
+        if (f_rf_mod_32 > 16e6) f_rf_mod_32 = 32e6 - f_rf_mod_32;
+        if (f_rf_mod_26 > 13e6) f_rf_mod_26 = 13e6 - f_rf_mod_26;
+        ext_ref_choice = f_rf_mod_32 > f_rf_mod_26 ? cariboulite_ext_ref_32mhz : cariboulite_ext_ref_26mhz;
+        cariboulite_setup_ext_ref (rad->cariboulite_sys, ext_ref_choice);
+
         // Decide the conversion direction and IF/RF/LO
         //-------------------------------------
         if (f_rf >= CARIBOULITE_MIN_MIX && 
             f_rf <= (CARIBOULITE_2G4_MIN) )
         {
             // region #1 - UP CONVERSION
-            // setup modem frequency <= CARIBOULITE_2G4_MAX
+            uint32_t modem_freq = CARIBOULITE_2G4_MAX;
+            if (f_rf > (CARIBOULITE_2G4_MAX/2 - 15e6) && f_rf < (CARIBOULITE_2G4_MAX/2 + 15e6)) modem_freq = CARIBOULITE_2G4_MIN;
             modem_act_freq = (double)at86rf215_setup_channel (&rad->cariboulite_sys->modem, 
                                                         at86rf215_rf_channel_2400mhz, 
-                                                        (uint32_t)(CARIBOULITE_2G4_MAX));
+                                                        modem_freq);
             
             // setup mixer LO according to the actual modem frequency
             lo_act_freq = rffc507x_set_frequency(&rad->cariboulite_sys->mixer, modem_act_freq + f_rf);
-            act_freq = lo_act_freq - modem_act_freq;
+            act_freq = modem_act_freq + lo_act_freq;
 
             // setup fpga RFFE <= upconvert (tx / rx)
             conversion_direction = conversion_dir_up;
@@ -676,9 +690,12 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
                                                         at86rf215_rf_channel_2400mhz, 
                                                         (uint32_t)(CARIBOULITE_2G4_MIN));
 
+            uint32_t lo = f_rf + modem_act_freq;
+            if (f_rf > (CARIBOULITE_2G4_MIN*2 + CARIBOULITE_MIN_LO)) lo = f_rf - modem_act_freq;
             // setup mixer LO to according to actual modem frequency
-            lo_act_freq = rffc507x_set_frequency(&rad->cariboulite_sys->mixer, f_rf + modem_act_freq);
-            act_freq = modem_act_freq + lo_act_freq;
+            lo_act_freq = rffc507x_set_frequency(&rad->cariboulite_sys->mixer, f_rf - modem_act_freq);
+            act_freq = lo_act_freq - modem_act_freq;
+            if (f_rf > (CARIBOULITE_2G4_MIN*2 + CARIBOULITE_MIN_LO)) act_freq = modem_act_freq + lo_act_freq;
 
             // setup fpga RFFE <= downconvert (tx / rx)
             conversion_direction = conversion_dir_down;
@@ -728,7 +745,9 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
                                     at86rf215_radio_state_cmd_tx_prep);
         rad->state = at86rf215_radio_state_cmd_tx_prep;
 
-        if (!cariboulite_wait_for_lock(rad, &rad->modem_pll_locked, &rad->lo_pll_locked, 100))
+        if (!cariboulite_wait_for_lock(rad, &rad->modem_pll_locked, 
+                                            lo_act_freq > CARIBOULITE_MIN_LO ? &rad->lo_pll_locked : NULL, 
+                                            100))
         {
             if (!rad->lo_pll_locked) ZF_LOGE("PLL MIXER failed to lock LO frequency (%.2f Hz)", lo_act_freq);
             if (!rad->modem_pll_locked) ZF_LOGE("PLL MODEM failed to lock IF frequency (%.2f Hz)", modem_act_freq);
@@ -894,7 +913,7 @@ int cariboulite_create_smi_stream(cariboulite_radios_st* radios,
 
     int stream_id = caribou_smi_setup_stream(&rad->cariboulite_sys->smi,
                                                 type, ch,
-                                                buffer_length, 2,
+                                                buffer_length, 3,
                                                 caribou_smi_data_event,
                                                 context);
     

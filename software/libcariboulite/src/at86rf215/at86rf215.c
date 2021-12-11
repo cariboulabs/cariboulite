@@ -77,6 +77,61 @@ int at86rf215_read_byte(at86rf215_st* dev, uint16_t addr)
 }
 
 //===================================================================
+#define NUM_CAL_STEPS 7
+void swap(int *p,int *q) 
+{
+   int t;  
+   t=*p; 
+   *p=*q; 
+   *q=t;
+}
+
+void sort(int a[],int n) 
+{ 
+   int i,j,temp;
+
+   for(i = 0;i < n-1;i++) {
+      for(j = 0;j < n-i-1;j++) {
+         if(a[j] > a[j+1])
+            swap(&a[j],&a[j+1]);
+      }
+   }
+}
+
+int median(int a[], int n)
+{
+    if (n==0) return 0;
+    sort(a,n);
+    return a[(n+1)/2-1];
+}
+
+int at86rf215_calibrate_device(at86rf215_st* dev, at86rf215_rf_channel_en ch, int* i, int* q)
+{
+    int cal_i[NUM_CAL_STEPS] = {0};
+    int cal_q[NUM_CAL_STEPS] = {0};
+    bool override_flag = dev->override_cal;
+    dev->override_cal = false;
+    
+    for (int i = 0; i < NUM_CAL_STEPS; i ++)
+    {
+        at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_trx_off);
+        at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_tx_prep);
+
+        io_utils_usleep(10000);
+
+        at86rf215_radio_get_tx_iq_calibration(dev, ch, &cal_i[i], &cal_q[i]);
+        ZF_LOGD("Calibration of modem: I=%d, Q=%d", cal_i[i], cal_q[i]);
+    }
+
+    // medians
+    int cal_i_med = median(cal_i, NUM_CAL_STEPS);
+    int cal_q_med = median(cal_q, NUM_CAL_STEPS);
+    ZF_LOGI("Calibration Results of the modem: I=%d, Q=%d", cal_i_med, cal_q_med);
+    dev->override_cal = override_flag;
+    return 0;
+}
+
+//===================================================================
 int at86rf215_init(at86rf215_st* dev,
 					io_utils_spi_st* io_spi)
 {
@@ -115,6 +170,15 @@ int at86rf215_init(at86rf215_st* dev,
         return -1;
     }
 
+    // Initialize events
+    event_node_init(&dev->events.lo_trx_ready_event);
+    event_node_init(&dev->events.lo_energy_measure_event);
+    event_node_init(&dev->events.hi_trx_ready_event);
+    event_node_init(&dev->events.hi_energy_measure_event);
+
+    // calibrate TXPREP
+    at86rf215_calibrate_device(dev, at86rf215_rf_channel_900mhz, &dev->cal.low_ch_i, &dev->cal.low_ch_q);
+    at86rf215_calibrate_device(dev, at86rf215_rf_channel_2400mhz, &dev->cal.hi_ch_i, &dev->cal.hi_ch_q);
     dev->initialized = 1;
 
     return 0;
@@ -137,6 +201,11 @@ int at86rf215_close(at86rf215_st* dev)
 	}
 
 	dev->initialized = 0;
+
+    event_node_close(&dev->events.lo_trx_ready_event);
+    event_node_close(&dev->events.lo_energy_measure_event);
+    event_node_close(&dev->events.hi_trx_ready_event);
+    event_node_close(&dev->events.hi_energy_measure_event);
 
 	//io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
 	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
@@ -352,6 +421,23 @@ void at86rf215_setup_iq_if(at86rf215_st* dev, at86rf215_iq_interface_config_st* 
 }
 
 //===================================================================
+double at86rf215_check_freq (at86rf215_st* dev, at86rf215_rf_channel_en ch, uint64_t freq_hz )
+{
+    at86rf215_radio_channel_mode_en mode = 0;
+    at86rf215_rf_channel_en req_ch = 0;
+
+    if (at86rf215_radio_get_good_channel(freq_hz, &mode, &req_ch) < 0 || req_ch != ch)
+    {
+        ZF_LOGE("the requested channel or frequency not supported");
+        return -1;
+    }
+    int center_freq_25khz_res = 0;
+    int channel_number = 0;
+    double actual_freq = at86rf215_radio_get_frequency(mode, 1, freq_hz, &center_freq_25khz_res, &channel_number);
+    return actual_freq;
+}
+
+//===================================================================
 int64_t at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uint64_t freq_hz )
 {
     if (dev->initialized == 0)
@@ -370,7 +456,7 @@ int64_t at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch,
     }
     int center_freq_25khz_res = 0;
     int channel_number = 0;
-    float actual_freq = at86rf215_radio_get_frequency(mode, 1, freq_hz, &center_freq_25khz_res, &channel_number);
+    double actual_freq = at86rf215_radio_get_frequency(mode, 1, freq_hz, &center_freq_25khz_res, &channel_number);
     at86rf215_radio_setup_channel(dev, ch, 1, center_freq_25khz_res, channel_number, mode);
     return (int64_t)actual_freq;
 }
