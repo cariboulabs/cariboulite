@@ -34,6 +34,40 @@ at86rf215_st dev =
     .spi_channel = CARIBOULITE_MODEM_SPI_CHANNEL,
 };
 
+
+
+uint16_t unknown_regs[] = { 0x0015, 
+                            0x0115, 0x0117, 0x0118, 0x0119, 0x011A, 0x011B, 0x011C, 0x011D, 0x011E, 0x011F, 0x0120, 0x0123, 0x0124, 0x0129,
+                            0x0215, 0x0217, 0x0218, 0x0219, 0x021A, 0x021B, 0x021C, 0x021D, 0x021E, 0x021F, 0x0220, 0x0223, 0x0224, 0x0229};
+
+uint8_t defaults[] =    {   0x0E,
+                            0x40, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x0f, 0x0f, 0x08,
+                            0x40, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x0f, 0x0f, 0x08};
+
+// -----------------------------------------------------------------------------------------
+// This test checks the version number and part numbers of the device
+int test_at86rf215_read_all_regs(at86rf215_st* dev)
+{
+    for (uint16_t reg = 0; reg < 0x300; reg ++)
+    {
+        uint8_t val = at86rf215_read_byte(dev, reg);
+        printf("REG #0x%04X  :  0x%02X\n", reg, val);
+    }
+    return 0;
+}
+
+int test_at86rf215_read_all_regs_check(at86rf215_st* dev)
+{
+    int num_regs = sizeof(unknown_regs) / sizeof(uint16_t);
+
+    for (int i = 0; i < num_regs; i ++)
+    {
+        uint8_t val = at86rf215_read_byte(dev, unknown_regs[i]);
+        if (val != defaults[i]) printf("REG #0x%04X  :  0x%02X    (instead of 0x%02X)\n", unknown_regs[i], val, defaults[i]);
+    }
+    return 0;
+}
+
 // -----------------------------------------------------------------------------------------
 // This test checks the version number and part numbers of the device
 int test_at86rf215_read_chip_vn_pn(at86rf215_st* dev)
@@ -101,6 +135,8 @@ void test_at86rf215_sweep_frequencies(at86rf215_st* dev,
             printf("Press enter to step...\n");
             getchar();
         }
+
+        //test_at86rf215_read_all_regs_check(dev);
         f += step_freq;
     }
 
@@ -119,8 +155,11 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
                                             at86rf215_iq_clock_data_skew_4_906ns;
 
     at86rf215_setup_iq_radio_receive (dev, radio, freq_hz, 0, skew);
-    printf("Started I/Q RX session for Radio %d, Freq: %llu Hz, timeout: %d usec (0=infinity)\n",
+    printf("Started I/Q RX session for Radio %d, Freq: %lu Hz, timeout: %d usec (0=infinity)\n",
         radio, freq_hz, usec_timeout);
+
+
+    test_at86rf215_read_all_regs_check(dev);
 
     if (usec_timeout>0)
     {
@@ -132,6 +171,8 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
         getchar();
     }
     at86rf215_stop_iq_radio_receive (dev, radio);
+
+    test_at86rf215_read_all_regs_check(dev);
     return 1;
 }
 
@@ -166,9 +207,10 @@ int test_at86rf215_continues_iq_loopback (at86rf215_st* dev, at86rf215_rf_channe
 #define NO_FPGA_MODE        0
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
-#define TEST_IQ_RX_WIND     1
-#define TEST_IQ_RX_WIND_RAD 1 
+#define TEST_IQ_RX_WIND     0
+#define TEST_IQ_RX_WIND_RAD 0 
 #define TEST_IQ_LB_WIND     0
+#define TEST_READ_ALL_REGS  0
 
 // -----------------------------------------------------------------------------------------
 // MAIN
@@ -200,6 +242,8 @@ int main ()
     at86rf215_reset(&dev);
 	at86rf215_init(&dev, &io_spi_dev);
 
+    test_at86rf215_read_all_regs_check(&dev);
+
     // TEST: read the p/n and v/n from the IC
     #if TEST_VERSIONS
         test_at86rf215_read_chip_vn_pn(&dev);
@@ -207,7 +251,7 @@ int main ()
 
     // TEST: Frequency sweep
     #if TEST_FREQ_SWEEP
-        test_at86rf215_sweep_frequencies(&dev, at86rf215_rf_channel_900mhz, 900e6, 1, 0, 10000);
+        test_at86rf215_sweep_frequencies(&dev, at86rf215_rf_channel_900mhz, 900e6, 3, 10, 10000);
     #endif // TEST_FREQ_SWEEP
 
     #if TEST_IQ_RX_WIND
@@ -220,6 +264,10 @@ int main ()
 
     #if TEST_IQ_LB_WIND
         test_at86rf215_continues_iq_loopback (&dev, at86rf215_rf_channel_900mhz, 900e6, -1);
+    #endif
+
+    #if TEST_READ_ALL_REGS
+        test_at86rf215_read_all_regs_check(&dev);
     #endif
 
 	at86rf215_close(&dev);

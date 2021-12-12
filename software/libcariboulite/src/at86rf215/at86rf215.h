@@ -8,6 +8,7 @@ extern "C" {
 #include "at86rf215_common.h"
 #include "at86rf215_radio.h"
 
+
 int at86rf215_init(at86rf215_st* dev,
 					io_utils_spi_st* io_spi);
 int at86rf215_close(at86rf215_st* dev);
@@ -35,6 +36,14 @@ void at86rf215_setup_iq_radio_dac_value_override_no_freq (at86rf215_st* dev,
                                                           at86rf215_rf_channel_en ch,
                                                           uint8_t tx_power);
 int64_t at86rf215_setup_channel ( at86rf215_st* dev, at86rf215_rf_channel_en ch, uint64_t freq_hz );
+double at86rf215_check_freq (at86rf215_st* dev, at86rf215_rf_channel_en ch, uint64_t freq_hz );
+
+// EVENTS
+
+void event_node_init(event_st* ev);
+void event_node_close(event_st* ev);
+void event_node_wait_ready(event_st* ev);
+void event_node_signal_ready(event_st* ev, int ready);
 
 #ifdef __cplusplus
 }

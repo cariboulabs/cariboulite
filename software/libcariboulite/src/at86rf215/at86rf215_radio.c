@@ -163,9 +163,22 @@ void at86rf215_radio_set_state(at86rf215_st* dev, at86rf215_rf_channel_en ch, at
             at86rf215_write_byte(dev, reg_address, cmd & 0x7);
         }
     }
+    if (cmd == at86rf215_radio_state_cmd_tx_prep)
+    {
+        //if (ch == at86rf215_rf_channel_900mhz) event_node_wait_ready(&dev->events.lo_trx_ready_event);
+        //else if (ch == at86rf215_rf_channel_2400mhz) event_node_wait_ready(&dev->events.hi_trx_ready_event);
+
+        io_utils_usleep(1000);
+        if (dev->override_cal)
+        {
+            int i = ch == at86rf215_rf_channel_900mhz ? dev->cal.low_ch_i : dev->cal.hi_ch_i;
+            int q = ch == at86rf215_rf_channel_900mhz ? dev->cal.low_ch_q : dev->cal.hi_ch_q;
+            at86rf215_radio_set_tx_iq_calibration(dev, ch, i, q);
+        }
+    }
 }
 
-static double _fine_freq_starts[] = {0, 377e6, 754e6, 2366e6, 2550e6};
+static double _fine_freq_starts[] = {0, 350e6, 754e6, 2366e6, 2550e6};
 static double _fine_freq_pll_src[] = {0, 6.5e6, 13e6, 26e6};
 //static int _fine_freq_ccf_min[] = {0, 126030, 126030, 85700};
 //static int _fine_freq_ccf_max[] = {0, 1340967, 1340967, 296172};
