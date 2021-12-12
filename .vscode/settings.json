@@ -12,5 +12,6 @@
         "string.h": "c",
         "io_utils.h": "c"
     },
-    "cmake.sourceDirectory": "${workspaceFolder}/software/libcariboulite"
+    "cmake.sourceDirectory": "${workspaceFolder}/software/libcariboulite",
+    "cmake.configureOnOpen": true
 }
