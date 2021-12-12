@@ -21,6 +21,13 @@ extern "C" {
 #define MAX_PATH_LEN 512
 #define INFO_MAX_LEN 64
 
+typedef enum
+{
+    cariboulite_system_type_unknown = 0,
+    cariboulite_system_type_full = 1,
+    cariboulite_system_type_ism = 2,
+} cariboulite_system_type_en;
+
 typedef struct
 {
     char category_name[INFO_MAX_LEN];
@@ -33,7 +40,24 @@ typedef struct
     uint32_t numeric_serial_number;
     uint32_t numeric_version;
     uint32_t numeric_product_id;
+
+    cariboulite_system_type_en sys_type;
 } cariboulite_board_info_st;
+
+
+typedef enum
+{
+    cariboulite_ext_ref_src_modem = 0,
+    cariboulite_ext_ref_src_connector = 1,
+    cariboulite_ext_ref_src_txco = 2,
+    cariboulite_ext_ref_src_na = 3,             // not applicable
+} cariboulite_ext_ref_src_en;
+
+typedef struct
+{
+    cariboulite_ext_ref_src_en src;
+    double freq_hz;
+} cariboulite_ext_ref_settings_st;
 
 typedef struct
 {
@@ -57,6 +81,7 @@ typedef struct
 
     // Management
     caribou_fpga_versions_st fpga_versions;
+    cariboulite_ext_ref_settings_st ext_ref_settings;
     uint8_t fpga_error_status;
 } cariboulite_st;
 

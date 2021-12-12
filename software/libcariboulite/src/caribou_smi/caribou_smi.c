@@ -294,6 +294,36 @@ static void set_realtime_priority()
 }
 
 //=========================================================================
+void* caribou_smi_analyze_thread(void* arg)
+{
+    pthread_t tid = pthread_self();
+    caribou_smi_stream_st* st = (caribou_smi_stream_st*)arg;
+    caribou_smi_st* dev = (caribou_smi_st*)st->parent_dev;
+    caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
+    caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
+
+    ZF_LOGD("Entered SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
+    set_realtime_priority();
+
+    while (st->read_analysis_thread_running)
+    {
+        pthread_mutex_lock(&st->read_analysis_lock);
+        if (!st->read_analysis_thread_running) break;
+
+        if (st->data_cb) st->data_cb(dev->cb_context,
+                                    st->service_context,
+                                    type,
+                                    ch,
+                                    st->read_ret_value,
+                                    st->current_app_buffer,
+                                    st->batch_length);
+    }
+
+    ZF_LOGD("Exitting SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
+    return NULL;
+}
+
+//=========================================================================
 void* caribou_smi_thread(void *arg)
 {
     pthread_t tid = pthread_self();
@@ -303,9 +333,27 @@ void* caribou_smi_thread(void *arg)
     caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
     ZF_LOGD("Entered thread id %lu, running = %d", tid, st->running);
-
     set_realtime_priority();
 
+    // create the analysis thread and mutexes
+    if (pthread_mutex_init(&st->read_analysis_lock, NULL) != 0)
+    {
+        ZF_LOGE("read_analysis_lock mutex creation failed");
+        st->active = 0;
+        st->running = 0;
+        return NULL;
+    }
+    pthread_mutex_lock(&st->read_analysis_lock);
+    st->read_analysis_thread_running = 1;
+    
+    int ret = pthread_create(&st->read_analysis_thread, NULL, &caribou_smi_analyze_thread, st);
+    if (ret != 0)
+    {
+        ZF_LOGE("read analysis stream thread creation failed");
+        st->active = 0;
+        st->running = 0;
+        return NULL;
+    }
     st->active = 1;
 
     // start thread notification
@@ -321,9 +369,7 @@ void* caribou_smi_thread(void *arg)
     {
         if (!st->running)
         {
-            //ZF_LOGD("1");
-            usleep(100000);
-            //ZF_LOGD("2");
+            usleep(1000);
             continue;
         }
 
@@ -339,21 +385,20 @@ void* caribou_smi_thread(void *arg)
         {
             continue;
         }
-        //ZF_LOGD("4");
 
-        st->current_app_buffer = st->current_smi_buffer;
-        if (st->data_cb) st->data_cb(dev->cb_context,
-                                    st->service_context,
-                                    type,
-                                    ch,
-                                    ret,
-                                    st->current_app_buffer,
-                                    st->batch_length);
+        st->read_ret_value = ret;
+        st->current_app_buffer = st->current_smi_buffer;   
+        pthread_mutex_unlock(&st->read_analysis_lock);      
 
         st->current_smi_buffer_index ++;
         if (st->current_smi_buffer_index >= (int)(st->num_of_buffers)) st->current_smi_buffer_index = 0;
         st->current_smi_buffer = st->buffers[st->current_smi_buffer_index];
     }
+
+    st->read_analysis_thread_running = 0;
+    pthread_mutex_unlock(&st->read_analysis_lock);  
+    pthread_join(st->read_analysis_thread, NULL);   // check if cancel is needed
+    pthread_mutex_destroy(&st->read_analysis_lock);
 
     // exit thread notification
     if (st->data_cb != NULL) st->data_cb(dev->cb_context,
@@ -510,6 +555,7 @@ static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type
 
     st->active = 0;
     st->running = 0;
+    st->read_analysis_thread_running = 0;
     st->parent_dev = dev;
 }
 

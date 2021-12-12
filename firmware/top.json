@@ -9651,7 +9651,7 @@
     "top": {
       "attributes": {
         "top": "00000000000000000000000000000001",
-        "src": "top.v:8.1-394.10"
+        "src": "top.v:8.1-393.10"
       },
       "ports": {
         "i_glob_clock": {
@@ -12211,7 +12211,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -12230,7 +12230,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -12249,7 +12249,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -12268,7 +12268,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -12287,7 +12287,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -12306,7 +12306,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -12325,7 +12325,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -12344,7 +12344,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:377.25-377.63"
+            "src": "top.v:376.25-376.63"
           },
           "port_directions": {
             "A": "input",
@@ -15069,7 +15069,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15091,7 +15091,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15113,7 +15113,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15135,7 +15135,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15157,7 +15157,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15179,7 +15179,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15201,7 +15201,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15223,7 +15223,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15245,7 +15245,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15267,7 +15267,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15289,7 +15289,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15311,7 +15311,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15333,7 +15333,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15355,7 +15355,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15377,7 +15377,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15399,7 +15399,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15421,7 +15421,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15443,7 +15443,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15465,7 +15465,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15487,7 +15487,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15509,7 +15509,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15531,7 +15531,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15553,7 +15553,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15575,7 +15575,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15597,7 +15597,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15619,7 +15619,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15641,7 +15641,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15663,7 +15663,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15685,7 +15685,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15707,7 +15707,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15729,7 +15729,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15751,7 +15751,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:5.57-5.103"
           },
           "port_directions": {
             "C": "input",
@@ -15773,7 +15773,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
           },
           "port_directions": {
             "C": "input",
@@ -15869,7 +15869,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -15890,7 +15890,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -15911,7 +15911,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -15932,7 +15932,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -15953,7 +15953,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -15974,7 +15974,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -15995,7 +15995,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -16016,7 +16016,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -16039,7 +16039,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16064,7 +16064,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16089,7 +16089,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16114,7 +16114,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16139,7 +16139,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16164,7 +16164,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16189,7 +16189,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16214,7 +16214,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -16238,7 +16238,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16262,7 +16262,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16286,7 +16286,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16310,7 +16310,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16334,7 +16334,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16358,7 +16358,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16382,7 +16382,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16406,7 +16406,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16430,7 +16430,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16454,7 +16454,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16478,7 +16478,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16502,7 +16502,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16526,7 +16526,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16550,7 +16550,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16574,7 +16574,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16598,7 +16598,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16622,7 +16622,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16646,7 +16646,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16670,7 +16670,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16694,7 +16694,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16718,7 +16718,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16742,7 +16742,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16766,7 +16766,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16790,7 +16790,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16814,7 +16814,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16838,7 +16838,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16862,7 +16862,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16886,7 +16886,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16910,7 +16910,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16934,7 +16934,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -16957,7 +16957,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:297.12-317.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:297.12-316.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -16980,7 +16980,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:297.12-316.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -17004,7 +17004,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -17104,7 +17104,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:297.12-316.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -17178,7 +17178,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -17202,7 +17202,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -17301,7 +17301,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -17375,7 +17375,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -17399,7 +17399,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:297.12-316.5|lvds_rx.v:46.5-98.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -17616,7 +17616,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:380.28-380.63"
+            "src": "top.v:379.28-379.63"
           },
           "port_directions": {
             "A": "input",
@@ -17635,7 +17635,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:379.29-379.65"
+            "src": "top.v:378.29-378.65"
           },
           "port_directions": {
             "A": "input",
@@ -20332,7 +20332,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:20.59-20.105"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:20.59-20.105"
           },
           "port_directions": {
             "C": "input",
@@ -20378,7 +20378,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20399,7 +20399,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20420,7 +20420,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20441,7 +20441,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20462,7 +20462,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20483,7 +20483,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20504,7 +20504,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20525,7 +20525,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20546,7 +20546,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -20819,7 +20819,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -20844,7 +20844,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -20869,7 +20869,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -20894,7 +20894,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -20919,7 +20919,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -20944,7 +20944,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -20969,7 +20969,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -20994,7 +20994,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21019,7 +21019,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21043,7 +21043,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
           },
           "port_directions": {
             "C": "input",
@@ -21141,7 +21141,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21166,7 +21166,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21191,7 +21191,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21216,7 +21216,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21241,7 +21241,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21266,7 +21266,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21291,7 +21291,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21316,7 +21316,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21341,7 +21341,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -21389,7 +21389,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -21410,7 +21410,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -21431,7 +21431,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -21452,7 +21452,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -21473,7 +21473,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -21494,7 +21494,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -21515,7 +21515,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -21536,7 +21536,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22265,7 +22265,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22289,7 +22289,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22313,7 +22313,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22337,7 +22337,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22361,7 +22361,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22385,7 +22385,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22409,7 +22409,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22433,7 +22433,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22457,7 +22457,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22481,7 +22481,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:41.1-64.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22506,7 +22506,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22531,7 +22531,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22556,7 +22556,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22581,7 +22581,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22606,7 +22606,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22631,7 +22631,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22656,7 +22656,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22681,7 +22681,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22706,7 +22706,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4|/usr/local/bin/../share/yosys/ice40/cells_map.v:26.33-27.52"
           },
           "port_directions": {
             "I0": "input",
@@ -22754,7 +22754,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22775,7 +22775,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22796,7 +22796,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22817,7 +22817,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22838,7 +22838,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22859,7 +22859,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22880,7 +22880,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22901,7 +22901,7 @@
           "parameters": {
           },
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:62.5-70.4"
           },
           "port_directions": {
             "CI": "input",
@@ -22923,7 +22923,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22947,7 +22947,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22971,7 +22971,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -22995,7 +22995,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23019,7 +23019,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23043,7 +23043,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23067,7 +23067,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23091,7 +23091,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23115,7 +23115,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23139,7 +23139,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23187,7 +23187,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
           },
           "port_directions": {
             "C": "input",
@@ -23211,7 +23211,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
           },
           "port_directions": {
             "C": "input",
@@ -23310,7 +23310,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
           },
           "port_directions": {
             "C": "input",
@@ -23334,7 +23334,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:23.66-23.119"
           },
           "port_directions": {
             "C": "input",
@@ -23408,7 +23408,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23432,7 +23432,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23456,7 +23456,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:24.66-24.119"
           },
           "port_directions": {
             "C": "input",
@@ -23480,7 +23480,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:25.66-25.119"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:62.5-87.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:25.66-25.119"
           },
           "port_directions": {
             "C": "input",
@@ -23579,7 +23579,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -23601,7 +23601,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -23748,7 +23748,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -23895,7 +23895,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -24042,7 +24042,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -24189,7 +24189,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -24236,7 +24236,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -24383,7 +24383,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -24655,7 +24655,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
           },
           "port_directions": {
             "C": "input",
@@ -25241,7 +25241,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
           },
           "port_directions": {
             "C": "input",
@@ -25263,7 +25263,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
           },
           "port_directions": {
             "C": "input",
@@ -25485,7 +25485,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:144.5-157.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:19.59-19.105"
           },
           "port_directions": {
             "C": "input",
@@ -25532,7 +25532,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -25579,7 +25579,7 @@
           },
           "attributes": {
             "module_not_derived": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:111.5-142.8|/usr/local/bin/../share/yosys/ice40/ff_map.v:4.57-4.103"
           },
           "port_directions": {
             "C": "input",
@@ -30479,7 +30479,7 @@
           "bits": [ 196 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst i_ddr_clk",
-            "src": "top.v:297.12-317.5|lvds_rx.v:4.29-4.38"
+            "src": "top.v:297.12-316.5|lvds_rx.v:4.29-4.38"
           }
         },
         "lvds_rx_24_inst.i_ddr_data": {
@@ -30487,7 +30487,7 @@
           "bits": [ 197, 198 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst i_ddr_data",
-            "src": "top.v:297.12-317.5|lvds_rx.v:5.29-5.39"
+            "src": "top.v:297.12-316.5|lvds_rx.v:5.29-5.39"
           }
         },
         "lvds_rx_24_inst.i_fifo_full": {
@@ -30495,7 +30495,7 @@
           "bits": [ 442 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst i_fifo_full",
-            "src": "top.v:297.12-317.5|lvds_rx.v:7.29-7.40"
+            "src": "top.v:297.12-316.5|lvds_rx.v:7.29-7.40"
           }
         },
         "lvds_rx_24_inst.i_reset": {
@@ -30503,7 +30503,7 @@
           "bits": [ 51 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst i_reset",
-            "src": "top.v:297.12-317.5|lvds_rx.v:3.29-3.36"
+            "src": "top.v:297.12-316.5|lvds_rx.v:3.29-3.36"
           }
         },
         "lvds_rx_24_inst.o_debug_state": {
@@ -30511,7 +30511,7 @@
           "bits": [ 433, 431 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst o_debug_state",
-            "src": "top.v:297.12-317.5|lvds_rx.v:11.29-11.42"
+            "src": "top.v:297.12-316.5|lvds_rx.v:11.29-11.42"
           }
         },
         "lvds_rx_24_inst.o_fifo_data": {
@@ -30519,7 +30519,7 @@
           "bits": [ 379, 378, 375, 373, 371, 369, 367, 365, 363, 361, 359, 357, 353, 351, 349, 347, 345, 343, 341, 339, 337, 335, 391, 389, 387, 385, 383, 381, 377, 355, 333, 331 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst o_fifo_data",
-            "src": "top.v:297.12-317.5|lvds_rx.v:10.29-10.40"
+            "src": "top.v:297.12-316.5|lvds_rx.v:10.29-10.40"
           }
         },
         "lvds_rx_24_inst.o_fifo_push": {
@@ -30527,14 +30527,14 @@
           "bits": [ 393 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst o_fifo_push",
-            "src": "top.v:297.12-317.5|lvds_rx.v:9.29-9.40"
+            "src": "top.v:297.12-316.5|lvds_rx.v:9.29-9.40"
           }
         },
         "lvds_rx_24_inst.o_fifo_push_SB_LUT4_I3_1_O": {
           "hide_name": 0,
           "bits": [ 398 ],
           "attributes": {
-            "src": "top.v:321.17-332.5|complex_fifo.v:23.1-37.4"
+            "src": "top.v:320.17-331.5|complex_fifo.v:23.1-37.4"
           }
         },
         "lvds_rx_24_inst.o_fifo_push_SB_LUT4_I3_2_O": {
@@ -30548,7 +30548,7 @@
           "bits": [ "0", 414, 412, 410, 408, 406, 404, 402, 400, 394 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
           }
         },
         "lvds_rx_24_inst.o_fifo_push_SB_LUT4_I3_I2": {
@@ -30556,7 +30556,7 @@
           "bits": [ 1083, 422, 396, 421, 420, 419, 418, 417, 416, 394 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27",
+            "src": "top.v:320.17-331.5|complex_fifo.v:30.24-30.35|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27",
             "unused_bits": "0 "
           }
         },
@@ -30565,7 +30565,7 @@
           "bits": [ 196 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst o_fifo_write_clk",
-            "src": "top.v:297.12-317.5|lvds_rx.v:8.29-8.45"
+            "src": "top.v:297.12-316.5|lvds_rx.v:8.29-8.45"
           }
         },
         "lvds_rx_24_inst.r_data": {
@@ -30573,7 +30573,7 @@
           "bits": [ 374, 372, 370, 368, 366, 364, 362, 360, 358, 356, 352, 350, 348, 346, 344, 342, 340, 338, 336, 334, 390, 388, 386, 384, 382, 380, 376, 354, 332, 329, "x", "x" ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst r_data",
-            "src": "top.v:297.12-317.5|lvds_rx.v:27.17-27.23"
+            "src": "top.v:297.12-316.5|lvds_rx.v:27.17-27.23"
           }
         },
         "lvds_rx_24_inst.r_phase_count": {
@@ -30581,7 +30581,7 @@
           "bits": [ 424, 426, 1084 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst r_phase_count",
-            "src": "top.v:297.12-317.5|lvds_rx.v:26.17-26.30",
+            "src": "top.v:297.12-316.5|lvds_rx.v:26.17-26.30",
             "unused_bits": "2"
           }
         },
@@ -30590,7 +30590,7 @@
           "bits": [ "1", 424, 425 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
+            "src": "top.v:297.12-316.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
           }
         },
         "lvds_rx_24_inst.r_phase_count_SB_LUT4_I1_O": {
@@ -30598,7 +30598,7 @@
           "bits": [ 430, 427, 436 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
+            "src": "top.v:297.12-316.5|lvds_rx.v:78.42-78.59|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
           }
         },
         "lvds_rx_24_inst.r_phase_count_SB_LUT4_I1_O_SB_DFFESR_Q_D": {
@@ -30646,7 +30646,7 @@
           "bits": [ 392 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst r_push",
-            "src": "top.v:297.12-317.5|lvds_rx.v:28.17-28.23"
+            "src": "top.v:297.12-316.5|lvds_rx.v:28.17-28.23"
           }
         },
         "lvds_rx_24_inst.r_push_SB_DFFESR_Q_D": {
@@ -30674,7 +30674,7 @@
           "bits": [ 433, 431 ],
           "attributes": {
             "hdlname": "lvds_rx_24_inst r_state_if",
-            "src": "top.v:297.12-317.5|lvds_rx.v:25.17-25.27"
+            "src": "top.v:297.12-316.5|lvds_rx.v:25.17-25.27"
           }
         },
         "lvds_rx_24_inst.r_state_if_SB_DFFESR_Q_D": {
@@ -30682,7 +30682,7 @@
           "bits": [ 445, 443 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:297.12-317.5|lvds_rx.v:58.13-94.20|lvds_rx.v:0.0-0.0|/usr/local/bin/../share/yosys/techmap.v:575.21-575.22"
+            "src": "top.v:297.12-316.5|lvds_rx.v:58.13-94.20|lvds_rx.v:0.0-0.0|/usr/local/bin/../share/yosys/techmap.v:575.21-575.22"
           }
         },
         "lvds_rx_24_inst.r_state_if_SB_DFFESR_Q_E": {
@@ -31194,7 +31194,7 @@
           "bits": [ 671 ],
           "attributes": {
             "hdlname": "rx_24_fifo empty_o",
-            "src": "top.v:321.17-332.5|complex_fifo.v:17.19-17.26"
+            "src": "top.v:320.17-331.5|complex_fifo.v:17.19-17.26"
           }
         },
         "rx_24_fifo.empty_o_SB_DFFSS_Q_D": {
@@ -31208,7 +31208,7 @@
           "bits": [ "0", 690, 688, 687, 685, 683, 681, 679, 677, 675, 672 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
           }
         },
         "rx_24_fifo.empty_o_SB_DFFSS_Q_D_SB_LUT4_O_I2": {
@@ -31256,7 +31256,7 @@
           "bits": [ 879, 692, 711, 710, 709, 708, 707, 706, 705, 704, 672 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
+            "src": "top.v:320.17-331.5|complex_fifo.v:49.25-49.36|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
           }
         },
         "rx_24_fifo.full_o": {
@@ -31264,7 +31264,7 @@
           "bits": [ 442 ],
           "attributes": {
             "hdlname": "rx_24_fifo full_o",
-            "src": "top.v:321.17-332.5|complex_fifo.v:16.19-16.25"
+            "src": "top.v:320.17-331.5|complex_fifo.v:16.19-16.25"
           }
         },
         "rx_24_fifo.full_o_SB_DFFSR_Q_D": {
@@ -31286,7 +31286,7 @@
           "bits": [ 735, 734, 733, 731, 729, 727, 725, 723, 721, 717 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
           }
         },
         "rx_24_fifo.full_o_SB_LUT4_I3_I2_SB_LUT4_O_I3": {
@@ -31294,7 +31294,7 @@
           "bits": [ "0", 703, 732, 730, 728, 726, 724, 722, 720, 719 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
+            "src": "top.v:320.17-331.5|complex_fifo.v:29.24-29.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
           }
         },
         "rx_24_fifo.full_o_SB_LUT4_I3_O": {
@@ -31406,7 +31406,7 @@
           "bits": [ 690, 691, 689, 395, 686, 684, 682, 680, 678, 676 ],
           "attributes": {
             "hdlname": "rx_24_fifo rd_addr",
-            "src": "top.v:321.17-332.5|complex_fifo.v:21.22-21.29"
+            "src": "top.v:320.17-331.5|complex_fifo.v:21.22-21.29"
           }
         },
         "rx_24_fifo.rd_addr_SB_DFFESR_Q_D": {
@@ -31414,7 +31414,7 @@
           "bits": [ 879, 878, 877, 876, 875, 874, 873, 872, 871, 869 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:33.26-33.27"
           }
         },
         "rx_24_fifo.rd_addr_SB_DFFESR_Q_D_SB_LUT4_O_I3": {
@@ -31422,7 +31422,7 @@
           "bits": [ "0", 690, 887, 886, 885, 884, 883, 882, 881, 880 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:321.17-332.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
+            "src": "top.v:320.17-331.5|complex_fifo.v:48.24-48.38|/usr/local/bin/../share/yosys/ice40/arith_map.v:51.21-51.22"
           }
         },
         "rx_24_fifo.rd_clk_i": {
@@ -31430,7 +31430,7 @@
           "bits": [ 72 ],
           "attributes": {
             "hdlname": "rx_24_fifo rd_clk_i",
-            "src": "top.v:321.17-332.5|complex_fifo.v:12.31-12.39"
+            "src": "top.v:320.17-331.5|complex_fifo.v:12.31-12.39"
           }
         },
         "rx_24_fifo.rd_data_o": {
@@ -31438,7 +31438,7 @@
           "bits": [ 777, 781, 55, 788, 792, 796, 800, 804, 746, 750, 68, 757, 761, 765, 769, 773, 839, 843, 56, 850, 854, 858, 862, 866, 808, 812, 69, 819, 823, 827, 831, 835 ],
           "attributes": {
             "hdlname": "rx_24_fifo rd_data_o",
-            "src": "top.v:321.17-332.5|complex_fifo.v:14.35-14.44"
+            "src": "top.v:320.17-331.5|complex_fifo.v:14.35-14.44"
           }
         },
         "rx_24_fifo.rd_rst_i": {
@@ -31446,7 +31446,7 @@
           "bits": [ 51 ],
           "attributes": {
             "hdlname": "rx_24_fifo rd_rst_i",
-            "src": "top.v:321.17-332.5|complex_fifo.v:11.31-11.39"
+            "src": "top.v:320.17-331.5|complex_fifo.v:11.31-11.39"
           }
         },
         "rx_24_fifo.wr_addr": {
@@ -31454,7 +31454,7 @@
           "bits": [ 703, 414, 415, 413, 411, 409, 407, 405, 403, 401 ],
           "attributes": {
             "hdlname": "rx_24_fifo wr_addr",
-            "src": "top.v:321.17-332.5|complex_fifo.v:20.22-20.29"
+            "src": "top.v:320.17-331.5|complex_fifo.v:20.22-20.29"
           }
         },
         "rx_24_fifo.wr_clk_i": {
@@ -31462,7 +31462,7 @@
           "bits": [ 196 ],
           "attributes": {
             "hdlname": "rx_24_fifo wr_clk_i",
-            "src": "top.v:321.17-332.5|complex_fifo.v:7.31-7.39"
+            "src": "top.v:320.17-331.5|complex_fifo.v:7.31-7.39"
           }
         },
         "rx_24_fifo.wr_data_i": {
@@ -31470,7 +31470,7 @@
           "bits": [ 379, 378, 375, 373, 371, 369, 367, 365, 363, 361, 359, 357, 353, 351, 349, 347, 345, 343, 341, 339, 337, 335, 391, 389, 387, 385, 383, 381, 377, 355, 333, 331 ],
           "attributes": {
             "hdlname": "rx_24_fifo wr_data_i",
-            "src": "top.v:321.17-332.5|complex_fifo.v:9.35-9.44"
+            "src": "top.v:320.17-331.5|complex_fifo.v:9.35-9.44"
           }
         },
         "rx_24_fifo.wr_en_i": {
@@ -31478,7 +31478,7 @@
           "bits": [ 393 ],
           "attributes": {
             "hdlname": "rx_24_fifo wr_en_i",
-            "src": "top.v:321.17-332.5|complex_fifo.v:8.31-8.38"
+            "src": "top.v:320.17-331.5|complex_fifo.v:8.31-8.38"
           }
         },
         "rx_24_fifo.wr_rst_i": {
@@ -31486,7 +31486,7 @@
           "bits": [ 51 ],
           "attributes": {
             "hdlname": "rx_24_fifo wr_rst_i",
-            "src": "top.v:321.17-332.5|complex_fifo.v:6.31-6.39"
+            "src": "top.v:320.17-331.5|complex_fifo.v:6.31-6.39"
           }
         },
         "smi_ctrl_ins.i_cs": {
@@ -31494,7 +31494,7 @@
           "bits": [ 131 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_cs",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:9.29-9.33"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:9.29-9.33"
           }
         },
         "smi_ctrl_ins.i_data_in": {
@@ -31502,7 +31502,7 @@
           "bits": [ 76, 73, 167, 165, 163, 161, 159, 156 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_data_in",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:7.29-7.38"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:7.29-7.38"
           }
         },
         "smi_ctrl_ins.i_fetch_cmd": {
@@ -31510,7 +31510,7 @@
           "bits": [ 132 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_fetch_cmd",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:10.29-10.40"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:10.29-10.40"
           }
         },
         "smi_ctrl_ins.i_fifo_09_empty": {
@@ -31518,7 +31518,7 @@
           "bits": [ 471 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_fifo_09_empty",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:17.29-17.44"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:17.29-17.44"
           }
         },
         "smi_ctrl_ins.i_fifo_09_full": {
@@ -31526,7 +31526,7 @@
           "bits": [ 323 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_fifo_09_full",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:16.29-16.43"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:16.29-16.43"
           }
         },
         "smi_ctrl_ins.i_fifo_09_pulled_data": {
@@ -31534,7 +31534,7 @@
           "bits": [ 559, 563, 60, 570, 574, 578, 582, 586, 528, 532, 65, 539, 543, 547, 551, 555, 621, 625, 61, 632, 636, 640, 644, 648, 590, 594, 66, 601, 605, 609, 613, 617 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_fifo_09_pulled_data",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:15.29-15.50"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:15.29-15.50"
           }
         },
         "smi_ctrl_ins.i_fifo_24_empty": {
@@ -31542,7 +31542,7 @@
           "bits": [ 671 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_fifo_24_empty",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:23.29-23.44"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:23.29-23.44"
           }
         },
         "smi_ctrl_ins.i_fifo_24_full": {
@@ -31550,7 +31550,7 @@
           "bits": [ 442 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_fifo_24_full",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:22.29-22.43"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:22.29-22.43"
           }
         },
         "smi_ctrl_ins.i_fifo_24_pulled_data": {
@@ -31558,7 +31558,7 @@
           "bits": [ 777, 781, 55, 788, 792, 796, 800, 804, 746, 750, 68, 757, 761, 765, 769, 773, 839, 843, 56, 850, 854, 858, 862, 866, 808, 812, 69, 819, 823, 827, 831, 835 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_fifo_24_pulled_data",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:21.29-21.50"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:21.29-21.50"
           }
         },
         "smi_ctrl_ins.i_ioc": {
@@ -31566,7 +31566,7 @@
           "bits": [ 138, 135, 154, 153, 136 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_ioc",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:6.29-6.34"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:6.29-6.34"
           }
         },
         "smi_ctrl_ins.i_load_cmd": {
@@ -31574,7 +31574,7 @@
           "bits": [ 986 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_load_cmd",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:11.29-11.39"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:11.29-11.39"
           }
         },
         "smi_ctrl_ins.i_reset": {
@@ -31582,7 +31582,7 @@
           "bits": [ 51 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_reset",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:3.29-3.36"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:3.29-3.36"
           }
         },
         "smi_ctrl_ins.i_smi_a": {
@@ -31590,7 +31590,7 @@
           "bits": [ 28, 29, 30 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_smi_a",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:26.29-26.36"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:26.29-26.36"
           }
         },
         "smi_ctrl_ins.i_smi_data_in": {
@@ -31598,7 +31598,7 @@
           "bits": [ 33, 34, 35, 36, 37, 38, 39, 40 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_smi_data_in",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:30.29-30.42",
+            "src": "top.v:333.13-364.5|smi_ctrl.v:30.29-30.42",
             "unused_bits": "0 1 2 3 4 5 6 7"
           }
         },
@@ -31607,7 +31607,7 @@
           "bits": [ 31 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_smi_soe_se",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:27.29-27.41"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:27.29-27.41"
           }
         },
         "smi_ctrl_ins.i_smi_swe_srw": {
@@ -31615,7 +31615,7 @@
           "bits": [ 32 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_smi_swe_srw",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:28.29-28.42",
+            "src": "top.v:333.13-364.5|smi_ctrl.v:28.29-28.42",
             "unused_bits": "0 "
           }
         },
@@ -31624,7 +31624,7 @@
           "bits": [ "0" ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_smi_test",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:34.29-34.39"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:34.29-34.39"
           }
         },
         "smi_ctrl_ins.i_sys_clk": {
@@ -31632,7 +31632,7 @@
           "bits": [ 72 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins i_sys_clk",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:4.29-4.38"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:4.29-4.38"
           }
         },
         "smi_ctrl_ins.int_cnt_09": {
@@ -31640,7 +31640,7 @@
           "bits": [ "1", "1", "1", 62, 63 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins int_cnt_09",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:97.15-97.25"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:97.15-97.25"
           }
         },
         "smi_ctrl_ins.int_cnt_09_SB_DFFNESS_Q_D": {
@@ -31648,7 +31648,7 @@
           "bits": [ 892, 890 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:127.35-127.49|/usr/local/bin/../share/yosys/techmap.v:270.26-270.27"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:127.35-127.49|/usr/local/bin/../share/yosys/techmap.v:270.26-270.27"
           }
         },
         "smi_ctrl_ins.int_cnt_09_SB_DFFNESS_Q_E": {
@@ -31662,7 +31662,7 @@
           "bits": [ "1", "1", "1", 57, 70 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins int_cnt_24",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:98.15-98.25"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:98.15-98.25"
           }
         },
         "smi_ctrl_ins.int_cnt_24_SB_DFFNESS_Q_D": {
@@ -31670,7 +31670,7 @@
           "bits": [ 894, 893 ],
           "attributes": {
             "force_downto": "00000000000000000000000000000001",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:136.35-136.49|/usr/local/bin/../share/yosys/techmap.v:270.26-270.27"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:136.35-136.49|/usr/local/bin/../share/yosys/techmap.v:270.26-270.27"
           }
         },
         "smi_ctrl_ins.int_cnt_24_SB_DFFNESS_Q_E": {
@@ -31684,7 +31684,7 @@
           "bits": [ 898, 897, 896, 895, "0", "0", "0", "0" ],
           "attributes": {
             "hdlname": "smi_ctrl_ins o_data_out",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:8.29-8.39"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:8.29-8.39"
           }
         },
         "smi_ctrl_ins.o_data_out_SB_DFFESS_Q_S": {
@@ -31700,7 +31700,7 @@
           "bits": [ 193, 192, 191, 190, 189, 188, 187, 186 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins o_smi_data_out",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:29.29-29.43"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:29.29-29.43"
           }
         },
         "smi_ctrl_ins.o_smi_data_out_SB_DFFNE_Q_1_D": {
@@ -31868,7 +31868,7 @@
           "bits": [ 449 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins o_smi_read_req",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:31.29-31.43"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:31.29-31.43"
           }
         },
         "smi_ctrl_ins.o_smi_write_req": {
@@ -31876,7 +31876,7 @@
           "bits": [ "x" ],
           "attributes": {
             "hdlname": "smi_ctrl_ins o_smi_write_req",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:32.29-32.44"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:32.29-32.44"
           }
         },
         "smi_ctrl_ins.o_smi_writing": {
@@ -31884,7 +31884,7 @@
           "bits": [ 30 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins o_smi_writing",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:33.29-33.42"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:33.29-33.42"
           }
         },
         "smi_ctrl_ins.r_fifo_09_pull": {
@@ -31892,7 +31892,7 @@
           "bits": [ 936 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins r_fifo_09_pull",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:99.9-99.23"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:99.9-99.23"
           }
         },
         "smi_ctrl_ins.r_fifo_09_pull_1": {
@@ -31900,7 +31900,7 @@
           "bits": [ 937 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins r_fifo_09_pull_1",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:100.9-100.25"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:100.9-100.25"
           }
         },
         "smi_ctrl_ins.r_fifo_09_pull_1_SB_LUT4_I1_O": {
@@ -31952,7 +31952,7 @@
           "bits": [ 951 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins r_fifo_24_pull",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:102.9-102.23"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:102.9-102.23"
           }
         },
         "smi_ctrl_ins.r_fifo_24_pull_1": {
@@ -31960,7 +31960,7 @@
           "bits": [ 952 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins r_fifo_24_pull_1",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:103.9-103.25"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:103.9-103.25"
           }
         },
         "smi_ctrl_ins.r_fifo_24_pull_1_SB_LUT4_I0_1_O": {
@@ -31996,7 +31996,7 @@
           "bits": [ 889 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins soe_and_reset",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:108.10-108.23"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:108.10-108.23"
           }
         },
         "smi_ctrl_ins.w_fifo_09_pull_trigger": {
@@ -32004,14 +32004,14 @@
           "bits": [ 950 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins w_fifo_09_pull_trigger",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:101.10-101.32"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:101.10-101.32"
           }
         },
         "smi_ctrl_ins.w_fifo_09_pull_trigger_SB_DFFNE_Q_D": {
           "hide_name": 0,
           "bits": [ 958 ],
           "attributes": {
-            "src": "top.v:334.13-365.5|smi_ctrl.v:119.39-119.79"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:119.39-119.79"
           }
         },
         "smi_ctrl_ins.w_fifo_24_pull_trigger": {
@@ -32019,14 +32019,14 @@
           "bits": [ 957 ],
           "attributes": {
             "hdlname": "smi_ctrl_ins w_fifo_24_pull_trigger",
-            "src": "top.v:334.13-365.5|smi_ctrl.v:104.10-104.32"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:104.10-104.32"
           }
         },
         "smi_ctrl_ins.w_fifo_24_pull_trigger_SB_DFFNE_Q_D": {
           "hide_name": 0,
           "bits": [ 960 ],
           "attributes": {
-            "src": "top.v:334.13-365.5|smi_ctrl.v:120.39-120.79"
+            "src": "top.v:333.13-364.5|smi_ctrl.v:120.39-120.79"
           }
         },
         "smi_ctrl_ins.w_fifo_24_pull_trigger_SB_DFFNE_Q_E": {
@@ -32969,14 +32969,14 @@
           "hide_name": 0,
           "bits": [ 28, 29, 30 ],
           "attributes": {
-            "src": "top.v:367.15-367.25"
+            "src": "top.v:366.15-366.25"
           }
         },
         "w_smi_data_input": {
           "hide_name": 0,
           "bits": [ 33, 34, 35, 36, 37, 38, 39, 40 ],
           "attributes": {
-            "src": "top.v:369.15-369.31",
+            "src": "top.v:368.15-368.31",
             "unused_bits": "0 1 2 3 4 5 6 7"
           }
         },
@@ -32984,35 +32984,35 @@
           "hide_name": 0,
           "bits": [ 193, 192, 191, 190, 189, 188, 187, 186 ],
           "attributes": {
-            "src": "top.v:368.15-368.32"
+            "src": "top.v:367.15-367.32"
           }
         },
         "w_smi_read_req": {
           "hide_name": 0,
           "bits": [ 449 ],
           "attributes": {
-            "src": "top.v:370.9-370.23"
+            "src": "top.v:369.9-369.23"
           }
         },
         "w_smi_test": {
           "hide_name": 0,
           "bits": [ "0" ],
           "attributes": {
-            "src": "top.v:373.9-373.19"
+            "src": "top.v:372.9-372.19"
           }
         },
         "w_smi_write_req": {
           "hide_name": 0,
           "bits": [ "x" ],
           "attributes": {
-            "src": "top.v:371.9-371.24"
+            "src": "top.v:370.9-370.24"
           }
         },
         "w_smi_writing": {
           "hide_name": 0,
           "bits": [ 30 ],
           "attributes": {
-            "src": "top.v:372.9-372.22"
+            "src": "top.v:371.9-371.22"
           }
         },
         "w_soft_reset": {

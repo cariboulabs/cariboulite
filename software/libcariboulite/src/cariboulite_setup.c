@@ -122,6 +122,30 @@ int cariboulite_configure_fpga (cariboulite_st* sys, cariboulite_firmware_source
 }
 
 //=======================================================================================
+int cariboulite_setup_ext_ref ( cariboulite_st *sys, cariboulite_ext_ref_freq_en ref)
+{
+    switch(ref)
+    {
+        case cariboulite_ext_ref_26mhz:
+            ZF_LOGD("Setting ext_ref = 26MHz");
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_26mhz);
+            rffc507x_setup_reference_freq(&sys->mixer, 26e6);
+            break;
+        case cariboulite_ext_ref_32mhz:
+            ZF_LOGD("Setting ext_ref = 32MHz");
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_32mhz);
+            rffc507x_setup_reference_freq(&sys->mixer, 32e6);
+            break;
+        case cariboulite_ext_ref_off:
+            ZF_LOGD("Setting ext_ref = OFF");
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_off);
+        default:
+            return -1;
+        break;
+    }
+}
+
+//=======================================================================================
 int cariboulite_init_submodules (cariboulite_st* sys)
 {
     int res = 0;
@@ -160,7 +184,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
     // Configure modem
     //------------------------------------------------------
     ZF_LOGD("Configuring modem initial state");
-    at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_32mhz);
+    //at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_26mhz);
     at86rf215_setup_rf_irq(&sys->modem,  0, 1, at86rf215_drive_current_2ma);
     at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_trx_off);
     at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_trx_off);
@@ -192,7 +216,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
         .ext_lna_bypass_available = 0,
         .agc_backoff = 0,
         .analog_voltage_external = 0,
-        .analog_voltage_enable_in_off = 0,
+        .analog_voltage_enable_in_off = 1,
         .int_power_amplifier_voltage = 2,
         .fe_pad_configuration = 1,   
     };
@@ -211,7 +235,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
 
     // Configure mixer
     //------------------------------------------------------
-    rffc507x_setup_reference_freq(&sys->mixer, 32e6);
+    //rffc507x_setup_reference_freq(&sys->mixer, 26e6);
     rffc507x_calibrate(&sys->mixer);
 
     ZF_LOGI("Cariboulite submodules successfully initialized");
@@ -324,10 +348,40 @@ int cariboulite_release_submodules(cariboulite_st* sys)
 }
 
 //=================================================
+int cariboulite_version_dependent_config (cariboulite_st* sys)
+{
+    ZF_LOGI("Performing version dependent configurations");
+    switch (sys->board_info.sys_type)
+	{
+    	case cariboulite_system_type_full:
+            ZF_LOGD("This board is a Full version CaribouLite - setting ext_ref: modem, 32MHz");
+			// by default the ext_ref for the mixer - from the modem, 32MHz
+			sys->ext_ref_settings.src = cariboulite_ext_ref_src_modem;
+    		sys->ext_ref_settings.freq_hz = 32000000;
+            cariboulite_setup_ext_ref (sys, cariboulite_ext_ref_32mhz);
+			break;
+    	case cariboulite_system_type_ism:
+            ZF_LOGD("This board is a ISM version CaribouLite - setting ext_ref: OFF");
+			sys->ext_ref_settings.src = cariboulite_ext_ref_src_na;
+    		sys->ext_ref_settings.freq_hz = 0;
+            cariboulite_setup_ext_ref (sys, cariboulite_ext_ref_off);
+            
+			break;
+		case cariboulite_system_type_unknown:
+		default:
+			ZF_LOGE("This board doesn't have a valid product ID.");
+			return 0;
+		break;
+	}
+
+    return 0;
+}
+
+//=================================================
 int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info)
 {
-    zf_log_set_output_level(ZF_LOG_ERROR);
-    //zf_log_set_output_level(ZF_LOG_VERBOSE);
+    //zf_log_set_output_level(ZF_LOG_ERROR);
+    zf_log_set_output_level(ZF_LOG_VERBOSE);
     
     ZF_LOGI("driver initializing");
     if (info == NULL)
@@ -361,6 +415,12 @@ int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, caribo
     {
         cariboulite_release_io (sys);
         return -cariboulite_submodules_init_failed;
+    }
+
+    if (cariboulite_version_dependent_config(sys))
+    {
+        cariboulite_release_io (sys);
+        return -cariboulite_board_dependent_config_failed;
     }
 
     cariboulite_self_test_result_st self_tes_res = {0};
