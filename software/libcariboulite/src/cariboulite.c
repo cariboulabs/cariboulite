@@ -30,15 +30,18 @@ int stop_program ()
 }
 
 //=================================================
-int sighandler(int signum)
+void sighandler( struct cariboulite_st_t *sys,
+                 void* context,
+                 int signal_number,
+                 siginfo_t *si)
 {
-    if (signal_shown != signum) 
+    if (signal_shown != signal_number) 
     {
-        ZF_LOGI("Received signal %d", signum);
-        signal_shown = signum;
+        ZF_LOGI("Received signal %d", signal_number);
+        signal_shown = signal_number;
     }
 
-    switch (signum)
+    switch (signal_number)
     {
         case SIGINT:
         case SIGTERM:
@@ -46,9 +49,8 @@ int sighandler(int signum)
         case SIGILL:
         case SIGSEGV:
         case SIGFPE: stop_program (); break;
-        default: return -1; break;
+        default: return; break;
     }
-    return 0;
 }
 
 cariboulite_eeprom_st ee = { .i2c_address = 0x50, .eeprom_type = eeprom_type_24c32,};
@@ -60,12 +62,15 @@ int main(int argc, char *argv[])
     //strcpy(cariboulite_sys.firmware_path_testing, "top.bin");
 
     // init the program
-    if (cariboulite_init_driver(&cariboulite_sys, (void*)sighandler, NULL)!=0)
+    if (cariboulite_init_driver(&cariboulite_sys, NULL)!=0)
     {
         ZF_LOGE("driver init failed, terminating...");
         cariboulite_eeprom_init(&ee);
         return -1;
     }
+
+    // setup the signal handler
+    cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, cariboulite_signal_handler_op_last, &cariboulite_sys);
 
     // dummy loop
     double freq = 1089e6;

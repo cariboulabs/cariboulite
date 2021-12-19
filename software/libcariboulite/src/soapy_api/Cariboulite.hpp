@@ -29,10 +29,10 @@ enum Cariboulite_Format
 	CARIBOULITE_FORMAT_FLOAT64      = 3,
 };
 
-#define BUFFER_SIZE_MS                  ( 5 )
-#define NUM_SAMPLEQUEUE_BUFS            ( 10 )
+#define BUFFER_SIZE_MS                  ( 10 )
+#define NUM_SAMPLEQUEUE_BUFS            ( 20 )
 #define NUM_BYTES_PER_CPLX_ELEM         ( 4 )
-#define GET_MTU_MS(ms)                  ( 4096*(ms) )
+#define GET_MTU_MS(ms)                  ( 4000*(ms) )
 #define GET_MTU_MS_BYTES(ms)            ( GET_MTU_MS(ms) * NUM_BYTES_PER_CPLX_ELEM )
 
 #pragma pack(1)

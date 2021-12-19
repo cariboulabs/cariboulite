@@ -9,7 +9,7 @@ int main()
 {
     printf("fpga api test program!\n");
 
-    cariboulite_setup_io (&cariboulite_sys, NULL);
+    cariboulite_setup_io (&cariboulite_sys);
     cariboulite_init_submodules (&cariboulite_sys);
     cariboulite_release_submodules(&cariboulite_sys);
     cariboulite_release_io (&cariboulite_sys);

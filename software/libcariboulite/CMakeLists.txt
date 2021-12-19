@@ -37,9 +37,11 @@ target_link_libraries(cariboulite   datatypes
                                     io_utils
                                     cariboulite_config
                                     cariboulite_eeprom
-                                    zf_log)
+                                    zf_log
+                                    rt
+                                    m
+                                    pthread)
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-#add_compile_options(-Wall -Wextra -pedantic -Werror)
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
 # create the Soapy shared object
@@ -87,9 +89,9 @@ add_executable(ice40programmer ${SOURCES_ICE40_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_app ${SOURCES_MAIN})
 
-target_link_libraries(ice40programmer cariboulite pthread m rt)
-target_link_libraries(fpgacomm cariboulite pthread m rt)
-target_link_libraries(cariboulite_app cariboulite pthread m rt)
+target_link_libraries(ice40programmer cariboulite)
+target_link_libraries(fpgacomm cariboulite)
+target_link_libraries(cariboulite_app cariboulite)
 
 set_target_properties( ice40programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)

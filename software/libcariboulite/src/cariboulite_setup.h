@@ -52,6 +52,7 @@ typedef enum
     cariboulite_submodules_init_failed          = -4,
     cariboulite_self_test_failed                = -5,
     cariboulite_board_dependent_config_failed   = -6,
+    cariboulite_signal_registration_failed      = -7,
 } cariboulite_errors_en;
 
 typedef enum
@@ -61,11 +62,15 @@ typedef enum
     cariboulite_ext_ref_32mhz   = 32,
 } cariboulite_ext_ref_freq_en;
 
-int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info);
+int cariboulite_init_driver(cariboulite_st *sys, cariboulite_board_info_st *info);
+int cariboulite_setup_signal_handler (cariboulite_st *sys, 
+                                        caribou_signal_handler handler, 
+                                        cariboulite_signal_handler_operation_en op,
+                                        void *context);
 void cariboulite_release_driver(cariboulite_st *sys);
 void cariboulite_lib_version(cariboulite_lib_version_st* v);
 int cariboulite_get_serial_number(cariboulite_st *sys, uint32_t* serial_number, int *count);
-int cariboulite_setup_io (cariboulite_st* sys, void* sighandler);
+int cariboulite_setup_io (cariboulite_st* sys);
 int cariboulite_release_io (cariboulite_st* sys);
 int cariboulite_configure_fpga (cariboulite_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path);
 int cariboulite_init_submodules (cariboulite_st* sys);

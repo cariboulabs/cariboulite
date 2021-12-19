@@ -24,7 +24,12 @@ static char *io_utils_gpio_mode_strs[] = {"IN","OUT","ALT5","ALT4","ALT0","ALT1"
 int io_utils_setup(pigpioSigHandler sigHandler)
 {
    ZF_LOGI("initializing pigpio");
-   gpioCfgInterfaces(PI_DISABLE_FIFO_IF|PI_DISABLE_SOCK_IF|PI_LOCALHOST_SOCK_IF);
+   gpioCfgInterfaces(PI_DISABLE_FIFO_IF | PI_DISABLE_SOCK_IF | PI_LOCALHOST_SOCK_IF);
+
+   int cfg = gpioCfgGetInternals();
+   cfg |= PI_CFG_NOSIGHANDLER;  // (1<<10)
+   gpioCfgSetInternals(cfg);
+
    int status = gpioInitialise();
    if (status < 0)
    {
