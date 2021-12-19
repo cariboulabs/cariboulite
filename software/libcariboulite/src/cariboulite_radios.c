@@ -661,8 +661,8 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
                                                         modem_freq);
             
             // setup mixer LO according to the actual modem frequency
-            lo_act_freq = rffc507x_set_frequency(&rad->cariboulite_sys->mixer, modem_act_freq + f_rf);
-            act_freq = modem_act_freq + lo_act_freq;
+            lo_act_freq = rffc507x_set_frequency(&rad->cariboulite_sys->mixer, modem_act_freq - f_rf);
+            act_freq = modem_act_freq - lo_act_freq;
 
             // setup fpga RFFE <= upconvert (tx / rx)
             conversion_direction = conversion_dir_up;

@@ -1,0 +1,42 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/pi/projects/cariboulite/examples/cpp/dump1090.cpp
+SoapySDR/Version.hpp
+-
+SoapySDR/Modules.hpp
+-
+SoapySDR/Registry.hpp
+-
+SoapySDR/Device.hpp
+-
+SoapySDR/ConverterRegistry.hpp
+-
+algorithm
+-
+cstdlib
+-
+cstddef
+-
+iostream
+-
+iomanip
+-
+csignal
+-
+chrono
+-
+thread
+-
+getopt.h
+-
+sys/types.h
+-
+sys/stat.h
+-
+

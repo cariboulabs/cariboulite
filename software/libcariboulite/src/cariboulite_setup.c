@@ -6,16 +6,166 @@
 #include "zf_log/zf_log.h"
 
 
+#include <signal.h>
 #include <stdio.h>
 #include "cariboulite_setup.h"
 #include "cariboulite_events.h"
 #include "cariboulite_fpga_firmware.h"
 
+void print_siginfo(siginfo_t *si)
+{
+    printf("Signal [%d] caught, with the following information: \n", si->si_signo);
+    printf("   signal errno = %d\n", si->si_errno);
+    printf("   signal process pid = %d\n", si->si_pid);
+    printf("   signal process uid = %d\n", (int)si->si_uid);
+    printf("   signal status = %d\n", si->si_status);
+    switch (si->si_code)
+    {
+        case SI_ASYNCIO: printf("   signal errno / async IO completed\n"); break;
+        case SI_KERNEL: printf("   signal errno / signal raised by kernel\n"); break;
+        case SI_MESGQ: printf("   signal errno / state change of POSIX message queue\n"); break;
+        case SI_QUEUE: printf("   signal errno / sigqueue sent a message\n"); break;
+        case SI_TIMER: printf("   signal errno / POSIX timer expiration\n"); break;
+        case SI_TKILL: printf("   signal errno / tkill / tgkill sent the signal\n"); break;
+        case SI_SIGIO: printf("   signal errno / queueing of SIGIO\n"); break;
+        case SI_USER: printf("   signal errno / send by user kill() or raise()\n"); break;
+        default: break;
+    }
+    if (si->si_signo == SIGBUS)
+        switch (si->si_code)
+        {
+            case BUS_ADRALN: printf("   signal errno / SIGNBUS / alignment error\n"); break;
+            case BUS_ADRERR: printf("   signal errno / SIGNBUS / invalid physical address error\n");break;
+            case BUS_OBJERR: printf("   signal errno / SIGNBUS / general hardware arror\n"); break;
+            default: break;
+        }
+    
+    if (si->si_signo == SIGCHLD)
+        switch (si->si_code)
+        {    
+            case CLD_CONTINUED: printf("   signal errno / SIGCHLD / child stopped but then resumed\n"); break;
+            case CLD_DUMPED: printf("   signal errno / SIGCHLD / child terminated abnormally\n"); break;
+            case CLD_EXITED: printf("   signal errno / SIGCHLD / child terminated normally by exit()\n"); break;
+            case CLD_KILLED: printf("   signal errno / SIGCHLD / child was killed\n"); break;
+            case CLD_STOPPED: printf("   signal errno / SIGCHLD / child stopped\n"); break;
+            case CLD_TRAPPED: printf("   signal errno / SIGCHLD / child hit a trap\n"); break;
+            default: break;
+        }
+    
+    if (si->si_signo == SIGFPE)
+        switch (si->si_code)
+        {       
+            case FPE_FLTDIV: printf("   signal errno / SIGFPE / division by zero\n"); break;
+            case FPE_FLTOVF: printf("   signal errno / SIGFPE / float operation resulted in an overflow\n"); break;
+            case FPE_FLTINV: printf("   signal errno / SIGFPE / invalid floating operation\n"); break;
+            case FPE_FLTRES: printf("   signal errno / SIGFPE / float operation with invalid or inaxect result\n"); break;
+            case FPE_FLTSUB: printf("   signal errno / SIGFPE / floating operation resulted in an out of range subscript\n"); break;
+            case FPE_FLTUND: printf("   signal errno / SIGFPE / float operation resulted in underflow\n"); break;
+            case FPE_INTDIV: printf("   signal errno / SIGFPE / integer operation - division by zero\n"); break;
+            case FPE_INTOVF: printf("   signal errno / SIGFPE / integet operation resulted in overflow\n"); break;
+            default: break;
+        }
+    
+    if (si->si_signo == SIGILL)
+        switch (si->si_code)
+        {        
+            case ILL_ILLADR: printf("   signal errno / SIGILL / process attemped to enter an illegal addressing mode\n"); break;
+            case ILL_ILLOPC: printf("   signal errno / SIGILL / process attemped to execute illegal opcode\n"); break;
+            case ILL_ILLOPN: printf("   signal errno / SIGILL / process attemped to execute illegal operand\n"); break;
+            case ILL_PRVOPC: printf("   signal errno / SIGILL / process attemped to execute privileged opcode\n"); break;
+            case ILL_PRVREG: printf("   signal errno / SIGILL / process attemped to execute privileged register\n"); break;
+            case ILL_ILLTRP: printf("   signal errno / SIGILL / process attemped to enter illegal trap\n"); break;
+            default: break;
+        }
+    
+    if (si->si_signo == SIGPOLL)
+        switch (si->si_code)
+        {        
+            case POLL_ERR: printf("   signal errno / SIGPOLL / poll i/o error occured\n"); break;
+            case POLL_HUP: printf("   signal errno / SIGPOLL / the device hungup othe socked disconnecte\n"); break;
+            case POLL_IN: printf("   signal errno / SIGPOLL / poll - device available for read\n"); break;
+            case POLL_MSG: printf("   signal errno / SIGPOLL / poll - message is available\n"); break;
+            case POLL_OUT: printf("   signal errno / SIGPOLL / poll - device available for writing\n"); break;
+            case POLL_PRI: printf("   signal errno / SIGPOLL / poll - high priority data available for read\n"); break;
+            default: break;
+        }
+    
+    if (si->si_signo == SIGSEGV)
+        switch (si->si_code)
+        {        
+            case SEGV_ACCERR: printf("   signal errno / SIGSEGV / the process access a valid region of memory in an invalid way - violated memory access permissions\n"); break;
+            case SEGV_MAPERR: printf("   signal errno / SIGSEGV / the process access invalid region of memory\n"); break;
+            default: break;
+        }
+    
+    /*if (si->si_signo == SIGTRAP)
+    switch (si->si_code)
+    {        
+        case TRAP_BRKPT: printf("   signal errno / SIGTRAP / the process hit a breakpoint\n"); break;
+        case TRAP_TRACE: printf("   signal errno / SIGTRAP / the process hit a trace trap\n"); break;
+        default: printf("   signal errno unknown!\n"); break;
+    }*/
+
+}
+
 //=======================================================================================
-int cariboulite_setup_io (cariboulite_st* sys, void* sighandler)
+void cariboulite_sigaction_basehandler (int signo,
+                                        siginfo_t *si,
+                                        void *ucontext)
+{
+    int run_first = 0;
+    int run_last = 0;
+
+    cariboulite_st* sys = (cariboulite_st*)ucontext;
+
+    if (sys->signal_cb)
+    {
+        switch(sys->sig_op)
+        {
+            case cariboulite_signal_handler_op_last: run_last = 1; break;
+            case cariboulite_signal_handler_op_first: run_first = 1; break;
+            case cariboulite_signal_handler_op_override:
+            default: 
+                sys->signal_cb(sys, sys->singal_cb_context, signo, si);
+                return;
+        }
+    }
+
+    if (run_first)
+    {
+        sys->signal_cb(sys, sys->singal_cb_context, signo, si);
+    }
+
+    // The default operation
+    pid_t sender_pid = si->si_pid;
+    printf("CaribouLite: Signal [%d] received from pid=[%d]\n", signo, (int)sender_pid);
+    print_siginfo(si);
+    switch (signo)
+    {
+    case SIGHUP: printf("SIGHUP: Terminal went away!\n"); cariboulite_release_driver(sys); break;
+    case SIGINT: printf("SIGINT: interruption\n"); cariboulite_release_driver(sys); break;
+    case SIGQUIT: printf("SIGQUIT: user generated quit char\n"); cariboulite_release_driver(sys); break;
+    case SIGILL: printf("SIGILL: process tried to execute illegal instruction\n"); cariboulite_release_driver(sys); break;
+    case SIGABRT: printf("SIGABRT: sent by abort() command\n"); cariboulite_release_driver(sys); break;
+    case SIGBUS: printf("SIGBUS: hardware alignment error\n"); cariboulite_release_driver(sys); break;
+    case SIGFPE: printf("SIGFPE: arithmetic exception\n"); cariboulite_release_driver(sys); break;
+    case SIGKILL: printf("SIGKILL: upcatchable process termination\n"); cariboulite_release_driver(sys); break;
+    case SIGSEGV: printf("SIGSEGV: memory access violation\n"); cariboulite_release_driver(sys); break;
+    case SIGTERM: printf("SIGTERM: process termination\n"); cariboulite_release_driver(sys); break;
+    default: break;
+    }
+
+    if (run_last)
+    {
+        sys->signal_cb(sys, sys->singal_cb_context, signo, si);
+    }
+}
+
+//=======================================================================================
+int cariboulite_setup_io (cariboulite_st* sys)
 {
     ZF_LOGI("Setting up board I/Os");
-    if (io_utils_setup(sighandler) < 0)
+    if (io_utils_setup(NULL) < 0)
     {
         ZF_LOGE("Error setting up io_utils");
         return -1;
@@ -61,7 +211,7 @@ int cariboulite_release_io (cariboulite_st* sys)
     io_utils_spi_close(&sys->spi_dev);
 
     ZF_LOGI("Releasing board I/Os - io_utils_cleanup");
-    //io_utils_cleanup();
+    io_utils_cleanup();
     return 0;
 }
 
@@ -378,11 +528,40 @@ int cariboulite_version_dependent_config (cariboulite_st* sys)
 }
 
 //=================================================
-int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, cariboulite_board_info_st *info)
+static int cariboulite_register_many_signals(int *sig_nos, int nsigs, struct sigaction *sa, void* context)
+{
+    for (int i = 0; i < nsigs; i++)
+    {
+        if(sigaction(sig_nos[i], sa, context) != 0) 
+        {
+            ZF_LOGE("error sigaction() [%d] signal registration", sig_nos[i]);
+            return -cariboulite_signal_registration_failed;
+        }
+    }
+    return 0;
+}
+
+//=================================================
+int cariboulite_init_driver(cariboulite_st *sys, cariboulite_board_info_st *info)
 {
     //zf_log_set_output_level(ZF_LOG_ERROR);
     zf_log_set_output_level(ZF_LOG_VERBOSE);
+
+    // signals
+    cariboulite_setup_signal_handler (sys, NULL, cariboulite_signal_handler_op_last, NULL);
+
+    int signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGABRT, SIGBUS, SIGFPE, SIGSEGV, SIGTERM};
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = *cariboulite_sigaction_basehandler;
+    sa.sa_flags |= SA_RESTART | SA_SIGINFO;
     
+    if(cariboulite_register_many_signals(signals, sizeof(signals)/sizeof(signals[0]), &sa, sys) != 0) 
+    {
+        ZF_LOGE("error signal list registration");
+        return -cariboulite_signal_registration_failed;
+    }
+
     ZF_LOGI("driver initializing");
     if (info == NULL)
     {
@@ -400,7 +579,7 @@ int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, caribo
     ZF_LOGI("Detected Board Information:");
     cariboulite_config_print_board_info(&sys->board_info);
     
-    if (cariboulite_setup_io (sys, signal_handler_cb) != 0)
+    if (cariboulite_setup_io (sys) != 0)
     {
         return -cariboulite_io_setup_failed;
     }
@@ -431,6 +610,21 @@ int cariboulite_init_driver(cariboulite_st *sys, void* signal_handler_cb, caribo
     }
 
     return cariboulite_ok;
+}
+
+//=================================================
+int cariboulite_setup_signal_handler (cariboulite_st *sys, 
+                                        caribou_signal_handler handler, 
+                                        cariboulite_signal_handler_operation_en op,
+                                        void *context)
+{
+    ZF_LOGI("setting up signal handler");
+
+    sys->signal_cb = handler;
+    sys->singal_cb_context = context;
+    sys->sig_op = op;
+
+    return 0;
 }
 
 //=================================================
