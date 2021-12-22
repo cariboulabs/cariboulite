@@ -26,6 +26,7 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&smi_pins>;
 			status = "okay";
+			/* assigned-clock-rates = <500000000>; */
 		};
 	};
 

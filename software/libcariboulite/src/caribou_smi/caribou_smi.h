@@ -94,6 +94,7 @@ typedef struct
     caribou_smi_error_callback error_cb;
     void* cb_context;
 
+	uint32_t native_batch_length_bytes;
     caribou_smi_stream_st streams[CARIBOU_SMI_MAX_NUM_STREAMS];
     caribou_smi_address_en current_address;
 } caribou_smi_st;
@@ -108,13 +109,16 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
 int caribou_smi_setup_stream(caribou_smi_st* dev,
                                 caribou_smi_stream_type_en type,
                                 caribou_smi_channel_en channel,
-                                int batch_length, int num_buffers,
                                 caribou_smi_data_callback cb,
                                 void* serviced_context);
+int caribou_smi_read_stream_buffer_info(caribou_smi_st* dev, int id, 
+											size_t *batch_length_bytes, 
+											int* num_buffers);
 int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run);
 int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
 char* caribou_smi_get_error_string(caribou_smi_error_en err);
 void dump_hex(const void* data, size_t size);
+
 
 #ifdef __cplusplus
 }

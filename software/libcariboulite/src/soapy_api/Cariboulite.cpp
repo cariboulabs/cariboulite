@@ -25,7 +25,7 @@ Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
     for (int i = 0; i < 4; i++)
     {
         int stream_id = CARIBOU_SMI_GET_STREAM_ID(types[i], channels[i]);
-        sample_queues[i] = new SampleQueue(GET_MTU_MS_BYTES(BUFFER_SIZE_MS), NUM_SAMPLEQUEUE_BUFS);
+        sample_queues[i] = new SampleQueue(1024*1024/2, NUM_SAMPLEQUEUE_BUFS);
         int dir = (types[i] == caribou_smi_stream_type_write)? SOAPY_SDR_TX : SOAPY_SDR_RX;
         int ch = (channels[i] == caribou_smi_channel_900)? cariboulite_channel_s1g : cariboulite_channel_6g;
         sample_queues[i]->AttachStreamId(stream_id, dir, ch);

@@ -22,7 +22,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    #include "bcm2835_smi.h"
+    #include "kernel/smi_stream_dev.h"
 #ifdef __cplusplus
 }
 #endif
@@ -41,8 +41,8 @@ extern "C" {
 
 static char *error_strings[] = CARIBOU_SMI_ERROR_STRS;
 
-static void caribou_smi_print_smi_settings(struct smi_settings *settings);
-static void caribou_smi_setup_settings (struct smi_settings *settings);
+static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_settings *settings);
+static void caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings);
 static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type_en type, caribou_smi_channel_en ch);
 
 //=========================================================================
@@ -59,7 +59,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
 
     ZF_LOGI("initializing caribou_smi");
 
-    int fd = open(smi_file, O_RDWR);
+    int fd = open(smi_file, O_RDWR | O_NONBLOCK);
     if (fd < 0)
     {
         ZF_LOGE("can't open smi driver file '%s'", smi_file);
@@ -78,7 +78,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
     }
 
     // apply the new settings
-    caribou_smi_setup_settings(&settings);
+    caribou_smi_setup_settings(dev, &settings);
     ret = ioctl(fd, BCM2835_SMI_IOC_WRITE_SETTINGS, &settings);
     if (ret != 0)
     {
@@ -86,9 +86,6 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
         close (fd);
         return -1;
     }
-
-    //ZF_LOGD("Current SMI Settings:");
-    //caribou_smi_print_smi_settings(&settings);
 
     // set the address to idle
     ret = ioctl(fd, BCM2835_SMI_IOC_ADDRESS, caribou_smi_address_idle);
@@ -99,6 +96,20 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
         return -1;
     }
     dev->current_address = caribou_smi_address_idle;
+
+	// get the native batch length in bytes
+	ret = ioctl(fd, SMI_STREAM_IOC_GET_NATIVE_BUF_SIZE, &dev->native_batch_length_bytes);
+    if (ret != 0)
+    {
+        ZF_LOGE("failed reading native batch length, setting the default - this error is not fatal but we have wrong kernel drivers");
+		dev->native_batch_length_bytes = (1024)*(1024)/2;
+        //close (fd);
+        //return -1;
+    }
+	ZF_LOGI("Finished interogating 'smi' driver. Native batch length (bytes) = %d", dev->native_batch_length_bytes);
+
+	//ZF_LOGD("Current SMI Settings:");
+    //caribou_smi_print_smi_settings(dev, &settings);
 
     // initialize streams
     caribou_smi_init_stream(dev, caribou_smi_stream_type_write, caribou_smi_channel_900);
@@ -116,7 +127,6 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
 //=========================================================================
 int caribou_smi_close (caribou_smi_st* dev)
 {
-    //ZF_LOGI("closing caribou_smi");
     close (dev->filedesc);
     return 0;
 }
@@ -192,7 +202,6 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
         return -1;
     }
 
-    /*
     fd_set set;
     struct timeval timeout = {0};
     int rv;
@@ -236,10 +245,10 @@ again:
         return 0;
     }
     else if (FD_ISSET(dev->filedesc, &set))
-    {*/
+    {
         return read(dev->filedesc, buffer, size_of_buf);
-    /*}
-    return -1;*/
+    }
+    return -1;
 }
 
 //=========================================================================
@@ -395,20 +404,35 @@ void* caribou_smi_analyze_thread(void* arg)
         }
     }
 
-    ZF_LOGD("Exitting SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
+    ZF_LOGD("Leaving SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
     return NULL;
 }
 
+#define TIMING_PERF_SYNC  (1)
 //=========================================================================
-/*void* caribou_smi_thread(void *arg)
+void* caribou_smi_thread(void *arg)
 {
+	// --------------------------------------------
+	// TIMING PERF VARIABLES
+	#if (TIMING_PERF_SYNC)
+		struct timeval tv_pre = {0};
+		struct timeval tv_post = {0};
+		long long total_samples = 0;
+		long long last_total_samples = 0;
+		double time_pre = 0, batch_time = 0, sample_rate = 0;
+		double time_post = 0, process_time = 0;
+		double temp_pre;
+		double num_samples = 0, num_samples_avg = 0;
+	#endif // TIMING_PERF_SYNC
+	// --------------------------------------------
+
     pthread_t tid = pthread_self();
     caribou_smi_stream_st* st = (caribou_smi_stream_st*)arg;
     caribou_smi_st* dev = (caribou_smi_st*)st->parent_dev;
-    caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
+    //caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
     caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
-    ZF_LOGD("Entered thread id %lu, running = %d", tid, st->running);
+    ZF_LOGD("Entered thread id %lu, running = %d, Perf-Verbosity = %d", tid, st->running, TIMING_PERF_SYNC);
     set_realtime_priority(0);
 
     // create the analysis thread and mutexes
@@ -449,6 +473,13 @@ void* caribou_smi_analyze_thread(void* arg)
             continue;
         }
 
+		// --------------------------------------------
+		// TIMING PERF
+		#if (TIMING_PERF_SYNC)
+        	gettimeofday(&tv_pre, NULL);
+		#endif // TIMING_PERF_SYNC
+		// --------------------------------------------
+
         int ret = caribou_smi_timeout_read(dev, st->addr, (char*)st->current_smi_buffer, st->batch_length, 200);
         if (ret < 0)
         {
@@ -458,13 +489,13 @@ void* caribou_smi_analyze_thread(void* arg)
         }
         else if (ret == 0)  // timeout
         {
-            printf("caribou_smi_timeout\n");
+            ZF_LOGW("caribou_smi_timeout");
             continue;
         }
 
-        if (st->batch_length > ret)
+        if ((int)(st->batch_length) > ret)
         {
-            printf("partial read %d\n", ret);
+            ZF_LOGW("partial read %d", ret);
         }
 
         st->read_ret_value = ret;
@@ -474,6 +505,31 @@ void* caribou_smi_analyze_thread(void* arg)
         st->current_smi_buffer_index ++;
         if (st->current_smi_buffer_index >= (int)(st->num_of_buffers)) st->current_smi_buffer_index = 0;
         st->current_smi_buffer = st->buffers[st->current_smi_buffer_index];
+
+		// --------------------------------------------
+		// TIMING PERF
+		#if (TIMING_PERF_SYNC)
+			gettimeofday(&tv_post, NULL);
+			num_samples = (double)(st->read_ret_value) / 4.0;
+			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
+			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
+			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
+
+			batch_time = temp_pre - time_pre;
+			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
+			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
+
+			time_pre = temp_pre;
+			total_samples += st->read_ret_value;
+			if ((total_samples - last_total_samples) > 4000000*4)
+			{
+				last_total_samples = total_samples;
+				ZF_LOGD("sample_rate = %.2f SPS, process_time = %.2f usec"
+					   ", num_samples_avg = %.1f", 
+						sample_rate, process_time * 1e6, num_samples_avg);
+			}
+		#endif // TIMING_PERF_SYNC
+		// --------------------------------------------
     }
 
     st->read_analysis_thread_running = 0;
@@ -490,20 +546,26 @@ void* caribou_smi_analyze_thread(void* arg)
                                         st->current_app_buffer,
                                         st->batch_length);
 
-    ZF_LOGD("Exiting thread id %lu", tid);
+    ZF_LOGD("Leaving thread id %lu", tid);
     return NULL;
-}*/
+}
 
+/*#define TIMING_PERF_ASYNC  (1)
 //=========================================================================
 void* caribou_smi_thread_async(void *arg)
 {
-    struct timeval tv_pre = {0};
-    struct timeval tv_post = {0};
-    long long total_samples = 0;
-    double time_pre = 0, batch_time = 0, sample_rate = 0;
-    double time_post = 0, process_time = 0;
-    double temp_pre;
-    double num_samples = 0, num_samples_avg = 0;
+	// --------------------------------------------
+	// TIMING PERF VARIABLES
+	#if (TIMING_PERF_ASYNC)
+		struct timeval tv_pre = {0};
+		struct timeval tv_post = {0};
+		long long total_samples = 0;
+		double time_pre = 0, batch_time = 0, sample_rate = 0;
+		double time_post = 0, process_time = 0;
+		double temp_pre;
+		double num_samples = 0, num_samples_avg = 0;
+	#endif // TIMING_PERF_ASYNC
+	// --------------------------------------------
 
     pthread_t tid = pthread_self();
     struct aiocb read_aiocb = {0};
@@ -525,7 +587,9 @@ void* caribou_smi_thread_async(void *arg)
                                         st->current_app_buffer,
                                         st->batch_length);
 
-    // thread main loop
+    // -------------------------------
+	// 		THREAD MAIN LOOP
+	// -------------------------------
     while (st->active)
     {
         if (!st->running)
@@ -533,9 +597,18 @@ void* caribou_smi_thread_async(void *arg)
             usleep(1000);
             continue;
         }
-        gettimeofday(&tv_pre, NULL);
 
-        // shoot the async read
+		// --------------------------------------------
+		// TIMING PERF
+		#if (TIMING_PERF_ASYNC)
+        	gettimeofday(&tv_pre, NULL);
+		#endif // TIMING_PERF_ASYNC
+		// --------------------------------------------
+
+        // Run the async read
+		// This operation doesn't block and returns immediatelly
+		// in the meantime we do other stuff and some back
+		// to get the results later.
         int ret = caribou_smi_read_async(dev, st->addr,
                             (char*)st->current_smi_buffer, 
                             st->batch_length,
@@ -560,24 +633,29 @@ void* caribou_smi_thread_async(void *arg)
                                     st->batch_length);
         }
 
-        gettimeofday(&tv_post, NULL);
+        // --------------------------------------------
+		// TIMING PERF
+		#if (TIMING_PERF_ASYNC)
+			gettimeofday(&tv_post, NULL);
+			num_samples = (double)(st->read_ret_value) / 4.0;
+			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
+			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
+			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
 
-        // benchmarking
-        num_samples = (double)(st->read_ret_value) / 4.0;
-        num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
-        temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
-        time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
+			batch_time = temp_pre - time_pre;
+			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
+			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
 
-        batch_time = temp_pre - time_pre;
-        sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
-        process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
-
-        time_pre = temp_pre;
-        total_samples += st->read_ret_value;
-        if (total_samples % (4*4000000) == 0)
-        {
-            printf("sample_rate = %.2f SPS, process_time = %.2f usec, num_samples_avg = %.1f\n", sample_rate, process_time * 1e6, num_samples_avg);
-        }
+			time_pre = temp_pre;
+			total_samples += st->read_ret_value;
+			if (total_samples % (4*4000000) == 0)
+			{
+				printf("sample_rate = %.2f SPS, process_time = %.2f usec"
+					   ", num_samples_avg = %.1f\n", 
+						sample_rate, process_time * 1e6, num_samples_avg);
+			}
+		#endif // TIMING_PERF_ASYNC
+		// --------------------------------------------
 
         // wait for the async to complete
         struct aiocb* read_aiocb_vec[1];
@@ -603,30 +681,43 @@ void* caribou_smi_thread_async(void *arg)
                                         st->current_app_buffer,
                                         st->batch_length);
 
-    ZF_LOGD("Exiting thread id %lu", tid);
+    ZF_LOGD("Leaving thread id %lu", tid);
     return NULL;
+}*/
+
+//=========================================================================
+static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, int state)
+{
+	int ret = ioctl(dev->filedesc, SMI_STREAM_IOC_SET_STREAM_STATUS, state);
+	if (ret != 0)
+	{
+		ZF_LOGE("failed setting smi stream state (%d)", state);
+		return -1;
+	}
+	return 0;
 }
 
 //=========================================================================
 int caribou_smi_setup_stream(caribou_smi_st* dev,
                                 caribou_smi_stream_type_en type,
                                 caribou_smi_channel_en channel,
-                                int batch_length, 
-                                int num_buffers,
                                 caribou_smi_data_callback cb,
                                 void* serviced_context)
 {
     int stream_id = CARIBOU_SMI_GET_STREAM_ID(type, channel);
+	ZF_LOGI("Setting up stream channel (%d) of type (%d)", channel, type);
     caribou_smi_stream_st* st = &dev->streams[stream_id];
     if (st->active)
     {
         ZF_LOGE("the requested read stream channel (%d) of type (%d) is already active", channel, type);
-        return -1;
+        return 1;
     }
 
-    st->batch_length = batch_length;
-    st->num_of_buffers = num_buffers;
+    st->batch_length = dev->native_batch_length_bytes;
+    st->num_of_buffers = 3;
     st->data_cb = cb;
+
+	caribou_smi_set_driver_streaming_state(dev, 0);
 
     // allocate the buffer vector
     if (allocate_buffer_vec(&st->buffers, st->num_of_buffers, st->batch_length) != 0)
@@ -637,13 +728,13 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 
     st->current_smi_buffer_index = 0;
     st->current_smi_buffer = st->buffers[0];
-    st->current_app_buffer = NULL;
+    st->current_app_buffer = st->buffers[st->num_of_buffers-1];
     st->service_context = serviced_context;
     st->running = 0;
 
     // create the reading thread
     st->stream_id = stream_id;
-    int ret = pthread_create(&st->stream_thread, NULL, &caribou_smi_thread_async, st);
+    int ret = pthread_create(&st->stream_thread, NULL, &caribou_smi_thread, st);
     if (ret != 0)
     {
         ZF_LOGE("read stream thread creation failed");
@@ -661,6 +752,25 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 }
 
 //=========================================================================
+int caribou_smi_read_stream_buffer_info(caribou_smi_st* dev, int id, size_t *batch_length_bytes, int* num_buffers)
+{
+	if (id >= CARIBOU_SMI_MAX_NUM_STREAMS)
+    {
+        ZF_LOGE("wrong parameter id = %d >= %d", id, CARIBOU_SMI_MAX_NUM_STREAMS);
+        return -1;
+    }
+	if (dev->streams[id].active == 0)
+    {
+        ZF_LOGW("stream id = %d is not active", id);
+    }
+
+	if (batch_length_bytes) *batch_length_bytes = dev->streams[id].batch_length;
+    if (num_buffers) *num_buffers = dev->streams[id].num_of_buffers;
+
+	return 0;
+}
+
+//=========================================================================
 int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run)
 {
     ZF_LOGD("%s SMI stream %d", run?"RUNNING":"PAUSING", id);
@@ -674,6 +784,8 @@ int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run)
         ZF_LOGW("stream id = %d is not active", id);
         return 0;
     }
+
+	caribou_smi_set_driver_streaming_state(dev, run);
 
     dev->streams[id].running = run;
     return 0;
@@ -694,6 +806,8 @@ int caribou_smi_destroy_stream(caribou_smi_st* dev, int id)
         return 0;
     }
 
+	caribou_smi_set_driver_streaming_state(dev, 0);
+
     dev->streams[id].running = 0;
     usleep(1000);
 
@@ -713,8 +827,6 @@ int caribou_smi_destroy_stream(caribou_smi_st* dev, int id)
         usleep(1000);
         ZF_LOGE("Killed with pthread_cancel");
     }
-
-    //pthread_join(dev->streams[id].stream_thread, NULL);
 
     release_buffer_vec(dev->streams[id].buffers, dev->streams[id].num_of_buffers, dev->streams[id].batch_length);
     
@@ -737,7 +849,7 @@ static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type
                     type==caribou_smi_stream_type_write?"write":"read", ch==caribou_smi_channel_900?"900MHz":"2400MHz", addr, st->stream_id);
 
     st->addr = addr;
-    st->batch_length = 1024;
+    st->batch_length = dev->native_batch_length_bytes;
     st->num_of_buffers = 2;
     st->data_cb = NULL;
     st->service_context = NULL;
@@ -755,7 +867,7 @@ static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type
 
 
 //=========================================================================
-static void caribou_smi_print_smi_settings(struct smi_settings *settings)
+static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_settings *settings)
 {
     printf("SMI SETTINGS:\n");
     printf("    width: %d\n", settings->data_width);
@@ -765,23 +877,29 @@ static void caribou_smi_print_smi_settings(struct smi_settings *settings)
     printf("    dma enable: %c, passthru enable: %c\n", settings->dma_enable ? 'Y':'N', settings->dma_passthrough_enable ? 'Y':'N');
     printf("    dma threshold read: %d, write: %d\n", settings->dma_read_thresh, settings->dma_write_thresh);
     printf("    dma panic threshold read: %d, write: %d\n", settings->dma_panic_read_thresh, settings->dma_panic_write_thresh);
+	printf("	native kernel chunk size: %d bytes", dev->native_batch_length_bytes);
 }
 
 //=========================================================================
-static void caribou_smi_setup_settings (struct smi_settings *settings)
+static void caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings)
 {
     settings->read_setup_time = 0;
     settings->read_strobe_time = 5;
     settings->read_hold_time = 0;
     settings->read_pace_time = 0;
-    settings->write_setup_time = 1;
-    settings->write_hold_time = 1;
-    settings->write_pace_time = 2;
-    settings->write_strobe_time = 3;
+    settings->write_setup_time = 0;
+    settings->write_hold_time = 0;
+    settings->write_pace_time = 0;
+    settings->write_strobe_time = 4;
     settings->data_width = SMI_WIDTH_8BIT;
     settings->dma_enable = 1;
     settings->pack_data = 1;
     settings->dma_passthrough_enable = 1;
+
+    //settings->dma_read_thresh = 1;
+    //settings->dma_write_thresh = 1;
+    //settings->dma_panic_read_thresh = 1;
+    //settings->dma_panic_write_thresh = 1;
 }
 
 //=========================================================================

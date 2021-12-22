@@ -108,6 +108,8 @@ void print_siginfo(siginfo_t *si)
 
 }
 
+cariboulite_st* sigsys = NULL;
+
 //=======================================================================================
 void cariboulite_sigaction_basehandler (int signo,
                                         siginfo_t *si,
@@ -116,24 +118,24 @@ void cariboulite_sigaction_basehandler (int signo,
     int run_first = 0;
     int run_last = 0;
 
-    cariboulite_st* sys = (cariboulite_st*)ucontext;
+    //cariboulite_st* sys = (cariboulite_st*)ucontext;
 
-    if (sys->signal_cb)
+    if (sigsys->signal_cb)
     {
-        switch(sys->sig_op)
+        switch(sigsys->sig_op)
         {
             case cariboulite_signal_handler_op_last: run_last = 1; break;
             case cariboulite_signal_handler_op_first: run_first = 1; break;
             case cariboulite_signal_handler_op_override:
             default: 
-                sys->signal_cb(sys, sys->singal_cb_context, signo, si);
+                sigsys->signal_cb(sigsys, sigsys->singal_cb_context, signo, si);
                 return;
         }
     }
 
     if (run_first)
     {
-        sys->signal_cb(sys, sys->singal_cb_context, signo, si);
+        sigsys->signal_cb(sigsys, sigsys->singal_cb_context, signo, si);
     }
 
     // The default operation
@@ -142,22 +144,22 @@ void cariboulite_sigaction_basehandler (int signo,
     print_siginfo(si);
     switch (signo)
     {
-    case SIGHUP: printf("SIGHUP: Terminal went away!\n"); cariboulite_release_driver(sys); break;
-    case SIGINT: printf("SIGINT: interruption\n"); cariboulite_release_driver(sys); break;
-    case SIGQUIT: printf("SIGQUIT: user generated quit char\n"); cariboulite_release_driver(sys); break;
-    case SIGILL: printf("SIGILL: process tried to execute illegal instruction\n"); cariboulite_release_driver(sys); break;
-    case SIGABRT: printf("SIGABRT: sent by abort() command\n"); cariboulite_release_driver(sys); break;
-    case SIGBUS: printf("SIGBUS: hardware alignment error\n"); cariboulite_release_driver(sys); break;
-    case SIGFPE: printf("SIGFPE: arithmetic exception\n"); cariboulite_release_driver(sys); break;
-    case SIGKILL: printf("SIGKILL: upcatchable process termination\n"); cariboulite_release_driver(sys); break;
-    case SIGSEGV: printf("SIGSEGV: memory access violation\n"); cariboulite_release_driver(sys); break;
-    case SIGTERM: printf("SIGTERM: process termination\n"); cariboulite_release_driver(sys); break;
+    case SIGHUP: printf("SIGHUP: Terminal went away!\n"); cariboulite_release_driver(sigsys); break;
+    case SIGINT: printf("SIGINT: interruption\n"); cariboulite_release_driver(sigsys); break;
+    case SIGQUIT: printf("SIGQUIT: user generated quit char\n"); cariboulite_release_driver(sigsys); break;
+    case SIGILL: printf("SIGILL: process tried to execute illegal instruction\n"); cariboulite_release_driver(sigsys); break;
+    case SIGABRT: printf("SIGABRT: sent by abort() command\n"); cariboulite_release_driver(sigsys); break;
+    case SIGBUS: printf("SIGBUS: hardware alignment error\n"); cariboulite_release_driver(sigsys); break;
+    case SIGFPE: printf("SIGFPE: arithmetic exception\n"); cariboulite_release_driver(sigsys); break;
+    case SIGKILL: printf("SIGKILL: upcatchable process termination\n"); cariboulite_release_driver(sigsys); break;
+    case SIGSEGV: printf("SIGSEGV: memory access violation\n"); cariboulite_release_driver(sigsys); break;
+    case SIGTERM: printf("SIGTERM: process termination\n"); cariboulite_release_driver(sigsys); break;
     default: break;
     }
 
     if (run_last)
     {
-        sys->signal_cb(sys, sys->singal_cb_context, signo, si);
+        sigsys->signal_cb(sigsys, sigsys->singal_cb_context, signo, si);
     }
 }
 
@@ -528,11 +530,11 @@ int cariboulite_version_dependent_config (cariboulite_st* sys)
 }
 
 //=================================================
-static int cariboulite_register_many_signals(int *sig_nos, int nsigs, struct sigaction *sa, void* context)
+static int cariboulite_register_many_signals(int *sig_nos, int nsigs, struct sigaction *sa)
 {
     for (int i = 0; i < nsigs; i++)
     {
-        if(sigaction(sig_nos[i], sa, context) != 0) 
+        if(sigaction(sig_nos[i], sa, NULL) != 0) 
         {
             ZF_LOGE("error sigaction() [%d] signal registration", sig_nos[i]);
             return -cariboulite_signal_registration_failed;
@@ -553,10 +555,11 @@ int cariboulite_init_driver(cariboulite_st *sys, cariboulite_board_info_st *info
     int signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGABRT, SIGBUS, SIGFPE, SIGSEGV, SIGTERM};
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
-    sa.sa_sigaction = *cariboulite_sigaction_basehandler;
+    sigsys = sys;
+    sa.sa_sigaction = cariboulite_sigaction_basehandler;
     sa.sa_flags |= SA_RESTART | SA_SIGINFO;
     
-    if(cariboulite_register_many_signals(signals, sizeof(signals)/sizeof(signals[0]), &sa, sys) != 0) 
+    if(cariboulite_register_many_signals(signals, sizeof(signals)/sizeof(signals[0]), &sa) != 0) 
     {
         ZF_LOGE("error signal list registration");
         return -cariboulite_signal_registration_failed;
