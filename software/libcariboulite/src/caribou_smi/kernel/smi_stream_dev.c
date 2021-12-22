@@ -184,6 +184,11 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	return ret;
 }
 
+ssize_t bcm2835_smi_user_dma_read_to_fifo(
+	struct bcm2835_smi_instance *inst,
+	struct kfifo *fifo,
+	size_t fifo_len);
+
 int reader_thread_stream_function(void *pv) 
 {
 	struct bcm2835_smi_bounce_info *bounce = NULL;
@@ -198,6 +203,12 @@ int reader_thread_stream_function(void *pv)
 			continue;
 		}
 
+		/*count = bcm2835_smi_user_dma_read_to_fifo(smi_inst, &inst->rx_fifo, FIFO_SIZE_MULTIPLIER * DMA_BOUNCE_BUFFER_SIZE);
+		if (count)
+		{
+			wake_up_interruptible(&inst->readable);
+		}*/
+
 		count = bcm2835_smi_user_dma(smi_inst, DMA_DEV_TO_MEM, inst->rx_buffer, 
 									DMA_BOUNCE_BUFFER_SIZE, &bounce);
 		//printk("count1 = %d\n", count);
@@ -211,7 +222,7 @@ int reader_thread_stream_function(void *pv)
 			}
 
 			//count = 0;//dma_bounce_user(DMA_DEV_TO_MEM, inst->rx_buffer, DMA_BOUNCE_BUFFER_SIZE, bounce);
-			/* Wait for current chunk to complete: */
+			// Wait for current chunk to complete:
 			if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
 			{
 				printk("DMA bounce timed out");

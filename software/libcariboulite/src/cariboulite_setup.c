@@ -280,17 +280,17 @@ int cariboulite_setup_ext_ref ( cariboulite_st *sys, cariboulite_ext_ref_freq_en
     {
         case cariboulite_ext_ref_26mhz:
             ZF_LOGD("Setting ext_ref = 26MHz");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_26mhz);
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_26mhz);
             rffc507x_setup_reference_freq(&sys->mixer, 26e6);
             break;
         case cariboulite_ext_ref_32mhz:
             ZF_LOGD("Setting ext_ref = 32MHz");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_32mhz);
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_32mhz);
             rffc507x_setup_reference_freq(&sys->mixer, 32e6);
             break;
         case cariboulite_ext_ref_off:
             ZF_LOGD("Setting ext_ref = OFF");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_off);
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_off);
         default:
             return -1;
         break;
@@ -355,7 +355,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
 
     at86rf215_iq_interface_config_st modem_iq_config = {
         .loopback_enable = 0,
-        .drv_strength = at86rf215_iq_drive_current_4ma,
+        .drv_strength = at86rf215_iq_drive_current_2ma,
         .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
         .tx_control_with_iq_if = false,
         .radio09_mode = at86rf215_iq_if_mode,

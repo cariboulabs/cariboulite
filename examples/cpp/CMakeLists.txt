@@ -19,8 +19,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 ########################################################################
 add_executable(caribou_dump1090
     dump1090.cpp
-#    SoapySDRProbe.cpp
-#    SoapyRateTest.cpp
+	modes.c
 )
 
 target_link_libraries(caribou_dump1090 SoapySDR)

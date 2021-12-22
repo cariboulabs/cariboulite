@@ -149,8 +149,8 @@ int rffc507x_init(  rffc507x_st* dev,
 	set_RFFC507X_P2CTV(dev, 12);	
 	set_RFFC507X_P1CTV(dev, 12);
 	set_RFFC507X_RGBYP(dev, 1);
-	set_RFFC507X_P2MIXIDD(dev, 2);
-	set_RFFC507X_P1MIXIDD(dev, 2);
+	set_RFFC507X_P2MIXIDD(dev, 6);
+	set_RFFC507X_P1MIXIDD(dev, 6);
 	
 	// Others
 	set_RFFC507X_LDEN(dev, 1);

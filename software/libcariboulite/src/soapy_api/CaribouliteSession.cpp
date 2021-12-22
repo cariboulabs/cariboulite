@@ -64,11 +64,11 @@ SoapyCaribouliteSession::~SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
     //printf("~SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
-    SoapySDR_logf(SOAPY_SDR_INFO, "~SoapyCaribouliteSession, sessionCount: %ld", sessionCount);
+    //SoapySDR_logf(SOAPY_SDR_INFO, "~SoapyCaribouliteSession, sessionCount: %ld", sessionCount);
     sessionCount--;
     if (sessionCount == 0)
     {
         cariboulite_release_driver(&cariboulite_sys);
     }
-    SoapySDR_logf(SOAPY_SDR_INFO, "~SoapyCaribouliteSession CaribouLite released");
+    //SoapySDR_logf(SOAPY_SDR_INFO, "~SoapyCaribouliteSession CaribouLite released");
 }

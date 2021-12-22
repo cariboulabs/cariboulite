@@ -259,7 +259,7 @@ int cariboulite_set_rx_bandwidth(cariboulite_radios_st* radios,
     at86rf215_radio_f_cut_en fcut = at86rf215_radio_rx_f_cut_half_fs;
 
     // Automatically calculate the digital f_cut
-    /*if (rx_bw >= at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ && rx_bw <= at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ)
+    if (rx_bw >= at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ && rx_bw <= at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ)
         fcut = at86rf215_radio_rx_f_cut_0_25_half_fs;
     else if (rx_bw >= at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ && rx_bw <= at86rf215_radio_rx_bw_BW630KHZ_IF1000KHZ)
         fcut = at86rf215_radio_rx_f_cut_0_375_half_fs;
@@ -268,7 +268,7 @@ int cariboulite_set_rx_bandwidth(cariboulite_radios_st* radios,
     else if (rx_bw >= at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ && rx_bw <= at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ)
         fcut = at86rf215_radio_rx_f_cut_0_75_half_fs;
     else 
-        fcut = at86rf215_radio_rx_f_cut_half_fs;*/
+        fcut = at86rf215_radio_rx_f_cut_half_fs;
 
     rad->rx_fcut = fcut;
 
@@ -643,8 +643,10 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
         double f_rf_mod_26 = (f_rf / 26e6);
         f_rf_mod_32 -= (uint64_t)(f_rf_mod_32);
         f_rf_mod_26 -= (uint64_t)(f_rf_mod_26);
+		f_rf_mod_32 *= 32e6;
+        f_rf_mod_26 *= 26e6;
         if (f_rf_mod_32 > 16e6) f_rf_mod_32 = 32e6 - f_rf_mod_32;
-        if (f_rf_mod_26 > 13e6) f_rf_mod_26 = 13e6 - f_rf_mod_26;
+        if (f_rf_mod_26 > 13e6) f_rf_mod_26 = 26e6 - f_rf_mod_26;
         ext_ref_choice = f_rf_mod_32 > f_rf_mod_26 ? cariboulite_ext_ref_32mhz : cariboulite_ext_ref_26mhz;
         cariboulite_setup_ext_ref (rad->cariboulite_sys, ext_ref_choice);
 
@@ -668,9 +670,10 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
             conversion_direction = conversion_dir_up;
         }
         //-------------------------------------
-        else if ( f_rf >= CARIBOULITE_2G4_MIN && 
+        else if ( f_rf > CARIBOULITE_2G4_MIN && 
                 f_rf <= CARIBOULITE_2G4_MAX )
         {
+			cariboulite_setup_ext_ref (rad->cariboulite_sys, cariboulite_ext_ref_off);
             // region #2 - bypass mode
             // setup modem frequency <= f_rf
             modem_act_freq = (double)at86rf215_setup_channel (&rad->cariboulite_sys->modem, 

@@ -47,7 +47,7 @@ SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
 SampleQueue::~SampleQueue()
 {
     //printf("~SampleQueue streamID: %d, dir: %d, channel: %d\n", stream_id, stream_dir, stream_channel);
-    SoapySDR_logf(SOAPY_SDR_INFO, "~SampleQueue streamID: %d, dir: %d, channel: %d", stream_id, stream_dir, stream_channel);
+    //SoapySDR_logf(SOAPY_SDR_INFO, "~SampleQueue streamID: %d, dir: %d, channel: %d", stream_id, stream_dir, stream_channel);
 
     stream_id = -1;
     stream_dir = -1;

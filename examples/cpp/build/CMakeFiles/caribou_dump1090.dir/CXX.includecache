@@ -39,4 +39,20 @@ sys/types.h
 -
 sys/stat.h
 -
+modes.h
+/home/pi/projects/cariboulite/examples/cpp/modes.h
+
+/home/pi/projects/cariboulite/examples/cpp/modes.h
+string.h
+-
+stdlib.h
+-
+stdint.h
+-
+unistd.h
+-
+math.h
+-
+sys/time.h
+-
 
