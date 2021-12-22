@@ -169,6 +169,33 @@ dump1090.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/dump1090.cpp.s
 .PHONY : dump1090.cpp.s
 
+modes.o: modes.c.o
+
+.PHONY : modes.o
+
+# target to build an object file
+modes.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/modes.c.o
+.PHONY : modes.c.o
+
+modes.i: modes.c.i
+
+.PHONY : modes.i
+
+# target to preprocess a source file
+modes.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/modes.c.i
+.PHONY : modes.c.i
+
+modes.s: modes.c.s
+
+.PHONY : modes.s
+
+# target to generate assembly for a file
+modes.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/modes.c.s
+.PHONY : modes.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -181,6 +208,9 @@ help:
 	@echo "... dump1090.o"
 	@echo "... dump1090.i"
 	@echo "... dump1090.s"
+	@echo "... modes.o"
+	@echo "... modes.i"
+	@echo "... modes.s"
 .PHONY : help
 
 

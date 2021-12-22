@@ -8746,7 +8746,7 @@ void gpioTerminate(void)
 {
    int i;
 
-   printf("gpioTerminate\n");
+   //printf("gpioTerminate\n");
    DBG(DBG_USER, "");
 
    if (!libInitialised) return;
@@ -8765,7 +8765,7 @@ void gpioTerminate(void)
       initKillDMA(dmaOut);
    }
 
-   printf("gpioTerminate - reset DMA\n");
+   //printf("gpioTerminate - reset DMA\n");
 
 #ifndef EMBEDDED_IN_VM
    if ((gpioCfg.internals & PI_CFG_STATS) &&
@@ -8804,12 +8804,12 @@ void gpioTerminate(void)
    }
 
 #endif
-   printf("gpioTerminate - initReleaseResources\n");
+   //printf("gpioTerminate - initReleaseResources\n");
    initReleaseResources();
-   printf("gpioTerminate - initReleaseResources finished\n");
+   //printf("gpioTerminate - initReleaseResources finished\n");
    fflush(NULL);
 
-   printf("gpioTerminate - finished FFlush\n");
+   //printf("gpioTerminate - finished FFlush\n");
    libInitialised = 0;
 }
 

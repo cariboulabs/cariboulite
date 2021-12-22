@@ -246,8 +246,8 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
         }
     }
     
-    SoapySDR_logf(SOAPY_SDR_INFO, "finished setup stream, stream_id = %d, CW=%d", stream_id, cw);
-    return (SoapySDR::Stream *)((void*)stream_id);
+    //SoapySDR_logf(SOAPY_SDR_INFO, "finished setup stream, stream_id = %d, CW=%d", stream_id, cw);
+    return (SoapySDR::Stream *)((void*)(stream_id));
 }
 
 //========================================================
@@ -258,7 +258,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
      */
 void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
-    SoapySDR_logf(SOAPY_SDR_INFO, "closeStream");
+    //SoapySDR_logf(SOAPY_SDR_INFO, "closeStream");
     if (stream == NULL) return;
     int stream_id = (intptr_t)stream;
     
@@ -278,7 +278,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
     //printf("getStreamMTU\n");
-    return 1024*1024/2;      // # milliseconds of buffer
+    return 1024 * 1024 / 2 / 4;      // # milliseconds of buffer
 }
 
 //========================================================
@@ -305,7 +305,7 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const size_t numElems)
 {
     //printf("activateStream\n");
-    SoapySDR_logf(SOAPY_SDR_INFO, "activateStream");
+    //SoapySDR_logf(SOAPY_SDR_INFO, "activateStream");
     int stream_id = (intptr_t)stream;
 
     cariboulite_activate_channel(&radios, 
@@ -336,7 +336,7 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
      */
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
-    SoapySDR_logf(SOAPY_SDR_INFO, "deactivateStream");
+    //SoapySDR_logf(SOAPY_SDR_INFO, "deactivateStream");
     int stream_id = (intptr_t)stream;
 
     if ((cariboulite_channel_en)sample_queues[stream_id]->is_cw == 0)

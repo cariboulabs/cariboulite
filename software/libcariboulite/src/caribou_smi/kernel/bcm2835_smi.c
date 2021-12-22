@@ -49,6 +49,7 @@
 #include <linux/semaphore.h>
 #include <linux/spinlock.h>
 #include <linux/io.h>
+#include <linux/kfifo.h>
 
 #define BCM2835_SMI_IMPLEMENTATION
 #include <linux/broadcom/bcm2835_smi.h>
@@ -228,10 +229,10 @@ void bcm2835_smi_set_regs_from_settings(struct bcm2835_smi_instance *inst)
 
 	//     Additions (DM) <..
 
-	smics_temp |= SMICS_INTR;	// Generate interrupt while RXR = 1
+	//smics_temp |= SMICS_INTR;	// Generate interrupt while RXR = 1
 		// RXR = 1: 	RX FIFO is at least ¾ full or the transfer has finished and the
 		// 				FIFO still needs reading. The transfer direction must be set to READ
-	smics_temp |= SMICS_INTT;	// Generate interrupt while TXW = 1
+	//smics_temp |= SMICS_INTT;	// Generate interrupt while TXW = 1
 		// TXW = 1: 	TX FIFO is less than ¼ full and the transfer direction is set to WRITE. 
 	
 	// ..> Additions (DM)
@@ -689,6 +690,50 @@ static void smi_dma_write_sgl(
 		}
 	}
 }
+
+ssize_t bcm2835_smi_user_dma_read_to_fifo(
+	struct bcm2835_smi_instance *inst,
+	struct kfifo *fifo,
+	size_t fifo_len)
+{
+	struct dma_async_tx_descriptor *desc;
+	struct scatterlist	sg[2];
+	unsigned int ret;
+	size_t n_bytes;
+
+	ret = kfifo_dma_in_prepare(fifo, sg, ARRAY_SIZE(sg), fifo_len);
+
+	if (ret <= 0)
+	{
+		// no space in fifo, return 0;
+		return 0;
+	}
+
+	n_bytes = sg[0].length + sg[1].length;
+	smi_disable(inst, DMA_DEV_TO_MEM);
+	desc = smi_dma_submit_sgl(inst, sg, ret, DMA_DEV_TO_MEM, NULL);
+
+	dma_async_issue_pending(inst->dma_chan);
+	if (inst->settings.data_width == SMI_WIDTH_8BIT)
+	{
+		smi_init_programmed_read(inst, n_bytes);
+	}
+	else
+	{
+		smi_init_programmed_read(inst, n_bytes / 2);
+	}
+
+	/*if (dma_wait_for_async_tx(desc) == DMA_ERROR)
+	{
+		smi_dump_context_labelled(inst, "DMA timeout!");
+		return 0;
+	}*/
+
+	kfifo_dma_in_finish(fifo, n_bytes);
+
+	return n_bytes;
+}
+EXPORT_SYMBOL(bcm2835_smi_user_dma_read_to_fifo);
 
 ssize_t bcm2835_smi_user_dma(
 	struct bcm2835_smi_instance *inst,

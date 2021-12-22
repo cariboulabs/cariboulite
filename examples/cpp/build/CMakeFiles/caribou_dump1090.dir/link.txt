@@ -1,1 +1,1 @@
-/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/caribou_dump1090.dir/dump1090.cpp.o -o caribou_dump1090  -lSoapySDR 
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/caribou_dump1090.dir/dump1090.cpp.o CMakeFiles/caribou_dump1090.dir/modes.c.o -o caribou_dump1090  -lSoapySDR 

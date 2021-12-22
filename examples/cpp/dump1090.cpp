@@ -1,12 +1,10 @@
-// Copyright (c) 2014-2021 Josh Blum
-// SPDX-License-Identifier: BSL-1.0
-
 #include <SoapySDR/Version.hpp>
 #include <SoapySDR/Modules.hpp>
 #include <SoapySDR/Registry.hpp>
 #include <SoapySDR/Device.hpp>
 #include <SoapySDR/ConverterRegistry.hpp>
-#include <algorithm> //sort, min, max
+
+#include <algorithm>
 #include <cstdlib>
 #include <cstddef>
 #include <iostream>
@@ -17,15 +15,7 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
-std::string SoapySDRDeviceProbe(SoapySDR::Device *);
-std::string sensorReadings(SoapySDR::Device *);
-int SoapySDRRateTest(
-    const std::string &argStr,
-    const double sampleRate,
-    const std::string &formatStr,
-    const std::string &channelStr,
-    const std::string &directionStr);
+#include "modes.h"
 
 /***********************************************************************
  * Print the banner
@@ -70,6 +60,11 @@ static void sigIntHandler(const int)
     loopDone = true;
 }
 
+void onModeSMessage(mode_s_t *self, struct mode_s_msg *mm) 
+{
+	printf("Got message from flight %s at altitude %d\n", mm->flight, mm->altitude);
+}
+
 void runSoapyProcess(
     SoapySDR::Device *device,
     SoapySDR::Stream *stream,
@@ -80,20 +75,14 @@ void runSoapyProcess(
     //allocate buffers for the stream read/write
     const size_t numElems = device->getStreamMTU(stream);
     std::vector<std::vector<char>> buffMem(numChans, std::vector<char>(elemSize*numElems));
+	std::vector<unsigned short> magMem(numElems);
     std::vector<void *> buffs(numChans);
     for (size_t i = 0; i < numChans; i++) buffs[i] = buffMem[i].data();
 
-    //state collected in this loop
-    unsigned int overflows(0);
-    unsigned int underflows(0);
-    unsigned long long totalSamples(0);
-    const auto startTime = std::chrono::high_resolution_clock::now();
-    auto timeLastPrint = std::chrono::high_resolution_clock::now();
-    auto timeLastSpin = std::chrono::high_resolution_clock::now();
-    auto timeLastStatus = std::chrono::high_resolution_clock::now();
-    int spinIndex(0);
+	// MODE-S Stuff
+	mode_s_t state;
+	mode_s_init(&state);
 
-    std::cout << "Num Elements / read = " << numElems << std::endl;
     std::cout << "Starting stream loop, press Ctrl+C to exit..." << std::endl;
     device->activateStream(stream);
     signal(SIGINT, sigIntHandler);
@@ -107,12 +96,12 @@ void runSoapyProcess(
         if (ret == SOAPY_SDR_TIMEOUT) continue;
         if (ret == SOAPY_SDR_OVERFLOW)
         {
-            overflows++;
+            //overflows++;
             continue;
         }
         if (ret == SOAPY_SDR_UNDERFLOW)
         {
-            underflows++;
+            //underflows++;
             continue;
         }
         if (ret < 0)
@@ -120,46 +109,18 @@ void runSoapyProcess(
             std::cerr << "Unexpected stream error " << ret << std::endl;
             break;
         }
-        //std::cout << ret << std::endl;
-        totalSamples += ret;
+        //totalSamples += ret;
 
-        const auto now = std::chrono::high_resolution_clock::now();
-        /*if (timeLastSpin + std::chrono::milliseconds(300) < now)
-        {
-            timeLastSpin = now;
-            static const char spin[] = {"|/-\\"};
-            printf("\b%c", spin[(spinIndex++)%4]);
-            fflush(stdout);
-        }*/
+        // compute the magnitude of the signal
+		mode_s_compute_magnitude_vector((short*)(buffs[0]), magMem.data(), ret);
 
-        //occasionally read out the stream status (non blocking)
-        if (timeLastStatus + std::chrono::seconds(1) < now)
-        {
-            timeLastStatus = now;
-            while (true)
-            {
-                size_t chanMask; int flags; long long timeNs;
-                ret = device->readStreamStatus(stream, chanMask, flags, timeNs, 0);
-                if (ret == SOAPY_SDR_OVERFLOW) overflows++;
-                else if (ret == SOAPY_SDR_UNDERFLOW) underflows++;
-                else if (ret == SOAPY_SDR_TIME_ERROR) {}
-                else break;
-            }
-        }
-        if (timeLastPrint + std::chrono::seconds(5) < now)
-        {
-            timeLastPrint = now;
-            const auto timePassed = std::chrono::duration_cast<std::chrono::microseconds>(now - startTime);
-            const auto sampleRate = double(totalSamples)/timePassed.count();
-            printf("\b%g Msps\t%g MBps", sampleRate, sampleRate*numChans*elemSize);
-            if (overflows != 0) printf("\tOverflows %u", overflows);
-            if (underflows != 0) printf("\tUnderflows %u", underflows);
-            printf("\n ");
-        }
+		// detect Mode S messages in the signal and call on_msg with each message
+		mode_s_detect(&state, magMem.data(), ret, onModeSMessage);
 
     }
     device->deactivateStream(stream);
 }
+
 
 /***********************************************************************
  * Main entry point
@@ -184,9 +145,10 @@ int main(int argc, char *argv[])
 
         // set the sample rate
         device->setSampleRate(SOAPY_SDR_RX, channels[0], 4e6);
- 
-        //create the stream, use the native format
-        
+ 		device->setBandwidth(SOAPY_SDR_RX, channels[0], 2500e3);
+		device->setGainMode(SOAPY_SDR_RX, channels[0], true);
+
+        //create the stream, use the native format   
         const auto format = device->getNativeStreamFormat(SOAPY_SDR_RX, channels.front(), fullScale);
         const size_t elemSize = SoapySDR::formatToSize(format);
         auto stream = device->setupStream(SOAPY_SDR_RX, format, channels);
