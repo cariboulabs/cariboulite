@@ -1,3 +1,10 @@
+/*
+ * Source of file: https://github.com/watson/libmodes
+ * Author: Thomas Watson (@watson)
+ * Contact: w@tson.dk / https://twitter.com/wa7son
+ * License: BSD-2-Clause
+ */
+
 #include "modes.h"
 
 #define MODE_S_PREAMBLE_US 8       // microseconds
