@@ -1,3 +1,9 @@
+/*
+ * Source of file: https://github.com/watson/libmodes
+ * Author: Thomas Watson (@watson)
+ * Contact: w@tson.dk / https://twitter.com/wa7son
+ * License: BSD-2-Clause
+ */
 #ifndef __MODE_S_DECODER_H
 #define __MODE_S_DECODER_H
 
