@@ -113,7 +113,8 @@ struct smi_settings {
 
 struct bcm2835_smi_instance;
 
-struct bcm2835_smi_bounce_info {
+struct bcm2835_smi_bounce_info
+{
 	struct semaphore callback_sem;
 	void *buffer[DMA_BOUNCE_BUFFER_COUNT];
 	dma_addr_t phys[DMA_BOUNCE_BUFFER_COUNT];
@@ -207,30 +208,30 @@ struct bcm2835_smi_instance *bcm2835_smi_get(struct device_node *node);
  * SMICS_RXD	: RX fifo contains data: 1 when there is data.
  * SMICS_TXD	: TX fifo can accept data: 1 when true.
  * SMICS_RXR	: RX fifo needs reading: 1 when fifo more than 3/4 full, or
- *		  when "DONE" and fifo not emptied.
+ *		  			when "DONE" and fifo not emptied.
  * SMICS_TXW	: TX fifo needs writing: 1 when less than 1/4 full.
  * SMICS_AFERR	: AXI FIFO error: 1 when fifo read when empty or written
- *		  when full. Write 1 to clear.
+ *		  			when full. Write 1 to clear.
  * SMICS_EDREQ	: 1 when external DREQ received.
  * SMICS_PXLDAT	:  Pixel data:	write 1 to enable pixel transfer modes.
  * SMICS_SETERR	: 1 if there was an error writing to setup regs (e.g.
- *		  tx was in progress). Write 1 to clear.
+ *		  			tx was in progress). Write 1 to clear.
  * SMICS_PVMODE	: Set to 1 to enable pixel valve mode.
  * SMICS_INTR	: Set to 1 to enable interrupt on RX.
  * SMICS_INTT	: Set to 1 to enable interrupt on TX.
  * SMICS_INTD	: Set to 1 to enable interrupt on DONE condition.
  * SMICS_TEEN	: Tear effect mode enabled: Programmed transfers will wait
- *		  for a TE trigger before writing.
+ *		  			for a TE trigger before writing.
  * SMICS_PAD1	: Padding settings for external transfers. For writes: the
- *		  number of bytes initially written to  the TX fifo that
+ *		  			number of bytes initially written to  the TX fifo that
  * SMICS_PAD0	: should be ignored. For reads: the number of bytes that will
- *		  be read before the data, and should be dropped.
+ *		  			be read before the data, and should be dropped.
  * SMICS_WRITE	: Transfer direction: 1 = write to external device, 0 = read
  * SMICS_CLEAR	: Write 1 to clear the FIFOs.
  * SMICS_START	: Write 1 to start the programmed transfer.
  * SMICS_ACTIVE	: Reads as 1 when a programmed transfer is underway.
  * SMICS_DONE	: Reads as 1 when transfer finished. For RX, not set until
- *		  FIFO emptied.
+ *		  			FIFO emptied.
  * SMICS_ENABLE	: Set to 1 to enable the SMI peripheral, 0 to disable.
  */
 
@@ -342,7 +343,7 @@ struct bcm2835_smi_instance *bcm2835_smi_get(struct device_node *node);
  */
 #define SMIDSW_WWIDTH_MASK	 ((1<<31)|(1<<30))
 #define SMIDSW_WWIDTH_OFFS	(30)
-#define SMIDSW_WSETUP_MASK	(0x3f << 24)DMA_THRESHOLD_BYTES
+#define SMIDSW_WSETUP_MASK	(0x3f << 24)
 #define SMIDSW_WSETUP_OFFS	(24)
 #define SMIDSW_WFORMAT		(1 << 23)
 #define SMIDSW_WSWAP		(1 << 22)

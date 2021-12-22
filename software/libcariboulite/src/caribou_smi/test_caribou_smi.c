@@ -168,8 +168,6 @@ int main_stream_read()
     int stream_id = caribou_smi_setup_stream(&dev,
                                 caribou_smi_stream_type_read,
                                 channel,
-                                NUM_SAMPLES * SIZE_OF_SAMPLE, 
-                                NUM_OF_BUFFERS,
                                 caribou_smi_data_event,
                                 NULL);
 
