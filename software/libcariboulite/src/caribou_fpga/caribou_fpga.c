@@ -250,7 +250,7 @@ int caribou_fpga_get_io_ctrl_mode (caribou_fpga_st* dev, uint8_t* debug_mode, ca
 }
 
 //--------------------------------------------------------------
-int caribou_fpga_set_io_ctrl_dig (caribou_fpga_st* dev, int ldo, int led0, int led1)
+int caribou_fpga_set_io_ctrl_dig (caribou_fpga_st* dev, int led0, int led1)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_io_ctrl_dig");
 
@@ -261,12 +261,12 @@ int caribou_fpga_set_io_ctrl_dig (caribou_fpga_st* dev, int ldo, int led0, int l
         .ioc = IOC_IO_CTRL_DIG_PIN
     };
 
-    uint8_t pins = (ldo << 2) | led1<<1 | led0<<0;
+    uint8_t pins = led1<<1 | led0<<0;
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &pins);
 }
 
 //--------------------------------------------------------------
-int caribou_fpga_get_io_ctrl_dig (caribou_fpga_st* dev, int* ldo, int* led0, int* led1, int* btn, int* cfg)
+int caribou_fpga_get_io_ctrl_dig (caribou_fpga_st* dev, int* led0, int* led1, int* btn, int* cfg)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_io_ctrl_dig");
 
@@ -281,7 +281,6 @@ int caribou_fpga_get_io_ctrl_dig (caribou_fpga_st* dev, int* ldo, int* led0, int
     caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &pins);
     if (led0) *led0 = (pins>>0)&0x01;
     if (led1) *led1 = (pins>>1)&0x01;
-    if (ldo) *ldo = (pins>>2)&0x01;
     if (cfg) *cfg = (pins>>3)&0x0F;
     if (btn) *btn = (pins>>7)&0x01;
 

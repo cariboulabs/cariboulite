@@ -11,7 +11,7 @@ build: top.bin
 	echo "Generating code blob"
 	../software/utils/generate_bin_blob ./top.bin cariboulite_firmware ./h-files/cariboulite_fpga_firmware.h
 
-	echo "Copying dtbo blob h-file to the code directory"
+	echo "Copying firmware blob to the software lib"
 	cp ./h-files/cariboulite_fpga_firmware.h ../software/libcariboulite/src/
 
 prog: build

@@ -23,6 +23,7 @@ add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
 add_subdirectory(src/cariboulite_config EXCLUDE_FROM_ALL)
 add_subdirectory(src/cariboulite_eeprom EXCLUDE_FROM_ALL)
+add_subdirectory(src/production_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 
 # Create the library LibCaribouLite
@@ -37,10 +38,12 @@ target_link_libraries(cariboulite   datatypes
                                     io_utils
                                     cariboulite_config
                                     cariboulite_eeprom
+									production_utils
                                     zf_log
                                     rt
                                     m
-                                    pthread)
+                                    pthread
+									iir_static)
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
@@ -84,14 +87,17 @@ SOAPY_SDR_MODULE_UTIL(
 set(SOURCES_ICE40_PROGRAMMER test/ice40_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
 set(SOURCES_MAIN src/cariboulite.c)
+set(SOURCES_PROD src/cariboulite_production.c)
 
 add_executable(ice40programmer ${SOURCES_ICE40_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_app ${SOURCES_MAIN})
+add_executable(cariboulite_prod ${SOURCES_PROD})
 
 target_link_libraries(ice40programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
 target_link_libraries(cariboulite_app cariboulite)
+target_link_libraries(cariboulite_prod cariboulite)
 
 set_target_properties( ice40programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
