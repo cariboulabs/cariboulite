@@ -85,6 +85,7 @@ extern "C" {
                         .initialized = 0,                               \
                     },                                                  \
                     .reset_fpga_on_startup = 1,                         \
+					.system_status = cariboulite_sys_status_unintialized,\
                 }
 
 #ifdef __cplusplus

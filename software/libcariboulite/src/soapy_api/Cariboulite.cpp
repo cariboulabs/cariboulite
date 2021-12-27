@@ -382,17 +382,25 @@ static double convertTxBandwidth(at86rf215_radio_tx_cut_off_en bw_en)
 //========================================================
 void Cariboulite::setBandwidth( const int direction, const size_t channel, const double bw )
 {
-    //printf("setBandwidth dir: %d, channel: %ld, bw: %.2f\n", direction, channel, bw);
+	int filt = 0;
+	double setbw = bw;
+	if (bw == 200000.0f) filt = 4;
+	else if (bw == 100000.0f) filt = 3;
+	else if (bw == 50000.0f) filt = 2;
+	else if (bw == 20000.0f) filt = 1;
+
+	if (setbw < 200000) setbw = 200000;
 
     if (direction == SOAPY_SDR_RX)
     {
-        cariboulite_set_rx_bandwidth(&radios,(cariboulite_channel_en)channel, 
-                        convertRxBandwidth(bw));
+		cariboulite_set_rx_bandwidth(&radios,(cariboulite_channel_en)channel, convertRxBandwidth(setbw));
+		if (channel == 0) sample_queues[2]->dig_filt = filt;
+		else if (channel == 1) sample_queues[3]->dig_filt = filt;
     }
     else if (direction == SOAPY_SDR_TX)
     {
         cariboulite_set_tx_bandwidth(&radios,(cariboulite_channel_en)channel, 
-                                convertTxBandwidth(bw));
+                                convertTxBandwidth(setbw));
     }
 }
 
@@ -424,6 +432,9 @@ std::vector<double> Cariboulite::listBandwidths( const int direction, const size
     if (direction == SOAPY_SDR_RX)
     {
         float fact = BW_SHIFT_FACT;
+		options.push_back( 20000 );
+		options.push_back( 50000 );
+		options.push_back( 100000 );
         options.push_back( 160000*fact );
         options.push_back( 200000*fact );
         options.push_back( 250000*fact );

@@ -224,12 +224,12 @@ module top(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
                                     // negedge of the input clock)
       .IO_STANDARD("SB_LVDS_INPUT"),// LVDS standard
-      .NEG_TRIGGER(1'b1)            // The signal is negated in hardware
+      .NEG_TRIGGER(1'b0)            // The signal is negated in hardware
    ) iq_rx_09 (
       .PACKAGE_PIN(i_iq_rx_09_p),
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( w_lvds_rx_09_d0 ),  // the 0 deg data output
-      .D_IN_1 ( w_lvds_rx_09_d1 ) );// the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_09_d1 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_09_d0 ) );// the 180 deg data output
 
 
    //=========================================================================
@@ -264,7 +264,7 @@ module top(
       // test reversed LSB / MSB
       // -----------------------
       .i_ddr_data ({w_lvds_rx_09_d1, w_lvds_rx_09_d0}),
-      //.i_ddr_data ({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
+	  //.i_ddr_data ({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
       
       .i_fifo_full (w_rx_09_fifo_full),
       .o_fifo_write_clk (w_rx_09_fifo_write_clk),
@@ -294,7 +294,7 @@ module top(
       .empty_o (w_rx_09_fifo_empty)
    );
 
-   lvds_rx lvds_rx_24_inst
+   /*lvds_rx lvds_rx_24_inst
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
@@ -328,7 +328,7 @@ module top(
       .rd_data_o (w_rx_24_fifo_pulled_data),
       .full_o (w_rx_24_fifo_full),
       .empty_o (w_rx_24_fifo_empty)
-   );
+   );*/
 
    smi_ctrl smi_ctrl_ins
    (

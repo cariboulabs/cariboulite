@@ -657,7 +657,7 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
         {
             // region #1 - UP CONVERSION
             uint32_t modem_freq = CARIBOULITE_2G4_MAX;
-            if (f_rf > (CARIBOULITE_2G4_MAX/2 - 15e6) && f_rf < (CARIBOULITE_2G4_MAX/2 + 15e6)) modem_freq = CARIBOULITE_2G4_MIN;
+            //if (f_rf > (CARIBOULITE_2G4_MAX/2 - 15e6) && f_rf < (CARIBOULITE_2G4_MAX/2 + 15e6)) modem_freq = CARIBOULITE_2G4_MIN;
             modem_act_freq = (double)at86rf215_setup_channel (&rad->cariboulite_sys->modem, 
                                                         at86rf215_rf_channel_2400mhz, 
                                                         modem_freq);
@@ -694,11 +694,11 @@ int cariboulite_set_frequency(  cariboulite_radios_st* radios,
                                                         (uint32_t)(CARIBOULITE_2G4_MIN));
 
             uint32_t lo = f_rf + modem_act_freq;
-            if (f_rf > (CARIBOULITE_2G4_MIN*2 + CARIBOULITE_MIN_LO)) lo = f_rf - modem_act_freq;
+            //if (f_rf > (CARIBOULITE_2G4_MIN*2 + CARIBOULITE_MIN_LO)) lo = f_rf - modem_act_freq;
             // setup mixer LO to according to actual modem frequency
             lo_act_freq = rffc507x_set_frequency(&rad->cariboulite_sys->mixer, f_rf - modem_act_freq);
-            act_freq = lo_act_freq - modem_act_freq;
-            if (f_rf > (CARIBOULITE_2G4_MIN*2 + CARIBOULITE_MIN_LO)) act_freq = modem_act_freq + lo_act_freq;
+            act_freq = lo_act_freq + modem_act_freq;
+            //if (f_rf > (CARIBOULITE_2G4_MIN*2 + CARIBOULITE_MIN_LO)) act_freq = modem_act_freq + lo_act_freq;
 
             // setup fpga RFFE <= downconvert (tx / rx)
             conversion_direction = conversion_dir_down;

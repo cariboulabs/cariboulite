@@ -23,7 +23,6 @@ typedef enum
     cariboulite_test_en_fpga_leds,
     cariboulite_test_en_fpga_versions,
     cariboulite_test_en_fpga_communication,
-    cariboulite_test_en_fpga_programming,
     cariboulite_test_en_fpga_smi,
     cariboulite_test_en_mixer_reset,
     cariboulite_test_en_mixer_communication,
@@ -47,19 +46,12 @@ typedef struct
 
 typedef struct
 {
-    char uname[256];                // uname -a
-    char cpu_name[32];              // cat /proc/cpuinfo
-    char cpu_serial_number[32];
-} cariboulite_rpi_info_st;
-
-typedef struct
-{
     struct tm start_time_of_test;
     struct tm end_time_of_test;
     cariboulite_test_en test_type;
     int test_serial_number;
 
-    char test_result[512];
+    char test_result_textual[512];
     uint32_t test_pass;
 } cariboulite_production_test_st;
 

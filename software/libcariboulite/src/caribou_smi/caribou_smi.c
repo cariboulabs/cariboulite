@@ -348,9 +348,27 @@ static void set_realtime_priority(int priority_deter)
     ZF_LOGI("Thread priority is %d", params.sched_priority);
 }
 
+int caribou_smi_search_offset(uint8_t *buff, int len)
+{
+	bool succ = false;
+	int off = 0;
+	while (!succ)
+	{
+		if ( (buff[off + 0] & 0xC0) == 0xC0 && 
+			 (buff[off + 4] & 0xC0) == 0xC0 &&
+			 (buff[off + 8] & 0xC0) == 0xC0 &&
+			 (buff[off + 12] & 0xC0) == 0xC0 )
+			 return off;
+		off ++;
+	}
+	return -1;
+}
+
 //=========================================================================
 void* caribou_smi_analyze_thread(void* arg)
 {
+	//static int a = 0;
+	int current_data_size = 0;
     pthread_t tid = pthread_self();
 
     struct timeval tv_pre = {0};
@@ -369,6 +387,7 @@ void* caribou_smi_analyze_thread(void* arg)
     ZF_LOGD("Entered SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
     set_realtime_priority(2);
 
+	int offset = 0;
     while (st->read_analysis_thread_running)
     {
         pthread_mutex_lock(&st->read_analysis_lock);
@@ -376,12 +395,24 @@ void* caribou_smi_analyze_thread(void* arg)
 
         if (!st->read_analysis_thread_running) break;
 
+		offset =  caribou_smi_search_offset(st->current_app_buffer, 16);
+		if (offset == -1)
+		{
+			ZF_LOGE("Offset error!");
+			for (int i = 0; i < 60; i+=4)
+			{
+				printf("%08X\n", *((uint32_t*)(st->current_app_buffer + i)));
+			}
+		}
+		current_data_size = st->read_ret_value;
+		if (offset != 0) current_data_size -= 4;
+
         if (st->data_cb) st->data_cb(dev->cb_context,
                                     st->service_context,
                                     type,
                                     ch,
-                                    st->read_ret_value,
-                                    st->current_app_buffer,
+                                    current_data_size,
+                                    st->current_app_buffer + offset,
                                     st->batch_length);
         
         gettimeofday(&tv_post, NULL);
@@ -408,7 +439,7 @@ void* caribou_smi_analyze_thread(void* arg)
     return NULL;
 }
 
-#define TIMING_PERF_SYNC  (1)
+#define TIMING_PERF_SYNC  (0)
 //=========================================================================
 void* caribou_smi_thread(void *arg)
 {

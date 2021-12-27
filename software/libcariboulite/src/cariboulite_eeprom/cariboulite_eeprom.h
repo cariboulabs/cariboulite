@@ -139,6 +139,8 @@ typedef struct
 
 int cariboulite_eeprom_init(cariboulite_eeprom_st *ee);
 int cariboulite_eeprom_close(cariboulite_eeprom_st *ee);
+int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee, int prod_id, int prod_ver);
 int cariboulite_eeprom_print(cariboulite_eeprom_st *ee);
+int cariboulite_eeprom_generate_write_config(cariboulite_eeprom_st *ee, int prod_id, int prod_ver);
 
 #endif // __CARIBOU_EEPROM_H__

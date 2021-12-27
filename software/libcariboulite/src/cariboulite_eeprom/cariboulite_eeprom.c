@@ -629,7 +629,7 @@ static int cariboulite_eeprom_contents_parse(cariboulite_eeprom_st *ee)
 }
 
 //===========================================================
-static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
+int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee, int prod_id, int prod_ver)
 {
 	struct atom_t *atom = NULL;
 	uint8_t *location = (uint8_t *)ee->eeprom_buffer_to_write;
@@ -649,8 +649,8 @@ static int cariboulite_eeprom_fill_in(cariboulite_eeprom_st *ee)
 	atom = (struct atom_t*)location;
 	struct vendor_info_t* vinf = (struct vendor_info_t*)(location + ATOM_HEADER_SIZE);
 
-	vinf->pid = 1;
-	vinf->pver = 1;
+	vinf->pid = prod_id;
+	vinf->pver = prod_ver;
 	vinf->vslen = strlen("CaribouLabs.co");
 	vinf->pslen = strlen("CaribouLite RPI Hat");
 	strcpy(VENDOR_VSTR_POINT(vinf), "CaribouLabs.co");
@@ -804,18 +804,25 @@ int cariboulite_eeprom_init(cariboulite_eeprom_st *ee)
 	ee->eeprom_initialized = cariboulite_eeprom_valid(ee);
 	cariboulite_eeprom_contents_parse(ee);
 
+	return 0;
+}
+
+//===========================================================
+int cariboulite_eeprom_generate_write_config(cariboulite_eeprom_st *ee, int prod_id, int prod_ver)
+{
 	if (!ee->eeprom_initialized)
 	{
-		ZF_LOGI("=======================================================");
-		ZF_LOGI("The EEPROM is not initialized or corrupted");
-		cariboulite_eeprom_fill_in(ee);
-		ZF_LOGI("Push the button on the board and hold, then press ENTER to continue...");
-		getchar();
+		//ZF_LOGI("=======================================================");
+		//ZF_LOGI("The EEPROM is not initialized or corrupted");
+		ZF_LOGI("Filling in EEPROM information");
+		cariboulite_eeprom_fill_in(ee, prod_id, prod_ver);
+		//ZF_LOGI("Push the button on the board and hold, then press ENTER to continue...");
+		//getchar();
+		ZF_LOGI("Writing into EEPROM");
 		write_eeprom(ee, ee->eeprom_buffer_to_write, ee->eeprom_buffer_to_write_used_size);
-		ZF_LOGI("EEPROM configuration Done");
-		ZF_LOGI("=======================================================");
+		//ZF_LOGI("EEPROM configuration Done");
+		//ZF_LOGI("=======================================================");
 	}
-
 	return 0;
 }
 

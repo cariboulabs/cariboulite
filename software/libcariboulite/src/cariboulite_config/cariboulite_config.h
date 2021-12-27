@@ -67,6 +67,13 @@ typedef enum
     cariboulite_ext_ref_src_na = 3,             // not applicable
 } cariboulite_ext_ref_src_en;
 
+typedef enum
+{
+	cariboulite_sys_status_unintialized = 0,
+	cariboulite_sys_status_minimal_init = 1,
+	cariboulite_sys_status_minimal_full_init = 2,
+} cariboulite_sys_status_en;
+
 typedef struct
 {
     cariboulite_ext_ref_src_en src;
@@ -102,6 +109,8 @@ typedef struct cariboulite_st_t
     caribou_fpga_versions_st fpga_versions;
     cariboulite_ext_ref_settings_st ext_ref_settings;
     uint8_t fpga_error_status;
+	cariboulite_sys_status_en system_status;
+	int fpga_config_res_state;
 } cariboulite_st;
 
 int cariboulite_config_detect_board(cariboulite_board_info_st *info);

@@ -13,6 +13,7 @@
 #include <cstring>
 #include <algorithm>
 #include <atomic>
+#include <Iir.h>
 
 //#define ZF_LOG_LEVEL ZF_LOG_ERROR
 #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
@@ -53,8 +54,8 @@ typedef struct
 // associated with CS16 - total 4 bytes / element
 typedef struct
 {
-        int16_t i;                      // LSB
-        int16_t q;                      // MSB
+	int16_t i;                      // LSB
+    int16_t q;                      // MSB
 } sample_complex_int16;
 
 // associated with CS32 - total 8 bytes / element
@@ -111,6 +112,7 @@ public:
         int stream_channel;
         int is_cw;
         Cariboulite_Format chosen_format;
+		int dig_filt;
 private:
         tsqueue_st queue;
         size_t mtu_size_bytes;
@@ -119,6 +121,18 @@ private:
         int partial_buffer_length;
 
         sample_complex_int16 *interm_native_buffer;
+		#define FILT_ORDER	6
+		#define FILT_ORDER1	8
+		Iir::Butterworth::LowPass<FILT_ORDER> filt20_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt20_q;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt50_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt50_q;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt100_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt100_q;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt200_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt200_q;
+		Iir::Butterworth::LowPass<FILT_ORDER1> filt2p5M_i;
+		Iir::Butterworth::LowPass<FILT_ORDER1> filt2p5M_q;
 };
 
 /***********************************************************************

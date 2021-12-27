@@ -63,6 +63,7 @@ typedef enum
 } cariboulite_ext_ref_freq_en;
 
 int cariboulite_init_driver(cariboulite_st *sys, cariboulite_board_info_st *info);
+int cariboulite_init_driver_minimal(cariboulite_st *sys, cariboulite_board_info_st *info);
 int cariboulite_setup_signal_handler (cariboulite_st *sys, 
                                         caribou_signal_handler handler, 
                                         cariboulite_signal_handler_operation_en op,
@@ -74,11 +75,9 @@ int cariboulite_setup_io (cariboulite_st* sys);
 int cariboulite_release_io (cariboulite_st* sys);
 int cariboulite_configure_fpga (cariboulite_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path);
 int cariboulite_init_submodules (cariboulite_st* sys);
-int cariboulite_version_dependent_config (cariboulite_st* sys);
 int cariboulite_release_submodules(cariboulite_st* sys);
 int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* res);
 int cariboulite_setup_ext_ref ( cariboulite_st *sys, cariboulite_ext_ref_freq_en ref);
-
 int cariboulite_setup_frequency(    cariboulite_st *sys, 
                                     cariboulite_channel_en ch, 
                                     cariboulite_channel_dir_en dir,

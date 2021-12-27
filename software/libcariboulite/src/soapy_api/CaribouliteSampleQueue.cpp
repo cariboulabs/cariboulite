@@ -1,5 +1,52 @@
 #include "Cariboulite.hpp"
+#include <Iir.h>
 
+
+class CircFifo
+{
+private:
+    sample_complex_int16 *buffer;
+    uint32_t in;
+    uint32_t out;
+    uint32_t size;
+
+public:
+	CircFifo(uint32_t _size)
+	{
+		if (!is_power_of_2(_size))
+			_size = roundup_power_of_2(_size);
+
+		buffer = new sample_complex_int16[_size];
+		in = 0;
+		out = 0;
+		size = _size;
+	}
+
+	~CircFifo()
+	{
+		delete []buffer;
+	}
+
+	uint32_t put(const uint8_t *data, uint32_t len)
+	{
+		len = min(len, size - in + out);
+		auto l = min(len, size - (in  & (size - 1)));
+		memcpy(buffer + (in & (size - 1)), data, l);
+		memcpy(buffer, data + l, len - l);
+		in += len;
+		return len;
+	}
+
+	uint32_t get(uint8_t *data, uint32_t len)
+	{
+		len = min(len, in - out);
+		auto l = min(len, size - (out & (size - 1)));
+		memcpy(data, buffer + (out & (size - 1)), l);
+		memcpy(data + l, buffer, len - l);
+		out += len;
+		return len;
+	}
+}
 
 //==============================================
 void print_iq(uint32_t* array, int len)
@@ -36,11 +83,24 @@ SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
     partial_buffer = new uint8_t[mtu_size_bytes];
     partial_buffer_start = mtu_size_bytes;
     partial_buffer_length = 0;
+	dig_filt = 0;
 
     // a buffer for conversion betwen native and emulated formats
     // the maximal size is the 2*(mtu_size in bytes)
     interm_native_buffer = new sample_complex_int16[2*mtu_size_bytes];
     is_cw = 0;
+
+	filt20_i.setup(4e6, 20e3/2);
+	filt50_i.setup(4e6, 50e3/2);
+	filt100_i.setup(4e6, 100e3/2);
+	filt200_i.setup(4e6, 200e3/2);
+	filt2p5M_i.setup(4e6, 2.5e6/2);
+
+	filt20_q.setup(4e6, 20e3/2);
+	filt50_q.setup(4e6, 50e3/2);
+	filt100_q.setup(4e6, 100e3/2);
+	filt200_q.setup(4e6, 200e3/2);
+	filt2p5M_q.setup(4e6, 2.5e6/2);
 }
 
 //=================================================================
@@ -188,19 +248,25 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
         // todo!!
         return res;
     }
-    /*if (once)
-    {
-        print_iq((uint32_t*) buffer, 5);
-        once--;
-    }*/
+    
     int tot_read_elements = res / sizeof(sample_complex_int16);
 
     // shift q
     //buffer[0].q = last_q;
-    for (int i = 1; i < tot_read_elements; i++)
+    /*for (int i = 1; i < tot_read_elements; i++)
     {
         buffer[i-1].q = buffer[i].q;
-    }
+    }*/
+
+	/*for (int i = 1; i < tot_read_elements; i+=2)
+    {
+		short t = buffer[i].i;
+		buffer[i].i = buffer[i+1].i;
+		buffer[i+1].i = t;
+		t = buffer[i].q;
+		buffer[i].q = buffer[i+1].q;
+		buffer[i+1].q = t;
+    }*/
 
     /*for (int i = tot_read_elements-1; i >= 0; i--)
     {
@@ -217,11 +283,50 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
 
         if (buffer[i].i >= (int16_t)0x1000) buffer[i].i -= (int16_t)0x2000;
         if (buffer[i].q >= (int16_t)0x1000) buffer[i].q -= (int16_t)0x2000;
-        /*if (i<5)
-        {
-            printf("i: %d, q: %d\n", buffer[i].i, buffer[i].q);
-        }*/
     }
+
+	return tot_read_elements;  
+
+	if (dig_filt == 0)
+	{
+		for (int i = 0; i < res; i++)
+		{
+			buffer[i].i = (int16_t)filt2p5M_i.filter((float)buffer[i].i);
+			buffer[i].q = (int16_t)filt2p5M_q.filter((float)buffer[i].q);
+		}
+	} 
+	else if (dig_filt == 1)
+	{
+		for (int i = 0; i < res; i++)
+		{
+			buffer[i].i = (int16_t)filt20_i.filter((float)buffer[i].i);
+			buffer[i].q = (int16_t)filt20_q.filter((float)buffer[i].q);
+		}
+	}
+	else if (dig_filt == 2)
+	{
+		for (int i = 0; i < res; i++)
+		{
+			buffer[i].i = (int16_t)filt50_i.filter((float)buffer[i].i);
+			buffer[i].q = (int16_t)filt50_q.filter((float)buffer[i].q);
+		}
+	}
+	else if (dig_filt == 3)
+	{
+		for (int i = 0; i < res; i++)
+		{
+			buffer[i].i = (int16_t)filt100_i.filter((float)buffer[i].i);
+			buffer[i].q = (int16_t)filt100_q.filter((float)buffer[i].q);
+		}
+	}
+	else if (dig_filt == 4)
+	{
+		for (int i = 0; i < res; i++)
+		{
+			buffer[i].i = (int16_t)filt200_i.filter((float)buffer[i].i);
+			buffer[i].q = (int16_t)filt200_q.filter((float)buffer[i].q);
+		}
+	}
 
     return tot_read_elements;  
 }
@@ -269,7 +374,7 @@ int SampleQueue::ReadSamples(sample_complex_float* buffer, size_t num_elements, 
         buffer[i].q -= sumQ;
     }
 
-    double theta1 = 0.0;
+    /*double theta1 = 0.0;
     double theta2 = 0.0;
     double theta3 = 0.0;
     for (int i = 0; i < res; i++)
@@ -293,7 +398,7 @@ int SampleQueue::ReadSamples(sample_complex_float* buffer, size_t num_elements, 
         float qq = buffer[i].q;
         buffer[i].i = c2 * ii;
         buffer[i].q = c1 * ii + qq;
-    }
+    }*/
 
     return res;
 }

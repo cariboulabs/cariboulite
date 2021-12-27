@@ -90,8 +90,8 @@ int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map);
 int caribou_fpga_set_io_ctrl_mode (caribou_fpga_st* dev, uint8_t debug_mode, caribou_fpga_io_ctrl_rfm_en rfm);
 int caribou_fpga_get_io_ctrl_mode (caribou_fpga_st* dev, uint8_t *debug_mode, caribou_fpga_io_ctrl_rfm_en *rfm);
 
-int caribou_fpga_set_io_ctrl_dig (caribou_fpga_st* dev, int ldo, int led0, int led1);
-int caribou_fpga_get_io_ctrl_dig (caribou_fpga_st* dev, int *ldo, int *led0, int *led1, int *btn, int *cfg);
+int caribou_fpga_set_io_ctrl_dig (caribou_fpga_st* dev, int led0, int led1);
+int caribou_fpga_get_io_ctrl_dig (caribou_fpga_st* dev, int *led0, int *led1, int *btn, int *cfg);
 
 int caribou_fpga_set_io_ctrl_pmod_dir (caribou_fpga_st* dev, uint8_t dir);
 int caribou_fpga_get_io_ctrl_pmod_dir (caribou_fpga_st* dev, uint8_t *dir);

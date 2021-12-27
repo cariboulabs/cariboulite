@@ -15,7 +15,9 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <Iir.h>
 #include "modes.h"
+
 
 /***********************************************************************
  * Print the banner
@@ -65,6 +67,33 @@ void onModeSMessage(mode_s_t *self, struct mode_s_msg *mm)
 	printf("Got message from flight %s at altitude %d\n", mm->flight, mm->altitude);
 }
 
+#define FILT_ORDER	6
+Iir::Butterworth::LowPass<FILT_ORDER> filt;
+
+void makeFilter(double fs, double cutoff)
+{
+	try {filt.setup(fs, cutoff);}
+	catch (...) {printf("Filter Setup Exception!\n");}
+}
+
+// Turn I/Q samples pointed by `data` into the magnitude vector pointed by `mag`
+void MagnitudeVector(short *data, uint16_t *mag, uint32_t size)
+{
+	uint32_t k;
+	float ii, qq, i, q;
+	int t = 0;
+	for (k=0; k<size; k+=2, t++)
+	{
+		float i = data[k];
+		float q = data[k+1];
+
+		//ii = filt.filter(i);
+		//qq = filt.filter(q);
+
+		mag[t]=(uint16_t)sqrt(ii*ii + qq*qq);
+	}
+}
+
 void runSoapyProcess(
     SoapySDR::Device *device,
     SoapySDR::Stream *stream,
@@ -74,14 +103,13 @@ void runSoapyProcess(
 {
     //allocate buffers for the stream read/write
     const size_t numElems = device->getStreamMTU(stream);
-    std::vector<std::vector<char>> buffMem(numChans, std::vector<char>(elemSize*numElems));
-	std::vector<unsigned short> magMem(numElems);
-    std::vector<void *> buffs(numChans);
-    for (size_t i = 0; i < numChans; i++) buffs[i] = buffMem[i].data();
+	int16_t* buff = (int16_t*)malloc (2*sizeof(int16_t)*numElems);	// complex 16 bit samples
+	uint16_t* mag = (uint16_t*)malloc(sizeof(uint16_t)*numElems);
 
 	// MODE-S Stuff
 	mode_s_t state;
 	mode_s_init(&state);
+	makeFilter(4e6, 50e3);
 
     std::cout << "Starting stream loop, press Ctrl+C to exit..." << std::endl;
     device->activateStream(stream);
@@ -91,7 +119,7 @@ void runSoapyProcess(
         int ret = 0;
         int flags = 0;
         long long timeUS = numElems;
-        ret = device->readStream(stream, buffs.data(), numElems, flags, timeUS);
+        ret = device->readStream(stream, (void* const*)&buff, numElems, flags, timeUS);
 
         if (ret == SOAPY_SDR_TIMEOUT) continue;
         if (ret == SOAPY_SDR_OVERFLOW)
@@ -109,13 +137,17 @@ void runSoapyProcess(
             std::cerr << "Unexpected stream error " << ret << std::endl;
             break;
         }
-        //totalSamples += ret;
 
         // compute the magnitude of the signal
-		mode_s_compute_magnitude_vector((short*)(buffs[0]), magMem.data(), ret);
+		MagnitudeVector(buff, mag, ret);
+
+		for (int jjj = 0; jjj < numElems; jjj++)
+		{
+			printf("%d, ", buff[jjj*2]);
+		}
 
 		// detect Mode S messages in the signal and call on_msg with each message
-		mode_s_detect(&state, magMem.data(), ret, onModeSMessage);
+		mode_s_detect(&state, mag, ret, onModeSMessage);
 
     }
     device->deactivateStream(stream);
@@ -132,6 +164,8 @@ int main(int argc, char *argv[])
     std::vector<size_t> channels;
     std::string argStr;
     double fullScale = 0.0;
+	double freq = 1090.0e6;
+	//double freq = 1090e6;
 
     printBanner();
     //findDevices(argStr, false);
@@ -145,8 +179,10 @@ int main(int argc, char *argv[])
 
         // set the sample rate
         device->setSampleRate(SOAPY_SDR_RX, channels[0], 4e6);
- 		device->setBandwidth(SOAPY_SDR_RX, channels[0], 2500e3);
-		device->setGainMode(SOAPY_SDR_RX, channels[0], true);
+ 		device->setBandwidth(SOAPY_SDR_RX, channels[0], 2.5e6);
+		device->setGainMode(SOAPY_SDR_RX, channels[0], false);
+		device->setGain(SOAPY_SDR_RX, channels[0], 60);
+		device->setFrequency(SOAPY_SDR_RX, channels[0], freq);
 
         //create the stream, use the native format   
         const auto format = device->getNativeStreamFormat(SOAPY_SDR_RX, channels.front(), fullScale);

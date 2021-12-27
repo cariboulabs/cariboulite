@@ -492,29 +492,6 @@ void mode_s_decode(mode_s_t *self, struct mode_s_msg *mm, unsigned char *msg) {
   mm->phase_corrected = 0; // Set to 1 by the caller if needed.
 }
 
-// Turn I/Q samples pointed by `data` into the magnitude vector pointed by `mag`
-void mode_s_compute_magnitude_vector(short *data, uint16_t *mag, uint32_t size)
-{
-  uint32_t j;
-
-  // Compute the magnitude vector. It's just SQRT(I^2 + Q^2), but we rescale
-  // to the 0-255 range to exploit the full resolution.
-  /*for (j = 0; j < size; j += 2) {
-    int i = data[j]-127;
-    int q = data[j+1]-127;
-
-    if (i < 0) i = -i;
-    if (q < 0) q = -q;
-    mag[j/2] = maglut[i*129+q];
-  }*/
-	for (j=0; j<size; j+=2)
-	{
-		int i = data[j];
-		int q = data[j+1];
-		mag[j/2]=sqrt(i*i + q*q);
-	}
-}
-
 // Return -1 if the message is out of fase left-side
 // Return  1 if the message is out of fase right-size
 // Return  0 if the message is not particularly out of phase.
