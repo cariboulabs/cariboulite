@@ -18,7 +18,7 @@
 //#define ZF_LOG_LEVEL ZF_LOG_ERROR
 #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 
-#include "datatypes/tsqueue.h"
+#include "datatypes/circular_buffer.h"
 #include "cariboulite_setup.h"
 #include "cariboulite_radios.h"
 
@@ -26,8 +26,8 @@ enum Cariboulite_Format
 {
 	CARIBOULITE_FORMAT_FLOAT32	= 0,
 	CARIBOULITE_FORMAT_INT16	= 1,
-	CARIBOULITE_FORMAT_INT8	        = 2,
-	CARIBOULITE_FORMAT_FLOAT64      = 3,
+	CARIBOULITE_FORMAT_INT8	    = 2,
+	CARIBOULITE_FORMAT_FLOAT64  = 3,
 };
 
 //#define BUFFER_SIZE_MS                  ( 10 )
@@ -114,7 +114,7 @@ public:
         Cariboulite_Format chosen_format;
 		int dig_filt;
 private:
-        tsqueue_st queue;
+		circular_buffer<sample_complex_int16> *queue;
         size_t mtu_size_bytes;
         uint8_t *partial_buffer;
         int partial_buffer_start;

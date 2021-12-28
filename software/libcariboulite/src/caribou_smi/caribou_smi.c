@@ -365,20 +365,25 @@ int caribou_smi_search_offset(uint8_t *buff, int len)
 }
 
 //=========================================================================
+#define TIMING_PERF_SYNC  (0)
 void* caribou_smi_analyze_thread(void* arg)
 {
 	//static int a = 0;
 	int current_data_size = 0;
     pthread_t tid = pthread_self();
 
-    struct timeval tv_pre = {0};
-    struct timeval tv_post = {0};
-    long long total_samples = 0;
-    double time_pre = 0, batch_time = 0, sample_rate = 0;
-    double time_post = 0, process_time = 0;
-    double temp_pre;
-    double num_samples = 0, num_samples_avg = 0;
-    
+	// --------------------------------------------
+	// TIMING PERF VARIABLES
+	#if (TIMING_PERF_SYNC)
+		struct timeval tv_pre = {0};
+		struct timeval tv_post = {0};
+		long long total_samples = 0;
+		double time_pre = 0, batch_time = 0, sample_rate = 0;
+		double time_post = 0, process_time = 0;
+		double temp_pre;
+		double num_samples = 0, num_samples_avg = 0;
+    #endif // TIMING_PERF_SYNC
+
     caribou_smi_stream_st* st = (caribou_smi_stream_st*)arg;
     caribou_smi_st* dev = (caribou_smi_st*)st->parent_dev;
     caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
@@ -391,7 +396,10 @@ void* caribou_smi_analyze_thread(void* arg)
     while (st->read_analysis_thread_running)
     {
         pthread_mutex_lock(&st->read_analysis_lock);
-        gettimeofday(&tv_pre, NULL);
+
+		#if (TIMING_PERF_SYNC)
+        	gettimeofday(&tv_pre, NULL);
+		#endif
 
         if (!st->read_analysis_thread_running) break;
 
@@ -415,31 +423,32 @@ void* caribou_smi_analyze_thread(void* arg)
                                     st->current_app_buffer + offset,
                                     st->batch_length);
         
-        gettimeofday(&tv_post, NULL);
+		#if (TIMING_PERF_SYNC)
+			gettimeofday(&tv_post, NULL);
 
-        // benchmarking
-        num_samples = (double)(st->read_ret_value) / 4.0;
-        num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
-        temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
-        time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
+			// benchmarking
+			num_samples = (double)(st->read_ret_value) / 4.0;
+			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
+			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
+			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
 
-        batch_time = temp_pre - time_pre;
-        sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
-        process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
+			batch_time = temp_pre - time_pre;
+			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
+			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
 
-        time_pre = temp_pre;
-        total_samples += st->read_ret_value;
-        if (total_samples % (4*4000000) == 0)
-        {
-            printf("sample_rate = %.2f SPS, process_time = %.2f usec, num_samples_avg = %.1f\n", sample_rate, process_time * 1e6, num_samples_avg);
-        }
+			time_pre = temp_pre;
+			total_samples += st->read_ret_value;
+			if (total_samples % (4*4000000) == 0)
+			{
+				printf("sample_rate = %.2f SPS, process_time = %.2f usec, num_samples_avg = %.1f\n", sample_rate, process_time * 1e6, num_samples_avg);
+			}
+		#endif
     }
 
     ZF_LOGD("Leaving SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
     return NULL;
 }
 
-#define TIMING_PERF_SYNC  (0)
 //=========================================================================
 void* caribou_smi_thread(void *arg)
 {
@@ -895,7 +904,6 @@ static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type
     st->read_analysis_thread_running = 0;
     st->parent_dev = dev;
 }
-
 
 //=========================================================================
 static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_settings *settings)
