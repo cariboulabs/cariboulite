@@ -11,7 +11,7 @@ include_directories(${SUPER_DIR})
 set(SOURCES_LIB caribou_smi.c)
 set(SOURCES ${SOURCES_LIB} test_caribou_smi.c)
 set(EXTERN_LIBS ${SUPER_DIR}/io_utils/build/libio_utils.a ${SUPER_DIR}/zf_log/build/libzf_log.a -lpthread)
-add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -O3)
+add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -Wno-unused-function -O3)
 
 #Generate the static library from the sources
 add_library(caribou_smi STATIC ${SOURCES_LIB})

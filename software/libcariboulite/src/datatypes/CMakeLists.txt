@@ -8,7 +8,7 @@ include_directories(/.)
 include_directories(${SUPER_DIR})
 
 #However, the file(GLOB...) allows for wildcard additions:
-set(SOURCES_LIB tsqueue.c tiny_list.c)
+set(SOURCES_LIB tsqueue.c tiny_list.c circular_buffer.cpp)
 #add_compile_options(-Wall -Wextra -pedantic -Werror)
 add_compile_options(-Wall -Wextra -pedantic -Wno-missing-braces)
 
@@ -18,6 +18,9 @@ target_include_directories(datatypes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(test_tsqueue test_tsqueue.c)
 target_link_libraries(test_tsqueue datatypes pthread)
+
+add_executable(test_circular_buffer test_circular_buffer.cpp)
+target_link_libraries(test_circular_buffer datatypes pthread)
 
 add_executable(test_tiny_list test_tiny_list.c)
 target_link_libraries(test_tiny_list datatypes pthread)

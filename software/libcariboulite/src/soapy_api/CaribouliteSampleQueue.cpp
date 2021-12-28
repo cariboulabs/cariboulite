@@ -1,52 +1,8 @@
 #include "Cariboulite.hpp"
 #include <Iir.h>
+#include <byteswap.h>
 
 
-class CircFifo
-{
-private:
-    sample_complex_int16 *buffer;
-    uint32_t in;
-    uint32_t out;
-    uint32_t size;
-
-public:
-	CircFifo(uint32_t _size)
-	{
-		if (!is_power_of_2(_size))
-			_size = roundup_power_of_2(_size);
-
-		buffer = new sample_complex_int16[_size];
-		in = 0;
-		out = 0;
-		size = _size;
-	}
-
-	~CircFifo()
-	{
-		delete []buffer;
-	}
-
-	uint32_t put(const uint8_t *data, uint32_t len)
-	{
-		len = min(len, size - in + out);
-		auto l = min(len, size - (in  & (size - 1)));
-		memcpy(buffer + (in & (size - 1)), data, l);
-		memcpy(buffer, data + l, len - l);
-		in += len;
-		return len;
-	}
-
-	uint32_t get(uint8_t *data, uint32_t len)
-	{
-		len = min(len, in - out);
-		auto l = min(len, size - (out & (size - 1)));
-		memcpy(data, buffer + (out & (size - 1)), l);
-		memcpy(data + l, buffer, len - l);
-		out += len;
-		return len;
-	}
-}
 
 //==============================================
 void print_iq(uint32_t* array, int len)
@@ -73,8 +29,7 @@ void print_iq(uint32_t* array, int len)
 SampleQueue::SampleQueue(int mtu_bytes, int num_buffers)
 {
     SoapySDR_logf(SOAPY_SDR_INFO, "Creating SampleQueue MTU: %d bytes, NumBuffers: %d", mtu_bytes, num_buffers);
-    tsqueue_init(&queue, mtu_bytes, num_buffers);
-    //printf("finished tsqueue\n");
+	queue = new circular_buffer(mtu_bytes / 4 * num_buffers)
     mtu_size_bytes = mtu_bytes;
     stream_id = -1;
     stream_dir = -1;
@@ -114,7 +69,7 @@ SampleQueue::~SampleQueue()
     stream_channel = -1;
     delete[] partial_buffer;
     delete[] interm_native_buffer;
-    tsqueue_release(&queue);
+    delete queue;
 }
 
 //=================================================================
@@ -133,39 +88,9 @@ int SampleQueue::AttachStreamId(int id, int dir, int channel)
 }
 
 //=================================================================
-int SampleQueue::Write(uint8_t *buffer, size_t length, uint32_t meta, long timeout_us)
+int SampleQueue::Write(sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us)
 {
-    int left_to_write = length;
-    int offset = 0;
-    int chunk = 0;
-
-    //printf("Write: %dB\n", length);
-    while (left_to_write)
-    {
-        int current_length = ( left_to_write < (int)mtu_size_bytes ) ? left_to_write : mtu_size_bytes;
-
-        int res = tsqueue_insert_push_buffer(&queue, 
-                                            buffer + offset, 
-                                            current_length, 
-                                            meta, timeout_us, 
-                                            true);
-        switch (res)
-        {
-            case TSQUEUE_NOT_INITIALIZED:
-            case TSQUEUE_SEM_FAILED: 
-                {
-                    SoapySDR_logf(SOAPY_SDR_ERROR, "pushing buffer n %d failed", chunk);
-                    return -1;
-                } break;
-            case TSQUEUE_TIMEOUT:
-            case TSQUEUE_FAILED_FULL: return offset; break;
-            default: break;
-        }
-        offset += current_length;
-        left_to_write -= current_length;
-        chunk ++;
-    }
-    return offset;
+	return queue->put(buffer, elements)
 }
 
 //=================================================================
@@ -274,7 +199,8 @@ int SampleQueue::ReadSamples(sample_complex_int16* buffer, size_t num_elements, 
     }*/
 
     for (int i = 0; i < tot_read_elements; i++)
-    {        
+    { 
+
         buffer[i].i >>= 1;
         buffer[i].q >>= 1;
 
