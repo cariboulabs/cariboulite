@@ -1,12 +1,19 @@
+# PySimpleGUI
 from PySimpleGUI.PySimpleGUI import Canvas, Column
-import time
-import numpy as np
+from PySimpleGUI import Window, WIN_CLOSED, Slider, Button, theme, Text, Radio, Image, InputText, Canvas
+
+# Numpy
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import numpy as np
+from numpy.lib.arraypad import pad
+
+# System
+import time
+
+# Soapy
 import SoapySDR
 from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_TX, SOAPY_SDR_CS16
-from PySimpleGUI import Window, WIN_CLOSED, Slider, Button, theme, Text, Radio, Image, InputText, Canvas
-from numpy.lib.arraypad import pad
 
 
 def setup_receiver(sdr, channel, freq_hz):
@@ -22,6 +29,10 @@ def setup_receiver(sdr, channel, freq_hz):
 def update_receiver_freq(sdr, stream, channel, freq_hz):
     sdr.setFrequency(SOAPY_SDR_RX, channel, freq_hz)
 
+
+##
+## GLOBAL AREA
+##
 
 # Data and Source Configuration
 rx_chan = 0                 # 6G = 1

@@ -27,7 +27,7 @@ module top(
       input i_iq_rx_clk_p,    // Paired with i_iq_rx_clk_n - only the 'B' pins need to be specified
 
       // Note: The icestorm (specifically nextpnr) fails to build if both diff pins are constrained
-      //       in the constrain file and the interface herein. Thus we need to take the out so that
+      //       in the constrain file and the interface herein. Thus we need to take them out so that
       //       it will "understand" we actually want an LVDS pair inputs. In addition, the pair is
       //       defined only by the "B" pins in BANK3 and not the "A" pins (which is counter-logical)
 
@@ -294,7 +294,7 @@ module top(
       .empty_o (w_rx_09_fifo_empty)
    );
 
-   /*lvds_rx lvds_rx_24_inst
+   lvds_rx lvds_rx_24_inst
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
@@ -328,7 +328,7 @@ module top(
       .rd_data_o (w_rx_24_fifo_pulled_data),
       .full_o (w_rx_24_fifo_full),
       .empty_o (w_rx_24_fifo_empty)
-   );*/
+   );
 
    smi_ctrl smi_ctrl_ins
    (
