@@ -22,7 +22,7 @@ def setup_receiver(sdr, channel, freq_hz):
     sdr.setGainMode(SOAPY_SDR_RX, channel, use_agc)             # Set the gain mode
     sdr.setGain(SOAPY_SDR_RX, channel, 0)                      # Set the gain
     sdr.setFrequency(SOAPY_SDR_RX, channel, freq_hz)            # Tune the LO
-    sdr.setBandwidth(SOAPY_SDR_RX, channel, 2.5e6)
+    sdr.setBandwidth(SOAPY_SDR_RX, channel, 2500e5)
     rx_stream = sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CS16, [channel])  # Setup data stream
     return rx_stream
 
