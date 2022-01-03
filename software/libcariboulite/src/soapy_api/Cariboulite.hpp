@@ -30,11 +30,8 @@ enum Cariboulite_Format
 	CARIBOULITE_FORMAT_FLOAT64  = 3,
 };
 
-//#define BUFFER_SIZE_MS                  ( 10 )
 #define NUM_SAMPLEQUEUE_BUFS            ( 3 )
 #define NUM_BYTES_PER_CPLX_ELEM         ( 4 )
-//#define GET_MTU_MS(ms)                  ( 4000*(ms) )
-//#define GET_MTU_MS_BYTES(ms)            ( GET_MTU_MS(ms) * NUM_BYTES_PER_CPLX_ELEM )
 
 #pragma pack(1)
 // associated with CS8 - total 2 bytes / element
@@ -50,13 +47,6 @@ typedef struct
         int16_t i :12;                  // LSB
         int16_t q :12;                  // MSB
 } sample_complex_int12;
-
-// associated with CS16 - total 4 bytes / element
-typedef struct
-{
-	int16_t i;                      // LSB
-    int16_t q;                      // MSB
-} sample_complex_int16;
 
 // associated with CS32 - total 8 bytes / element
 typedef struct
@@ -99,10 +89,10 @@ public:
         SampleQueue(int mtu_bytes, int num_buffers);
         ~SampleQueue();
         int AttachStreamId(int id, int dir, int channel);
-        int Write(uint8_t *buffer, size_t length, uint32_t meta, long timeout_us);
-        int Read(uint8_t *buffer, size_t length, uint32_t *meta, long timeout_us);
+        int Write(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us);
+        int Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us);
 
-        int ReadSamples(sample_complex_int16* buffer, size_t num_elements, long timeout_us);
+        int ReadSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us);
         int ReadSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us);
         int ReadSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us);
         int ReadSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
@@ -114,13 +104,13 @@ public:
         Cariboulite_Format chosen_format;
 		int dig_filt;
 private:
-		circular_buffer<sample_complex_int16> *queue;
+		circular_buffer<caribou_smi_sample_complex_int16> *queue;
         size_t mtu_size_bytes;
         uint8_t *partial_buffer;
         int partial_buffer_start;
         int partial_buffer_length;
 
-        sample_complex_int16 *interm_native_buffer;
+        caribou_smi_sample_complex_int16 *interm_native_buffer;
 		#define FILT_ORDER	6
 		#define FILT_ORDER1	8
 		Iir::Butterworth::LowPass<FILT_ORDER> filt20_i;

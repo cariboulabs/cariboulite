@@ -1,15 +1,15 @@
 #include "Cariboulite.hpp"
 #include "cariboulite_config/cariboulite_config_default.h"
 
-
 //=================================================================
 static void caribou_stream_data_event( void *ctx, 
                                         void *service_context,
                                         caribou_smi_stream_type_en type,
                                         caribou_smi_channel_en ch,
-                                        uint32_t byte_count,
-                                        uint8_t *buffer,
-                                        uint32_t buffer_len_bytes)
+                                        size_t sample_count,
+                                        caribou_smi_sample_complex_int16 *cmplx_vec,
+										caribou_smi_sample_meta *meta_vec,
+                                        size_t buffers_capacity_samples)
 {
     cariboulite_st* sys = (cariboulite_st*)ctx;
     Cariboulite *obj = (Cariboulite*)service_context;
@@ -23,7 +23,7 @@ static void caribou_stream_data_event( void *ctx,
         case caribou_smi_stream_type_read:
             {
                 int sample_queue_index = CARIBOU_SMI_GET_STREAM_ID(type, ch);
-                obj->sample_queues[sample_queue_index]->Write(buffer, buffer_len_bytes, 0, 10000L);
+                obj->sample_queues[sample_queue_index]->Write(cmplx_vec, sample_count, 0, 10000L);
             }
             break;
 
@@ -38,16 +38,16 @@ static void caribou_stream_data_event( void *ctx,
         //-------------------------------------------------------
         case caribou_smi_stream_start:
             {
-                SoapySDR_logf(SOAPY_SDR_DEBUG, "start event: stream channel %d, batch length: %d bytes", 
-                                    ch, buffer_len_bytes);
+                SoapySDR_logf(SOAPY_SDR_DEBUG, "start event: stream channel %d, batch length: %d samples", 
+                                    ch, buffers_capacity_samples);
             }
             break;
 
         //-------------------------------------------------------
         case caribou_smi_stream_end:
             {
-                SoapySDR_logf(SOAPY_SDR_DEBUG, "end event: stream channel %d, batch length: %d bytes", 
-                                    ch, buffer_len_bytes);
+                SoapySDR_logf(SOAPY_SDR_DEBUG, "end event: stream channel %d, batch length: %d sample", 
+                                    ch, buffers_capacity_samples);
             }
             break;
 
@@ -278,7 +278,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
     //printf("getStreamMTU\n");
-    return 1024 * 1024 / 2 / 4;      // # milliseconds of buffer
+    return 1024 * 1024 / 2 / 4;
 }
 
 //========================================================
@@ -399,7 +399,7 @@ int Cariboulite::readStream(
             }
             break;
 	    case CARIBOULITE_FORMAT_INT16: 
-            res = sample_queues[stream_id]->ReadSamples((sample_complex_int16*)buffs[0], numElems, timeoutUs);
+            res = sample_queues[stream_id]->ReadSamples((caribou_smi_sample_complex_int16*)buffs[0], numElems, timeoutUs);
             break;
 	    case CARIBOULITE_FORMAT_INT8: 
             res = sample_queues[stream_id]->ReadSamples((sample_complex_int8*)buffs[0], numElems, timeoutUs);

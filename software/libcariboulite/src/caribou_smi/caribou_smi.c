@@ -45,6 +45,87 @@ static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_setti
 static void caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings);
 static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type_en type, caribou_smi_channel_en ch);
 
+
+#define TIMING_PERF_SYNC  (0)
+
+#if (TIMING_PERF_SYNC)
+	#define TIMING_PERF_SYNC_VARS									\
+			struct timeval tv_pre = {0};							\
+			struct timeval tv_post = {0};							\
+			long long total_samples = 0,last_total_samples = 0;		\
+			double time_pre = 0, batch_time = 0, sample_rate = 0;	\
+			double time_post = 0, process_time = 0;					\
+			double temp_pre;										\
+			double num_samples = 0, num_samples_avg = 0;
+
+	#define TIMING_PERF_SYNC_TICK									\
+			gettimeofday(&tv_pre, NULL);
+
+	#define TIMING_PERF_SYNC_TOCK													\
+			gettimeofday(&tv_post, NULL);											\
+			num_samples = (double)(st->read_ret_value) / 4.0;						\
+			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;				\
+			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;			\
+			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;			\
+			batch_time = temp_pre - time_pre;										\
+			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;		\
+			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;			\
+			time_pre = temp_pre;													\
+			total_samples += st->read_ret_value;									\
+			if ((total_samples - last_total_samples) > 4000000*4)					\
+			{																		\
+				last_total_samples = total_samples;									\
+				ZF_LOGD("sample_rate = %.2f SPS, process_time = %.2f usec"			\
+						", num_samples_avg = %.1f", 								\
+						sample_rate, process_time * 1e6, num_samples_avg);			\
+			}
+#else
+	#define TIMING_PERF_SYNC_VARS
+	#define TIMING_PERF_SYNC_TICK
+	#define TIMING_PERF_SYNC_TOCK
+#endif
+
+//=========================================================================
+void dump_hex(const void* data, size_t size)
+{
+	char ascii[17];
+	size_t i, j;
+	ascii[16] = '\0';
+
+	for (i = 0; i < size; ++i) {
+		printf("%02X ", ((unsigned char*)data)[i]);
+		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~')
+        {
+			ascii[i % 16] = ((unsigned char*)data)[i];
+		}
+        else
+        {
+			ascii[i % 16] = '.';
+		}
+		if ((i+1) % 8 == 0 || i+1 == size)
+        {
+			printf(" ");
+			if ((i+1) % 16 == 0)
+            {
+				printf("|  %s \n", ascii);
+			}
+            else if (i+1 == size)
+            {
+				ascii[(i+1) % 16] = '\0';
+				if ((i+1) % 16 <= 8)
+                {
+					printf(" ");
+				}
+				for (j = (i+1) % 16; j < 16; ++j)
+                {
+					printf("   ");
+				}
+				printf("|  %s \n", ascii);
+			}
+		}
+	}
+}
+
 //=========================================================================
 char* caribou_smi_get_error_string(caribou_smi_error_en err)
 {
@@ -128,49 +209,6 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
 int caribou_smi_close (caribou_smi_st* dev)
 {
     close (dev->filedesc);
-    return 0;
-}
-
-//=========================================================================
-int caribou_smi_read_async(
-                            caribou_smi_st* dev, 
-                            caribou_smi_address_en source, 
-                            char* buffer, 
-                            int size_of_buf,
-                            struct aiocb *read_aiocb)
-{
-    // set the address
-    if (source > 0 && CARIBOU_SMI_READ_ADDR(source))
-    {
-        if (source != dev->current_address)
-        {
-            int ret = ioctl(dev->filedesc, BCM2835_SMI_IOC_ADDRESS, source);
-            if (ret != 0)
-            {
-                ZF_LOGE("failed setting smi address (idle / %d) to device", source);
-                return -1;
-            }
-            printf("Set address to %d\n", source);
-            dev->current_address = source;
-        }
-    }
-    else
-    {
-        ZF_LOGE("the specified address is not a read address (%d)", source);
-        return -1;
-    }
-
-    bzero((char *)read_aiocb, sizeof(struct aiocb));
-    read_aiocb->aio_buf = buffer;
-    read_aiocb->aio_fildes = dev->filedesc;
-    read_aiocb->aio_nbytes = size_of_buf;
-    read_aiocb->aio_offset = 0;
-    int ret = aio_read(read_aiocb);
-    if (ret < 0)
-    {
-        printf("aio_read failed!!\n");
-        return -1;
-    }
     return 0;
 }
 
@@ -348,6 +386,7 @@ static void set_realtime_priority(int priority_deter)
     ZF_LOGI("Thread priority is %d", params.sched_priority);
 }
 
+//=========================================================================
 int caribou_smi_search_offset(uint8_t *buff, int len)
 {
 	bool succ = false;
@@ -365,24 +404,131 @@ int caribou_smi_search_offset(uint8_t *buff, int len)
 }
 
 //=========================================================================
-#define TIMING_PERF_SYNC  (0)
+/*void caribou_smi_convert_data(uint8_t *buffer, 
+								size_t length_bytes, 
+								caribou_smi_sample_complex_int16* cmplx_vec, 
+								caribou_smi_sample_meta* meta_vec)
+{
+	static bool ptr = true;
+
+	// the verilog struct looks as follows:
+	//	[	31:30	] 	[	29:28	] 	[	27:15	] 	[ 	14  ] 	[	13:1	] 	[ 	0	]
+	//	[always "11"]	[ CNT 2Bits	]	[ I sample	] 	[ SYNC1	]	[ Q sample	]	[ SYNC2	]
+
+	uint32_t *samples = (uint32_t*)buffer;
+	//uint32_t cnt_gaps = 0;
+	int num_sync_errors = 0;
+	
+	if (ptr)
+	{
+		dump_hex(buffer, 64);
+		for (int k = 0; k < 8; k ++)
+		{
+			
+			printf("0x%08X, \n", __builtin_bswap32(samples[k]));
+		}
+		//ptr = false;
+	}
+
+	for (unsigned int i = 0; i < length_bytes/4; i++)
+	{
+		uint32_t s = __builtin_bswap32(samples[i]);
+
+		meta_vec[i].sync2 = s & 0x00000001; s >>= 1;
+		cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
+		meta_vec[i].sync1 = s & 0x00000001; s >>= 1;
+		cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
+		meta_vec[i].cnt = s & 0x00000003; s >>= 2;
+		if (s != 0x3)
+		{
+			num_sync_errors++;
+		}
+
+		if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
+        if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
+
+		// TODO: calculate the cnt gaps
+	}
+
+	if (ptr)
+	{
+		for (int k = 0; k < 64; k ++)
+		{
+			printf("(%d, %d), sync = [%d,%d]\n", cmplx_vec[k].i, cmplx_vec[k].q, meta_vec[k].sync1, meta_vec[k].sync2);
+		}
+		ptr = false;
+	}
+	
+	//if (num_sync_errors) printf("caribou_smi_convert_data: sync errors @ %d samples\n", num_sync_errors);
+}*/
+
+void caribou_smi_convert_data(uint8_t *buffer, 
+								size_t length_bytes, 
+								caribou_smi_sample_complex_int16* cmplx_vec, 
+								caribou_smi_sample_meta* meta_vec)
+{
+	static bool ptr = true;
+
+	// the verilog struct looks as follows:
+	//	[31:30]	[	29:17	] 	[ 16  ] 	[ 15:14 ] 	[	13:1	] 	[ 	0	]
+	//	[ '00']	[ I sample	]	[ '0' ] 	[  '01'	]	[  Q sample	]	[  '0'	]
+
+	uint32_t *samples = (uint32_t*)buffer;
+	//uint32_t cnt_gaps = 0;
+	int num_sync_errors = 0;
+	
+	if (ptr)
+	{
+		printf("got byte array with %d bytes\n", length_bytes);
+		dump_hex(buffer, 64);
+		for (int k = 0; k < 8; k ++)
+		{
+			
+			printf("0x%08X, \n", (samples[k]));
+		}
+		//ptr = false;
+	}
+
+	for (unsigned int i = 0; i < length_bytes/4; i++)
+	{
+		uint32_t s = (samples[i]);
+
+		/*meta_vec[i].sync2 = s & 0x00000001; */s >>= 1;
+		cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
+		s >>= 2;
+		/*meta_vec[i].sync1 = s & 0x00000001; */s >>= 1;
+		cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
+		//meta_vec[i].cnt = s & 0x00000003; s >>= 2;
+		if (s != 0x0)
+		{
+			num_sync_errors++;
+		}
+
+		if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
+        if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
+
+		// TODO: calculate the cnt gaps
+	}
+
+	if (ptr)
+	{
+		for (int k = 0; k < 64; k ++)
+		{
+			printf("(%d, %d), sync = [%d,%d]\n", cmplx_vec[k].i, cmplx_vec[k].q, meta_vec[k].sync1, meta_vec[k].sync2);
+		}
+		ptr = false;
+	}
+	
+	//if (num_sync_errors) printf("caribou_smi_convert_data: sync errors @ %d samples\n", num_sync_errors);
+}
+
+//=========================================================================
 void* caribou_smi_analyze_thread(void* arg)
 {
 	//static int a = 0;
 	int current_data_size = 0;
     pthread_t tid = pthread_self();
-
-	// --------------------------------------------
-	// TIMING PERF VARIABLES
-	#if (TIMING_PERF_SYNC)
-		struct timeval tv_pre = {0};
-		struct timeval tv_post = {0};
-		long long total_samples = 0;
-		double time_pre = 0, batch_time = 0, sample_rate = 0;
-		double time_post = 0, process_time = 0;
-		double temp_pre;
-		double num_samples = 0, num_samples_avg = 0;
-    #endif // TIMING_PERF_SYNC
+	TIMING_PERF_SYNC_VARS;
 
     caribou_smi_stream_st* st = (caribou_smi_stream_st*)arg;
     caribou_smi_st* dev = (caribou_smi_st*)st->parent_dev;
@@ -393,56 +539,36 @@ void* caribou_smi_analyze_thread(void* arg)
     set_realtime_priority(2);
 
 	int offset = 0;
+	// ****************************************
+	//  MAIN LOOP
+    // ****************************************	
     while (st->read_analysis_thread_running)
     {
         pthread_mutex_lock(&st->read_analysis_lock);
-
-		#if (TIMING_PERF_SYNC)
-        	gettimeofday(&tv_pre, NULL);
-		#endif
-
+		TIMING_PERF_SYNC_TICK;
         if (!st->read_analysis_thread_running) break;
 
-		offset =  caribou_smi_search_offset(st->current_app_buffer, 16);
+		/*offset =  caribou_smi_search_offset(st->current_app_buffer, 16);
 		if (offset == -1)
 		{
 			ZF_LOGE("Offset error!");
-			for (int i = 0; i < 60; i+=4)
-			{
-				printf("%08X\n", *((uint32_t*)(st->current_app_buffer + i)));
-			}
-		}
+			dump_hex(st->current_app_buffer, 60);
+		}*/
 		current_data_size = st->read_ret_value;
-		if (offset != 0) current_data_size -= 4;
+		//if (offset != 0) current_data_size -= 4;
 
-        if (st->data_cb) st->data_cb(dev->cb_context,
-                                    st->service_context,
-                                    type,
-                                    ch,
-                                    current_data_size,
-                                    st->current_app_buffer + offset,
-                                    st->batch_length);
+		caribou_smi_convert_data(st->current_app_buffer + offset, 
+								current_data_size, 
+								st->app_cmplx_vec, 
+								st->app_meta_vec);
+
+        if (st->data_cb) st->data_cb(dev->cb_context, st->service_context, type, ch,
+                                    current_data_size / 4,
+                                    st->app_cmplx_vec,
+                                    st->app_meta_vec,
+									st->batch_length / 4);
         
-		#if (TIMING_PERF_SYNC)
-			gettimeofday(&tv_post, NULL);
-
-			// benchmarking
-			num_samples = (double)(st->read_ret_value) / 4.0;
-			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
-			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
-			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
-
-			batch_time = temp_pre - time_pre;
-			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
-			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
-
-			time_pre = temp_pre;
-			total_samples += st->read_ret_value;
-			if (total_samples % (4*4000000) == 0)
-			{
-				printf("sample_rate = %.2f SPS, process_time = %.2f usec, num_samples_avg = %.1f\n", sample_rate, process_time * 1e6, num_samples_avg);
-			}
-		#endif
+		TIMING_PERF_SYNC_TOCK;
     }
 
     ZF_LOGD("Leaving SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
@@ -452,24 +578,11 @@ void* caribou_smi_analyze_thread(void* arg)
 //=========================================================================
 void* caribou_smi_thread(void *arg)
 {
-	// --------------------------------------------
-	// TIMING PERF VARIABLES
-	#if (TIMING_PERF_SYNC)
-		struct timeval tv_pre = {0};
-		struct timeval tv_post = {0};
-		long long total_samples = 0;
-		long long last_total_samples = 0;
-		double time_pre = 0, batch_time = 0, sample_rate = 0;
-		double time_post = 0, process_time = 0;
-		double temp_pre;
-		double num_samples = 0, num_samples_avg = 0;
-	#endif // TIMING_PERF_SYNC
-	// --------------------------------------------
+	TIMING_PERF_SYNC_VARS;
 
     pthread_t tid = pthread_self();
     caribou_smi_stream_st* st = (caribou_smi_stream_st*)arg;
     caribou_smi_st* dev = (caribou_smi_st*)st->parent_dev;
-    //caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
     caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
     ZF_LOGD("Entered thread id %lu, running = %d, Perf-Verbosity = %d", tid, st->running, TIMING_PERF_SYNC);
@@ -498,13 +611,11 @@ void* caribou_smi_thread(void *arg)
 
     // start thread notification
     if (st->data_cb != NULL) st->data_cb(dev->cb_context, st->service_context, 
-                                        caribou_smi_stream_start,
-                                        ch,
-                                        0,
-                                        st->current_app_buffer,
-                                        st->batch_length);
+                                        caribou_smi_stream_start, ch, 0, NULL, NULL, 0);
 
-    // thread main loop
+    // ****************************************
+	//  MAIN LOOP
+    // ****************************************	
     while (st->active)
     {
         if (!st->running)
@@ -513,12 +624,7 @@ void* caribou_smi_thread(void *arg)
             continue;
         }
 
-		// --------------------------------------------
-		// TIMING PERF
-		#if (TIMING_PERF_SYNC)
-        	gettimeofday(&tv_pre, NULL);
-		#endif // TIMING_PERF_SYNC
-		// --------------------------------------------
+		TIMING_PERF_SYNC_TICK;
 
         int ret = caribou_smi_timeout_read(dev, st->addr, (char*)st->current_smi_buffer, st->batch_length, 200);
         if (ret < 0)
@@ -546,30 +652,7 @@ void* caribou_smi_thread(void *arg)
         if (st->current_smi_buffer_index >= (int)(st->num_of_buffers)) st->current_smi_buffer_index = 0;
         st->current_smi_buffer = st->buffers[st->current_smi_buffer_index];
 
-		// --------------------------------------------
-		// TIMING PERF
-		#if (TIMING_PERF_SYNC)
-			gettimeofday(&tv_post, NULL);
-			num_samples = (double)(st->read_ret_value) / 4.0;
-			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
-			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
-			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
-
-			batch_time = temp_pre - time_pre;
-			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
-			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
-
-			time_pre = temp_pre;
-			total_samples += st->read_ret_value;
-			if ((total_samples - last_total_samples) > 4000000*4)
-			{
-				last_total_samples = total_samples;
-				ZF_LOGD("sample_rate = %.2f SPS, process_time = %.2f usec"
-					   ", num_samples_avg = %.1f", 
-						sample_rate, process_time * 1e6, num_samples_avg);
-			}
-		#endif // TIMING_PERF_SYNC
-		// --------------------------------------------
+		TIMING_PERF_SYNC_TOCK;
     }
 
     st->read_analysis_thread_running = 0;
@@ -578,152 +661,13 @@ void* caribou_smi_thread(void *arg)
     pthread_mutex_destroy(&st->read_analysis_lock);
 
     // exit thread notification
-    if (st->data_cb != NULL) st->data_cb(dev->cb_context,
-                                        st->service_context,
-                                        caribou_smi_stream_end,
-                                        (caribou_smi_channel_en)(st->stream_id>>1),
-                                        0,
-                                        st->current_app_buffer,
-                                        st->batch_length);
+    if (st->data_cb != NULL) st->data_cb(dev->cb_context, st->service_context,
+                                        caribou_smi_stream_end, (caribou_smi_channel_en)(st->stream_id>>1),
+                                        0, NULL, NULL, 0);
 
     ZF_LOGD("Leaving thread id %lu", tid);
     return NULL;
 }
-
-/*#define TIMING_PERF_ASYNC  (1)
-//=========================================================================
-void* caribou_smi_thread_async(void *arg)
-{
-	// --------------------------------------------
-	// TIMING PERF VARIABLES
-	#if (TIMING_PERF_ASYNC)
-		struct timeval tv_pre = {0};
-		struct timeval tv_post = {0};
-		long long total_samples = 0;
-		double time_pre = 0, batch_time = 0, sample_rate = 0;
-		double time_post = 0, process_time = 0;
-		double temp_pre;
-		double num_samples = 0, num_samples_avg = 0;
-	#endif // TIMING_PERF_ASYNC
-	// --------------------------------------------
-
-    pthread_t tid = pthread_self();
-    struct aiocb read_aiocb = {0};
-    caribou_smi_stream_st* st = (caribou_smi_stream_st*)arg;
-    caribou_smi_st* dev = (caribou_smi_st*)st->parent_dev;
-    caribou_smi_stream_type_en type = (caribou_smi_stream_type_en)(st->stream_id>>1 & 0x1);
-    caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
-
-    ZF_LOGD("Entered thread id %lu, running = %d", tid, st->running);
-    set_realtime_priority(0);
-
-    st->active = 1;
-
-    // start thread notification
-    if (st->data_cb != NULL) st->data_cb(dev->cb_context, st->service_context, 
-                                        caribou_smi_stream_start,
-                                        ch,
-                                        0,
-                                        st->current_app_buffer,
-                                        st->batch_length);
-
-    // -------------------------------
-	// 		THREAD MAIN LOOP
-	// -------------------------------
-    while (st->active)
-    {
-        if (!st->running)
-        {
-            usleep(1000);
-            continue;
-        }
-
-		// --------------------------------------------
-		// TIMING PERF
-		#if (TIMING_PERF_ASYNC)
-        	gettimeofday(&tv_pre, NULL);
-		#endif // TIMING_PERF_ASYNC
-		// --------------------------------------------
-
-        // Run the async read
-		// This operation doesn't block and returns immediatelly
-		// in the meantime we do other stuff and some back
-		// to get the results later.
-        int ret = caribou_smi_read_async(dev, st->addr,
-                            (char*)st->current_smi_buffer, 
-                            st->batch_length,
-                            &read_aiocb);
-
-        if (ret < 0)
-        {
-            ZF_LOGE("async read failed");
-            if (dev->error_cb) dev->error_cb(dev->cb_context, st->stream_id & 0x1, caribou_smi_error_read_failed);
-            break;
-        }
-
-        // analyze the last buffer that was accepted
-        if (st->current_app_buffer)
-        {
-            if (st->data_cb) st->data_cb(dev->cb_context,
-                                    st->service_context,
-                                    type,
-                                    ch,
-                                    st->read_ret_value,
-                                    st->current_app_buffer,
-                                    st->batch_length);
-        }
-
-        // --------------------------------------------
-		// TIMING PERF
-		#if (TIMING_PERF_ASYNC)
-			gettimeofday(&tv_post, NULL);
-			num_samples = (double)(st->read_ret_value) / 4.0;
-			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;
-			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;
-			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;
-
-			batch_time = temp_pre - time_pre;
-			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;
-			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;
-
-			time_pre = temp_pre;
-			total_samples += st->read_ret_value;
-			if (total_samples % (4*4000000) == 0)
-			{
-				printf("sample_rate = %.2f SPS, process_time = %.2f usec"
-					   ", num_samples_avg = %.1f\n", 
-						sample_rate, process_time * 1e6, num_samples_avg);
-			}
-		#endif // TIMING_PERF_ASYNC
-		// --------------------------------------------
-
-        // wait for the async to complete
-        struct aiocb* read_aiocb_vec[1];
-        read_aiocb_vec[0] = &read_aiocb;
-        ret = aio_suspend(read_aiocb_vec, 1, NULL);
-        if (ret >= 0)
-        {
-            st->read_ret_value = st->batch_length;
-            st->current_app_buffer = st->current_smi_buffer;  
-        }
-
-        st->current_smi_buffer_index ++;
-        if (st->current_smi_buffer_index >= (int)(st->num_of_buffers)) st->current_smi_buffer_index = 0;
-        st->current_smi_buffer = st->buffers[st->current_smi_buffer_index];
-    }
-
-    // exit thread notification
-    if (st->data_cb != NULL) st->data_cb(dev->cb_context,
-                                        st->service_context,
-                                        caribou_smi_stream_end,
-                                        (caribou_smi_channel_en)(st->stream_id>>1),
-                                        0,
-                                        st->current_app_buffer,
-                                        st->batch_length);
-
-    ZF_LOGD("Leaving thread id %lu", tid);
-    return NULL;
-}*/
 
 //=========================================================================
 static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, int state)
@@ -753,8 +697,10 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
         return 1;
     }
 
+	st->app_meta_vec = NULL;
+	st->app_cmplx_vec = NULL;
     st->batch_length = dev->native_batch_length_bytes;
-    st->num_of_buffers = 3;
+    st->num_of_buffers = 2;
     st->data_cb = cb;
 
 	caribou_smi_set_driver_streaming_state(dev, 0);
@@ -765,6 +711,26 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
         ZF_LOGE("read buffer-vector allocation failed");
         return -1;
     }
+
+	// Allocate the complex vector and metadata vector
+	st->app_cmplx_vec = 
+		(caribou_smi_sample_complex_int16*)malloc(sizeof(caribou_smi_sample_complex_int16) * st->batch_length / 4);
+	if (st->app_cmplx_vec == NULL)
+	{
+		ZF_LOGE("application complex buffer allocation failed");
+		release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
+        return -1;
+	}
+
+	st->app_meta_vec = 
+				(caribou_smi_sample_meta*)malloc(sizeof(caribou_smi_sample_meta) * st->batch_length / 4);
+	if (st->app_meta_vec == NULL)
+	{
+		ZF_LOGE("application meta-data buffer allocation failed");
+		release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
+		free(st->app_cmplx_vec);
+        return -1;
+	}
 
     st->current_smi_buffer_index = 0;
     st->current_smi_buffer = st->buffers[0];
@@ -779,6 +745,8 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
     {
         ZF_LOGE("read stream thread creation failed");
         release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
+		free(st->app_cmplx_vec);
+		free(st->app_meta_vec);
         st->buffers = NULL;
         st->active = 0;
         st->running = 0;
@@ -869,7 +837,11 @@ int caribou_smi_destroy_stream(caribou_smi_st* dev, int id)
     }
 
     release_buffer_vec(dev->streams[id].buffers, dev->streams[id].num_of_buffers, dev->streams[id].batch_length);
-    
+    free(dev->streams[id].app_cmplx_vec);
+	free(dev->streams[id].app_meta_vec);
+
+	dev->streams[id].app_cmplx_vec = NULL;
+	dev->streams[id].app_meta_vec = NULL;
     dev->streams[id].buffers = NULL;
     dev->streams[id].current_smi_buffer = NULL;
     dev->streams[id].current_app_buffer = NULL;
@@ -934,50 +906,7 @@ static void caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings
     settings->dma_enable = 1;
     settings->pack_data = 1;
     settings->dma_passthrough_enable = 1;
-
-    //settings->dma_read_thresh = 1;
-    //settings->dma_write_thresh = 1;
-    //settings->dma_panic_read_thresh = 1;
-    //settings->dma_panic_write_thresh = 1;
 }
 
-//=========================================================================
-void dump_hex(const void* data, size_t size)
-{
-	char ascii[17];
-	size_t i, j;
-	ascii[16] = '\0';
-	for (i = 0; i < size; ++i) {
-		printf("%02X ", ((unsigned char*)data)[i]);
-		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~')
-        {
-			ascii[i % 16] = ((unsigned char*)data)[i];
-		}
-        else
-        {
-			ascii[i % 16] = '.';
-		}
-		if ((i+1) % 8 == 0 || i+1 == size)
-        {
-			printf(" ");
-			if ((i+1) % 16 == 0)
-            {
-				printf("|  %s \n", ascii);
-			}
-            else if (i+1 == size)
-            {
-				ascii[(i+1) % 16] = '\0';
-				if ((i+1) % 16 <= 8)
-                {
-					printf(" ");
-				}
-				for (j = (i+1) % 16; j < 16; ++j)
-                {
-					printf("   ");
-				}
-				printf("|  %s \n", ascii);
-			}
-		}
-	}
-}
+
 

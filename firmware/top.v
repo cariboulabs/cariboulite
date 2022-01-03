@@ -294,7 +294,7 @@ module top(
       .empty_o (w_rx_09_fifo_empty)
    );
 
-   /*lvds_rx lvds_rx_24_inst
+   lvds_rx lvds_rx_24_inst
    (
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
@@ -328,7 +328,7 @@ module top(
       .rd_data_o (w_rx_24_fifo_pulled_data),
       .full_o (w_rx_24_fifo_full),
       .empty_o (w_rx_24_fifo_empty)
-   );*/
+   );
 
    smi_ctrl smi_ctrl_ins
    (
