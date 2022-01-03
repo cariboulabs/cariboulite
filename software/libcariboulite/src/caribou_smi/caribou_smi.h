@@ -41,18 +41,37 @@ typedef enum
     caribou_smi_error_read_failed = 0,
 } caribou_smi_error_en;
 
+#pragma pack(1)
+// associated with CS16 - total 4 bytes / element
+typedef struct
+{
+	int16_t i;                      // LSB
+    int16_t q;                      // MSB
+} caribou_smi_sample_complex_int16;
+
+typedef struct
+{
+	uint8_t cnt : 2;
+	uint8_t sync1 : 1;
+	uint8_t sync2 : 1;
+	uint8_t res : 4;
+} caribou_smi_sample_meta;
+#pragma pack()
+
 #define CARIBOU_SMI_ERROR_STRS  {                                     \
                                     "reading from SMI source failed", \
                                 }
 
-typedef void (*caribou_smi_data_callback)(      void *ctx,                              // The context of the requesting application
-                                                void *serviced_context,                 // the context of the session within the app
-                                                caribou_smi_stream_type_en type,        // which type of stream is it? read / write?
-                                                caribou_smi_channel_en ch,              // which channel (900 / 2400)
-                                                uint32_t byte_count,                    // for "read stream only" - number of read data bytes in buffer
-                                                uint8_t *buffer,                        // for "read" - data buffer to be analyzed
-                                                                                        // for "write" - the data buffer to be filled with information
-                                                uint32_t buffer_len_bytes);             // the total size of the buffer
+typedef void (*caribou_smi_data_callback)(      void *ctx,                              	// The context of the requesting application
+                                                void *serviced_context,                 	// the context of the session within the app
+                                                caribou_smi_stream_type_en type,        	// which type of stream is it? read / write?
+                                                caribou_smi_channel_en ch,              	// which channel (900 / 2400)
+                                                size_t num_samples,                    		// for "read stream only" - number of read data bytes in buffer
+                                                caribou_smi_sample_complex_int16 *cplx_vec, // for "read" - complex vector of samples to be analyzed
+                                                                                        	// for "write" - complex vector of samples to be written into
+												caribou_smi_sample_meta *metadat_vec,		// for "read" - the metadata send by the receiver for each sample
+																							// for "write" - the metadata to be written by app for each sample
+                                                size_t total_length_samples);             	// The capacity (in terms of samples) in the above vectors
 
 typedef void (*caribou_smi_error_callback)( void *ctx,
                                             caribou_smi_channel_en ch,
@@ -72,6 +91,9 @@ typedef struct
     int current_smi_buffer_index;
     uint8_t *current_smi_buffer;        // the buffer that is currently in the SMI DMA
     uint8_t *current_app_buffer;        // the buffer that is currently analyzed / written by the application callback
+
+	caribou_smi_sample_complex_int16* app_cmplx_vec;
+	caribou_smi_sample_meta* app_meta_vec;
 
     int active;                         // the thread is active
     int running;                        // the stream state - is it running and fetching / pushing information

@@ -10,15 +10,6 @@
 #define IS_POWER_OF_2(x)  	(!((x) == 0) && !((x) & ((x) - 1)))
 #define MIN(x,y)			((x)>(y)?(y):(x))
 
-uint32_t next_power_of_2 (uint32_t x)
-{
-	uint32_t power = 1;
-	while(power < x)
-	{
-		power <<= 1;
-	}
-	return power;
-}
 
 template <class T>
 class circular_buffer {
@@ -140,6 +131,17 @@ public:
 		{
 			printf("%d => %d\n", i++, (int)buf_[t++&(max_size_-1)]);
 		}
+	}
+
+private:
+	uint32_t next_power_of_2 (uint32_t x)
+	{
+		uint32_t power = 1;
+		while(power < x)
+		{
+			power <<= 1;
+		}
+		return power;
 	}
 
 private:

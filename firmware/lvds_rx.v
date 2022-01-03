@@ -20,15 +20,13 @@ module lvds_rx
     localparam
         modem_i_sync  = 3'b10,
         modem_q_sync = 3'b01;
-	//	modem_i_sync  = 3'b01,
-    //    modem_q_sync = 3'b10;
 
     // Internal Registers
     reg [1:0]   r_state_if;
     reg [2:0]   r_phase_count;
     reg [31:0]  r_data;
     reg         r_push;
-    reg [1:0]   r_cnt;
+    reg         r_cnt;
 
     assign o_debug_state = r_state_if;
 
@@ -64,39 +62,35 @@ module lvds_rx
                     end
 
                     r_phase_count <= 3'b111;
+					r_data <= 0;
                     r_push <= 1'b0;
-					r_data[3:2] <= 2'b11;
-					r_data[1:0] <= r_cnt;
                 end
 
                 state_i_phase: begin
                     if (r_phase_count == 3'b000) begin
                         if (i_ddr_data == modem_q_sync ) begin
-                            r_phase_count <= 3'b111;
+                            r_phase_count <= 3'b110;
                             r_state_if <= state_q_phase;
                         end else begin
                             r_state_if <= state_idle;
                         end
+
                     end else begin
                         r_phase_count <= r_phase_count - 1;
-						r_data <= {r_data[29:0], i_ddr_data};
                     end
 
-                    //r_data <= {r_data[29:0], i_ddr_data};
+                    r_data <= {r_data[29:0], i_ddr_data};
                 end
 
                 state_q_phase: begin
                     if (r_phase_count == 3'b000) begin
                         r_push <= ~i_fifo_full;
                         r_state_if <= state_idle;
-                        //o_fifo_data <= {r_data[29:0], i_ddr_data};
-						o_fifo_data <= r_data;
-						r_cnt <= r_cnt + 1;
+                        o_fifo_data <= {r_data[29:0], i_ddr_data};
                     end else begin
                         r_phase_count <= r_phase_count - 1;
-						r_data <= {r_data[29:0], i_ddr_data};
                     end
-                    //r_data <= {r_data[29:0], i_ddr_data};
+                    r_data <= {r_data[29:0], i_ddr_data};
                 end
             endcase
         end
