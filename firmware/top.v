@@ -27,7 +27,7 @@ module top(
       input i_iq_rx_clk_p,    // Paired with i_iq_rx_clk_n - only the 'B' pins need to be specified
 
       // Note: The icestorm (specifically nextpnr) fails to build if both diff pins are constrained
-      //       in the constrain file and the interface herein. Thus we need to take the out so that
+      //       in the constrain file and the interface herein. Thus we need to take them out so that
       //       it will "understand" we actually want an LVDS pair inputs. In addition, the pair is
       //       defined only by the "B" pins in BANK3 and not the "A" pins (which is counter-logical)
 

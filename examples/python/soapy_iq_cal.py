@@ -1,12 +1,19 @@
+# PySimpleGUI
 from PySimpleGUI.PySimpleGUI import Canvas, Column
-import time
-import numpy as np
+from PySimpleGUI import Window, WIN_CLOSED, Slider, Button, theme, Text, Radio, Image, InputText, Canvas
+
+# Numpy
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import numpy as np
+from numpy.lib.arraypad import pad
+
+# System
+import time
+
+# Soapy
 import SoapySDR
 from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_TX, SOAPY_SDR_CS16
-from PySimpleGUI import Window, WIN_CLOSED, Slider, Button, theme, Text, Radio, Image, InputText, Canvas
-from numpy.lib.arraypad import pad
 
 ##
 ## WINDOW FUNCTIONS
@@ -115,7 +122,8 @@ def update_est_graphs(window, freq_diff, g_vec, phi_vec, rssi_vec):
     draw_figure_with_toolbar(window['params_cv'].TKCanvas, fig, window['controls_params_cv'].TKCanvas)
 
 ##
-## I/Q Correction Functions
+## I/Q Correction Function - Blind correction
+
 def fix_iq_blind(x):
     z = x - np.mean(x)
     p_in = np.var(z)
@@ -134,6 +142,8 @@ def fix_iq_blind(x):
 
     return (z_out, g, phi, p_in, c1, c2)
 
+##
+## I/Q Correction Function - single tone correction
 
 def fix_iq_imbalance(x):
     # remove DC and save input power
