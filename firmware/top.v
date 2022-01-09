@@ -211,13 +211,13 @@ module top(
       .PIN_TYPE(6'b000000),         // Input only, DDR mode (sample on both pos edge and
                                     // negedge of the input clock)
       .IO_STANDARD("SB_LVDS_INPUT"),// LVDS standard
-      .NEG_TRIGGER(1'b1)            // The signal is not negated
+      .NEG_TRIGGER(1'b0)            // The signal is not negated
    ) iq_rx_24 (
       .PACKAGE_PIN(i_iq_rx_24_n),   // Attention: this is the 'n' input, thus the actual values
                                     //            will need to be negated (PCB layout constraint)
       .INPUT_CLK (lvds_clock_buf),  // The I/O sampling clock with DDR
-      .D_IN_0 ( w_lvds_rx_24_d0 ),  // the 0 deg data output
-      .D_IN_1 ( w_lvds_rx_24_d1 ) );// the 180 deg data output
+      .D_IN_0 ( w_lvds_rx_24_d1 ),  // the 0 deg data output
+      .D_IN_1 ( w_lvds_rx_24_d0 ) );// the 180 deg data output
 
    // Differential 0.9GHz I/Q DDR signal
    SB_IO #(
@@ -301,7 +301,7 @@ module top(
 
       // test reversed LSB / MSB
       // -----------------------
-      .i_ddr_data ({w_lvds_rx_24_d1, w_lvds_rx_24_d0}),
+      .i_ddr_data ({!w_lvds_rx_24_d1, !w_lvds_rx_24_d0}),
 
       .i_fifo_full (w_rx_24_fifo_full),
       .o_fifo_write_clk (w_rx_24_fifo_write_clk),
