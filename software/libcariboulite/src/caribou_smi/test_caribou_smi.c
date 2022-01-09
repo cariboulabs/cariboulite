@@ -52,13 +52,16 @@ void print_iq(uint32_t* array, int len)
 }
 
 
-//==============================================
-void caribou_smi_data_event(void *ctx, void* serviced_context, 
-                            caribou_smi_stream_type_en type, 
-                            caribou_smi_channel_en ch,
-                            uint32_t byte_count, 
-                            uint8_t *buffer, 
-                            uint32_t buffer_len_bytes)
+void caribou_smi_data_event(void *ctx,                              	// The context of the requesting application
+							void *serviced_context,                 	// the context of the session within the app
+							caribou_smi_stream_type_en type,        	// which type of stream is it? read / write?
+							caribou_smi_channel_en ch,              	// which channel (900 / 2400)
+							size_t num_samples,                    		// for "read stream only" - number of read data bytes in buffer
+							caribou_smi_sample_complex_int16 *cplx_vec, // for "read" - complex vector of samples to be analyzed
+																		// for "write" - complex vector of samples to be written into
+							caribou_smi_sample_meta *metadat_vec,		// for "read" - the metadata send by the receiver for each sample
+																		// for "write" - the metadata to be written by app for each sample
+							size_t total_length_samples)
 {
     //static int c = 1;
     //static uint8_t last_byte = 0;
@@ -68,8 +71,8 @@ void caribou_smi_data_event(void *ctx, void* serviced_context,
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-                ZF_LOGD("data event: stream channel %d, received %d bytes\n", ch, byte_count);
-                print_iq((uint32_t*)buffer, 8);
+                ZF_LOGD("data event: stream channel %d, received %lu samples\n", ch, num_samples);
+                //print_iq((uint32_t*)buffer, 8);
                 /*for (int i = 0; i< byte_count; i++)
                 {
                     uint8_t dist = (uint8_t)(buffer[i] - last_byte);
@@ -83,7 +86,7 @@ void caribou_smi_data_event(void *ctx, void* serviced_context,
                     last_byte = buffer[i];
                     c++;
                 }*/
-                if ( byte_count > 0 )
+                if ( num_samples > 0 )
                 {
                     /*printf("CHUNK %d> %02x %02x %02x %02x...\n", c, buffer[0],
                                                                    buffer[1],
@@ -113,14 +116,14 @@ void caribou_smi_data_event(void *ctx, void* serviced_context,
         //-------------------------------------------------------
         case caribou_smi_stream_start:
             {
-                ZF_LOGD("start event: stream channel %d, batch length: %d bytes\n", ch, buffer_len_bytes);
+                ZF_LOGD("start event: stream channel %d, batch length: %lu samples\n", ch, total_length_samples);
             }
             break;
 
         //-------------------------------------------------------
         case caribou_smi_stream_end:
             {
-                ZF_LOGD("end event: stream channel %d, batch length: %d bytes\n", ch, buffer_len_bytes);
+                ZF_LOGD("end event: stream channel %d, batch length: %lu samples\n", ch, total_length_samples);
             }
             break;
 

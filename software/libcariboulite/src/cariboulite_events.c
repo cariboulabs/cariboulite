@@ -19,9 +19,10 @@ void caribou_smi_data_event(void *ctx,
                             void *service_context,
                             caribou_smi_stream_type_en type,
                             caribou_smi_channel_en ch,
-                            uint32_t byte_count,
-                            uint8_t *buffer,
-                            uint32_t buffer_len_bytes)
+                            size_t num_samples_in_vec,
+							caribou_smi_sample_complex_int16 *cplx_vec,
+							caribou_smi_sample_meta *metadat_vec,
+                            size_t total_length_samples)
 {
     cariboulite_st* sys = (cariboulite_st*)ctx;
     switch(type)
@@ -57,14 +58,14 @@ void caribou_smi_data_event(void *ctx,
         //-------------------------------------------------------
         case caribou_smi_stream_start:
             {
-                ZF_LOGD("start event: stream channel %d, batch length: %d bytes\n", ch, buffer_len_bytes);
+                ZF_LOGD("start event: stream channel %d, batch length: %lu samples\n", ch, total_length_samples);
             }
             break;
 
         //-------------------------------------------------------
         case caribou_smi_stream_end:
             {
-                ZF_LOGD("end event: stream channel %d, batch length: %d bytes\n", ch, buffer_len_bytes);
+                ZF_LOGD("end event: stream channel %d, batch length: %lu samples\n", ch, total_length_samples);
             }
             break;
 

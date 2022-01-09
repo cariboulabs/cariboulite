@@ -479,7 +479,7 @@ void caribou_smi_convert_data(uint8_t *buffer,
 	
 	if (ptr)
 	{
-		printf("got byte array with %d bytes\n", length_bytes);
+		printf("got byte array with %lu bytes\n", length_bytes);
 		dump_hex(buffer, 64);
 		for (int k = 0; k < 8; k ++)
 		{
