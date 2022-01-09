@@ -8,6 +8,8 @@
 
 #include <signal.h>
 #include <stdio.h>
+#include <errno.h>
+
 #include "cariboulite_setup.h"
 #include "cariboulite_events.h"
 #include "cariboulite_fpga_firmware.h"
@@ -118,7 +120,9 @@ void cariboulite_sigaction_basehandler (int signo,
     int run_first = 0;
     int run_last = 0;
 
-    //cariboulite_st* sys = (cariboulite_st*)ucontext;
+	// store the errno
+	int internal_errno = errno;
+
 
     if (sigsys->signal_cb)
     {
@@ -164,6 +168,7 @@ void cariboulite_sigaction_basehandler (int signo,
         sigsys->signal_cb(sigsys, sigsys->singal_cb_context, signo, si);
     }
 
+	errno = internal_errno;
 	exit(0);
 }
 
