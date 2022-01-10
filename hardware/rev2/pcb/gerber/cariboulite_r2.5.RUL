@@ -1,4 +1,4 @@
-DRC Rules Export File for PCB: D:\Projects\cariboulite_hardware\src\cariboulite_r2.CSPcbDoc
+DRC Rules Export File for PCB: C:\projects\cariboulite_hardware\src\cariboulite_r2.CSPcbDoc
 RuleKind=Clearance|RuleName=Clearance_CLK|Scope=Board|Minimum=3.50
 RuleKind=Clearance|RuleName=Clearance_SMI|Scope=Board|Minimum=5.00
 RuleKind=Width|RuleName=Width_RF|Scope=Board|Minimum=3.50
