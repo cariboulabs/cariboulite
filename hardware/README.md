@@ -40,15 +40,7 @@ The power distribution provides high frequency isolation of the RF components fr
 ### RPI HAT EEPROM
 
 An I2C EEPROM device is assembled on CaribouLite to support for the requirements of RPI HATs as described in [RPI HAT Requirements](https://github.com/raspberrypi/hats).
-For the first setup of the device, the write-protect pin of the EEPROM needs to be released (de-asserted). To do so, the USR-Switch needs to be pushed all along the programming period, and released as the operation completes.
-<table>
-  <tr>
-    <td><img src="../docs/system/instruction_eeprom_wp.png" alt="Top View" height=200></td>
-  </tr>
-  <tr>
-    <td>User Switch to push when programming EEPROM</td>
-  </tr>
-</table>
+Production application helps to perform the EEPROM configuration process (coming soon)
 
 ### Clocking
 
@@ -80,10 +72,6 @@ Coming soon:
 ### FPGA and LVDS
 
 Coming soon - LVDS calculations
-
-### SPI
-
-Coming soon - SPI mapping
 
 ### Calibrations & Testing
 
