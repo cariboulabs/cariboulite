@@ -915,7 +915,8 @@ int cariboulite_create_smi_stream(cariboulite_radios_st* radios,
                                     caribou_smi_stream_type_read : caribou_smi_stream_type_write;
 
     int stream_id = caribou_smi_setup_stream(&rad->cariboulite_sys->smi,
-                                                type, ch,
+                                                type, 
+												ch,
                                                 caribou_smi_data_event,
                                                 context);
     
