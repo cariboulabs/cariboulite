@@ -25,6 +25,7 @@ add_subdirectory(src/cariboulite_config EXCLUDE_FROM_ALL)
 add_subdirectory(src/cariboulite_eeprom EXCLUDE_FROM_ALL)
 add_subdirectory(src/production_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
+add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 
 # Create the library LibCaribouLite
 add_library(cariboulite STATIC ${SOURCES_LIB})
@@ -43,7 +44,8 @@ target_link_libraries(cariboulite   datatypes
                                     rt
                                     m
                                     pthread
-									iir_static)
+									iir)
+
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
