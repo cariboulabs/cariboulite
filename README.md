@@ -71,12 +71,12 @@ The board first prototyping (**Red**) revision ([REV1](hardware/rev1)) has been 
 
 <table>
   <tr>
-    <td><img src="hardware/rev1/DSC_1044.jpg" alt="CaribouLite R1"></td>
-    <td><img src="hardware/rev2/pictures/DSC_1146.jpg" alt="CaribouLite Connectors"></td>
+    <td><img src="hardware/rev1/DSC_1044.jpg" alt="CaribouLite R1" width="500"></td>
+    <td><img src="hardware/rev2/pictures/Rev2.5/front_rfi.png" alt="CaribouLite Connectors" width="500"></td>
   </tr>
   <tr>
-    <td>CaribouLite Rev#1 - the prototype version</td>
-    <td>CaribouLite Rev#2 - connectors view</td>
+    <td>CaribouLite Rev1 - the prototype version</td>
+    <td>CaribouLite Rev2.5 - Production Revision</td>
   </tr>
 </table>
 
@@ -85,9 +85,10 @@ The second revision ([REV2](hardware/rev2)) - **White** - was then designed to f
 2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI. Even if we have a whole library of custom made FPGA firmware files, switching between them is as simple and fast as a single linux command.
 3. Board layout improvements and overlays (silkscreen) beautification (including logo).
 4. A single system level 3.3V power (while the FPGA still receives 2.5V and 1.2V for its core). A linear regulator (rather than a switching DC-DC) was used to reduce conducted (power and ground) noise levels.
-5. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
+5. Top and bottom EMI sheilding option - the EMI/RFI shield design models are provided in the [3d directory](hardware/rev2/3d/)
+6. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
 
-In summary, in CaribouLite-Rev#2 PCB design has been thoroughly re-thought to meet its educational needs. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
+In summary, in CaribouLite-Rev2.5 PCB design has been thoroughly re-thought to meet its educational needs with performance in mind. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
 
 <table>
   <tr>
@@ -97,11 +98,24 @@ In summary, in CaribouLite-Rev#2 PCB design has been thoroughly re-thought to me
     <td><img src="hardware/rev2/pictures/DSC_1132.jpg" alt="Top View"></td>
   </tr>
   <tr>
-    <td>Top and Bottom views of CaribouLite Rev#2</td>
+    <td>Top and Bottom views of CaribouLite <b>Rev2.4</b> (pre-production)</td>
   </tr>
 </table>
 
-**Deeper project details will be published shortly in our Wiki pages.**
+<table>
+  <tr>
+    <td><img src="hardware/rev2/pictures/Rev2.5/front_exposed.png" alt="Top View"></td>
+    <td><img src="hardware/rev2/pictures/Rev2.5/front_rfi.png" alt="Top View"></td>
+  </tr>
+  <tr>
+    <td><img src="hardware/rev2/pictures/Rev2.5/back_exposed.png" alt="Top View"></td>
+  <td><img src="hardware/rev2/pictures/Rev2.5/back_rfi.png" alt="Top View"></td>
+  </tr>
+  <tr>
+    <td>Top and Bottom views of CaribouLite <b>Rev2.5</b></td>
+    <td>Top and Bottom views of CaribouLite <b>Rev2.5</b> with EMI/RFI shields</td>
+  </tr>
+</table>
 
 # Specifications
 
@@ -141,24 +155,7 @@ Receive noise figure       | <5 dB                      | <6 dB @ 30-3500 MHz, <
 (1) Feature comparison table with other SDR devices will be published shortly
 (2) Some of the above specifications are simulated rather than tested
 (3) Analog bandwidth controlled by the modem
-
-# Board Layout
-![2d_nums](hardware/rev1/2d_nums.png)
-
-<B>Description:</B>
-1. Raspberry-Pi 40-pin connector
-2. A modem - AT86RF215
-3. TCXO - 0.5 ppm @ 26 MHz
-4. FPGA - ICE40LP series from Lattice Semi.
-5. A frequency mixer with integrated synthesizer - RFFC5072
-6. External reference clock connector (may be used to acheive coherence between many CaribouLite units.
-7. A PMOD connector for FPGA expantion
-8. RPI configuration EEPROM (following RPI-HAT specifications)
-9. RF front-end - switched, amplifiers, and filters.
-10. Reset switch
-11. User custom switch + RPI HAT EEPROM reconfiguration (write-enable) switch
-12. Wide band SMA connector
-13. Sub 1-GHz SMA connector
+(4) The ISM version of the board doesn't contain the wide-range of frequencies (30-6000 MHz) and contains the native capabilities of the Modem IC.
 
 # Disclaimer
 CaribouLite is a test equipment for RF systems. You are responsible for using your CaribouLite legally.
