@@ -6,7 +6,7 @@ CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit 
 <table>
   <tr>
     <td><img src="hardware/rev2/pictures/oshwa.png" alt="Open source hardware association certificate"></td>
-    <td>This project has be certified by OSHWA</td>
+    <td>This project has been certified by OSHWA</td>
   </tr>
 </table>
 
