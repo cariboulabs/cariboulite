@@ -21,6 +21,7 @@
 #include "datatypes/circular_buffer.h"
 #include "cariboulite_setup.h"
 #include "cariboulite_radios.h"
+#include "cariboulite_radio.h"
 
 enum Cariboulite_Format 
 {
@@ -175,8 +176,8 @@ public:
                         long long &timeNs,
                         const long timeoutUs = 100000);
 
-        int findSampleQueue(const int direction, const size_t channel);
-        int findSampleQueueById(int stream_id);
+        //int findSampleQueue(const int direction, const size_t channel);
+        //int findSampleQueueById(int stream_id);
 
         /*******************************************************************
          * Antenna API
@@ -232,8 +233,9 @@ public:
         Type readSensor(const int direction, const size_t channel, const std::string &key) const;
 
 public:
-        cariboulite_radios_st radios;
-        SampleQueue* sample_queues[4];
+        cariboulite_radio_state_st radio;
+		SampleQueue* sample_queue_tx;
+		SampleQueue* sample_queue_rx;
 
         // Static load time initializations
         static SoapyCaribouliteSession sess;

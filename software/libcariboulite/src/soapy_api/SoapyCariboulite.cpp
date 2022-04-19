@@ -1,5 +1,6 @@
 #include <SoapySDR/Device.hpp>
 #include <SoapySDR/Registry.hpp>
+#include <sstream>
 #include "Cariboulite.hpp"
 
 
@@ -18,45 +19,41 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
     SoapySDR_logf(SOAPY_SDR_DEBUG, "CaribouLite Lib v%d.%d rev %d", 
                 lib_version.major_version, lib_version.minor_version, lib_version.revision);
 
-    // When multiboard will be supported, change this to enumertion with count >1
-    
     if ( ( count = cariboulite_config_detect_board(&board_info) ) <= 0)
     {
         SoapySDR_logf(SOAPY_SDR_DEBUG, "No Cariboulite boards found");
         return results;
     }
     
+	// to support for two channels, each CaribouLite detected will be identified as
+	// two boards for the SoapyAPI
     int devId = 0;
     for (int i = 0; i < count; i++) 
     {
-        std::stringstream serialstr;
-        
-        serialstr.str("");
-        serialstr << std::hex << board_info.numeric_serial_number;
-        
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "Serial %s", serialstr.str().c_str());        
+		for (int ch = 0; ch < 2; ch ++)
+		{
+			std::stringstream serialstr;
+			std::stringstream label;
+			SoapySDR::Kwargs soapyInfo;
+			serialstr.str("");
+			serialstr << std::hex << ((board_info.numeric_serial_number << 1) | ch);
+			label.str("");
+			label << (ch?std::string("CaribouLite HiF"):std::string("CaribouLite S1G")) << "[" << serialstr.str() << "]";
 
-        SoapySDR::Kwargs soapyInfo;
+			SoapySDR_logf(SOAPY_SDR_DEBUG, "Serial %s", serialstr.str().c_str());        
 
-        soapyInfo["device_id"] = std::to_string(devId);
-        soapyInfo["label"] = "Cariboulite [" + serialstr.str() + "]";
-        soapyInfo["serial"] = serialstr.str();
-        soapyInfo["name"] = board_info.product_name;
-        soapyInfo["vendor"] = board_info.product_vendor;
-        soapyInfo["uuid"] = board_info.product_uuid;
-        soapyInfo["version"] = board_info.product_version;
-        devId++;
+			soapyInfo["device_id"] = std::to_string(devId);
+			soapyInfo["label"] = label.str();
+			soapyInfo["serial"] = serialstr.str();
+			soapyInfo["name"] = board_info.product_name;
+			soapyInfo["vendor"] = board_info.product_vendor;
+			soapyInfo["uuid"] = board_info.product_uuid;
+			soapyInfo["version"] = board_info.product_version;
+			soapyInfo["channel"] = ch?"HiF":"S1G";
+			devId++;
 
-        if (args.count("device_id") != 0) 
-        {
-            if (args.at("device_id") != soapyInfo.at("device_id")) 
-            {
-                continue;
-            }
-            SoapySDR_logf(SOAPY_SDR_DEBUG, "Found device by device_id %s", soapyInfo.at("device_id").c_str());
-        }
-        
-        results.push_back(soapyInfo);
+			results.push_back(soapyInfo);
+		}
     }
    
     return results;
