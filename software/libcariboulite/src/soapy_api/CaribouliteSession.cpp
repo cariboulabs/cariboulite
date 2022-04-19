@@ -38,7 +38,6 @@ void soapy_sighandler( struct cariboulite_st_t *sys,
 SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
-    //printf("SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
     SoapySDR_logf(SOAPY_SDR_INFO, "SoapyCaribouliteSession, sessionCount: %ld", sessionCount);
     if (sessionCount == 0)
     {
@@ -63,7 +62,6 @@ SoapyCaribouliteSession::SoapyCaribouliteSession(void)
 SoapyCaribouliteSession::~SoapyCaribouliteSession(void)
 {
     std::lock_guard<std::mutex> lock(sessionMutex);
-    //printf("~SoapyCaribouliteSession, sessionCount: %ld\n", sessionCount);
     //SoapySDR_logf(SOAPY_SDR_INFO, "~SoapyCaribouliteSession, sessionCount: %ld", sessionCount);
     sessionCount--;
     if (sessionCount == 0)

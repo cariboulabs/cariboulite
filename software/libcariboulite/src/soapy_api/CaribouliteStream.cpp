@@ -107,29 +107,6 @@ SoapySDR::ArgInfoList Cariboulite::getStreamArgsInfo(const int direction, const 
 }
 
 //========================================================
-int Cariboulite::findSampleQueue(const int direction, const size_t channel)
-{
-    for (uint32_t i = 0; i < 4; i++)
-    {
-        if (sample_queues[i]->stream_dir == direction &&
-            sample_queues[i]->stream_channel == (int)channel)
-            return i;
-    }
-    return -1;
-}
-
-//========================================================
-int Cariboulite::findSampleQueueById(int stream_id)
-{
-    for (uint32_t i = 0; i < 4; i++)
-    {
-        if (sample_queues[i]->stream_id == stream_id)
-            return i;
-    }
-    return -1;
-}
-
-//========================================================
 /*!
 * Initialize a stream given a list of channels and stream arguments.
 * The implementation may change switches or power-up components.
@@ -190,6 +167,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
                                 channels.size()?channels[0]:0);
     
     std::vector<size_t> channels_internal = channels;
+
     // default channel - sub1GHz
     if ( channels_internal.size() == 0 )
     {
@@ -258,7 +236,6 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
      */
 void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
-    //SoapySDR_logf(SOAPY_SDR_INFO, "closeStream");
     if (stream == NULL) return;
     int stream_id = (intptr_t)stream;
     
@@ -277,7 +254,6 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
      */
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    //printf("getStreamMTU\n");
     return 1024 * 1024 / 2 / 4;
 }
 
