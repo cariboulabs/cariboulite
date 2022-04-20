@@ -9,8 +9,6 @@ SoapyCaribouliteSession Cariboulite::sess;
  ******************************************************************/
 Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
 {
-    int stream_id = 0;
-
 	SoapySDR_logf(SOAPY_SDR_INFO, "Initializing DeviceID: %s, Label: %s, ChannelType: %s", 
 					args.at("device_id").c_str(), 
 					args.at("label").c_str(),
@@ -41,6 +39,7 @@ Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
 //========================================================
 Cariboulite::~Cariboulite()
 {
+	SoapySDR_logf(SOAPY_SDR_INFO, "Desposing radio type '%d'", radio.type);
     cariboulite_radio_dispose(&radio);
 	delete sample_queue_tx;
 	delete sample_queue_rx;

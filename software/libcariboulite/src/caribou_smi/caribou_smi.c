@@ -689,11 +689,15 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 							void* serviced_context)
 {
     int stream_id = CARIBOU_SMI_GET_STREAM_ID(type, channel);
-	ZF_LOGI("Setting up stream channel (%d) of type (%d)", channel, type);
+	ZF_LOGI("Setting up stream channel (%s) of type (%s)", 
+			channel == caribou_smi_channel_900 ? "LO":"HI", 
+			type == caribou_smi_stream_type_read ? "RD" : "WR");
+
     caribou_smi_stream_st* st = &dev->streams[stream_id];
     if (st->active)
     {
-        ZF_LOGE("the requested read stream channel (%d) of type (%d) is already active", channel, type);
+        ZF_LOGE("the requested read stream channel (%d) of type (%d) is already active", 
+					channel, type);
         return 1;
     }
 
