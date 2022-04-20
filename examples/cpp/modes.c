@@ -101,13 +101,16 @@ uint32_t mode_s_checksum(unsigned char *msg, int bits) {
 
 // Given the Downlink Format (DF) of the message, return the message length in
 // bits.
-int mode_s_msg_len_by_type(int type) {
-  if (type == 16 || type == 17 ||
-      type == 19 || type == 20 ||
-      type == 21)
-    return MODE_S_LONG_MSG_BITS;
-  else
-    return MODE_S_SHORT_MSG_BITS;
+int mode_s_msg_len_by_type(int type) 
+{
+	if (type == 16 || type == 17 ||
+		type == 19 || type == 20 ||
+		type == 21)
+	{
+		return MODE_S_LONG_MSG_BITS;
+	}
+
+	return MODE_S_SHORT_MSG_BITS;
 }
 
 // Try to fix single bit errors using the checksum. On success modifies the
@@ -550,36 +553,39 @@ void apply_phase_correction(uint16_t *mag) {
 // Detect a Mode S messages inside the magnitude buffer pointed by 'mag' and of
 // size 'maglen' bytes. Every detected Mode S message is convert it into a
 // stream of bits and passed to the function to display it.
-void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callback_t cb) {
-  unsigned char bits[MODE_S_LONG_MSG_BITS];
-  unsigned char msg[MODE_S_LONG_MSG_BITS/2];
-  uint16_t aux[MODE_S_LONG_MSG_BITS*2];
-  uint32_t j;
-  int use_correction = 0;
+void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callback_t cb) 
+{
+	unsigned char bits[MODE_S_LONG_MSG_BITS];
+	unsigned char msg[MODE_S_LONG_MSG_BITS/2];
+	uint16_t aux[MODE_S_LONG_MSG_BITS*2];
+	uint32_t j;
+	int use_correction = 0;
 
-  // The Mode S preamble is made of impulses of 0.5 microseconds at the
-  // following time offsets:
-  //
-  // 0   - 0.5 usec: first impulse.
-  // 1.0 - 1.5 usec: second impulse.
-  // 3.5 - 4   usec: third impulse.
-  // 4.5 - 5   usec: last impulse.
-  // 
-  // Since we are sampling at 2 Mhz every sample in our magnitude vector is
-  // 0.5 usec, so the preamble will look like this, assuming there is an
-  // impulse at offset 0 in the array:
-  //
-  // 0   -----------------
-  // 1   -
-  // 2   ------------------
-  // 3   --
-  // 4   -
-  // 5   --
-  // 6   -
-  // 7   ------------------
-  // 8   --
-  // 9   -------------------
-  for (j = 0; j < maglen - MODE_S_FULL_LEN*2; j++) {
+	// The Mode S preamble is made of impulses of 0.5 microseconds at the
+	// following time offsets:
+	//
+	// 0   - 0.5 usec: first impulse.
+	// 1.0 - 1.5 usec: second impulse.
+	// 3.5 - 4   usec: third impulse.
+	// 4.5 - 5   usec: last impulse.
+	// 
+	// Since we are sampling at 2 Mhz every sample in our magnitude vector is
+	// 0.5 usec, so the preamble will look like this, assuming there is an
+	// impulse at offset 0 in the array:
+	//
+	// 0   -----------------
+	// 1   -
+	// 2   ------------------
+	// 3   --
+	// 4   -
+	// 5   --
+	// 6   -
+	// 7   ------------------
+	// 8   --
+	// 9   -------------------
+
+  for (j = 0; j < maglen - MODE_S_FULL_LEN*2; j++)
+  {
     int low, high, delta, i, errors;
     int good_message = 0;
 
@@ -660,72 +666,83 @@ good_preamble:
       }
     }
 
-    // Restore the original message if we used magnitude correction.
-    if (use_correction)
-      memcpy(mag+j+MODE_S_PREAMBLE_US*2, aux, sizeof(aux));
+		// Restore the original message if we used magnitude correction.
+		if (use_correction)
+		{
+			memcpy(mag+j+MODE_S_PREAMBLE_US*2, aux, sizeof(aux));
+		}
 
-    // Pack bits into bytes
-    for (i = 0; i < MODE_S_LONG_MSG_BITS; i += 8) {
-      msg[i/8] =
-          bits[i]<<7 | 
-          bits[i+1]<<6 | 
-          bits[i+2]<<5 | 
-          bits[i+3]<<4 | 
-          bits[i+4]<<3 | 
-          bits[i+5]<<2 | 
-          bits[i+6]<<1 | 
-          bits[i+7];
-    }
+		// Pack bits into bytes
+		for (i = 0; i < MODE_S_LONG_MSG_BITS; i += 8) 
+		{
+			msg[i/8] =
+			bits[i]<<7 | 
+			bits[i+1]<<6 | 
+			bits[i+2]<<5 | 
+			bits[i+3]<<4 | 
+			bits[i+4]<<3 | 
+			bits[i+5]<<2 | 
+			bits[i+6]<<1 | 
+			bits[i+7];
+		}
 
-    int msgtype = msg[0]>>3;
-    int msglen = mode_s_msg_len_by_type(msgtype)/8;
+		int msgtype = msg[0]>>3;
+		int msglen = mode_s_msg_len_by_type(msgtype)/8;
 
-    // Last check, high and low bits are different enough in magnitude to
-    // mark this as real message and not just noise?
-    delta = 0;
-    for (i = 0; i < msglen*8*2; i += 2) {
-      delta += abs(mag[j+i+MODE_S_PREAMBLE_US*2]-
-                   mag[j+i+MODE_S_PREAMBLE_US*2+1]);
-    }
-    delta /= msglen*4;
+		// Last check, high and low bits are different enough in magnitude to
+		// mark this as real message and not just noise?
+		delta = 0;
+		for (i = 0; i < msglen*8*2; i += 2)
+		{
+			delta += abs(mag[j+i+MODE_S_PREAMBLE_US*2]-
+			mag[j+i+MODE_S_PREAMBLE_US*2+1]);
+		}
+		delta /= msglen*4;
 
-    // Filter for an average delta of three is small enough to let almost
-    // every kind of message to pass, but high enough to filter some random
-    // noise.
-    if (delta < 10*255) {
-      use_correction = 0;
-      continue;
-    }
+		// Filter for an average delta of three is small enough to let almost
+		// every kind of message to pass, but high enough to filter some random
+		// noise.
+		if (delta < 10*255) 
+		{
+			use_correction = 0;
+			continue;
+		}
 
-    // If we reached this point, and error is zero, we are very likely with
-    // a Mode S message in our hands, but it may still be broken and CRC
-    // may not be correct. This is handled by the next layer.
-    if (errors == 0 || (self->aggressive && errors < 3)) {
-      struct mode_s_msg mm;
+		// If we reached this point, and error is zero, we are very likely with
+		// a Mode S message in our hands, but it may still be broken and CRC
+		// may not be correct. This is handled by the next layer.
+		if (errors == 0 || (self->aggressive && errors < 3)) 
+		{
+			struct mode_s_msg mm;
 
-      // Decode the received message
-      mode_s_decode(self, &mm, msg);
+			// Decode the received message
+			mode_s_decode(self, &mm, msg);
 
-      // Skip this message if we are sure it's fine.
-      if (mm.crcok) {
-        j += (MODE_S_PREAMBLE_US+(msglen*8))*2;
-        good_message = 1;
-        if (use_correction)
-          mm.phase_corrected = 1;
-      }
+			// Skip this message if we are sure it's fine.
+			if (mm.crcok) 
+			{
+				j += (MODE_S_PREAMBLE_US+(msglen*8))*2;
+				good_message = 1;
+				if (use_correction)
+				mm.phase_corrected = 1;
+			}
 
-      // Pass data to the next layer
-      if (self->check_crc == 0 || mm.crcok) {
-        cb(self, &mm);
-      }
-    }
+			// Pass data to the next layer
+			if (self->check_crc == 0 || mm.crcok)
+			{
+				cb(self, &mm);
+			}
+		}
 
-    // Retry with phase correction if possible.
-    if (!good_message && !use_correction) {
-      j--;
-      use_correction = 1;
-    } else {
-      use_correction = 0;
-    }
-  }
+		// Retry with phase correction if possible.
+		if (!good_message && !use_correction) 
+		{
+			j--;
+			use_correction = 1;
+		} 
+		else 
+		{
+			use_correction = 0;
+		}
+	}
 }

@@ -33,7 +33,7 @@ static void printBanner(void)
 /***********************************************************************
  * Find devices and print args
  **********************************************************************/
-static int findDevices(const std::string &argStr, const bool sparse)
+static int findDevices(const std::string &argStr)
 {
     const auto results = SoapySDR::Device::enumerate(argStr);
     std::cout << "Found " << results.size() << " devices" << std::endl;
@@ -64,7 +64,41 @@ static void sigIntHandler(const int)
 
 void onModeSMessage(mode_s_t *self, struct mode_s_msg *mm) 
 {
-	printf("Got message from flight %s at altitude %d\n", mm->flight, mm->altitude);
+	printf("Got message from flight %s\n", mm->flight);
+
+	printf("	HEADER: #Bits: %d, Type: %d, CRCOK: %d, ECC: %d, ICAO_ADDR:%02X%02X%02X, PHC: %d, CAP: %08X\n",
+						mm->msgbits,                // Number of bits in message
+  						mm->msgtype,                // Downlink format #
+  						mm->crcok,                  // True if CRC was valid
+  						mm->errorbit,               // Bit corrected. -1 if no bit corrected.
+  						mm->aa1, mm->aa2, mm->aa3,  // ICAO Address bytes 1 2 and 3
+  						mm->phase_corrected,        // True if phase correction was applied.
+						mm->ca);					// Responder capabilities.
+
+
+	printf("	DATA1: MsgTp: %d, MsgSTp: %d, HdVld: %d, Hd: %d, AirCftTp:%d, FFlg: %d, UtcSync: %d, Lat: %d, Lon: %d, Dir W/S: %d/%d\n"
+		   "	DATA2: Vel (W/S): %d/%d, Vel: %d, VertRt (Src/Sgn/Rt): %d/%d/%d, Alt: %d, Stat: %d, Id: %08X, Unt: %d\n\n",
+						mm->metype,                // Extended squitter message type.
+  						mm->mesub,                // Extended squitter message subtype.
+  						mm->heading_is_valid,        // heading_is_valid
+  						mm->heading,               // heading
+  						mm->aircraft_type,  			// aircraft_type
+  						mm->fflag,        // 1 = Odd, 0 = Even CPR message.
+						mm->tflag,					// UTC synchronized?
+						mm->raw_latitude,			// Non decoded latitude
+						mm->raw_longitude,			// Non decoded raw_longitude
+						mm->ew_dir,					// 0 = East, 1 = West.
+						mm->ns_dir,					// 0 = North, 1 = South.
+						mm->ew_velocity,			// E/W velocity.
+						mm->ns_velocity, 			// N/S velocity.
+						mm->velocity,
+						mm->vert_rate_source,		// Vertical rate source.
+						mm->vert_rate_sign, 		// Vertical rate sign.
+						mm->vert_rate,				// // Vertical rate.
+						mm->altitude,
+						mm->fs,                     // Flight status for DF4,5,20,21
+  						mm->identity,               // 13 bits identity (Squawk).
+						mm->unit);
 }
 
 #define FILT_ORDER	6
@@ -77,20 +111,18 @@ void makeFilter(double fs, double cutoff)
 }
 
 // Turn I/Q samples pointed by `data` into the magnitude vector pointed by `mag`
-void MagnitudeVector(short *data, uint16_t *mag, uint32_t size)
+void MagnitudeVectorDownSample(short *data, uint16_t *mag, uint32_t size)
 {
 	uint32_t k;
-	float ii, qq, i, q;
+	float i, q;
 	int t = 0;
 	for (k=0; k<size; k+=2, t++)
 	{
-		float i = data[k];
-		float q = data[k+1];
+		float i = (float)data[k];
+		float q = (float)data[k+1];
 
-		//ii = filt.filter(i);
-		//qq = filt.filter(q);
-
-		mag[t]=(uint16_t)sqrt(ii*ii + qq*qq);
+		if (t & 0x1)
+		mag[t >> 1]=(uint16_t)sqrt(i*i + q*q);
 	}
 }
 
@@ -139,15 +171,10 @@ void runSoapyProcess(
         }
 
         // compute the magnitude of the signal
-		MagnitudeVector(buff, mag, ret);
-
-		for (int jjj = 0; jjj < numElems; jjj++)
-		{
-			printf("%d, ", buff[jjj*2]);
-		}
+		MagnitudeVectorDownSample(buff, mag, ret);
 
 		// detect Mode S messages in the signal and call on_msg with each message
-		mode_s_detect(&state, mag, ret, onModeSMessage);
+		mode_s_detect(&state, mag, ret/2, onModeSMessage);
 
     }
     device->deactivateStream(stream);
@@ -159,29 +186,27 @@ void runSoapyProcess(
  **********************************************************************/
 int main(int argc, char *argv[])
 {
-    SoapySDR::ModuleManager mm(false);
+	SoapySDR::ModuleManager mm(false);
+
     SoapySDR::Device *device(nullptr);
     std::vector<size_t> channels;
-    std::string argStr;
+    std::string argStr = "driver=Cariboulite,channel=HiF";
     double fullScale = 0.0;
 	double freq = 1090.0e6;
 	//double freq = 1090e6;
 
     printBanner();
-    //findDevices(argStr, false);
 
     try
     {
         device = SoapySDR::Device::make(argStr);
-
-        // push the 6GHZ channel into the channel list
-        channels.push_back(1);
+        channels.push_back(0);
 
         // set the sample rate
         device->setSampleRate(SOAPY_SDR_RX, channels[0], 4e6);
- 		device->setBandwidth(SOAPY_SDR_RX, channels[0], 2.5e6);
+ 		device->setBandwidth(SOAPY_SDR_RX, channels[0], 2500e5);
 		device->setGainMode(SOAPY_SDR_RX, channels[0], false);
-		device->setGain(SOAPY_SDR_RX, channels[0], 60);
+		device->setGain(SOAPY_SDR_RX, channels[0], 50);
 		device->setFrequency(SOAPY_SDR_RX, channels[0], freq);
 
         //create the stream, use the native format   
