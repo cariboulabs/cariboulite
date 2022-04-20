@@ -34,7 +34,9 @@ typedef enum
     caribou_smi_stream_end = 0xFF,
 } caribou_smi_stream_type_en;
 
-#define CARIBOU_SMI_GET_STREAM_ID(type, ch) ( ((type)<<1) | (ch) )
+#define CARIBOU_SMI_GET_STREAM_ID(type, ch) 	( ((type)<<1) | (ch) )
+#define CARIBOU_SMI_GET_STREAM_TYPE(id)			( (caribou_smi_stream_type_en)(((id)>>1)&0x1) )	
+#define CARIBOU_SMI_GET_STREAM_CH(id)			( (caribou_smi_channel_en)((id)&0x1) )	
 
 typedef enum
 {
