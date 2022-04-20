@@ -57,7 +57,7 @@ public:
         /*******************************************************************
          * Channels API
          ******************************************************************/
-        size_t getNumChannels(const int direction) const { return 2; }
+        size_t getNumChannels(const int direction) const { return 1; }
         bool getFullDuplex(const int direction, const size_t channel) const { return (false); }
 
         /*******************************************************************
@@ -84,9 +84,6 @@ public:
                         int &flags,
                         long long &timeNs,
                         const long timeoutUs = 100000);
-
-        //int findSampleQueue(const int direction, const size_t channel);
-        //int findSampleQueueById(int stream_id);
 
         /*******************************************************************
          * Antenna API
