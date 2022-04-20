@@ -683,10 +683,10 @@ static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, int state
 
 //=========================================================================
 int caribou_smi_setup_stream(caribou_smi_st* dev,
-                                caribou_smi_stream_type_en type,
-                                caribou_smi_channel_en channel,
-                                caribou_smi_data_callback cb,
-                                void* serviced_context)
+							caribou_smi_stream_type_en type,
+							caribou_smi_channel_en channel,
+							caribou_smi_data_callback cb,
+							void* serviced_context)
 {
     int stream_id = CARIBOU_SMI_GET_STREAM_ID(type, channel);
 	ZF_LOGI("Setting up stream channel (%d) of type (%d)", channel, type);
