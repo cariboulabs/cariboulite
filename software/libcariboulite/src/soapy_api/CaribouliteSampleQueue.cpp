@@ -125,7 +125,7 @@ int SoapySDR::Stream::ReadSamples(caribou_smi_sample_complex_int16* buffer, size
     
     int tot_read_elements = res;
 
-	return tot_read_elements;  
+	//return tot_read_elements;  
 
 	if (filterType != DigitalFilter_None && filter_i != NULL && filter_q != NULL)
 	{

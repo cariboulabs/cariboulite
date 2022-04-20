@@ -261,10 +261,7 @@ module top(
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
       
-      // test reversed LSB / MSB
-      // -----------------------
       .i_ddr_data ({w_lvds_rx_09_d1, w_lvds_rx_09_d0}),
-	  //.i_ddr_data ({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
       
       .i_fifo_full (w_rx_09_fifo_full),
       .o_fifo_write_clk (w_rx_09_fifo_write_clk),
@@ -299,8 +296,6 @@ module top(
       .i_reset (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
 
-      // test reversed LSB / MSB
-      // -----------------------
       .i_ddr_data ({!w_lvds_rx_24_d1, !w_lvds_rx_24_d0}),
 
       .i_fifo_full (w_rx_24_fifo_full),
