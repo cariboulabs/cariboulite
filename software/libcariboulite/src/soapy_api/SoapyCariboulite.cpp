@@ -68,7 +68,10 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
     }
    
 	// no filterring specified, return all results
-    if (args.count("serial") == 0 && args.count("label") == 0 && args.count("device_id") == 0) return results;
+    if (args.count("serial") == 0 && 
+		args.count("label") == 0 && 
+		args.count("device_id") == 0 &&
+		args.count("channel") == 0) return results;
 
 	// filter the return according to the "serial" or "label" or "device_id"
     std::vector<SoapySDR::Kwargs> filteredResults;
@@ -77,6 +80,7 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
     int req_dev_num = 			args.count("device_id") == 0 	? -1 : atoi(args.at("device_id").c_str());
 	std::string req_serial = 	args.count("serial") == 0 		? "" : args.at("serial");
 	std::string req_label = 	args.count("label") == 0		? "" : args.at("label");
+	std::string req_channel = 	args.count("channel") == 0		? "" : args.at("channel");
 
 	// search for the requested devNum within the un-filterred results
     for (size_t i = 0; i < results.size(); i++)
@@ -85,10 +89,12 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
 		int curDevNum = atoi(curArgs.at("device_id").c_str());
 		std::string curSerial = curArgs.at("serial");
 		std::string curLabel = curArgs.at("label");
+		std::string curChannel = curArgs.at("channel");
 		
 		if (curDevNum == req_dev_num ||
 			!curSerial.compare(req_serial) ||
-			!curLabel.compare(req_label))
+			!curLabel.compare(req_label) ||
+			!curChannel.compare(req_channel))
 		{
 			filteredResults.push_back(curArgs);
 		}
