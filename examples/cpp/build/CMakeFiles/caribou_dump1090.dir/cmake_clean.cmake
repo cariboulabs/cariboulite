@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/caribou_dump1090.dir/cpr.c.o"
   "CMakeFiles/caribou_dump1090.dir/dump1090.cpp.o"
   "CMakeFiles/caribou_dump1090.dir/modes.c.o"
   "caribou_dump1090"

@@ -1,4 +1,5 @@
 /*
+ * Modified source file by David Michaeli @ CaribouLabs Ltd. Apr. 2022
  * Source of file: https://github.com/watson/libmodes
  * Author: Thomas Watson (@watson)
  * Contact: w@tson.dk / https://twitter.com/wa7son
@@ -16,7 +17,7 @@ extern "C" {
 #include <stdint.h>
 #include <unistd.h>
 #include <math.h>
-#include <sys/time.h>
+#include <time.h>
 
 #define MODE_S_ICAO_CACHE_LEN 1024 // Power of two required
 #define MODE_S_LONG_MSG_BYTES (112/8)
@@ -26,8 +27,8 @@ extern "C" {
 // Program state
 typedef struct 
 {
-	// Internal state
-	uint32_t icao_cache[sizeof(uint32_t)*MODE_S_ICAO_CACHE_LEN*2]; // Recently seen ICAO addresses cache
+	// Internal state - recently seen ICAO addresses cache
+	uint32_t icao_cache[sizeof(uint32_t)*MODE_S_ICAO_CACHE_LEN*2];
 
 	// Configuration
 	int fix_errors; // Single bit error correction if true
@@ -38,7 +39,7 @@ typedef struct
 // The struct we use to store information about a decoded message
 struct mode_s_msg 
 {
-	// Generic fields
+	// ------ Generic fields ------------
 	unsigned char msg[MODE_S_LONG_MSG_BYTES]; // Binary message
 	int msgbits;                // Number of bits in message
 	int msgtype;                // Downlink format #
@@ -48,10 +49,10 @@ struct mode_s_msg
 	int aa1, aa2, aa3;          // ICAO Address bytes 1 2 and 3
 	int phase_corrected;        // True if phase correction was applied.
 
-	// DF 11
+	// ------ DF 11 ---------------------
 	int ca;                     // Responder capabilities.
 
-	// DF 17
+	// ------ DF 17 ---------------------
 	int metype;                 // Extended squitter message type.
 	int mesub;                  // Extended squitter message subtype.
 	int heading_is_valid;
@@ -71,7 +72,7 @@ struct mode_s_msg
 	int vert_rate;              // Vertical rate.
 	int velocity;               // Computed from EW and NS velocity.
 
-	// DF4, DF5, DF20, DF21
+	// ------ DF4, DF5, DF20, DF21 -------
 	int fs;                     // Flight status for DF4,5,20,21
 	int dr;                     // Request extraction of downlink request.
 	int um;                     // Request extraction of downlink request.
@@ -86,6 +87,7 @@ typedef void (*mode_s_callback_t)(mode_s_t *self, struct mode_s_msg *mm);
 void mode_s_init(mode_s_t *self);
 void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callback_t);
 void mode_s_decode(mode_s_t *self, struct mode_s_msg *mm, unsigned char *msg);
+void mode_s_display_message(struct mode_s_msg *mm);
 
 #ifdef __cplusplus
 }

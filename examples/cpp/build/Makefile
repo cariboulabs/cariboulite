@@ -142,6 +142,33 @@ caribou_dump1090/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/build
 .PHONY : caribou_dump1090/fast
 
+cpr.o: cpr.c.o
+
+.PHONY : cpr.o
+
+# target to build an object file
+cpr.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/cpr.c.o
+.PHONY : cpr.c.o
+
+cpr.i: cpr.c.i
+
+.PHONY : cpr.i
+
+# target to preprocess a source file
+cpr.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/cpr.c.i
+.PHONY : cpr.c.i
+
+cpr.s: cpr.c.s
+
+.PHONY : cpr.s
+
+# target to generate assembly for a file
+cpr.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/caribou_dump1090.dir/build.make CMakeFiles/caribou_dump1090.dir/cpr.c.s
+.PHONY : cpr.c.s
+
 dump1090.o: dump1090.cpp.o
 
 .PHONY : dump1090.o
@@ -205,6 +232,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... caribou_dump1090"
+	@echo "... cpr.o"
+	@echo "... cpr.i"
+	@echo "... cpr.s"
 	@echo "... dump1090.o"
 	@echo "... dump1090.i"
 	@echo "... dump1090.s"

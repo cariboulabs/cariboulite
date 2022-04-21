@@ -20,6 +20,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_executable(caribou_dump1090
     dump1090.cpp
 	modes.c
+	cpr.c
 )
 
 target_link_libraries(caribou_dump1090 SoapySDR iir_static)
