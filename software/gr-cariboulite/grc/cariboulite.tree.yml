@@ -1,0 +1,6 @@
+'[Core]':
+- CaribouLite:
+  - Source:
+    - cariboulite_source
+  - Sink:
+    - cariboulite_sink
