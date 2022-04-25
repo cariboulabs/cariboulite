@@ -133,6 +133,11 @@ int rffc507x_init(  rffc507x_st* dev,
 
 	ZF_LOGI("Received spi handle %d", dev->io_spi_handle);
 
+	rffc507x_device_id_st did = {0};
+	rffc507x_device_status_st stat = {0};
+	rffc507x_readback_status(dev, &did, &stat);
+	rffc507x_print_dev_id(&did);
+
 	// initial setup
 	// SDI CTRL set of configurations
 	set_RFFC507X_SIPIN(dev, 1);	// ENBL and MODE physical pins are ignores
@@ -149,12 +154,14 @@ int rffc507x_init(  rffc507x_st* dev,
 	set_RFFC507X_P2CTV(dev, 12);	
 	set_RFFC507X_P1CTV(dev, 12);
 	set_RFFC507X_RGBYP(dev, 1);
-	set_RFFC507X_P2MIXIDD(dev, 4);
-	set_RFFC507X_P1MIXIDD(dev, 4);
-	
+	set_RFFC507X_P2MIXIDD(dev, 2);
+	set_RFFC507X_P1MIXIDD(dev, 2);
+
+	//set_RFFC507X_LFACT(dev, 1);
+
 	// Others
-	set_RFFC507X_LDEN(dev, 1);
-	set_RFFC507X_LDLEV(dev, 1);
+	set_RFFC507X_LDEN(dev, 7);
+	set_RFFC507X_LDLEV(dev, 7);
 
 	set_RFFC507X_BYPAS(dev, 0);
 
@@ -442,9 +449,9 @@ void rffc507x_calibrate(rffc507x_st* dev)
 	rffc507x_regs_commit(dev);
 	*/
 
-	set_RFFC507X_P1KV(dev, 0);
-	set_RFFC507X_P2KV(dev, 0);
-	rffc507x_regs_commit(dev);
+	//set_RFFC507X_P1KV(dev, 0);
+	//set_RFFC507X_P2KV(dev, 0);
+	//rffc507x_regs_commit(dev);
 }
 
 //===========================================================================
