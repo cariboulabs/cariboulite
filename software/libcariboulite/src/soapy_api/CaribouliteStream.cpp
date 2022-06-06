@@ -2,36 +2,41 @@
 #include "cariboulite_config/cariboulite_config_default.h"
 
 //=================================================================
-static void caribou_stream_data_event( void *ctx, 
-                                        void *service_context,
-                                        caribou_smi_stream_type_en type,
-                                        caribou_smi_channel_en ch,
-                                        size_t sample_count,
-                                        caribou_smi_sample_complex_int16 *cmplx_vec,
-										caribou_smi_sample_meta *meta_vec,
-                                        size_t buffers_capacity_samples)
+void caribou_stream_data_event( void *ctx, 
+								void *service_context,
+								caribou_smi_stream_type_en type,
+								caribou_smi_channel_en ch,
+								size_t sample_count,
+								caribou_smi_sample_complex_int16 *cmplx_vec,
+								caribou_smi_sample_meta *meta_vec,
+								size_t buffers_capacity_samples)
 {
-    cariboulite_st* sys = (cariboulite_st*)ctx;
-    Cariboulite *obj = (Cariboulite*)service_context;
+    //cariboulite_st* sys = (cariboulite_st*)ctx;
+    Cariboulite *soapy_obj = (Cariboulite*)service_context;
 
-    int dir = (type == caribou_smi_stream_type_read) ? SOAPY_SDR_RX : SOAPY_SDR_TX;
-    int channel = (ch == caribou_smi_channel_900) ? cariboulite_channel_s1g : cariboulite_channel_6g;
+	// Basic sanity checking
+	cariboulite_channel_en ch_type = ch == caribou_smi_channel_900 ? cariboulite_channel_s1g : cariboulite_channel_6g;
+	if (soapy_obj->radio.type != ch_type)
+	{
+		SoapySDR_logf(SOAPY_SDR_ERROR, "caribou_stream_data_event: reaceived wrong CH <=> service_context pair");
+		return;
+	}
 
     switch(type)
     {
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-                int sample_queue_index = CARIBOU_SMI_GET_STREAM_ID(type, ch);
-                obj->sample_queues[sample_queue_index]->Write(cmplx_vec, sample_count, 0, 10000L);
+				// SMI read samples from Caribou and these samples are written into the Soapy buffer
+                soapy_obj->sample_queue_rx->Write(cmplx_vec, sample_count, 0, 10000L);
             }
             break;
 
         //-------------------------------------------------------
         case caribou_smi_stream_type_write:
             {
-                int sample_queue_index = CARIBOU_SMI_GET_STREAM_ID(dir, channel);
-                printf("Wrote to sample_queue_index %d\n", sample_queue_index);
+				// SMI requests to get (read) samples from Soapy and write them to Caribou
+				soapy_obj->sample_queue_tx->Read(cmplx_vec, sample_count, 0, 10000L);
             }
             break;
 
@@ -66,7 +71,6 @@ static void caribou_stream_data_event( void *ctx,
 */
 std::vector<std::string> Cariboulite::getStreamFormats(const int direction, const size_t channel) const
 {
-    //printf("getStreamFormats\n");
     std::vector<std::string> formats;
     formats.push_back(SOAPY_SDR_CS16);
     formats.push_back(SOAPY_SDR_CS8);
@@ -87,7 +91,6 @@ std::vector<std::string> Cariboulite::getStreamFormats(const int direction, cons
 */
 std::string Cariboulite::getNativeStreamFormat(const int direction, const size_t channel, double &fullScale) const
 {
-    //printf("getNativeStreamFormat\n");
     fullScale = (double)((1<<12)-1);
     return SOAPY_SDR_CS16;
 }
@@ -101,32 +104,8 @@ std::string Cariboulite::getNativeStreamFormat(const int direction, const size_t
 */
 SoapySDR::ArgInfoList Cariboulite::getStreamArgsInfo(const int direction, const size_t channel) const
 {
-    //printf("getStreamArgsInfo start\n");
 	SoapySDR::ArgInfoList streamArgs;
 	return streamArgs;
-}
-
-//========================================================
-int Cariboulite::findSampleQueue(const int direction, const size_t channel)
-{
-    for (uint32_t i = 0; i < 4; i++)
-    {
-        if (sample_queues[i]->stream_dir == direction &&
-            sample_queues[i]->stream_channel == (int)channel)
-            return i;
-    }
-    return -1;
-}
-
-//========================================================
-int Cariboulite::findSampleQueueById(int stream_id)
-{
-    for (uint32_t i = 0; i < 4; i++)
-    {
-        if (sample_queues[i]->stream_id == stream_id)
-            return i;
-    }
-    return -1;
 }
 
 //========================================================
@@ -184,70 +163,50 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
                             const std::vector<size_t> &channels, 
                             const SoapySDR::Kwargs &args)
 {
-    int cw = (args.count("CW") != 0) ? std::atoi(args.at("CW").c_str()) : 0;
-    SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: dir= %s, format= %s, is_cw= %d, ch= %d", 
-                                direction == SOAPY_SDR_TX?"TX":"RX", format.c_str(), cw, 
-                                channels.size()?channels[0]:0);
-    
-    std::vector<size_t> channels_internal = channels;
-    // default channel - sub1GHz
-    if ( channels_internal.size() == 0 )
-    {
-        channels_internal.push_back(cariboulite_channel_s1g);
-    }
+	// is it a CW TX channel
+	int cw = (args.count("CW") != 0) ? std::atoi(args.at("CW").c_str()) : 0;
+	if (direction == SOAPY_SDR_RX && cw)
+	{
+		SoapySDR_logf(SOAPY_SDR_ERROR, "setupStream: CW channel can only be used with TX channel");
+		return NULL;
+	}
 
-    // currently we take only the first channel
-    size_t ch = channels_internal[0];
+    SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: dir= %s, format= %s, is_cw= %d", 
+                                direction == SOAPY_SDR_TX ? "TX" : "RX", 
+								format.c_str(), cw);
 
-    // calculate the stream_id
-    caribou_smi_stream_type_en type = (direction == SOAPY_SDR_RX) ? caribou_smi_stream_type_read : caribou_smi_stream_type_write;
-    caribou_smi_channel_en channel = (ch == cariboulite_channel_s1g) ? caribou_smi_channel_900 : caribou_smi_channel_2400;
-    int stream_id = CARIBOU_SMI_GET_STREAM_ID(type, channel);
-    sample_queues[stream_id]->is_cw  = cw;
-
-    // Setup the SampleQueue's format
-    if (format == SOAPY_SDR_CS16)
-    {
-        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_INT16;
-    }
-    else if (format == SOAPY_SDR_CS8)
-    {
-        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_INT8;
-    }
-    else if (format == SOAPY_SDR_CF32)
-    {
-        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_FLOAT32;
-    }
-    else if (format == SOAPY_SDR_CF64)
-    {
-        sample_queues[stream_id]->chosen_format = CARIBOULITE_FORMAT_FLOAT64;
-    }
-    else
-    {
-        SoapySDR_logf(SOAPY_SDR_ERROR, "the specified format %s is not supported", format.c_str());
+	// configure the queue
+	SoapySDR::Stream* queue = direction == SOAPY_SDR_RX ? sample_queue_rx : sample_queue_tx;
+	queue->smi_stream_id = -1;	// by default, the smi stream is not configured (e.g. with CS / BB-FSK...)
+    queue->is_cw = cw;
+	if (queue->setFormat(format) != 0)
+	{
+		SoapySDR_logf(SOAPY_SDR_ERROR, "the specified format %s is not supported", format.c_str());
         throw std::runtime_error( "setupStream invalid format " + format );
-    }
+	}
 
-    // create the stream (only for non CW streams)
-    if (sample_queues[stream_id]->is_cw)
+    // configure the radio channel to CW if needed
+	cariboulite_radio_set_cw_outputs(&radio, false, queue->is_cw);
+
+	// configure the smi stream and attach it to the queue
+	if (!cw)
     {
-        cariboulite_set_cw_outputs(&radios, (cariboulite_channel_en)ch, false, true);
-    }
-    else
-    {
-        cariboulite_set_cw_outputs(&radios, (cariboulite_channel_en)ch, false, false);
-        stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
-                                    type, channel, 
-                                    caribou_stream_data_event, 
-                                    this);
-        if (stream_id < 0)
+		// find out the SMI channel info
+		caribou_smi_stream_type_en type = direction == SOAPY_SDR_RX ? caribou_smi_stream_type_read : caribou_smi_stream_type_write;
+		caribou_smi_channel_en channel = radio.type == cariboulite_channel_s1g ? caribou_smi_channel_900 : caribou_smi_channel_2400;
+        queue->smi_stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
+														type, 
+														channel, 
+														caribou_stream_data_event, 
+														this);
+        if (queue->smi_stream_id < 0)
         {
             throw std::runtime_error( "setupStream caribou_smi_setup_stream failed" );
         }
     }
     
-    //SoapySDR_logf(SOAPY_SDR_INFO, "finished setup stream, stream_id = %d, CW=%d", stream_id, cw);
-    return (SoapySDR::Stream *)((void*)(stream_id));
+	// Queue inherits Stream class
+    return queue;
 }
 
 //========================================================
@@ -258,11 +217,18 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
      */
 void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
-    //SoapySDR_logf(SOAPY_SDR_INFO, "closeStream");
-    if (stream == NULL) return;
-    int stream_id = (intptr_t)stream;
+	// if it is a CW stream, disable the output
+	if (stream->is_cw)
+	{
+		cariboulite_radio_set_cw_outputs(&radio, false, false);
+	}
     
-    caribou_smi_destroy_stream(&sess.cariboulite_sys.smi, stream_id);
+	// check if this is a valid SMI stream
+	if (stream->smi_stream_id != -1)
+    {
+		caribou_smi_destroy_stream(&sess.cariboulite_sys.smi, stream->smi_stream_id);
+		stream->smi_stream_id = -1;
+	}	
 }
 
 //========================================================
@@ -277,8 +243,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
      */
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    //printf("getStreamMTU\n");
-    return 1024 * 1024 / 2 / 4;
+    return stream->getMTUSizeElements();
 }
 
 //========================================================
@@ -304,17 +269,11 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const long long timeNs,
                                     const size_t numElems)
 {
-    //printf("activateStream\n");
-    //SoapySDR_logf(SOAPY_SDR_INFO, "activateStream");
-    int stream_id = (intptr_t)stream;
+    cariboulite_radio_activate_channel(&radio, true);
 
-    cariboulite_activate_channel(&radios, 
-                                (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
-                                true);
-
-    if ((cariboulite_channel_en)sample_queues[stream_id]->is_cw == 0)
+    if (!stream->is_cw)
     {
-        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 1);
+        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, stream->smi_stream_id, 1);
     }
     return 0;
 }
@@ -336,18 +295,13 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
      */
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
-    //SoapySDR_logf(SOAPY_SDR_INFO, "deactivateStream");
-    int stream_id = (intptr_t)stream;
-
-    if ((cariboulite_channel_en)sample_queues[stream_id]->is_cw == 0)
+	if (!stream->is_cw)
     {
-        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, (intptr_t)stream, 0);
-        sleep(1);
+        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, stream->smi_stream_id, 0);
+		sleep(1);
     }
 
-    cariboulite_activate_channel(&radios, 
-                                (cariboulite_channel_en)sample_queues[stream_id]->stream_channel, 
-                                false);
+    cariboulite_radio_activate_channel(&radio, false);
     return 0;
 }
 
@@ -380,35 +334,11 @@ int Cariboulite::readStream(
             long long &timeNs,
             const long timeoutUs)
 {
-    //printf("readStream\n");
-    int stream_id = (intptr_t)stream;
-
-    if (sample_queues[stream_id]->stream_dir != SOAPY_SDR_RX)
+	// Verify that it is an RX stream
+    if (stream->getInnerStreamType() != SOAPY_SDR_RX)
     {
-        // wrong sample queue => wrong stream_id
         return SOAPY_SDR_NOT_SUPPORTED;
     }
 
-    uint32_t metadata = 0;
-    int res = 0;
-    switch(sample_queues[stream_id]->chosen_format)
-    {
-        case CARIBOULITE_FORMAT_FLOAT32: 
-            {
-                res = sample_queues[stream_id]->ReadSamples((sample_complex_float*)buffs[0], numElems, timeoutUs);
-            }
-            break;
-	    case CARIBOULITE_FORMAT_INT16: 
-            res = sample_queues[stream_id]->ReadSamples((caribou_smi_sample_complex_int16*)buffs[0], numElems, timeoutUs);
-            break;
-	    case CARIBOULITE_FORMAT_INT8: 
-            res = sample_queues[stream_id]->ReadSamples((sample_complex_int8*)buffs[0], numElems, timeoutUs);
-            break;
-	    case CARIBOULITE_FORMAT_FLOAT64: 
-            res = sample_queues[stream_id]->ReadSamples((sample_complex_double*)buffs[0], numElems, timeoutUs);
-            break;
-        default: return -1; break;
-    }
-
-    return res;
+    return stream->ReadSamplesGen((void*)buffs[0], numElems, timeoutUs);
 }
