@@ -1,8 +1,6 @@
 # CaribouLite
 CaribouLite is an affordable, educational, open-source SDR evaluation platform and a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio.
 
-CaribouLite has been submitted to CrowdSupply and has been pre-launched! [Visit our page](https://www.crowdsupply.com/cariboulabs/cariboulite)
-
 <table>
   <tr>
     <td><img src="hardware/rev2/pictures/oshwa.png" alt="Open source hardware association certificate"></td>
