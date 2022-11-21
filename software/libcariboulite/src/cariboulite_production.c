@@ -60,7 +60,29 @@ cariboulite_eeprom_st ee = { .i2c_address = 0x50, .eeprom_type = eeprom_type_24c
 int cariboulite_prod_eeprom_programming(cariboulite_st* sys, cariboulite_eeprom_st* eeprom)
 {
 	int led0 = 0, led1 = 0, btn = 0, cfg = 0;
-	caribou_fpga_get_io_ctrl_dig (&sys->fpga, &led0, &led1, &btn, &cfg);
+	ZF_LOGI("==============================================");
+	ZF_LOGI("EEPROM CONFIG - PRESS AND HOLD BUTTON");
+
+	int c = 0;
+	while (1)
+	{
+		caribou_fpga_get_io_ctrl_dig (&sys->fpga, &led0, &led1, &btn, &cfg);
+		if (btn == 0)	// pressed
+		{
+			ZF_LOGI("    <=== KEEP HOLDING THE BUTTON ====>");
+			caribou_fpga_set_io_ctrl_dig (&sys->fpga, 1, 1);
+			break;
+		}
+
+		if (c == 0) caribou_fpga_set_io_ctrl_dig (&sys->fpga, 0, 0);
+		else if (c == 1) caribou_fpga_set_io_ctrl_dig (&sys->fpga, 0, 1);
+		else if (c == 2) caribou_fpga_set_io_ctrl_dig (&sys->fpga, 1, 1);
+		else if (c == 3) caribou_fpga_set_io_ctrl_dig (&sys->fpga, 1, 0);
+
+		usleep(200000);
+		c = (c + 1) % 4;
+	}
+
 	cariboulite_system_type_en type = (cfg&0x1)?cariboulite_system_type_full:cariboulite_system_type_ism;
 	if (type == cariboulite_system_type_full) ZF_LOGI("Detected CaribouLite FULL Version");
 	else if (type == cariboulite_system_type_ism) ZF_LOGI("Detected CaribouLite ISM Version");
@@ -68,7 +90,7 @@ int cariboulite_prod_eeprom_programming(cariboulite_st* sys, cariboulite_eeprom_
 
 	sleep(1);
 	caribou_fpga_set_io_ctrl_dig (&sys->fpga, 0, 0);
-	ZF_LOGI("Finished EEPROM configuration");
+	ZF_LOGI("    <=== DONE - YOU CAN RELEASE BUTTON ====>");
 	return 0;
 }
 
@@ -144,6 +166,8 @@ int main(int argc, char *argv[])
 
     // setup the signal handler
     cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, cariboulite_signal_handler_op_last, &cariboulite_sys);
+
+
 
     // dummy loop
     sleep(1);

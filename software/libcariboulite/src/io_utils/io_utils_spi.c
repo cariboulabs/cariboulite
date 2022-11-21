@@ -25,7 +25,19 @@ static char *io_utils_chip_types[] =
 //=====================================================================================
 static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
 {
+	if (handle >= IO_UTILS_MAX_CHIPS)
+	{
+		ZF_LOGE("chip handle illegal %d", handle);
+		return -1;
+	}
+
     io_utils_spi_chip_st* chip = &dev->chips[handle];
+	if (!chip->initialized)
+	{
+		ZF_LOGE("chip handle %d is not initialized", handle);
+		return -1;
+	}
+
     if (dev->current_chip == chip)
     {
         // nothing to setup => return
@@ -43,10 +55,11 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
         int miso_pin = chip->miso_mosi_swap?dev->mosi:dev->miso;
         int cs_pin = chip->cs_pin;
         int sck_pin = dev->sck;
-        io_utils_set_gpio_mode(chip->cs_pin, io_utils_alt_gpio_out);
-        io_utils_set_gpio_mode(dev->miso, io_utils_alt_gpio_in);
-        io_utils_set_gpio_mode(dev->mosi, io_utils_alt_gpio_out);
-        io_utils_set_gpio_mode(dev->sck, io_utils_alt_gpio_out);
+        io_utils_set_gpio_mode(cs_pin, io_utils_alt_gpio_out);
+        io_utils_set_gpio_mode(miso_pin, io_utils_alt_gpio_in);
+        io_utils_set_gpio_mode(mosi_pin, io_utils_alt_gpio_out);
+        io_utils_set_gpio_mode(sck_pin, io_utils_alt_gpio_out);
+		dev->current_chip = chip;
         return 0;
     }
 
@@ -223,8 +236,7 @@ static int io_utils_ice40_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_s
 
 		for (int bit = 0; bit < 8; bit ++)
 		{
-            io_utils_write_gpio_with_wait(data_pin,
-                                            (current_tx_byte&0x80)>>7, nop_cnt);
+            io_utils_write_gpio_with_wait(data_pin, (current_tx_byte&0x80)>>7, nop_cnt);
 
 			current_tx_byte <<= 1;
             io_utils_write_gpio_with_wait(sck_pin, 1, nop_cnt);
@@ -232,7 +244,7 @@ static int io_utils_ice40_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_s
 		}
 	}
 
-    io_utils_write_gpio_with_wait(sck_pin, 0, nop_cnt/2);
+    io_utils_write_gpio_with_wait(sck_pin, 0, nop_cnt / 2);
 
 	return 0;
 }
@@ -383,7 +395,7 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
     // will never be greater but still it is good to check
     if (dev->num_of_chips >= IO_UTILS_MAX_CHIPS)
     {
-        ZF_LOGE("cannnot add - exceeded max %d", IO_UTILS_MAX_CHIPS);
+        ZF_LOGE("cannot add - exceeded max %d", IO_UTILS_MAX_CHIPS);
         pthread_mutex_unlock(&dev->mtx);
         return -1;
     }
@@ -428,6 +440,33 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
     pthread_mutex_unlock(&dev->mtx);
 
     return new_chip_index; // this is the chip handle for the app
+}
+
+//=====================================================================================
+int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
+{
+	ZF_LOGI("changing an spi device suspension = '%d' state", suspend);
+	if (dev == NULL)
+	{
+		ZF_LOGE("provided SPI struct is NULL");
+		return -1;
+	}
+
+	if (suspend)
+	{
+		io_utils_setup_gpio(dev->miso, io_utils_dir_input, io_utils_pull_off);
+		io_utils_setup_gpio(dev->mosi, io_utils_dir_input, io_utils_pull_off);
+		io_utils_setup_gpio(dev->sck, io_utils_dir_input, io_utils_pull_off);
+	}
+	else
+	{
+		dev->current_chip == NULL;
+		io_utils_set_gpio_mode(dev->miso, io_utils_alt_4);
+		io_utils_set_gpio_mode(dev->mosi, io_utils_alt_4);
+		io_utils_set_gpio_mode(dev->sck, io_utils_alt_4);
+	}
+
+	return 0;
 }
 
 //=====================================================================================

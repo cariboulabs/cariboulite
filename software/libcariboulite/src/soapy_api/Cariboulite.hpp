@@ -13,15 +13,62 @@
 #include <cstring>
 #include <algorithm>
 #include <atomic>
+#include <Iir.h>
 
 //#define ZF_LOG_LEVEL ZF_LOG_ERROR
 #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 
-#include "CaribouliteSampleQueue.hpp"
+#include "datatypes/circular_buffer.h"
 #include "cariboulite_setup.h"
 #include "cariboulite_radios.h"
-#include "cariboulite_radio.h"
 
+enum Cariboulite_Format 
+{
+	CARIBOULITE_FORMAT_FLOAT32	= 0,
+	CARIBOULITE_FORMAT_INT16	= 1,
+	CARIBOULITE_FORMAT_INT8	    = 2,
+	CARIBOULITE_FORMAT_FLOAT64  = 3,
+};
+
+#define NUM_SAMPLEQUEUE_BUFS            ( 3 )
+#define NUM_BYTES_PER_CPLX_ELEM         ( 4 )
+
+#pragma pack(1)
+// associated with CS8 - total 2 bytes / element
+typedef struct
+{
+        int8_t i;                       // LSB
+        int8_t q;                       // MSB
+} sample_complex_int8;
+
+// associated with CS12 - total 3 bytes / element
+typedef struct
+{
+        int16_t i :12;                  // LSB
+        int16_t q :12;                  // MSB
+} sample_complex_int12;
+
+// associated with CS32 - total 8 bytes / element
+typedef struct
+{
+        int32_t i;                      // LSB
+        int32_t q;                      // MSB
+} sample_complex_int32;
+
+// associated with CF32 - total 8 bytes / element
+typedef struct
+{
+        float i;                        // LSB
+        float q;                        // MSB
+} sample_complex_float;
+
+// associated with CF64 - total 16 bytes / element
+typedef struct
+{
+        double i;                       // LSB
+        double q;                       // MSB
+} sample_complex_double;
+#pragma pack()
 
 class SoapyCaribouliteSession
 {
@@ -33,6 +80,49 @@ public:
         static cariboulite_st cariboulite_sys;
         static std::mutex sessionMutex;
         static size_t sessionCount;
+};
+
+
+class SampleQueue
+{
+public:
+        SampleQueue(int mtu_bytes, int num_buffers);
+        ~SampleQueue();
+        int AttachStreamId(int id, int dir, int channel);
+        int Write(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us);
+        int Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us);
+
+        int ReadSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us);
+        int ReadSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us);
+        int ReadSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us);
+        int ReadSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
+
+        int stream_id;
+        int stream_dir;
+        int stream_channel;
+        int is_cw;
+        Cariboulite_Format chosen_format;
+		int dig_filt;
+private:
+		circular_buffer<caribou_smi_sample_complex_int16> *queue;
+        size_t mtu_size_bytes;
+        uint8_t *partial_buffer;
+        int partial_buffer_start;
+        int partial_buffer_length;
+
+        caribou_smi_sample_complex_int16 *interm_native_buffer;
+		#define FILT_ORDER	6
+		#define FILT_ORDER1	8
+		Iir::Butterworth::LowPass<FILT_ORDER> filt20_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt20_q;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt50_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt50_q;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt100_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt100_q;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt200_i;
+		Iir::Butterworth::LowPass<FILT_ORDER> filt200_q;
+		Iir::Butterworth::LowPass<FILT_ORDER1> filt2p5M_i;
+		Iir::Butterworth::LowPass<FILT_ORDER1> filt2p5M_q;
 };
 
 /***********************************************************************
@@ -57,7 +147,7 @@ public:
         /*******************************************************************
          * Channels API
          ******************************************************************/
-        size_t getNumChannels(const int direction) const { return 1; }
+        size_t getNumChannels(const int direction) const { return 2; }
         bool getFullDuplex(const int direction, const size_t channel) const { return (false); }
 
         /*******************************************************************
@@ -84,6 +174,9 @@ public:
                         int &flags,
                         long long &timeNs,
                         const long timeoutUs = 100000);
+
+        int findSampleQueue(const int direction, const size_t channel);
+        int findSampleQueueById(int stream_id);
 
         /*******************************************************************
          * Antenna API
@@ -139,9 +232,8 @@ public:
         Type readSensor(const int direction, const size_t channel, const std::string &key) const;
 
 public:
-        cariboulite_radio_state_st radio;
-		SoapySDR::Stream* sample_queue_tx;
-		SoapySDR::Stream* sample_queue_rx;
+        cariboulite_radios_st radios;
+        SampleQueue* sample_queues[4];
 
         // Static load time initializations
         static SoapyCaribouliteSession sess;

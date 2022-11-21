@@ -10,7 +10,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 # ------------------------------------
 # MAIN - Source files for main library
 # ------------------------------------
-set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radios.c src/cariboulite_radio.c)
+set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radios.c)
 
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
@@ -18,11 +18,11 @@ add_subdirectory(src/ustimer EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_fpga EXCLUDE_FROM_ALL)
 add_subdirectory(src/at86rf215 EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_smi EXCLUDE_FROM_ALL)
-add_subdirectory(src/latticeice40 EXCLUDE_FROM_ALL)
+add_subdirectory(src/caribou_programming EXCLUDE_FROM_ALL)
 add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
-add_subdirectory(src/cariboulite_config EXCLUDE_FROM_ALL)
-add_subdirectory(src/cariboulite_eeprom EXCLUDE_FROM_ALL)
+add_subdirectory(src/config EXCLUDE_FROM_ALL)
+add_subdirectory(src/hat EXCLUDE_FROM_ALL)
 add_subdirectory(src/production_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 add_subdirectory(src/iir EXCLUDE_FROM_ALL)
@@ -35,16 +35,16 @@ target_link_libraries(cariboulite   datatypes
                                     at86rf215
                                     rffc507x
                                     caribou_smi
-                                    latticeice40
+                                    caribou_programming
                                     io_utils
-                                    cariboulite_config
-                                    cariboulite_eeprom
-									production_utils
+                                    config
+                                    hat
+				    production_utils
                                     zf_log
                                     rt
                                     m
                                     pthread
-									iir)
+				    iir)
 
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
@@ -86,27 +86,39 @@ SOAPY_SDR_MODULE_UTIL(
 # ----------------------------------
 # TESTS - source files for the tests
 # ----------------------------------
-set(SOURCES_ICE40_PROGRAMMER test/ice40_programmer.c)
+set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
 set(SOURCES_MAIN src/cariboulite.c)
 set(SOURCES_PROD src/cariboulite_production.c)
 
-add_executable(ice40programmer ${SOURCES_ICE40_PROGRAMMER})
+add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_app ${SOURCES_MAIN})
+add_custom_command(
+	TARGET cariboulite_app POST_BUILD
+	COMMAND sudo chown root:root "./cariboulite_app"
+	COMMAND sudo chmod 4775 "./cariboulite_app"
+	VERBATIM)
 add_executable(cariboulite_prod ${SOURCES_PROD})
+add_custom_command(
+	TARGET cariboulite_prod POST_BUILD
+	COMMAND sudo chown root:root "./cariboulite_prod"
+	COMMAND	sudo chmod 4775 "./cariboulite_prod"
+	VERBATIM)
 
-target_link_libraries(ice40programmer cariboulite)
+target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
 target_link_libraries(cariboulite_app cariboulite)
 target_link_libraries(cariboulite_prod cariboulite)
 
-set_target_properties( ice40programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
+set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 
 # ------------
 # INSTALLATION
 # ------------
-# Set the location for library installation -- i.e., /usr/lib in this case
-# not really necessary in this example. Use "sudo make install" to apply
-#install(TARGETS cariboulite DESTINATION /usr/lib)
+#install(TARGETS cariboulite DESTINATION /usr/local/lib)
+install(TARGETS SoapyHermonSDR PERMISSIONS 	OWNER_EXECUTE OWNER_WRITE OWNER_READ 
+						GROUP_READ GROUP_WRITE GROUP_EXECUTE
+						WORLD_READ WORLD_EXECUTE SETUID SETGID
+						DESTINATION /usr/local/lib/SoapySDR/modules0.8/)

@@ -108,6 +108,20 @@ void io_utils_write_gpio_with_wait(int gpio, int value, int nopcnt)
 }
 
 //=============================================================================================
+int io_utils_wait_gpio_state(int gpio, int state, int cnt)
+{
+   while(io_utils_read_gpio(gpio) == !state && cnt--)
+   {
+      io_utils_usleep(100000);
+   }
+   if (cnt <= 0)
+   {
+      return -1;
+   }
+   return 0;
+}
+
+//=============================================================================================
 inline int io_utils_read_gpio(int gpio)
 {
    return gpioRead(gpio);

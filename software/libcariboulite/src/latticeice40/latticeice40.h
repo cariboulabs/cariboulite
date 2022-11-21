@@ -23,8 +23,7 @@ typedef struct
 	int initialized;
 } latticeice40_st;
 
-int latticeice40_init(	latticeice40_st *dev,
-						io_utils_spi_st* io_spi);
+int latticeice40_init(	latticeice40_st *dev, io_utils_spi_st* io_spi);
 int latticeice40_release(latticeice40_st *dev);
 int latticeice40_configure(latticeice40_st *dev, char *bitfilename);
 int latticeice40_configure_from_buffer(	latticeice40_st *dev, 

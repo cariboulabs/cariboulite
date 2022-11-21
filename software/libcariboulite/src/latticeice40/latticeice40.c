@@ -17,6 +17,12 @@
 #define LATTICE_ICE40_TO_COUNT 200
 
 //---------------------------------------------------------------------------
+/**
+ * @brief check whether the fpga is currently in a "programmed" mode
+ * 
+ * @param dev programmer context
+ * @return int success(0), error(-1)
+ */
 static int latticeice40_check_if_programmed(latticeice40_st* dev)
 {
 	if (dev == NULL)
@@ -35,6 +41,13 @@ static int latticeice40_check_if_programmed(latticeice40_st* dev)
 }
 
 //---------------------------------------------------------------------------
+/**
+ * @brief initialize programmer context
+ * 
+ * @param dev programmer device context
+ * @param io_spi spi device wrapper
+ * @return int success(0) / error(-1)
+ */
 int latticeice40_init(latticeice40_st *dev,
 						io_utils_spi_st* io_spi)
 {
@@ -74,6 +87,12 @@ int latticeice40_init(latticeice40_st *dev,
 }
 
 //---------------------------------------------------------------------------
+/**
+ * @brief release the fpga programmer context
+ * 
+ * @param dev device context
+ * @return int success(0) / error(-1)
+ */
 int latticeice40_release(latticeice40_st *dev)
 {
 	if (dev == NULL)
@@ -103,6 +122,12 @@ int latticeice40_release(latticeice40_st *dev)
 }
 
 //---------------------------------------------------------------------------
+/**
+ * @brief performs preparation steps towards bitstream programming
+ * 
+ * @param dev device context
+ * @return int success(0) / error(-1)
+ */
 static int latticeice40_configure_prepare(latticeice40_st *dev)
 {
 	long ct;
@@ -140,6 +165,12 @@ static int latticeice40_configure_prepare(latticeice40_st *dev)
 }
 
 //---------------------------------------------------------------------------
+/**
+ * @brief performs finalization steps after bitstream programming
+ * 
+ * @param dev device context
+ * @return int success(0) / error(-1)
+ */
 static int latticeice40_configure_finish(latticeice40_st *dev)
 {
 	int ct = 0;
@@ -183,6 +214,15 @@ static int latticeice40_configure_finish(latticeice40_st *dev)
 }
 
 //---------------------------------------------------------------------------
+/**
+ * @brief starts programming sequence from a memory buffer
+ * 
+ * @param dev device context
+ * @param dest the destination of the bitstream
+ * @param buffer bitstream buffer pointer
+ * @param buffer_size bitstream buffer length in bytes
+ * @return int success(0), error (-1)
+ */
 int latticeice40_configure_from_buffer(	latticeice40_st *dev, 
 										uint8_t *buffer, 
 										uint32_t buffer_size)
@@ -251,6 +291,14 @@ int latticeice40_configure_from_buffer(	latticeice40_st *dev,
 }
 
 //---------------------------------------------------------------------------
+/**
+ * @brief starts programming sequence from a binary file
+ * 
+ * @param dev device context
+ * @param dest the destination of the bitstream
+ * @param bitfilename path to the file containing the fpga bitstream
+ * @return int success(0), error (-1)
+ */
 int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 {
 	FILE *fd = NULL;

@@ -9,7 +9,7 @@
 #include "cariboulite_setup.h"
 #include "cariboulite_events.h"
 #include "cariboulite.h"
-#include "cariboulite_eeprom/cariboulite_eeprom.h"
+#include "hat/hat.h"
 
 #include <stdio.h>
 #include <signal.h>
@@ -58,47 +58,32 @@ cariboulite_eeprom_st ee = { .i2c_address = 0x50, .eeprom_type = eeprom_type_24c
 //=================================================
 int main(int argc, char *argv[])
 {
-    //strcpy(cariboulite_sys.firmware_path_operational, "top.bin");
-    //strcpy(cariboulite_sys.firmware_path_testing, "top.bin");
-
     // init the program
+	cariboulite_sys.force_fpga_reprogramming = 0;
     if (cariboulite_init_driver(&cariboulite_sys, NULL)!=0)
     {
         ZF_LOGE("driver init failed, terminating...");
-        cariboulite_eeprom_init(&ee);
         return -1;
     }
 
     // setup the signal handler
     cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, cariboulite_signal_handler_op_last, &cariboulite_sys);
 
-    // dummy loop
-    double freq = 1089e6;
-    double step = 0.1e6;
-    rffc507x_calibrate(&cariboulite_sys.mixer);
-    sleep(1);
-    while (program_running)
-    {
-        //double set_freq = freq;
-        /*cariboulite_setup_frequency(&cariboulite_sys, 
-                                    cariboulite_channel_6g, 
-                                    cariboulite_channel_dir_tx,
-                                    &set_freq);
-        
-        */
-        /*caribou_fpga_set_io_ctrl_mode (&cariboulite_sys.fpga, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
-        
-        rffc507x_set_frequency(&cariboulite_sys.mixer, set_freq);
-        
-        rffc507x_device_status_st stat = {0};
-        rffc507x_readback_status(&cariboulite_sys.mixer, NULL, &stat);
-        rffc507x_print_stat(&stat);
-        */
-        //sleep(1);
-        freq += step;
-        //if (freq > 45e6) freq = 30e6;
-        //io_utils_usleep(200000);
-        getchar();
+    sleep(1);        
+	while (program_running)
+	{
+		int ret = app_menu(&hermonsdr_sys);
+
+		if (ret < 0)
+		{
+			ZF_LOGE("Error occured, terminating...");
+			break;
+		}
+		else if (ret == 0)
+		{
+			ZF_LOGI("Quit command => terminating...");
+			break;
+		}
     }
 
     // close the driver and release resources

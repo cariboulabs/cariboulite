@@ -34,7 +34,7 @@ int cariboulite_production_utils_rpi_leds_init(int state)
 		fprintf(trigger_green, "mmc0");
 		fprintf(trigger_red, "actpwr");
 	}
-	
+
 	fclose(trigger_red);
 	fclose(trigger_green);
 
@@ -89,7 +89,7 @@ void cariboulite_production_utils_rpi_leds_blink_start_tests(void)
 	{
 		cariboulite_production_utils_rpi_leds_set_state(val, -1);
 		usleep(50000);
-		
+
 		cariboulite_production_utils_rpi_leds_set_state(-1, val);
 		usleep(50000);
 
@@ -157,7 +157,6 @@ static int cariboulite_production_execute_command_read(char *cmd, char* res, int
     }
 }
 
-
 int cariboulite_production_check_wifi_state(cariboulite_production_wifi_status_st* wifi_stat)
 {
 	char res[100] = {0};
@@ -166,7 +165,7 @@ int cariboulite_production_check_wifi_state(cariboulite_production_wifi_status_s
 	if (wifi_stat == NULL) return 0;
 	wifi_stat->internet_access = false;
 
-	if (strlen(res)<1) 
+	if (strlen(res)<1)
 	{
 		wifi_stat->available = false;
 		wifi_stat->wlan_id = -1;

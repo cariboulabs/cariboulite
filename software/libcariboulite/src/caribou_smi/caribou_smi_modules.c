@@ -6,7 +6,6 @@
 #include <string.h>
 #include <ctype.h>
 
-//============================================================
 int caribou_smi_check_modules_loaded(char* mod_name)
 {
 	char line[256] = {0};
@@ -30,23 +29,10 @@ int caribou_smi_check_modules_loaded(char* mod_name)
 	return found;
 }
 
-//============================================================
-int caribou_smi_insert_smi_modules(void)
-{
-	return 0;
-}
-
-//============================================================
-int caribou_smi_remove_module(char* module_name)
-{
-	return 0;
-}
-
-//============================================================
 int caribou_smi_check_modules()
 {
-	int bcm_smi_dev = caribou_smi_check_modules_loaded("bcm2835_smi_dev");
-	int bcm_smi = caribou_smi_check_modules_loaded("bcm2835_smi");
+	int bcm_smi_dev = caribou_smi_check_smi_modules_loaded("bcm2835_smi_dev");
+	int bcm_smi = caribou_smi_check_smi_modules_loaded("bcm2835_smi");
 
 	if (bcm_smi_dev == -1 || bcm_smi == -1)
 	{
@@ -60,4 +46,14 @@ int caribou_smi_check_modules()
 	}
 
 	return 0;
+}
+
+int caribou_smi_insert_smi_modules()
+{
+
+}
+
+int caribou_smi_remove_module(char* module_name)
+{
+
 }

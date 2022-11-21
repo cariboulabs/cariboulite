@@ -105,6 +105,7 @@ int median(int a[], int n)
     return a[(n+1)/2-1];
 }
 
+//===================================================================
 int at86rf215_calibrate_device(at86rf215_st* dev, at86rf215_rf_channel_en ch, int* i, int* q)
 {
     int cal_i[NUM_CAL_STEPS] = {0};
@@ -151,7 +152,7 @@ int at86rf215_init(at86rf215_st* dev,
 	// set to known state
 	io_utils_write_gpio(dev->reset_pin, 1);
 
-    ZF_LOGI("Initializing io_utils_spi");
+    ZF_LOGI("Adding chip definition to io_utils_spi");
     io_utils_hard_spi_st hard_dev_modem = { .spi_dev_id = dev->spi_dev, .spi_dev_channel = dev->spi_channel, };
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
                         						io_utils_spi_chip_type_modem,
@@ -175,6 +176,11 @@ int at86rf215_init(at86rf215_st* dev,
     event_node_init(&dev->events.lo_energy_measure_event);
     event_node_init(&dev->events.hi_trx_ready_event);
     event_node_init(&dev->events.hi_energy_measure_event);
+
+	// Get chip type
+	uint8_t pn = 0, vn = 0;
+	at86rf215_get_versions(dev, &pn, &vn);
+	ZF_LOGI("Modem identity: Version: %02X, Product: %02X", vn, pn);
 
     // calibrate TXPREP
     at86rf215_calibrate_device(dev, at86rf215_rf_channel_900mhz, &dev->cal.low_ch_i, &dev->cal.low_ch_q);
@@ -238,6 +244,27 @@ void at86rf215_get_versions(at86rf215_st* dev, uint8_t *pn, uint8_t *vn)
     if (pn) *pn = at86rf215_read_byte(dev, REG_RF_PN);
     if (vn) *vn = at86rf215_read_byte(dev, REG_RF_VN);
 }
+
+//===================================================================
+int at86rf215_print_version(at86rf215_st* dev)
+{
+	uint8_t pn = 0, vn = 0;
+	at86rf215_get_versions(dev, &pn, &vn);
+	if (pn == 0x34)
+    {
+        ZF_LOGI("The assembled modem is a AT86RF215 (with basebands), version: %02x", vn);
+    }
+    else if (pn == 0x35)
+    {
+        ZF_LOGI("The assembled modem is a AT86RF215IQ (without basebands), version: %02x", vn);
+    }
+    else
+    {
+        ZF_LOGE("The assembled modem is not AT86RF215 IQ capable modem (product number: 0x%02x, versions %02x)", pn, vn);
+    }
+	return pn;
+}
+
 
 //===================================================================
 int at86rf215_write_fifo(at86rf215_st* dev, uint8_t *buffer, uint8_t size )

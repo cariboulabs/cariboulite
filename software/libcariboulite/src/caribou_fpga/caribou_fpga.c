@@ -18,6 +18,7 @@
 #define IOC_SYS_CTRL_MANU_ID        2
 #define IOC_SYS_CTRL_SYS_ERR_STAT   3
 #define IOC_SYS_CTRL_SYS_SOFT_RST   4
+#define IOC_SYS_CTRL_DEBUG_MODES    5
 
 #define IOC_IO_CTRL_MODE            1
 #define IOC_IO_CTRL_DIG_PIN         2
@@ -163,6 +164,15 @@ int caribou_fpga_soft_reset(caribou_fpga_st* dev)
 
 //--------------------------------------------------------------
 // System Controller
+void caribou_fpga_print_versions (caribou_fpga_st* dev)
+{
+	printf("CARIBOU FPGA VERSIONS\n");
+	printf("  System Version: %02X\n", dev->versions.sys_ver);
+	printf("  Manu. ID: %02X\n", dev->versions.sys_manu_id);
+	printf("  Sys. Ctrl Version: %02X\n", dev->versions.sys_ctrl_mod_ver);
+	printf("  IO Ctrl Version: %02X\n", dev->versions.io_ctrl_mod_ver);
+	printf("  SMI Ctrl Version: %02X\n", dev->versions.smi_ctrl_mod_ver);
+}
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* vers)
 {
     caribou_fpga_opcode_st oc =
@@ -193,9 +203,30 @@ int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* v
     oc.mid = caribou_fpga_mid_smi_ctrl;
     caribou_fpga_spi_transfer (dev, poc, &vers->smi_ctrl_mod_ver);
 
+	caribou_fpga_print_versions (dev);
+
+	if (vers)
+	{
+		memcpy (vers, &dev->versions, sizeof(caribou_fpga_versions_st));
+	}
+
     return 0;
 }
 
+//--------------------------------------------------------------
+//--------------------------------------------------------------
+int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool dbg_fifo_pull, bool dbg_smi)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_debug_modes");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_DEBUG_MODES
+    };
+    uint8_t mode = ((dbg_fifo_push & 0x1) << 0) | ((dbg_fifo_pull & 0x1) << 1) | ((dbg_smi & 0x1) <<2 );
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &mode);
+}
 //--------------------------------------------------------------
 int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map)
 {

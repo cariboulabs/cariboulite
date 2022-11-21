@@ -1,0 +1,130 @@
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <signal.h>
+#include "caribou_programming/caribou_prog.h"
+#include "caribou_fpga/caribou_fpga.h"
+#include "rffc507x/rffc507x.h"
+#include "caribou_smi/caribou_smi.h"
+#include "io_utils/io_utils.h"
+#include "io_utils/io_utils_spi.h"
+#include "io_utils/io_utils_sys_info.h"
+#include "at86rf215/at86rf215.h"
+#include "hat/hat.h"
+#include "ustimer/ustimer.h"
+
+// GENERAL SETTINGS
+#define MAX_PATH_LEN 512
+
+struct sys_st_t;
+
+typedef void (*signal_handler)( struct sys_st_t *sys,       // the current cariboulite low-level management struct
+								void* context,                      // custom context - can be a higher level app class
+								int signal_number,                  // the signal number
+								siginfo_t *si);
+
+typedef enum
+{
+    cariboulite_signal_handler_op_last = 0,             // The curtom sighandler operates (if present) after the default sig handler
+    cariboulite_signal_handler_op_first = 1,            // The curtom sighandler operates (if present) before the default sig handler
+    cariboulite_signal_handler_op_override = 2,         // The curtom sighandler operates (if present) instead of the default sig handler
+} cariboulite_signal_handler_operation_en;
+
+typedef enum
+{
+    system_type_unknown = 0,
+    system_type_cariboulite_full = 1,
+    system_type_cariboulite_ism = 2,
+} system_type_en;
+
+typedef struct
+{
+    char category_name[INFO_MAX_LEN];
+    char product_name[INFO_MAX_LEN];
+    char product_id[INFO_MAX_LEN];
+    char product_version[INFO_MAX_LEN];
+    char product_uuid[INFO_MAX_LEN];
+    char product_vendor[INFO_MAX_LEN];
+
+    uint32_t numeric_serial_number;
+    uint32_t numeric_version;
+    uint32_t numeric_product_id;
+
+    cariboulite_system_type_en sys_type;
+} cariboulite_board_info_st;
+
+
+typedef enum
+{
+    cariboulite_ext_ref_src_modem = 0,
+    cariboulite_ext_ref_src_connector = 1,
+    cariboulite_ext_ref_src_txco = 2,
+    cariboulite_ext_ref_src_na = 3,             // not applicable
+} cariboulite_ext_ref_src_en;
+
+typedef enum
+{
+	sys_status_unintialized = 0,
+	sys_status_minimal_init = 1,
+	sys_status_minimal_full_init = 2,
+} sys_status_en;
+
+typedef struct
+{
+    cariboulite_ext_ref_src_en src;
+    double freq_hz;
+} cariboulite_ext_ref_settings_st;
+
+typedef struct cariboulite_st_t
+{
+    hat_board_info_st board_info;
+	system_type_en sys_type;
+
+    // SoC level
+    io_utils_spi_st spi_dev;
+    caribou_smi_st smi;
+    ustimer_t timer;
+
+    // Peripheral chips
+    hermon_fpga_st fpga;
+    at86rf215_st modem;
+    rffc507x_st mixer;
+
+    // Configuration
+    int reset_fpga_on_startup;
+	int force_fpga_reprogramming;
+    char firmware_path_operational[MAX_PATH_LEN];
+    char firmware_path_testing[MAX_PATH_LEN];
+
+    // Signals
+    signal_handler signal_cb;
+    void* singal_cb_context;
+    signal_handler_operation_en sig_op;
+
+    // Management
+    caribou_fpga_versions_st fpga_versions;
+    cariboulite_ext_ref_settings_st ext_ref_settings;
+    uint8_t fpga_error_status;
+	cariboulite_sys_status_en system_status;
+	int fpga_config_res_state;
+
+	// Initialization
+	sys_status_en system_status;
+} sys_st;
+
+
+// Board detection
+int config_detect_board(sys_st *sys);
+void config_print_board_info(sys_st *sys);
+
+#ifdef __cplusplus
+}
+#endif
+
+
+#endif // __CARIBOULITE_CONFIG_H__

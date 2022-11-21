@@ -15,7 +15,11 @@ execute_process(
 )
 
 # Find the headers
-set(KERNELHEADERS_DIR /usr/src/linux-headers-${KERNEL_RELEASE})
+find_path(
+        KERNELHEADERS_DIR
+        include/linux/user.h
+        PATHS /usr/src/linux-headers-${KERNEL_RELEASE}
+)
 
 message(STATUS "Kernel release: ${KERNEL_RELEASE}")
 message(STATUS "Kernel headers: ${KERNELHEADERS_DIR}")
@@ -34,14 +38,13 @@ function(compile_module obj)
 	math(EXPR i "${i} + 1")  
   endwhile() 
   
-  add_custom_command(
-			TARGET ${TARGET_NAME}
-		     	POST_BUILD
-		     	COMMAND echo "obj-m := ${obj}.o" > ${CMAKE_CURRENT_BINARY_DIR}/Makefile
-		     	COMMAND echo "${obj}-objs:=${depend_objlist}" >>${CMAKE_CURRENT_BINARY_DIR}/Makefile
-		     	COMMAND make -C ${KERNELHEADERS_DIR} M=${CMAKE_CURRENT_BINARY_DIR} modules
-			COMMAND ../../../../../utils/generate_bin_blob ${obj}.ko ${obj} ../${obj}_gen.h
-		    )
+  add_custom_command(TARGET ${TARGET_NAME}
+		     POST_BUILD
+		     COMMAND echo "obj-m := ${obj}.o" > ${CMAKE_CURRENT_BINARY_DIR}/Makefile
+		     COMMAND echo "${obj}-objs:=${depend_objlist}" >>${CMAKE_CURRENT_BINARY_DIR}/Makefile
+		     COMMAND make -C ${KERNELHEADERS_DIR} M=${CMAKE_CURRENT_BINARY_DIR} modules
+			 COMMAND ../../../../../utils/generate_bin_blob ${obj}.ko ${obj} ../${obj}_gen.h
+		     )
 endfunction()
 
 compile_module(bcm2835_smi)
