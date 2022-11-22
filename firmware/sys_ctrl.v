@@ -97,10 +97,10 @@ module sys_ctrl
         end else begin
             if (reset_count < 4'd15) begin
                 reset_count <= reset_count + 1'b1;
-                o_soft_reset <= 1'b1;
+                o_soft_reset <= 1'b0;
             end else if (reset_count == 4'd15) begin
                 reset_count <= reset_count;
-                o_soft_reset <= 1'b0;
+                o_soft_reset <= 1'b1;
             end else begin
                 reset_count <= 0; 
             end

@@ -1,32 +1,31 @@
-module io_ctrl
-    (
-        input               i_rst_b,
-        input               i_sys_clk,        // FPGA Clock
+module io_ctrl(	input               i_rst_b,
+				input               i_sys_clk,        // FPGA Clock
 
-        input [4:0]         i_ioc,
-        input [7:0]         i_data_in,
-        output reg [7:0]    o_data_out,
-        input               i_cs,
-        input               i_fetch_cmd,
-        input               i_load_cmd,
+				input [4:0]         i_ioc,
+				input [7:0]         i_data_in,
+				output reg [7:0]    o_data_out,
+				input               i_cs,
+				input               i_fetch_cmd,
+				input               i_load_cmd,
 
-        // Digital interfaces
-        input               i_button,
-        input [3:0]         i_config,
-        output              o_led0,
-        output              o_led1,
-        output [7:0]        o_pmod,
+				// Digital interfaces
+				input               i_button,
+				input [3:0]         i_config,
+				output              o_led0,
+				output              o_led1,
+				output [7:0]        o_pmod,
 
-        // Analog interfaces
-        output              o_mixer_fm,
-        output              o_rx_h_tx_l,
-        output              o_rx_h_tx_l_b,
-        output              o_tr_vc1,
-        output              o_tr_vc1_b,
-        output              o_tr_vc2,
-        output              o_shdn_tx_lna,
-        output              o_shdn_rx_lna,
-        output              o_mixer_en );
+				// Analog interfaces
+				output              o_mixer_fm,
+				output              o_rx_h_tx_l,
+				output              o_rx_h_tx_l_b,
+				output              o_tr_vc1,
+				output              o_tr_vc1_b,
+				output              o_tr_vc2,
+				output              o_shdn_tx_lna,
+				output              o_shdn_rx_lna,
+				output              o_mixer_en );
+				
 
     //=========================================================================
     // CONSTANT DEFINITIONS

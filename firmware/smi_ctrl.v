@@ -1,41 +1,41 @@
-module smi_ctrl
-    (
-        input               i_rst_b,
-        input               i_sys_clk,        // FPGA Clock
-	input 		i_fast_clk,
+module smi_ctrl (	input               i_rst_b,
+					input               i_sys_clk,        // FPGA Clock
+					input 				i_fast_clk,
 
-        input [4:0]         i_ioc,
-        input [7:0]         i_data_in,
-        output reg [7:0]    o_data_out,
-        input               i_cs,
-        input               i_fetch_cmd,
-        input               i_load_cmd,
+					input [4:0]         i_ioc,
+					input [7:0]         i_data_in,
+					output reg [7:0]    o_data_out,
+					input               i_cs,
+					input               i_fetch_cmd,
+					input               i_load_cmd,
 
-        // FIFO INTERFACE 0.9 GHz
-        output              o_fifo_09_pull,
-        input [31:0]        i_fifo_09_pulled_data,
-        input               i_fifo_09_full,
-        input               i_fifo_09_empty,
+					// FIFO INTERFACE 0.9 GHz
+					output              o_fifo_09_pull,
+					input [31:0]        i_fifo_09_pulled_data,
+					input               i_fifo_09_full,
+					input               i_fifo_09_empty,
 
-        // FIFO INTERFACE 2.4 GHz
-        output              o_fifo_24_pull,
-        input [31:0]        i_fifo_24_pulled_data,
-        input               i_fifo_24_full,
-        input               i_fifo_24_empty,
+					// FIFO INTERFACE 2.4 GHz
+					output              o_fifo_24_pull,
+					input [31:0]        i_fifo_24_pulled_data,
+					input               i_fifo_24_full,
+					input               i_fifo_24_empty,
 
-        // SMI INTERFACE
-        input [2:0]         i_smi_a,
-        input               i_smi_soe_se,
-        input               i_smi_swe_srw,
-        output reg [7:0]    o_smi_data_out,
-        input [7:0]         i_smi_data_in,
-        output              o_smi_read_req,
-        output              o_smi_write_req,
-        output              o_smi_writing,
-        input               i_smi_test,
+					// SMI INTERFACE
+					input [2:0]         i_smi_a,
+					input               i_smi_soe_se,
+					input               i_smi_swe_srw,
+					output reg [7:0]    o_smi_data_out,
+					input [7:0]         i_smi_data_in,
+					output              o_smi_read_req,
+					output              o_smi_write_req,
+					output              o_smi_writing,
+					input               i_smi_test,
 
-        // Errors
-        output reg          o_address_error );
+					// Errors
+					output reg          o_address_error );
+
+
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------
