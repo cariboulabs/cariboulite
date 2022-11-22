@@ -30,7 +30,6 @@ void config_print_board_info(sys_st *sys)
 	{
 		case system_type_cariboulite_full: ZF_LOGI("# Board Info - Product Type: CaribouLite FULL"); break;
 		case system_type_cariboulite_ism: ZF_LOGI("# Board Info - Product Type: CaribouLite ISM"); break;
-		case system_type_hermonsdr: ZF_LOGI("# Board Info - Product Type: HermonSDR"); break;
 		case system_type_unknown: 
 		default: ZF_LOGI("# Board Info - Product Type: Unknown"); break;
 	}

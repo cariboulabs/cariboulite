@@ -56,10 +56,10 @@ typedef enum
  *        a valid firmware
  */
 typedef enum
-{
-	hermon_fpga_status_not_programmed = 0,
-	hermon_fpga_status_operational = 1,
-} hermon_fpga_status_en;
+{	
+	caribou_fpga_status_not_programmed = 0,
+	caribou_fpga_status_operational = 1,
+} caribou_fpga_status_en;
 
 /**
  * @brief RFFE controlling digital pins specifically controlled
@@ -139,16 +139,15 @@ int caribou_fpga_close(caribou_fpga_st* dev);
  * @return int success(0) / failure (-1)
  */
 int caribou_fpga_soft_reset(caribou_fpga_st* dev);
+
 // programming
 int caribou_fpga_get_status(caribou_fpga_st* dev, caribou_fpga_status_en *stat);
 int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, size_t len, bool force_prog);
-int caribou_fpga_program_to_flash(caribou_fpga_st* dev, unsigned char *buffer, size_t len);
 int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, char *filename, bool force_prog);
-int caribou_fpga_program_to_flash_from_file(caribou_fpga_st* dev, char *filename);
 
 // System Controller
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st *vers);
-void caribou_fpga_print_versions (hermon_fpga_st* dev);
+void caribou_fpga_print_versions (caribou_fpga_st* dev);
 int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map);
 
 // I/O Controller

@@ -7,8 +7,10 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include "io_utils.h"
+
 
 #define IO_UTILS_MAX_CHIPS	10
 

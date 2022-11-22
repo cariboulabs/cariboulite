@@ -155,7 +155,7 @@ int test_at86rf215_continues_iq_rx (at86rf215_st* dev, at86rf215_rf_channel_en r
                                             at86rf215_iq_clock_data_skew_4_906ns;
 
     at86rf215_setup_iq_radio_receive (dev, radio, freq_hz, 0, skew);
-    printf("Started I/Q RX session for Radio %d, Freq: %lu Hz, timeout: %d usec (0=infinity)\n",
+    printf("Started I/Q RX session for Radio %d, Freq: %llu Hz, timeout: %d usec (0=infinity)\n",
         radio, freq_hz, usec_timeout);
 
 

@@ -3,14 +3,14 @@
 #endif
 
 #define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
-#define ZF_LOG_TAG "ICE40"
+#define ZF_LOG_TAG "CARIBOU_PROG"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include "zf_log/zf_log.h"
-#include "latticeice40.h"
+#include "caribou_prog.h"
 
 
 #define LATTICE_ICE40_BUFSIZE 512
@@ -23,7 +23,7 @@
  * @param dev programmer context
  * @return int success(0), error(-1)
  */
-static int latticeice40_check_if_programmed(latticeice40_st* dev)
+static int caribou_prog_check_if_programmed(caribou_prog_st* dev)
 {
 	if (dev == NULL)
 	{
@@ -48,8 +48,7 @@ static int latticeice40_check_if_programmed(latticeice40_st* dev)
  * @param io_spi spi device wrapper
  * @return int success(0) / error(-1)
  */
-int latticeice40_init(latticeice40_st *dev,
-						io_utils_spi_st* io_spi)
+int caribou_prog_init(caribou_prog_st *dev, io_utils_spi_st* io_spi)
 {
 	if (dev == NULL)
 	{
@@ -70,13 +69,17 @@ int latticeice40_init(latticeice40_st *dev,
 	io_utils_setup_gpio(dev->cs_pin, io_utils_dir_output, io_utils_pull_up);
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 
-	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
-                                        io_utils_spi_chip_ice40_prog, NULL);
+	dev->io_spi_handle = io_utils_spi_add_chip(	dev->io_spi, 
+												dev->cs_pin, 
+												5000000, 
+												0, 
+												0,
+												io_utils_spi_chip_ice40_prog, NULL);
 
 	dev->initialized = 1;
 
 	// check if the FPGA is already configures
-	if (latticeice40_check_if_programmed(dev) == 1)
+	if (caribou_prog_check_if_programmed(dev) == 1)
 	{
 		ZF_LOGI("FPGA is already configured and running");
 	}
@@ -93,7 +96,7 @@ int latticeice40_init(latticeice40_st *dev,
  * @param dev device context
  * @return int success(0) / error(-1)
  */
-int latticeice40_release(latticeice40_st *dev)
+int caribou_prog_release(caribou_prog_st *dev)
 {
 	if (dev == NULL)
 	{
@@ -128,7 +131,7 @@ int latticeice40_release(latticeice40_st *dev)
  * @param dev device context
  * @return int success(0) / error(-1)
  */
-static int latticeice40_configure_prepare(latticeice40_st *dev)
+static int caribou_prog_configure_prepare(caribou_prog_st *dev)
 {
 	long ct;
 	uint8_t byte = 0xFF;
@@ -171,7 +174,7 @@ static int latticeice40_configure_prepare(latticeice40_st *dev)
  * @param dev device context
  * @return int success(0) / error(-1)
  */
-static int latticeice40_configure_finish(latticeice40_st *dev)
+static int caribou_prog_configure_finish(caribou_prog_st *dev)
 {
 	int ct = 0;
 	uint8_t byte = 0xFF;
@@ -189,7 +192,7 @@ static int latticeice40_configure_finish(latticeice40_st *dev)
  	ZF_LOGI("sending dummy clocks, waiting for CDONE to rise (or fail)");
 
 	ct = LATTICE_ICE40_TO_COUNT;
-	while(latticeice40_check_if_programmed(dev)==0 && ct--)
+	while(caribou_prog_check_if_programmed(dev)==0 && ct--)
 	{
 		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
 								&byte, &rxbyte, 1, io_utils_spi_write);
@@ -205,7 +208,7 @@ static int latticeice40_configure_finish(latticeice40_st *dev)
 	}
 
 	/* return status */
-	if (latticeice40_check_if_programmed(dev)==0)
+	if (caribou_prog_check_if_programmed(dev)==0)
 	{
 		ZF_LOGE("config failed - CDONE not high");
 		return -1;
@@ -223,7 +226,7 @@ static int latticeice40_configure_finish(latticeice40_st *dev)
  * @param buffer_size bitstream buffer length in bytes
  * @return int success(0), error (-1)
  */
-int latticeice40_configure_from_buffer(	latticeice40_st *dev, 
+int caribou_prog_configure_from_buffer(	caribou_prog_st *dev, 
 										uint8_t *buffer, 
 										uint32_t buffer_size)
 {
@@ -244,7 +247,7 @@ int latticeice40_configure_from_buffer(	latticeice40_st *dev,
 
 	// CONFIGURATION PROLOG
 	// --------------------
-	if (latticeice40_configure_prepare(	dev ) != 0)
+	if (caribou_prog_configure_prepare(	dev ) != 0)
 	{
 		ZF_LOGE("Preparation for bitstream sending to fpga failed");
 		return -1;
@@ -279,7 +282,7 @@ int latticeice40_configure_from_buffer(	latticeice40_st *dev,
 
 	// CONFIGURATION EPILOGUE
 	// ----------------------
-	if (latticeice40_configure_finish(dev) != 0)
+	if (caribou_prog_configure_finish(dev) != 0)
 	{
 		ZF_LOGE("Finishing the bitstream sending to fpga failed");
 		return -1;
@@ -299,7 +302,7 @@ int latticeice40_configure_from_buffer(	latticeice40_st *dev,
  * @param bitfilename path to the file containing the fpga bitstream
  * @return int success(0), error (-1)
  */
-int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
+int caribou_prog_configure(caribou_prog_st *dev, char *bitfilename)
 {
 	FILE *fd = NULL;
 	int ct = 0;
@@ -338,7 +341,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 
 	// CONFIGURATION PROLOG
 	// --------------------
-	if (latticeice40_configure_prepare(	dev ) != 0)
+	if (caribou_prog_configure_prepare(	dev ) != 0)
 	{
 		ZF_LOGE("Preparation for bitstream sending to fpga failed");
 		return -1;
@@ -372,7 +375,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 
 	// CONFIGURATION EPILOGUE
 	// ----------------------
-	if (latticeice40_configure_finish(dev) != 0)
+	if (caribou_prog_configure_finish(dev) != 0)
 	{
 		ZF_LOGE("Finishing the bitstream sending to fpga failed");
 		return -1;
@@ -384,7 +387,7 @@ int latticeice40_configure(latticeice40_st *dev, char *bitfilename)
 }
 
 //---------------------------------------------------------------------------
-int latticeice40_hard_reset(latticeice40_st *dev, int level)
+int caribou_prog_hard_reset(caribou_prog_st *dev, int level)
 {
 	if (level == 0 || level == -1)
 	{

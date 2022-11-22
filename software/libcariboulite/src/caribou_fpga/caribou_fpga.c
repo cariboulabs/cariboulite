@@ -135,8 +135,96 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
         io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
         return -1;
     }
+	
+	// Init FPGA programming
+    if (caribou_prog_init(&dev->prog_dev, dev->io_spi) < 0)
+    {
+        ZF_LOGE("ice40 programmer init failed");
+        return -1;
+    }
+	
     dev->initialized = 1;
     return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_get_status(caribou_fpga_st* dev, caribou_fpga_status_en *stat)
+{
+	caribou_fpga_get_versions (dev, NULL);
+	if (dev->versions.sys_manu_id != CARIBOU_SDR_MANU_CODE)
+	{
+		dev->status = caribou_fpga_status_not_programmed;
+	}
+	else
+	{
+		dev->status = caribou_fpga_status_operational;
+	}
+	if (stat) *stat = dev->status;
+	return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, size_t len, bool force_prog)
+{
+	caribou_fpga_get_status(dev, NULL);
+	if (dev->status == caribou_fpga_status_not_programmed || force_prog)
+	{
+		if (buffer == NULL || len == 0)
+		{
+			ZF_LOGE("buffer should be not NULL and len > 0");
+        	return -1;
+		}
+
+		if (caribou_prog_configure_from_buffer(&dev->prog_dev, buffer, len) < 0)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+
+		caribou_fpga_soft_reset(dev);
+		io_utils_usleep(100000);
+
+		caribou_fpga_get_status(dev, NULL);
+		if (dev->status == caribou_fpga_status_not_programmed)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+	}
+	else
+	{
+		ZF_LOGI("FPGA already operational - not programming (use 'force_prog=true' to force update)");
+	}
+	return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, char *filename, bool force_prog)
+{
+	caribou_fpga_get_status(dev, NULL);
+	if (dev->status == caribou_fpga_status_not_programmed || force_prog)
+	{
+		if (caribou_prog_configure(&dev->prog_dev, filename) < 0)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+		
+		caribou_fpga_soft_reset(dev);
+		io_utils_usleep(100000);
+
+		caribou_fpga_get_status(dev, NULL);
+		if (dev->status == caribou_fpga_status_not_programmed)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+	}
+	else
+	{
+		ZF_LOGI("FPGA already operational - not programming (use 'force_prog=true' to force update)");
+	}
+	return 0;
 }
 
 //--------------------------------------------------------------
@@ -144,7 +232,9 @@ int caribou_fpga_close(caribou_fpga_st* dev)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_close");
     dev->initialized = 0;
-    return io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
+    io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
+	
+	return caribou_prog_release(&dev->prog_dev);
 }
 
 //--------------------------------------------------------------
@@ -173,6 +263,7 @@ void caribou_fpga_print_versions (caribou_fpga_st* dev)
 	printf("  IO Ctrl Version: %02X\n", dev->versions.io_ctrl_mod_ver);
 	printf("  SMI Ctrl Version: %02X\n", dev->versions.smi_ctrl_mod_ver);
 }
+
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* vers)
 {
     caribou_fpga_opcode_st oc =

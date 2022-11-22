@@ -11,4 +11,4 @@ echo "Generating code blob"
 ../utils/generate_bin_blob ./cariboulite.dtbo cariboulite_dtbo ./h_files/cariboulite_dtbo.h
 
 echo "Copying dtbo blob h-file to the code directory"
-cp ./h_files/cariboulite_dtbo.h ../libcariboulite/src/cariboulite_eeprom/
+cp ./h_files/cariboulite_dtbo.h ../libcariboulite/src/

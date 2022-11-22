@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include "caribou_fpga.h"
 
 #define CARIBOULITE_MOSI 20
@@ -65,18 +66,18 @@ int main ()
     printf("IO_CTRL MODE: debug = %d, rfm = %d\n", debug_mode, rfmode);
     
     // io_ctrl_dig
-    int ldo = 0;
     int led0 = 0;
     int led1 = 0;
     int btn = 0;
     int cfg = 0;
-    caribou_fpga_get_io_ctrl_dig (&dev, &ldo, &led0, &led1, &btn, &cfg);
-    printf("IO_CTRL: ldo: %d, led0: %d, led1: %d, btn: %d, cfg: 0x%02X\n", ldo, led0, led1, btn, cfg);
+	
+    caribou_fpga_get_io_ctrl_dig (&dev, &led0, &led1, &btn, &cfg);
+    printf("IO_CTRL: led0: %d, led1: %d, btn: %d, cfg: 0x%02X\n", led0, led1, btn, cfg);
 
     // pmod dir
     uint8_t dir = 0;
     caribou_fpga_get_io_ctrl_pmod_dir (&dev, &dir);
-    printf("PMOD_DIR: dir = 0x%02X\n", dir);
+    printf("PMOD_DIR: dir = 0x%02X\n", dir); 
 
     // pmod val
     uint8_t val = 0;
@@ -85,8 +86,9 @@ int main ()
 
     // rf state
     caribou_fpga_rf_pin_st pins = {0};
+	uint32_t *pins_uint = (uint32_t*)&pins;
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     // smi fifo status
     caribou_fpga_smi_fifo_status_st fifo_stat = {0};
@@ -104,7 +106,7 @@ int main ()
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_low_power);
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     getchar();
 
@@ -113,7 +115,7 @@ int main ()
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_bypass);
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     getchar();
 
@@ -122,7 +124,7 @@ int main ()
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_rx_lowpass);
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     getchar();
 
@@ -131,7 +133,7 @@ int main ()
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_rx_hipass);
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     getchar();
 
@@ -140,7 +142,7 @@ int main ()
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_tx_lowpass);
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     getchar();
 
@@ -149,14 +151,14 @@ int main ()
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_tx_hipass);
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     getchar();
     caribou_fpga_set_io_ctrl_mode (&dev, 0, caribou_fpga_io_ctrl_rfm_low_power);
     caribou_fpga_get_io_ctrl_mode (&dev, &debug_mode, &rfmode);
     printf("IO_CTRL MODE: debug = %d, rfm = %d (should be %d)\n", debug_mode, rfmode, caribou_fpga_io_ctrl_rfm_low_power);
     caribou_fpga_get_io_ctrl_rf_state (&dev, &pins);
-    printf("RF_PIN_STATE: val = 0x%02X\n", pins);
+    printf("RF_PIN_STATE: val = 0x%02X\n", *(pins_uint));
 
     // read out stuff
     /*caribou_fpga_versions_st vers = {0};

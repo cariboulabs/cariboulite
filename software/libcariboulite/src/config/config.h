@@ -33,7 +33,7 @@ typedef enum
     cariboulite_signal_handler_op_last = 0,             // The curtom sighandler operates (if present) after the default sig handler
     cariboulite_signal_handler_op_first = 1,            // The curtom sighandler operates (if present) before the default sig handler
     cariboulite_signal_handler_op_override = 2,         // The curtom sighandler operates (if present) instead of the default sig handler
-} cariboulite_signal_handler_operation_en;
+} signal_handler_operation_en;
 
 typedef enum
 {
@@ -41,23 +41,6 @@ typedef enum
     system_type_cariboulite_full = 1,
     system_type_cariboulite_ism = 2,
 } system_type_en;
-
-typedef struct
-{
-    char category_name[INFO_MAX_LEN];
-    char product_name[INFO_MAX_LEN];
-    char product_id[INFO_MAX_LEN];
-    char product_version[INFO_MAX_LEN];
-    char product_uuid[INFO_MAX_LEN];
-    char product_vendor[INFO_MAX_LEN];
-
-    uint32_t numeric_serial_number;
-    uint32_t numeric_version;
-    uint32_t numeric_product_id;
-
-    cariboulite_system_type_en sys_type;
-} cariboulite_board_info_st;
-
 
 typedef enum
 {
@@ -91,7 +74,7 @@ typedef struct cariboulite_st_t
     ustimer_t timer;
 
     // Peripheral chips
-    hermon_fpga_st fpga;
+    caribou_fpga_st fpga;
     at86rf215_st modem;
     rffc507x_st mixer;
 
@@ -110,7 +93,6 @@ typedef struct cariboulite_st_t
     caribou_fpga_versions_st fpga_versions;
     cariboulite_ext_ref_settings_st ext_ref_settings;
     uint8_t fpga_error_status;
-	cariboulite_sys_status_en system_status;
 	int fpga_config_res_state;
 
 	// Initialization

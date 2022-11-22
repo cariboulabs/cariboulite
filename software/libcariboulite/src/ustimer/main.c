@@ -4,7 +4,7 @@
 
 static void test_ustimer_handler(unsigned int id, struct timeval iv)
 {
-    printf("Got Timer event: %d, %d, %d\n", id, iv.tv_sec, iv.tv_usec);
+    printf("Got Timer event: %d, %ld, %ld\n", id, iv.tv_sec, iv.tv_usec);
 }
 
 int main()
