@@ -736,7 +736,7 @@ static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
 	int kk = 0;
 
 	// print out the SMI instance data
-	printk("sizeof bool %ld, smi_settings %ld, void* %ld, dma_addr_t %ld, int %ld, device* %ld", 
+	printk("sizeof bool %d, smi_settings %d, void* %d, dma_addr_t %d, int %d, device* %d", 
 			sizeof(bool), sizeof(struct smi_settings), sizeof(void*), sizeof(dma_addr_t), sizeof(int), sizeof(struct device*));
 	buff_temp = (void*)inst;
 	for (kk = 0; kk < sizeof(struct bcm2835_smi_instance); kk++)
@@ -745,7 +745,7 @@ static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
 		printk(KERN_CONT"%02X ", buff_temp[kk]);
 	}
 
-	printk(">> struct device *dev = %016llx", (uint64_t)inst->dev);
+	printk(">> struct device *dev = %016llx", *((uint64_t*)&inst->dev));
     printk(">> SMI SETTINGS:\n");
     printk(">>     width: %d\n", inst->settings.data_width);
     printk(">>     pack: %c\n", inst->settings.pack_data ? 'Y' : 'N');
@@ -754,12 +754,12 @@ static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
     printk(">>     dma enable: %c, passthru enable: %c\n", inst->settings.dma_enable ? 'Y':'N', inst->settings.dma_passthrough_enable ? 'Y':'N');
     printk(">>     dma threshold read: %d, write: %d\n", inst->settings.dma_read_thresh, inst->settings.dma_write_thresh);
     printk(">>     dma panic threshold read: %d, write: %d\n", inst->settings.dma_panic_read_thresh, inst->settings.dma_panic_write_thresh);
-	printk(">> iomem* smi_regs_ptr = %016llx", (uint64_t)inst->smi_regs_ptr);
-	printk(">> dma_addr_t smi_regs_busaddr = %016llx", (uint64_t)inst->smi_regs_busaddr);
-	printk(">> dma_chan *dma_chan = %016llx", (uint64_t)inst->dma_chan);
+	printk(">> iomem* smi_regs_ptr = %016llx", *((uint64_t*)&inst->smi_regs_ptr));
+	printk(">> dma_addr_t smi_regs_busaddr = %016llx", *((uint64_t*)&inst->smi_regs_busaddr));
+	printk(">> dma_chan *dma_chan = %016llx", *((uint64_t*)&inst->dma_chan));
 	printk(">> dma_config.direction = %d", inst->dma_config.direction);
-	printk(">> dma_config.src_addr = %016llx", (uint64_t)inst->dma_config.src_addr);
-	printk(">> dma_config.dst_addr = %016llx", (uint64_t)inst->dma_config.dst_addr);
+	printk(">> dma_config.src_addr = %016llx", *((uint64_t*)&inst->dma_config.src_addr));
+	printk(">> dma_config.dst_addr = %016llx", *((uint64_t*)&inst->dma_config.dst_addr));
 	printk(">> dma_config.src_addr_width = %d", inst->dma_config.src_addr_width);
 	printk(">> dma_config.dst_addr_width = %d", inst->dma_config.dst_addr_width);
 	printk(">> dma_config.src_maxburst = %d", inst->dma_config.src_maxburst);
@@ -768,9 +768,7 @@ static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
 	printk(">> dma_config.dst_port_window_size = %d", inst->dma_config.dst_port_window_size);
 	printk(">> dma_config.device_fc = %d", inst->dma_config.device_fc);
 	printk(">> dma_config.slave_id = %d", inst->dma_config.slave_id);
-	printk(">> dma_config.peripheral_config = %016llx", (uint64_t)inst->dma_config.peripheral_config);
-	printk(">> dma_config.peripheral_size = %ld", inst->dma_config.peripheral_size);
-	printk(">> dma_config.clk = %016llx", (uint64_t)inst->clk);
+	printk(">> dma_config.clk = %016llx", *((uint64_t*)&inst->clk));
 
 	//struct bcm2835_smi_bounce_info bounce;
 

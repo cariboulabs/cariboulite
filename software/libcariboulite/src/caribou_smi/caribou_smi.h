@@ -115,7 +115,7 @@ typedef struct
     void* service_context;              // the serviced session contect (SoapySDR...)
 } caribou_smi_stream_st;
 
-#define CARIBOU_SMI_MAX_NUM_STREAMS 2
+#define CARIBOU_SMI_MAX_NUM_STREAMS 6
 
 typedef struct
 {

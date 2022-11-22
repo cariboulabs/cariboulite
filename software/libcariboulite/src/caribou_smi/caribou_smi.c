@@ -46,7 +46,7 @@ static char *error_strings[] = CARIBOU_SMI_ERROR_STRS;
 
 static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_settings *settings);
 static void caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings);
-static void caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type_en type, caribou_smi_channel_en ch);
+static int caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type_en type, caribou_smi_channel_en ch);
 
 
 #define TIMING_PERF_SYNC  (0)
@@ -312,7 +312,7 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 		static uint32_t error_accum_counter = 0;
 		uint32_t error_counter_current = 0;
 		int first_error = -1;
-		int last_error = -1;
+		//int last_error = -1;
 		static double error_rate = 0;
 
 		//dump_hex(buffer, 12);
@@ -321,7 +321,7 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 			if (buffer[i] != caribou_smi_lfsr(last_correct_byte) || buffer[i] == 0)
 			{
 				if (first_error == -1) first_error = i;
-				last_error = i;
+				//last_error = i;
 				error_accum_counter ++;
 				error_counter_current ++;
 			}
@@ -497,7 +497,7 @@ void* caribou_smi_thread(void *arg)
     // start thread notification
     if (st->data_cb != NULL) st->data_cb(dev->cb_context, 
 										st->service_context,
-										caribou_smi_stream_type_read
+										caribou_smi_stream_type_read,
                                         caribou_smi_event_type_start, 
 										ch, 
 										0, NULL, NULL, 0);

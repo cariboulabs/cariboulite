@@ -52,11 +52,10 @@ void print_iq(uint32_t* array, int len)
     }
 }
 
-
 void caribou_smi_data_event(void *ctx,                              	// The context of the requesting application
 							void *serviced_context,                 	// the context of the session within the app
 							caribou_smi_stream_type_en type,        	// which type of stream is it? read / write?
-							caribou_smi_event_type ev,					// the event (start / stop)
+							caribou_smi_event_type_en ev,					// the event (start / stop)
 							caribou_smi_channel_en ch,              	// which channel (900 / 2400)
 							size_t num_samples,                    		// for "read stream only" - number of read data bytes in buffer
 							caribou_smi_sample_complex_int16 *cplx_vec, // for "read" - complex vector of samples to be analyzed
@@ -67,12 +66,12 @@ void caribou_smi_data_event(void *ctx,                              	// The cont
 {
 	if (ev == caribou_smi_event_type_start)
 	{
-		ZF_LOGD("start event: stream batch length: %lu samples\n", total_length_samples);
+		ZF_LOGD("start event: stream batch length: %u samples\n", total_length_samples);
 		return;
 	}
 	else if (ev == caribou_smi_event_type_end)
 	{
-		ZF_LOGD("end event: stream batch length: %lu samples\n", total_length_samples);
+		ZF_LOGD("end event: stream batch length: %u samples\n", total_length_samples);
 		return;
 	}
 
@@ -81,7 +80,7 @@ void caribou_smi_data_event(void *ctx,                              	// The cont
         //-------------------------------------------------------
         case caribou_smi_stream_type_read:
             {
-                ZF_LOGD("data event: stream channel %d, received %lu samples\n", ch, num_samples);
+                ZF_LOGD("data event: stream channel %d, received %u samples\n", ch, num_samples);
                 //print_iq((uint32_t*)buffer, 8);
                 /*for (int i = 0; i< byte_count; i++)
                 {
