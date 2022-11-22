@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "cariboulite_config/cariboulite_config.h"
+#include "config/config.h"
 #include "at86rf215/at86rf215.h"
 
 
@@ -41,7 +41,7 @@ typedef struct
 
 typedef struct
 {
-    cariboulite_st*                     cariboulite_sys;
+    sys_st*                     		cariboulite_sys;
     cariboulite_channel_dir_en          channel_direction;
     cariboulite_channel_en              type;
     bool                                active;
@@ -99,7 +99,7 @@ typedef struct
     cariboulite_radio_state_st radio_6g;
 } cariboulite_radios_st;
 
-int cariboulite_init_radios(cariboulite_radios_st* radios, cariboulite_st *sys);
+int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys);
 int cariboulite_dispose_radios(cariboulite_radios_st* radios);
 int cariboulite_sync_radio_information(cariboulite_radios_st* radios);
 

@@ -16,6 +16,7 @@ void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_
 void caribou_smi_data_event(void *ctx, 
                             void *service_context,
                             caribou_smi_stream_type_en type,
+							caribou_smi_event_type_en ev,
                             caribou_smi_channel_en ch,
                             size_t num_samples_in_vec,
 							caribou_smi_sample_complex_int16 *cplx_vec,

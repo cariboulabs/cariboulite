@@ -58,7 +58,7 @@ typedef struct
 typedef struct
 {
     cariboulite_production_facility_st tester;
-    cariboulite_board_info_st board_info;
+    hat_board_info_st board_info;
     cariboulite_rpi_info_st rpi_info;
 
     cariboulite_production_test_st teste[cariboulite_test_en_max];

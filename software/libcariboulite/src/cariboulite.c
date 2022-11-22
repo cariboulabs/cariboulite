@@ -30,7 +30,7 @@ int stop_program ()
 }
 
 //=================================================
-void sighandler( struct cariboulite_st_t *sys,
+void sighandler( struct sys_st_t *sys,
                  void* context,
                  int signal_number,
                  siginfo_t *si)
@@ -52,8 +52,6 @@ void sighandler( struct cariboulite_st_t *sys,
         default: return; break;
     }
 }
-
-cariboulite_eeprom_st ee = { .i2c_address = 0x50, .eeprom_type = eeprom_type_24c32,};
 
 //=================================================
 int main(int argc, char *argv[])

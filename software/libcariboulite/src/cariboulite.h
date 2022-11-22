@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "cariboulite_config/cariboulite_config_default.h"
+#include "cariboulite_config_default.h"
 
 int app_menu(sys_st* sys);
 
