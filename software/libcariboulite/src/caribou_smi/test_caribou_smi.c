@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <time.h>
 #include "caribou_smi.h"
+#include "utils.h"
 
 caribou_smi_st dev = {0};
 char program_name[] = "test_caribou_smi.c";
@@ -55,6 +56,7 @@ void print_iq(uint32_t* array, int len)
 void caribou_smi_data_event(void *ctx,                              	// The context of the requesting application
 							void *serviced_context,                 	// the context of the session within the app
 							caribou_smi_stream_type_en type,        	// which type of stream is it? read / write?
+							caribou_smi_event_type ev,					// the event (start / stop)
 							caribou_smi_channel_en ch,              	// which channel (900 / 2400)
 							size_t num_samples,                    		// for "read stream only" - number of read data bytes in buffer
 							caribou_smi_sample_complex_int16 *cplx_vec, // for "read" - complex vector of samples to be analyzed
@@ -63,9 +65,17 @@ void caribou_smi_data_event(void *ctx,                              	// The cont
 																		// for "write" - the metadata to be written by app for each sample
 							size_t total_length_samples)
 {
-    //static int c = 1;
-    //static uint8_t last_byte = 0;
-    //static int err_count = 0;
+	if (ev == caribou_smi_event_type_start)
+	{
+		ZF_LOGD("start event: stream batch length: %lu samples\n", total_length_samples);
+		return;
+	}
+	else if (ev == caribou_smi_event_type_end)
+	{
+		ZF_LOGD("end event: stream batch length: %lu samples\n", total_length_samples);
+		return;
+	}
+
     switch(type)
     {
         //-------------------------------------------------------
@@ -110,20 +120,6 @@ void caribou_smi_data_event(void *ctx,                              	// The cont
         case caribou_smi_stream_type_write:
             {
 
-            }
-            break;
-
-        //-------------------------------------------------------
-        case caribou_smi_stream_start:
-            {
-                ZF_LOGD("start event: stream channel %d, batch length: %lu samples\n", ch, total_length_samples);
-            }
-            break;
-
-        //-------------------------------------------------------
-        case caribou_smi_stream_end:
-            {
-                ZF_LOGD("end event: stream channel %d, batch length: %lu samples\n", ch, total_length_samples);
             }
             break;
 

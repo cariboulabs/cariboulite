@@ -7,6 +7,7 @@ extern "C" {
 
 #include <pthread.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum
 {
@@ -20,21 +21,30 @@ typedef enum
     caribou_smi_address_read_res = 7<<1,
 } caribou_smi_address_en;
 
+
+typedef enum
+{
+    caribou_smi_stream_type_write = 0,
+    caribou_smi_stream_type_read = 1,
+} caribou_smi_stream_type_en;
+
+typedef enum
+{
+	caribou_smi_event_type_data = 0,
+	caribou_smi_event_type_start = 1,
+	caribou_smi_event_type_end = 2,
+} caribou_smi_event_type_en;
+
 typedef enum
 {
     caribou_smi_channel_900 = 0,
     caribou_smi_channel_2400 = 1,
 } caribou_smi_channel_en;
 
-typedef enum
-{
-    caribou_smi_stream_type_write = 0,
-    caribou_smi_stream_type_read = 1,
-    caribou_smi_stream_start = 0xFE,
-    caribou_smi_stream_end = 0xFF,
-} caribou_smi_stream_type_en;
+#define CARIBOU_SMI_GET_STREAM_ID(type, ch) 	(((type)<<1)|(ch))
+#define CARIBOU_STREAM_ID_FROM_TYPE(id)			(id)
+#define CARIBOU_SMI_GET_STREAM_ADDR(type)		((type<<1)| 1)
 
-#define CARIBOU_SMI_GET_STREAM_ID(type, ch) ( ((type)<<1) | (ch) )
 
 typedef enum
 {
@@ -51,10 +61,7 @@ typedef struct
 
 typedef struct
 {
-	uint8_t cnt : 2;
-	uint8_t sync1 : 1;
-	uint8_t sync2 : 1;
-	uint8_t res : 4;
+	uint8_t sync;
 } caribou_smi_sample_meta;
 #pragma pack()
 
@@ -65,6 +72,7 @@ typedef struct
 typedef void (*caribou_smi_data_callback)(      void *ctx,                              	// The context of the requesting application
                                                 void *serviced_context,                 	// the context of the session within the app
                                                 caribou_smi_stream_type_en type,        	// which type of stream is it? read / write?
+												caribou_smi_event_type_en ev,				// the event (start / stop)
                                                 caribou_smi_channel_en ch,              	// which channel (900 / 2400)
                                                 size_t num_samples,                    		// for "read stream only" - number of read data bytes in buffer
                                                 caribou_smi_sample_complex_int16 *cplx_vec, // for "read" - complex vector of samples to be analyzed
@@ -107,7 +115,7 @@ typedef struct
     void* service_context;              // the serviced session contect (SoapySDR...)
 } caribou_smi_stream_st;
 
-#define CARIBOU_SMI_MAX_NUM_STREAMS 6
+#define CARIBOU_SMI_MAX_NUM_STREAMS 2
 
 typedef struct
 {
@@ -119,6 +127,11 @@ typedef struct
 	uint32_t native_batch_length_bytes;
     caribou_smi_stream_st streams[CARIBOU_SMI_MAX_NUM_STREAMS];
     caribou_smi_address_en current_address;
+	bool smi_debug;
+	bool fifo_push_debug;
+	bool fifo_pull_debug;
+	double rx_bitrate_mbps;
+	double tx_bitrate_mbps;
 } caribou_smi_st;
 
 int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, void* context);
@@ -139,7 +152,8 @@ int caribou_smi_read_stream_buffer_info(caribou_smi_st* dev, int id,
 int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run);
 int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
 char* caribou_smi_get_error_string(caribou_smi_error_en err);
-void dump_hex(const void* data, size_t size);
+int caribou_smi_check_modules(bool reload);
+void caribou_smi_set_debug_mode(caribou_smi_st* dev, bool smi_Debug, bool fifo_push_debug, bool fifo_pull_debug);
 
 
 #ifdef __cplusplus
