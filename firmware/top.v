@@ -83,7 +83,7 @@ module top(
    //=========================================================================
    initial begin
       r_counter = 2'b0;
-      r_reset = 1'b0;
+      r_reset = 1'b1;
    end
 
    //=========================================================================
@@ -112,7 +112,7 @@ module top(
 
    sys_ctrl sys_ctrl_ins
    (
-      .i_reset (r_reset),
+      .i_rst_b (r_reset),
       .i_sys_clk (w_clock_sys),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),
@@ -122,12 +122,22 @@ module top(
       .i_load_cmd (w_load),
       .o_soft_reset (w_soft_reset),
 
-      .i_error_list ({o_address_error, 7'b0000000})
-   );
+      .i_error_list ({o_address_error, 7'b0000000}),
+		.o_debug_fifo_push (w_debug_fifo_push),
+		.o_debug_fifo_pull (w_debug_fifo_pull),
+		.o_debug_smi_test (w_debug_smi_test)
+	);
 
+	wire w_debug_fifo_push;
+	wire w_debug_fifo_pull;
+	wire w_debug_smi_test;
+
+	// for debugging purposes only
+	//assign o_led0 = w_debug_fifo_push;
+	//assign o_led1 = w_debug_smi_test;
    io_ctrl io_ctrl_ins
    (
-      .i_reset (w_soft_reset),
+      .i_rst_b (w_soft_reset),
       .i_sys_clk (w_clock_sys),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),
@@ -258,7 +268,7 @@ module top(
 
    lvds_rx lvds_rx_09_inst
    (
-      .i_reset (w_soft_reset),
+      .i_rst_b (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
       
       .i_ddr_data ({w_lvds_rx_09_d1, w_lvds_rx_09_d0}),
@@ -293,7 +303,7 @@ module top(
 
    lvds_rx lvds_rx_24_inst
    (
-      .i_reset (w_soft_reset),
+      .i_rst_b (w_soft_reset),
       .i_ddr_clk (lvds_clock_buf),
 
       .i_ddr_data ({!w_lvds_rx_24_d1, !w_lvds_rx_24_d0}),
@@ -327,7 +337,7 @@ module top(
 
    smi_ctrl smi_ctrl_ins
    (
-      .i_reset (w_soft_reset),
+      .i_rst_b (w_soft_reset),
       .i_sys_clk (w_clock_sys),
       .i_ioc (w_ioc),
       .i_data_in (w_rx_data),

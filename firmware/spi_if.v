@@ -55,8 +55,10 @@ module spi_if
 
     always @(posedge i_sys_clk)
     begin
+        if (i_rst_b == 1'b0) begin
+            state_if <= state_idle;
         // whenever a new byte arrives
-        if (w_rx_data_valid == 1) begin
+        end else if (w_rx_data_valid == 1'b1) begin
             case (state_if)
                 //----------------------------------
                 state_idle:

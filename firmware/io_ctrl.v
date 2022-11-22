@@ -1,6 +1,6 @@
 module io_ctrl
     (
-        input               i_reset,
+        input               i_rst_b,
         input               i_sys_clk,        // FPGA Clock
 
         input [4:0]         i_ioc,
@@ -108,11 +108,11 @@ module io_ctrl
     //=========================================================================
     always @(posedge i_sys_clk)
     begin
-        if (i_reset) begin
-            debug_mode = debug_mode_none;
-            rf_mode = rf_mode_low_power;
-            led0_state = 1'b0;
-            led1_state = 1'b0;
+        if (i_rst_b == 1'b0) begin
+            debug_mode <= debug_mode_none;
+            rf_mode <= rf_mode_low_power;
+            led0_state <= 1'b0;
+            led1_state <= 1'b0;
         end else begin
             if (i_cs == 1'b1) begin
                 //=============================================
@@ -206,9 +206,12 @@ module io_ctrl
 
     always @(posedge i_sys_clk)
     begin
+    	if (i_rst_b == 1'b0) begin
+            
+        end
         // this is relevant only if the system runs
         // in an operational mode
-        if (debug_mode == debug_mode_none) begin
+        else if (debug_mode == debug_mode_none) begin
             case (rf_mode)
                 //--------------------------------------------------
                 rf_mode_low_power: begin
