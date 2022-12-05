@@ -1,4 +1,4 @@
-module complex_fifo #(	parameter ADDR_WIDTH = 10,
+module complex_fifo #(	parameter ADDR_WIDTH = 9,
 						parameter DATA_WIDTH = 16 )
 					(
 						input wire 			            wr_rst_b_i,
