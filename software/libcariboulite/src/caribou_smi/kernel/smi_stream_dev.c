@@ -58,7 +58,7 @@
 #include "smi_stream_dev.h"
 
 
-#define FIFO_SIZE_MULTIPLIER 6
+#define FIFO_SIZE_MULTIPLIER 12
 
 struct bcm2835_smi_dev_instance 
 {
@@ -66,13 +66,15 @@ struct bcm2835_smi_dev_instance
 	struct bcm2835_smi_instance *smi_inst;
 
 	struct task_struct *reader_thread;
+	struct task_struct *writer_thread;
 	struct kfifo rx_fifo;
-	char* rx_buffer;
+	struct kfifo tx_fifo;
 	bool streaming;
 	struct mutex read_lock;
 	struct mutex write_lock;
-	wait_queue_head_t readable;
-	wait_queue_head_t writeable;
+	wait_queue_head_t poll_event;
+	bool readable;
+	bool writeable;
 };
 
 static struct bcm2835_smi_dev_instance *inst;
@@ -355,21 +357,18 @@ static struct dma_async_tx_descriptor *stream_smi_dma_submit_sgl(struct bcm2835_
 	return desc;
 }
 
-//static int stream_smi_dma_callback_user_copy_count = 0;
-
 /***************************************************************************/
 static void stream_smi_dma_callback_user_copy(void *param)
 {
 	/* Notify the bottom half that a chunk is ready for user copy */
 	struct bcm2835_smi_instance *inst = (struct bcm2835_smi_instance *)param;
-	//stream_smi_dma_callback_user_copy_count ++;
+	
 	up(&inst->bounce.callback_sem);
 }
 
 /***************************************************************************/
 ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 								enum dma_transfer_direction dma_dir,
-								char __user *user_ptr,
 								struct bcm2835_smi_bounce_info **bounce)
 {
 	struct scatterlist *sgl = NULL;
@@ -413,7 +412,7 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 
 	//printk(KERN_ERR DRIVER_NAME": PROGRAMMED READ\n");
 
-	// we have only 8 bit width - << here we got a stall >>
+	// we have only 8 bit width
 	if (dma_dir == DMA_DEV_TO_MEM)
 	{
 		if (smi_init_programmed_read(inst, DMA_BOUNCE_BUFFER_SIZE) != 0)
@@ -448,32 +447,40 @@ int reader_thread_stream_function(void *pv)
 
 	while(!kthread_should_stop())
 	{
+		// check if the streaming state is on, if not, sleep and check again
 		if (!inst->streaming)
 		{
-			msleep(20);
+			msleep(10);
 			continue;
 		}
 
 		//dev_info(inst->dev, "STREAM_SMI_USER_DMA count = %d", stream_smi_dma_callback_user_copy_count);
-
-		count = stream_smi_user_dma(inst->smi_inst, DMA_DEV_TO_MEM, inst->rx_buffer, &bounce);
+		
+		// try setup a new DMA transfer into dma bounce buffer
+		// bounce will hold the current transfers state
+		count = stream_smi_user_dma(inst->smi_inst, DMA_DEV_TO_MEM, &bounce);
 		if (count != DMA_BOUNCE_BUFFER_SIZE || bounce == NULL)
 		{
 			//dev_err(inst->dev, "reader_thread return illegal count = %d", count);
 			continue;
 		}
 
-		// Wait for current chunk to complete:
+		// Wait for current chunk to complete
+		// the semaphore will go up when "stream_smi_dma_callback_user_copy" interrupt is trigerred
+		// indicating that the dma transfer finished. If doesn't happen in 1000 jiffies, we have a
+		// timeout. This means that we didn't get enough data into the buffer during this period. we shall
+		// "continue" and try again
 		if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
 		{
 			dev_info(inst->dev, "DMA bounce timed out");
 			spin_lock(&inst->smi_inst->transaction_lock);
 			dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-			//dev_info(inst->dev, "dmaengine_terminate_sync");
 			spin_unlock(&inst->smi_inst->transaction_lock);
 			continue;
 		}
 
+		// if we arrived to this point, it means that dma returned full buffer and we need to 
+		// analyze it. So we need to push it into a fifo and wakeup the "readable" event
 		if (mutex_lock_interruptible(&inst->read_lock))
 		{
 			return -EINTR;
@@ -481,11 +488,78 @@ int reader_thread_stream_function(void *pv)
 		kfifo_in(&inst->rx_fifo, bounce->buffer[0], DMA_BOUNCE_BUFFER_SIZE);
 		mutex_unlock(&inst->read_lock);
 		
-		wake_up_interruptible(&inst->readable);
+		// for the polling mechanism
+		inst->readable = true;
+		wake_up_interruptible(&inst->poll_event);
 	}
 
 	dev_info(inst->dev, "Left reader thread");
 	return 0; 
+}
+
+/***************************************************************************/
+int writer_thread_stream_function(void *pv)
+{
+	struct bcm2835_smi_bounce_info *bounce = &(inst->smi_inst->bounce);
+	int count = 0;
+	int num_bytes = 0;
+	int num_copied = 0;
+	dev_info(inst->dev, "Enterred writer thread");
+
+	while(!kthread_should_stop())
+	{
+		// check if the streaming state is on, if not, sleep and check again
+		if (!inst->streaming)
+		{
+			msleep(10);
+			continue;
+		}
+		
+		// check if the tx fifo contains enough data
+		if (mutex_lock_interruptible(&inst->write_lock))
+		{
+			return -EINTR;
+		}
+		num_bytes = kfifo_len (&inst->tx_fifo);
+		mutex_unlock(&inst->write_lock);
+		
+		// if contains enough for a single DMA trnasaction
+		if (num_bytes >= DMA_BOUNCE_BUFFER_SIZE)
+		{
+			// pull data from the fifo into the DMA buffer
+			if (mutex_lock_interruptible(&inst->write_lock))
+			{
+				return -EINTR;
+			}
+			num_copied = kfifo_out(&inst->tx_fifo, bounce->buffer[0], DMA_BOUNCE_BUFFER_SIZE);
+			mutex_unlock(&inst->write_lock);
+			
+			// for the polling mechanism
+			inst->writeable = true;
+			wake_up_interruptible(&inst->poll_event);
+			
+			if (num_copied != DMA_BOUNCE_BUFFER_SIZE)
+			{
+				// error
+				dev_warn(inst->dev, "kfifo_out didn't copy all elements (writer)");
+			}
+			
+			count = stream_smi_user_dma(inst->smi_inst, DMA_MEM_TO_DEV, NULL);
+			if (count != DMA_BOUNCE_BUFFER_SIZE)
+			{
+				// error
+				continue;
+			}
+				
+			// Wait for current chunk to complete
+			if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
+			{
+				dev_err(inst->dev, "DMA bounce timed out");
+			}
+		}
+	}
+	
+	return 0;
 }
 
 /***************************************************************************/
@@ -501,24 +575,35 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 		dev_err(inst->dev, "smi_stream_open: Unknown minor device: %d", dev);		// error here
 		return -ENXIO;
 	}
+	
+	// preinit the thread handlers to NULL
+	inst->reader_thread = NULL;
+	inst->writer_thread = NULL;
 
-	inst->rx_buffer = kmalloc(DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
-	if (!inst->rx_buffer)
-	{
-		return -ENOMEM;
-	}
-
-	// create the dataqueue
+	// create the data fifo ( N x dma_bounce size )
+	// we want this fifo to be deep enough to allow the application react without
+	// loosing stream elements
 	ret = kfifo_alloc(&inst->rx_fifo, FIFO_SIZE_MULTIPLIER * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
 	if (ret)
 	{
-		printk(KERN_ERR DRIVER_NAME": error kfifo_alloc\n");
-		kfree(inst->rx_buffer);
+		printk(KERN_ERR DRIVER_NAME": error rx kfifo_alloc\n");
+		return ret;
+	}
+	
+	// and the writer
+	ret = kfifo_alloc(&inst->tx_fifo, FIFO_SIZE_MULTIPLIER * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
+	if (ret)
+	{
+		printk(KERN_ERR DRIVER_NAME": error tx kfifo_alloc\n");
 		return ret;
 	}
 
+	// when file is being openned, stream state is still idle
 	inst->streaming = 0;
-	// Create the reader stream
+	
+	// Create the reader thread
+	// this thread is in charge of continuedly interogating the smi for new rx data and
+	// activating dma transfers
 	inst->reader_thread = kthread_create(reader_thread_stream_function, NULL, "smi-reader-thread"); 
 	if(IS_ERR(inst->reader_thread))
 	{
@@ -526,11 +611,27 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 		ret = PTR_ERR(inst->reader_thread);
 		inst->reader_thread = NULL;
 		kfifo_free(&inst->rx_fifo);
-		kfree(inst->rx_buffer);
-		inst->rx_buffer = NULL;
+		kfifo_free(&inst->tx_fifo);
 		return ret;
 	} 
+
+	// Create the writer thread
+	// this thread is in charge of continuedly checking if tx fifo contains data and sending it
+	// over dma to the hardware
+	inst->writer_thread = kthread_create(writer_thread_stream_function, NULL, "smi-writer-thread"); 
+	if(IS_ERR(inst->writer_thread))
+	{
+		printk(KERN_ERR DRIVER_NAME": writer_thread creation failed - kthread\n");
+		ret = PTR_ERR(inst->writer_thread);
+		inst->writer_thread = NULL;
+		kfifo_free(&inst->rx_fifo);
+		kfifo_free(&inst->tx_fifo);
+		return ret;
+	} 
+	
+	// wake up both threads
 	wake_up_process(inst->reader_thread); 
+	wake_up_process(inst->writer_thread); 
 	
 	return 0;
 }
@@ -548,64 +649,15 @@ static int smi_stream_release(struct inode *inode, struct file *file)
 		return -ENXIO;
 	}
 
+	// make sure stream is idle
 	inst->streaming = 0;
 	if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
+	if (inst->writer_thread != NULL) kthread_stop(inst->writer_thread);
+	
 	kfifo_free(&inst->rx_fifo);
-	if (inst->rx_buffer != NULL) kfree(inst->rx_buffer);
+	kfifo_free(&inst->tx_fifo);
 
 	return 0;
-}
-
-/***************************************************************************/
-static ssize_t dma_bounce_user(	enum dma_transfer_direction dma_dir,
-								char __user *user_ptr,
-								size_t count,
-								struct bcm2835_smi_bounce_info *bounce)
-{
-	int chunk_size;
-	int chunk_no = 0;
-	int count_left = count;
-
-	while (count_left) 
-	{
-		int rv;
-		void *buf;
-
-		/* Wait for current chunk to complete: */
-		if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
-		{
-			dev_err(inst->dev, "DMA bounce timed out");
-			count -= (count_left);
-			break;
-		}
-
-		if ( bounce->callback_sem.count >= (DMA_BOUNCE_BUFFER_COUNT - 1) )
-		{
-			dev_err(inst->dev, "WARNING: Ring buffer overflow");
-		}
-
-		chunk_size = count_left > DMA_BOUNCE_BUFFER_SIZE ? DMA_BOUNCE_BUFFER_SIZE : count_left;
-		buf = bounce->buffer[chunk_no % DMA_BOUNCE_BUFFER_COUNT];
-
-		if (dma_dir == DMA_DEV_TO_MEM)
-		{
-			rv = copy_to_user(user_ptr, buf, chunk_size);
-		}
-		else
-		{
-			rv = copy_from_user(buf, user_ptr, chunk_size);
-		}
-		
-		if (rv)
-		{
-			dev_err(inst->dev, "copy_*_user() failed!: %d", rv);
-		}
-
-		user_ptr += chunk_size;
-		count_left -= chunk_size;
-		chunk_no++;
-	}
-	return count;
 }
 
 /***************************************************************************/
@@ -613,29 +665,12 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 {
 	int ret = 0;
 	unsigned int copied;
-
 	int num_bytes = 0;
 	size_t count_actual = count;
 	
 	if (kfifo_is_empty(&inst->rx_fifo))
 	{
 		return -EAGAIN;
-		if (file->f_flags & O_NONBLOCK)
-		{
-			return -EAGAIN;
-		}
-		else 
-		{
-			return 0;
-			//pr_debug("%s\n", "waiting");
-
-			ret = wait_event_interruptible(inst->readable, !kfifo_is_empty(&inst->rx_fifo));
-			if (ret == -ERESTARTSYS) 
-			{
-				pr_err("interrupted\n");
-				return -EINTR;
-			}
-		}
 	}
 
 	if (mutex_lock_interruptible(&inst->read_lock))
@@ -653,63 +688,50 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 /***************************************************************************/
 static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr, size_t count, loff_t *offs)
 {
-	int odd_bytes;
-	size_t count_check;
-
-	dev_dbg(inst->dev, "User writing %zu bytes to SMI.", count);
-	if (count > DMA_THRESHOLD_BYTES)
-	{
-		odd_bytes = count & 0x3;
-	}
-	else
-	{
-		odd_bytes = count;
-	}
-
-	count -= odd_bytes;
-	count_check = count;
-	if (count) 
-	{
-		struct bcm2835_smi_bounce_info *bounce;
-
-		count = bcm2835_smi_user_dma(inst->smi_inst, DMA_MEM_TO_DEV, (char __user *)user_ptr, count, &bounce);
-		if (count)
-		{
-			count = dma_bounce_user(DMA_MEM_TO_DEV, (char __user *)user_ptr, count, bounce);
-		}
-	}
-	if (odd_bytes && (count == count_check)) 
-	{
-		uint8_t buf[DMA_THRESHOLD_BYTES];
-		unsigned long bytes_not_transferred;
-
-		bytes_not_transferred = copy_from_user(buf, user_ptr + count, odd_bytes);
+	int ret = 0;
+	int num_bytes_available = 0;
+	int num_to_push = 0;
+	int actual_copied = 0;
 	
-		if (bytes_not_transferred)
-		{
-			dev_err(inst->dev, "copy_from_user() failed.");
-		}
-		else
-		{
-			bcm2835_smi_write_buf(inst->smi_inst, buf, odd_bytes);
-		}
-		count += odd_bytes - bytes_not_transferred;
+	if (mutex_lock_interruptible(&inst->write_lock))
+	{
+		return -EINTR;
 	}
-	return count;
+	
+	if (kfifo_is_full(&inst->tx_fifo))
+	{
+		mutex_unlock(&inst->write_lock);
+		return -EAGAIN;
+	}
+	
+	// check how many bytes are available in the tx fifo
+	num_bytes_available = kfifo_avail(&inst->tx_fifo);
+	num_to_push = num_bytes_available > count ? count : num_bytes_available;
+	ret = kfifo_from_user(&inst->tx_fifo, user_ptr, num_to_push, &actual_copied);
+
+	mutex_unlock(&inst->write_lock);
+
+	return ret ? ret : actual_copied;
 }
 
 /***************************************************************************/
 static unsigned int smi_stream_poll(struct file *file, poll_table *pt)
 {
 	unsigned int mask = 0;
-	poll_wait(file, &inst->readable, pt);
-	//poll_wait(file, &inst->writeable, pt);
+	poll_wait(file, &inst->poll_event, pt);
 
-	if (!kfifo_is_empty(&inst->rx_fifo))
+	if (inst->readable)
 	{
-		mask |= POLLIN | POLLRDNORM;
+		inst->readable = false;
+		mask |= ( POLLIN | POLLRDNORM );
 	}
-	//mask |= POLLOUT | POLLWRNORM;
+	
+	if (inst->writeable)
+	{
+		inst->writeable = false;
+		mask |= ( POLLOUT | POLLWRNORM );
+	}
+
 	return mask;
 }
 
@@ -788,8 +810,6 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *smi_node;
 
-	
-
 	printk(KERN_INFO DRIVER_NAME": smi_stream_dev_probe()\n");
 
 	if (!dev->of_node) 
@@ -830,6 +850,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	// init the char device with file operations
 	cdev_init(&smi_stream_cdev, &smi_stream_fops);
 	smi_stream_cdev.owner = THIS_MODULE;
 	err = cdev_add(&smi_stream_cdev, smi_stream_devid, 1);
@@ -842,7 +863,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	/* Create sysfs entries */
+	// Create sysfs entries with "smi-stream-dev"
 	smi_stream_class = class_create(THIS_MODULE, DEVICE_NAME);
 	ptr_err = smi_stream_class;
 	if (IS_ERR(ptr_err))
@@ -874,9 +895,10 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 
 	// Streaming instance initializations
 	inst->reader_thread = NULL;
-	inst->rx_buffer = NULL;
-	init_waitqueue_head(&inst->readable);
-	init_waitqueue_head(&inst->writeable);
+	inst->writer_thread = NULL;
+	init_waitqueue_head(&inst->poll_event);
+	inst->readable = false;
+	inst->writeable = false;
 	mutex_init(&inst->read_lock);
 	mutex_init(&inst->write_lock);
 

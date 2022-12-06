@@ -117,8 +117,5 @@ set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 # ------------
 # INSTALLATION
 # ------------
-#install(TARGETS cariboulite DESTINATION /usr/local/lib)
-install(TARGETS SoapyHermonSDR PERMISSIONS 	OWNER_EXECUTE OWNER_WRITE OWNER_READ 
-						GROUP_READ GROUP_WRITE GROUP_EXECUTE
-						WORLD_READ WORLD_EXECUTE SETUID SETGID
-						DESTINATION /usr/local/lib/SoapySDR/modules0.8/)
+install(TARGETS cariboulite DESTINATION /usr/local/lib)
+
