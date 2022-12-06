@@ -1,0 +1,42 @@
+Date:       06/12/22
+Time:       13:14
+Revision:   Not in VersionControl
+Variant:    No variations
+Units used: mil
+
+Designator Comment          Layer    Footprint               Center-X(mil) Center-Y(mil) Rotation Description                                                               
+U3         AP22652W6-7      TopLayer SOT95P280X145-6N        3149.606      1840.551      0        "Power Switch ICs - Power Distribution 1-Ch Precision Curr-Limit Load SW" 
+R16        10k              TopLayer PANASONIC_0402          2332.677      1624.016      90       "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+R15        10k              TopLayer PANASONIC_0402          3277.874      1811.024      180      "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+R14        10k              TopLayer PANASONIC_0402          3198.819      1732.284      270      "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+R13        10k              TopLayer PANASONIC_0402          3149.606      1732.284      90       "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+C9         10u              TopLayer MURATA_0402             3277.559      1712.598      0        "Multilayer Ceramic Capacitors MLCC - SMD/SMT 10uF+/-20% 10V X5R 1 0402"  
+C8         10u              TopLayer MURATA_0402             3041.339      1899.606      270      "Multilayer Ceramic Capacitors MLCC - SMD/SMT 10uF+/-20% 10V X5R 1 0402"  
+C7         47u              TopLayer CAPMP7343X28N           3139.764      1574.803      0        "Tantalum Capacitors - Solid SMD 35V 47uF 2917 20% ESR=230mOhms"          
+C6         100n             TopLayer MURATA_0402             3277.559      1761.811      0        "Multilayer Ceramic Capacitors MLCC - SMD/SMT 50V 0.1uF X7R 0402 10%"     
+C5         100n             TopLayer MURATA_0402             2992.126      1899.606      270      "Multilayer Ceramic Capacitors MLCC - SMD/SMT 50V 0.1uF X7R 0402 10%"     
+R3         10k              TopLayer PANASONIC_0402          2874.016      2017.716      180      "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+J2         M20-9770446      TopLayer M20-9770446             1642.913      2440.945      180      "Header Male 4X1"                                                         
+R12        470              TopLayer PANASONIC_0402          3041.339      2322.835      270      "Thick Film Resistors - SMD 1/16watt 470ohms 1%"                          
+R11        470              TopLayer PANASONIC_0402          3149.606      2322.835      270      "Thick Film Resistors - SMD 1/16watt 470ohms 1%"                          
+R10        10k              TopLayer PANASONIC_0402          1988.189      1594.488      270      "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+R9         10k              TopLayer PANASONIC_0402          1929.134      1594.488      270      "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+R8         470              TopLayer PANASONIC_0402          3248.032      2322.835      270      "Thick Film Resistors - SMD 1/16watt 470ohms 1%"                          
+R7         470              TopLayer PANASONIC_0402          3346.457      2322.835      270      "Thick Film Resistors - SMD 1/16watt 470ohms 1%"                          
+R5         470              TopLayer PANASONIC_0402          2598.425      1807.086      180      "Thick Film Resistors - SMD 1/16watt 470ohms 1%"                          
+R4         "10 mOhm"        TopLayer RES_ERJ6CW              2913.386      1840.551      90       Resistor                                                                  
+R2         10k              TopLayer PANASONIC_0402          2982.284      2017.716      180      "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+R1         10k              TopLayer PANASONIC_0402          3061.024      2017.716      180      "Thick Film Resistors - SMD 1/20watt 10Kohms 1% 200ppm"                   
+D4         LTST-C190KRKT    TopLayer LEDC1608X35N            3041.339      2421.260      270      "Red 631nm LED Indication - Discrete 2V 0603"                             
+D3         LTST-C190KRKT    TopLayer LEDC1608X35N            3151.811      2419.764      270      "Red 631nm LED Indication - Discrete 2V 0603"                             
+D2         LTST-C190KRKT    TopLayer LEDC1608X35N            3248.032      2421.260      270      "Red 631nm LED Indication - Discrete 2V 0603"                             
+D1         LTST-C190KRKT    TopLayer LEDC1608X35N            3346.457      2421.260      270      "Red 631nm LED Indication - Discrete 2V 0603"                             
+C3         100n             TopLayer MURATA_0402             2340.276      1961.417      0        "Multilayer Ceramic Capacitors MLCC - SMD/SMT 50V 0.1uF X7R 0402 10%"     
+C2         100n             TopLayer MURATA_0402             2598.425      1767.716      0        "Multilayer Ceramic Capacitors MLCC - SMD/SMT 50V 0.1uF X7R 0402 10%"     
+C1         100n             TopLayer MURATA_0402             2785.433      1958.661      180      "Multilayer Ceramic Capacitors MLCC - SMD/SMT 50V 0.1uF X7R 0402 10%"     
+U1         INA181A4IDBVR    TopLayer SOT95P280X145-6N        2805.118      1840.551      90       "26V, bi-directional, 350kHz current sense amplifier 6-SOT-23 -40 to 125" 
+U2         AVR32DA32T-E/RXB TopLayer QFN50P500X500X90_HS-33N 2303.150      1820.866      90       "8-bit Microcontrollers - MCU 32 KB,32-pin,125C,VQFN"                     
+R6         DNP              TopLayer PANASONIC_0402          2529.528      1787.401      90       DNP                                                                       
+J1         M20-9720346      TopLayer M20-9720346             2253.937      2390.945      180      "Header Male 2X3"                                                         
+C4         1u               TopLayer MURATA_0402             2135.827      1811.024      270      "Multilayer Ceramic Capacitors MLCC - SMD/SMT 1.0UF 25V 10% 0402"         
+""         RaspberryPi_SEP  TopLayer rpi_4_SEP               2281.732      1250.000      180      ""                                                                        
