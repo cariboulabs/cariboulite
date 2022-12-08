@@ -141,16 +141,7 @@ int caribou_smi_timeout_read(caribou_smi_st* dev,
                             char* buffer, 
                             int size_of_buf, 
                             int timeout_num_millisec);
-int caribou_smi_setup_stream(caribou_smi_st* dev,
-                                caribou_smi_stream_type_en type,
-                                caribou_smi_channel_en channel,
-                                caribou_smi_data_callback cb,
-                                void* serviced_context);
-int caribou_smi_read_stream_buffer_info(caribou_smi_st* dev, int id, 
-											size_t *batch_length_bytes, 
-											int* num_buffers);
-int caribou_smi_run_pause_stream (caribou_smi_st* dev, int id, int run);
-int caribou_smi_destroy_stream(caribou_smi_st* dev, int id);
+
 char* caribou_smi_get_error_string(caribou_smi_error_en err);
 int caribou_smi_check_modules(bool reload);
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, bool smi_Debug, bool fifo_push_debug, bool fifo_pull_debug);

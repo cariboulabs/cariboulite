@@ -7,15 +7,24 @@
 
 #define _GNU_SOURCE
 
-#include <time.h>
-#include <pthread.h>
-#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sched.h>
+#include <pthread.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <time.h>
+#include <errno.h>
 #include <aio.h>
+#include <signal.h>
+
+#include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include <signal.h>
+
 #include "zf_log/zf_log.h"
 #include "caribou_smi.h"
 #include "utils.h"
@@ -29,17 +38,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-#include <string.h>
-#include <fcntl.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sched.h>
-#include <pthread.h>
 
 
 static char *error_strings[] = CARIBOU_SMI_ERROR_STRS;
@@ -101,21 +99,22 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
     char smi_file[] = "/dev/smi";
     struct smi_settings settings = {0};
 
+	ZF_LOGI("initializing caribou_smi");
+
 	// checking the loaded modules
 	if (caribou_smi_check_modules(true) < 0)
 	{
 		ZF_LOGE("Problem reloading SMI kernel modules");
 		return -1;
 	}
-    ZF_LOGI("initializing caribou_smi");
-
+	
+    // open the smi device file
     int fd = open(smi_file, O_RDWR | O_NONBLOCK);
     if (fd < 0)
     {
-        ZF_LOGE("can't open smi driver file '%s'", smi_file);
+        ZF_LOGE("couldn't open smi driver file '%s'", smi_file);
         return -1;
     }
-
     dev->filedesc = fd;
 
 	// setup the IOs
@@ -126,7 +125,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
 	io_utils_set_gpio_mode(24, io_utils_alt_1);
 	io_utils_set_gpio_mode(25, io_utils_alt_1);
 
-    // Get the current settings
+    // Retrieve the current settings
     int ret = ioctl(fd, BCM2835_SMI_IOC_GET_SETTINGS, &settings);
     if (ret != 0)
     {
@@ -135,7 +134,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
         return -1;
     }
 
-    // apply the new settings
+    // Apply the new settings
     caribou_smi_setup_settings(dev, &settings);
     ret = ioctl(fd, BCM2835_SMI_IOC_WRITE_SETTINGS, &settings);
     if (ret != 0)
@@ -145,7 +144,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
         return -1;
     }
 
-    // set the address to idle
+    // set the address to first channel
     ret = ioctl(fd, BCM2835_SMI_IOC_ADDRESS, caribou_smi_address_read_900);
     if (ret != 0)
     {

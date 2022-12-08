@@ -35,11 +35,6 @@ int eeprom_close_device(eeprom_utils_st *ee);
 int eeprom_write(eeprom_utils_st *ee, char* buffer, int length);
 int eeprom_read(eeprom_utils_st *ee, char* buffer, int length);
 
-int file_exists(char* fname, int *size, int *dir, int *file, int *dev);
-int write_to_file(char* fname, char* data, int size_of_data);
-int read_from_file(char* fname, char* data, int len_to_read);
-int read_string_from_file(char* path, char* filename, char* data, int len);
-
 #ifdef __cplusplus
 }
 #endif

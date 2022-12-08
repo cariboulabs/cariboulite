@@ -202,3 +202,10 @@ int search_offset_in_buffer(uint8_t *buff, int len)
 	}
 	return -1;
 }
+
+//=========================================================================
+uint8_t caribou_smi_lfsr(uint8_t n)
+{
+	uint8_t bit = ((n >> 2) ^ (n >> 3)) & 1;
+	return (n >> 1) | (bit << 7);
+}

@@ -12,6 +12,7 @@
 #include "hat/hat.h"
 #include "cariboulite_dtbo.h"
 #include "production_utils/production_utils.h"
+#include "io_utils/io_utils_sys_info.h"
 
 #include <stdio.h>
 #include <signal.h>
@@ -87,18 +88,23 @@ int main(int argc, char *argv[])
 {
 	int ret = 0;
 
-	cariboulite_production_utils_rpi_leds_init(1);
-	cariboulite_production_utils_rpi_leds_blink_start_tests();
+	production_utils_rpi_leds_init(1);
+	production_utils_rpi_leds_blink_start_tests();
 
-	//cariboulite_production_wifi_status_st wifi_stat;
-	//cariboulite_production_check_wifi_state(&wifi_stat);
+	//production_wifi_status_st wifi_stat;
+	//production_check_wifi_state(&wifi_stat);
 	//printf("Wifi Status: available: %d, wlan_id = %d, ESSID: %s, InternetAccess: %d\n", 
 	//	wifi_stat.available, wifi_stat.wlan_id, wifi_stat.essid, wifi_stat.internet_access);
 
-	cariboulite_rpi_info_st rpi = {0};
-	cariboulite_production_get_rpi_info(&rpi);
-	printf("uname: %s, cpu: %s-R%s, sn: %s, model: %s\n", rpi.uname, rpi.cpu_name, rpi.cpu_revision, rpi.cpu_serial_number, rpi.model);
-
+	io_utils_sys_info_st rpi = {0};
+	if (io_utils_get_rpi_info(&rpi) != 0)
+	{
+		// error
+		ZF_LOGE("Raspberry Pi system detection failed. INFO not retreivable...");
+		return -1;
+	}
+	io_utils_print_rpi_info(&rpi);
+	
     // init the minimal set of drivers and FPGA
 	hat_board_info_st board_info = {0};
 	ret = cariboulite_init_driver_minimal(&cariboulite_sys, &board_info);

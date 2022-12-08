@@ -13,7 +13,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include  <sys/types.h>
+#include <sys/types.h>
+#include "io_utils/io_utils_fs.h"
 #include "hat.h"
 
 
@@ -593,19 +594,19 @@ int hat_detect_board(hat_board_info_st *info)
 
     // check if a hat is attached anyway..
 	char hat_dir_path[] = "/proc/device-tree/hat";
-    exists = file_exists(hat_dir_path, &size, &dir, &file, &dev);
+    exists = io_utils_file_exists(hat_dir_path, &size, &dir, &file, &dev);
     if (!exists || !dir)
 	{
 		ZF_LOGI("This board is not configured yet as a hat. Please follow the configuration steps.");
 		return 0;
 	}
 
-	read_string_from_file(hat_dir_path, "name", info->category_name, sizeof(info->category_name));
-	read_string_from_file(hat_dir_path, "product", info->product_name, sizeof(info->product_name));
-	read_string_from_file(hat_dir_path, "product_id", info->product_id, sizeof(info->product_id));
-	read_string_from_file(hat_dir_path, "product_ver", info->product_version, sizeof(info->product_version));
-	read_string_from_file(hat_dir_path, "uuid", info->product_uuid, sizeof(info->product_uuid));
-	read_string_from_file(hat_dir_path, "vendor", info->product_vendor, sizeof(info->product_vendor));
+	io_utils_read_string_from_file(hat_dir_path, "name", info->category_name, sizeof(info->category_name));
+	io_utils_read_string_from_file(hat_dir_path, "product", info->product_name, sizeof(info->product_name));
+	io_utils_read_string_from_file(hat_dir_path, "product_id", info->product_id, sizeof(info->product_id));
+	io_utils_read_string_from_file(hat_dir_path, "product_ver", info->product_version, sizeof(info->product_version));
+	io_utils_read_string_from_file(hat_dir_path, "uuid", info->product_uuid, sizeof(info->product_uuid));
+	io_utils_read_string_from_file(hat_dir_path, "vendor", info->product_vendor, sizeof(info->product_vendor));
 
 	// numeric version
 	if (info->product_version[0] == '0' && (info->product_version[1] == 'x' ||
