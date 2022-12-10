@@ -34,6 +34,13 @@ typedef struct
 	float p_mw;
 } hat_powermon_state_st;
 
+typedef struct
+{
+	int ver;
+	int subver;
+} hat_powermon_version_st;
+
+
 typedef void (*hat_powermon_callback)(void* context, hat_powermon_state_st* state);
 
 typedef struct
@@ -41,9 +48,10 @@ typedef struct
 	io_utils_i2c_st i2c_dev;
 	hat_powermon_callback cb;
 	void *context;
-	
+
 	hat_powermon_state_st state;
-	
+	hat_powermon_version_st version;
+
 	pthread_t reader_thread;
 	bool thread_running;
 } hat_power_monitor_st;
@@ -52,6 +60,9 @@ int hat_powermon_init(hat_power_monitor_st* dev, uint8_t i2c_addr, hat_powermon_
 int hat_powermon_release(hat_power_monitor_st* dev);
 
 int hat_powermon_set_power_state(hat_power_monitor_st* dev, bool on);
+int hat_powermon_get_power_state(hat_power_monitor_st* dev, bool *on);
+int hat_powermon_set_leds_state(hat_power_monitor_st* dev, bool led1, bool led2);
+int hat_powermon_get_leds_state(hat_power_monitor_st* dev, bool *led1, bool *led2);
 int hat_powermon_read_fault(hat_power_monitor_st* dev, bool* fault);
 int hat_powermon_read_data(hat_power_monitor_st* dev, float *i, float *v, float *p);
 int hat_powermon_read_versions(hat_power_monitor_st* dev, int *ver, int *subver);

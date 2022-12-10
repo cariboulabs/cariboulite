@@ -5,12 +5,15 @@
 extern "C" {
 #endif
 
+#include <stdio.h>
+#include <stdint.h>
+
 typedef struct
 {
 	int bus;
 	uint8_t address;
 	char i2c_device_file[32];
-	
+
 	int fd;
 } io_utils_i2c_st;
 
