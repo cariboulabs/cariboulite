@@ -459,7 +459,6 @@ int cariboulite_production_generate_report(cariboulite_production_sequence_st* p
 //=================================================
 int main(int argc, char *argv[])
 {
-	int ret = 0;
 	cariboulite_production_sequence_st prod = {};
 
 	while (1)

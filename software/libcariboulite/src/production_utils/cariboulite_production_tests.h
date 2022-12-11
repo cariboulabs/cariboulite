@@ -1,5 +1,5 @@
-#ifndef __CARIBOULITE_PRODUCTION_H__
-#define __CARIBOULITE_PRODUCTION_H__
+#ifndef ___PRODUCTION_TESTS_H__
+#define ___PRODUCTION_TESTS_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +54,7 @@ typedef struct
 } production_sequence_st;
 
 
-int cariboulite_production_init(production_sequence_st* prod);
+int cariboulite_production_init(production_sequence_st* prod, production_test_st* tests, int num_tests);
 int cariboulite_production_close(production_sequence_st* prod);
 int cariboulite_production_start_tests(production_sequence_st* prod);
 int cariboulite_production_generate_report(production_sequence_st* prod, char* path);
@@ -64,4 +64,4 @@ int cariboulite_production_generate_report(production_sequence_st* prod, char* p
 }
 #endif
 
-#endif // __CARIBOULITE_PRODUCTION_H__
+#endif // ___PRODUCTION_TESTS_H__
