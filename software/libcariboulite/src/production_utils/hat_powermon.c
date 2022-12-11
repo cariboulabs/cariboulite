@@ -4,16 +4,18 @@
 
 #define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
 #define ZF_LOG_TAG "HAT_POWERMON"
+#include "zf_log/zf_log.h"
 
 #include <stdio.h>
 #include <string.h>
 #include "io_utils/io_utils_fs.h"
+#include "io_utils/io_utils.h"
 #include "hat_powermon.h"
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
- 
+
 //=======================================================================
 static void* hat_powermon_reader_thread(void* arg)
 {
@@ -39,7 +41,7 @@ static void* hat_powermon_reader_thread(void* arg)
 
 		if (dev->cb)
 		{
-			dev->cb(dev->context, dev->state);
+			dev->cb(dev->context, &dev->state);
 		}
 	}
 
@@ -50,7 +52,7 @@ static void* hat_powermon_reader_thread(void* arg)
 //=======================================================================
 int hat_powermon_init(hat_power_monitor_st* dev, uint8_t i2c_addr, hat_powermon_callback cb, void* context)
 {
-	memset (dev, 0, sizeof(hat_power_monitor_st))
+	memset (dev, 0, sizeof(hat_power_monitor_st));
 
 	dev->cb = cb;
 	dev->context = context;
@@ -93,8 +95,9 @@ int hat_powermon_init(hat_power_monitor_st* dev, uint8_t i2c_addr, hat_powermon_
     {
         ZF_LOGE("HAT Power-Monitor reader thread creation failed");
         hat_powermon_release(dev);
-        return NULL;
+        return -1;
     }
+	return 0;
 }
 
 //=======================================================================
@@ -104,7 +107,7 @@ int hat_powermon_release(hat_power_monitor_st* dev)
 	pthread_join(dev->reader_thread, NULL);
 
 	// close the i2c port
-	io_utils_i2c_close(dev->i2c_dev);
+	io_utils_i2c_close(&dev->i2c_dev);
 
 	return 0;
 }
@@ -112,8 +115,8 @@ int hat_powermon_release(hat_power_monitor_st* dev)
 //=======================================================================
 int hat_powermon_set_power_state(hat_power_monitor_st* dev, bool on)
 {
-	uint8_t data[] = {HAT_POWERMON_REG_LOAD_SW_STATE, on}
-	if (io_utils_i2c_write(dev->i2c_dev, data, 2) != 0)
+	uint8_t data[] = {HAT_POWERMON_REG_LOAD_SW_STATE, on};
+	if (io_utils_i2c_write(&dev->i2c_dev, data, 2) != 0)
 	{
 		ZF_LOGE("HAT Power-Monitor load switch setting failed");
 		return -1;
@@ -126,7 +129,7 @@ int hat_powermon_set_power_state(hat_power_monitor_st* dev, bool on)
 int hat_powermon_get_power_state(hat_power_monitor_st* dev, bool* on)
 {
 	uint8_t data = 0;
-	if (io_utils_i2c_read_reg(dev->i2c_dev, HAT_POWERMON_REG_LOAD_SW_STATE, &data, 1) != 0)
+	if (io_utils_i2c_read_reg(&dev->i2c_dev, HAT_POWERMON_REG_LOAD_SW_STATE, &data, 1) != 0)
 	{
 		ZF_LOGE("HAT Power-Monitor load switch getting failed");
 		return -1;
@@ -139,12 +142,12 @@ int hat_powermon_get_power_state(hat_power_monitor_st* dev, bool* on)
 //=======================================================================
 int hat_powermon_set_leds_state(hat_power_monitor_st* dev, bool led1, bool led2)
 {
-	uint8_t data[3]
+	uint8_t data[3] = {0};
 
 	data[0] = HAT_POWERMON_REG_LED1_STATE;
 	data[1]  = led1;
 	data[2]  = led2;
-	if (io_utils_i2c_write(dev->i2c_dev, data, 3) != 0)
+	if (io_utils_i2c_write(&dev->i2c_dev, data, 3) != 0)
 	{
 		ZF_LOGE("HAT Power-Monitor leds setting failed");
 		return -1;
@@ -159,7 +162,7 @@ int hat_powermon_get_leds_state(hat_power_monitor_st* dev, bool *led1, bool *led
 {
 	uint8_t data[2] = {0};
 
-	if (io_utils_i2c_read_reg(dev->i2c_dev, HAT_POWERMON_REG_LED1_STATE, data, 2) != 0)
+	if (io_utils_i2c_read_reg(&dev->i2c_dev, HAT_POWERMON_REG_LED1_STATE, data, 2) != 0)
 	{
 		ZF_LOGE("HAT Power-Monitor leds reading of setting failed");
 		return -1;
@@ -179,7 +182,7 @@ int hat_powermon_read_fault(hat_power_monitor_st* dev, bool* fault)
 	}
 
 	uint8_t data[1] = {0};
-	if (io_utils_i2c_read_reg(dev->i2c_dev, HAT_POWERMON_REG_FAULT_STATE, data, 1) != 0)
+	if (io_utils_i2c_read_reg(&dev->i2c_dev, HAT_POWERMON_REG_FAULT_STATE, data, 1) != 0)
 	{
 		ZF_LOGE("HAT Power-Monitor fault state reading failed");
 		return -1;
@@ -198,7 +201,7 @@ int hat_powermon_read_data(hat_power_monitor_st* dev, float *i, float *v, float 
 	}
 
 	uint8_t data[3] = {0};
-	if (io_utils_i2c_read_reg(dev->i2c_dev, HAT_POWERMON_REG_CURRENT, data, 3) != 0)
+	if (io_utils_i2c_read_reg(&dev->i2c_dev, HAT_POWERMON_REG_CURRENT, data, 3) != 0)
 	{
 		ZF_LOGE("HAT Power-Monitor power measures reading failed");
 		return -1;
