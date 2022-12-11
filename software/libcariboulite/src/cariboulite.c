@@ -35,7 +35,7 @@ void sighandler( struct sys_st_t *sys,
                  int signal_number,
                  siginfo_t *si)
 {
-    if (signal_shown != signal_number) 
+    if (signal_shown != signal_number)
     {
         ZF_LOGI("Received signal %d", signal_number);
         signal_shown = signal_number;
@@ -67,14 +67,14 @@ int main(int argc, char *argv[])
     // setup the signal handler
     cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, cariboulite_signal_handler_op_last, &cariboulite_sys);
 
-    sleep(1);        
+    sleep(1);
 	while (program_running)
 	{
 		int ret = app_menu(&hermonsdr_sys);
 
 		if (ret < 0)
 		{
-			ZF_LOGE("Error occured, terminating...");
+			ZF_LOGE("Error occurred, terminating...");
 			break;
 		}
 		else if (ret == 0)

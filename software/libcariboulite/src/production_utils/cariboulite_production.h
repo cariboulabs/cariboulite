@@ -1,7 +1,6 @@
 #ifndef __CARIBOULITE_PRODUCTION_H__
 #define __CARIBOULITE_PRODUCTION_H__
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,6 +10,8 @@ extern "C" {
 #include <time.h>
 
 #include "cariboulite_setup.h"
+#include "hat_powermon.h"
+#include "io_utils/io_utils_sys_info.h"
 
 typedef enum
 {
@@ -33,7 +34,7 @@ typedef enum
     cariboulite_test_en_modem_versions_id,
     cariboulite_test_en_modem_communication,
     cariboulite_test_en_modem_interrupt,
-
+    cariboulite_test_en_current_measurements,
     cariboulite_test_en_max,
 } cariboulite_test_en;
 
@@ -59,16 +60,17 @@ typedef struct
 {
     cariboulite_production_facility_st tester;
     hat_board_info_st board_info;
-    cariboulite_rpi_info_st rpi_info;
+    io_utils_sys_info_st rpi_info;
+    hat_power_monitor_st powermon;
 
-    cariboulite_production_test_st teste[cariboulite_test_en_max];
+    cariboulite_production_test_st tests[cariboulite_test_en_max];
     void* context;
 } cariboulite_production_sequence_st;
 
-int cariboulite_production_init(/*system struct*/);
-int cariboulite_production_close();
-int cariboulite_production_start_tests(/*callback function for test_results*/);
-int cariboulite_production_generate_report(/*xml filename fro output*/);
+int cariboulite_production_init(cariboulite_production_sequence_st* prod);
+int cariboulite_production_close(cariboulite_production_sequence_st* prod);
+int cariboulite_production_start_tests(cariboulite_production_sequence_st* prod);
+int cariboulite_production_generate_report(cariboulite_production_sequence_st* prod, char* path);
 
 int cariboulite_test_rpi_id_eeprom(void* context);
 int cariboulite_test_rpi_driver_caribou(void* context);
@@ -90,7 +92,7 @@ int cariboulite_test_modem_configuration(void* context);
 int cariboulite_test_modem_versions_id(void* context);
 int cariboulite_test_modem_communication(void* context);
 int cariboulite_test_modem_interrupt(void* context);
-
+int cariboulite_test_current_measurements(void* context);
 
 #ifdef __cplusplus
 }

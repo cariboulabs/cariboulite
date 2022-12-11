@@ -72,8 +72,8 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 
 SOAPY_SDR_MODULE_UTIL(
     TARGET SoapyCariboulite
-    SOURCES 
-        src/soapy_api/SoapyCariboulite.cpp 
+    SOURCES
+        src/soapy_api/SoapyCariboulite.cpp
         src/soapy_api/Cariboulite.cpp
         src/soapy_api/Cariboulite.hpp
         src/soapy_api/CaribouliteStream.cpp
@@ -89,7 +89,6 @@ SOAPY_SDR_MODULE_UTIL(
 set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
 set(SOURCES_MAIN src/cariboulite.c)
-set(SOURCES_PROD src/cariboulite_production.c)
 
 add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
@@ -99,17 +98,10 @@ add_custom_command(
 	COMMAND sudo chown root:root "./cariboulite_app"
 	COMMAND sudo chmod 4775 "./cariboulite_app"
 	VERBATIM)
-add_executable(cariboulite_prod ${SOURCES_PROD})
-add_custom_command(
-	TARGET cariboulite_prod POST_BUILD
-	COMMAND sudo chown root:root "./cariboulite_prod"
-	COMMAND	sudo chmod 4775 "./cariboulite_prod"
-	VERBATIM)
 
 target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
 target_link_libraries(cariboulite_app cariboulite)
-target_link_libraries(cariboulite_prod cariboulite)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
