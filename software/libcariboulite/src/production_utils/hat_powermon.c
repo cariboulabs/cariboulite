@@ -176,10 +176,10 @@ int hat_powermon_get_leds_state(hat_power_monitor_st* dev, bool *led1, bool *led
 //=======================================================================
 int hat_powermon_read_fault(hat_power_monitor_st* dev, bool* fault)
 {
-	if (!dev->state.monitor_active)
-	{
-		return -1;
-	}
+	//if (!dev->state.monitor_active)
+	//{
+	//	return -1;
+	//}
 
 	uint8_t data[1] = {0};
 	if (io_utils_i2c_read_reg(&dev->i2c_dev, HAT_POWERMON_REG_FAULT_STATE, data, 1) != 0)
@@ -195,10 +195,10 @@ int hat_powermon_read_fault(hat_power_monitor_st* dev, bool* fault)
 //=======================================================================
 int hat_powermon_read_data(hat_power_monitor_st* dev, float *i, float *v, float *p)
 {
-	if (!dev->state.monitor_active)
-	{
-		return -1;
-	}
+	//if (!dev->state.monitor_active)
+	//{
+	//	return -1;
+	//}
 
 	uint8_t data[3] = {0};
 	if (io_utils_i2c_read_reg(&dev->i2c_dev, HAT_POWERMON_REG_CURRENT, data, 3) != 0)
@@ -219,15 +219,15 @@ int hat_powermon_read_data(hat_power_monitor_st* dev, float *i, float *v, float 
 //=======================================================================
 int hat_powermon_read_versions(hat_power_monitor_st* dev, int *ver, int *subver)
 {
-	uint8_t data = 0;
+	uint8_t data[1] = {0};
 	if (io_utils_i2c_read_reg(&dev->i2c_dev, HAT_POWERMON_REG_VERSION, data, 1) != 0)
 	{
 		ZF_LOGE("HAT Power-Monitor versions read failed");
         return -1;
 	}
 
-	dev->version.ver = (data >> 4) & 0xF;
-	dev->version.subver = (data & 0xF);
+	dev->version.ver = (data[0] >> 4) & 0xF;
+	dev->version.subver = (data[0] & 0xF);
 	if (ver) *ver = dev->version.ver;
 	if (subver) *subver = dev->version.subver;
 	return 0;

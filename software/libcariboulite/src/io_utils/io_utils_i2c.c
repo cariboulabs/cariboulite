@@ -19,6 +19,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 
 #include "io_utils_i2c.h"
 
@@ -35,7 +36,14 @@ int io_utils_i2c_open(io_utils_i2c_st* dev, int bus, uint8_t address)
 		ZF_LOGE("opening device file '%s' failed", dev->i2c_device_file);
 		return -1;
 	}
+	
 	return 0;
+}
+
+//===================================================================
+int io_utils_i2c_close(io_utils_i2c_st* dev)
+{
+	return close(dev->fd);
 }
 
 //===================================================================
@@ -53,6 +61,7 @@ int io_utils_i2c_write(io_utils_i2c_st* dev, uint8_t *data, size_t len)
 		ZF_LOGE("writing to i2c failed");
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -61,7 +70,7 @@ int io_utils_i2c_read(io_utils_i2c_st* dev, uint8_t *data, size_t len)
 {
 	struct i2c_msg messages = 	{
 									.addr = dev->address,
-									.flags = I2C_M_RD,
+									.flags = I2C_M_RD | I2C_M_NOSTART,
 									.len = len,
 									.buf = data
 								};
@@ -74,6 +83,7 @@ int io_utils_i2c_read(io_utils_i2c_st* dev, uint8_t *data, size_t len)
 		ZF_LOGE("reading from i2c failed");
 		return -1;
 	}
+	
 	return 0;
 }
 
@@ -98,11 +108,12 @@ int io_utils_i2c_read_reg(io_utils_i2c_st* dev, uint8_t reg, uint8_t *data, size
 	int result = ioctl(dev->fd, I2C_RDWR, &ioctl_data);
 	if (result != 2)
 	{
-		ZF_LOGE("reading reg from i2c failed");
+		ZF_LOGE("reading reg from i2c failed (res = %d)", result);
 		return -1;
 	}
 	return 0;
 }
+
 
 
 

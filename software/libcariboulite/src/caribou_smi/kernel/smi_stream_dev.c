@@ -122,7 +122,8 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 /***************************************************************************/
 static void set_address_direction(smi_stream_direction_en)
 {
-	inst->cur_address &= ~(1<<ADDR_DIR_OFFSET)
+	inst->cur_address &= ~(1<<ADDR_DIR_OFFSET);
+	inst->cur_address 
 	bcm2835_smi_get_address(inst->smi_inst, &cur_addr);
 	
 }
