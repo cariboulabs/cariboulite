@@ -98,7 +98,7 @@ typedef struct
 {
     // pinout
     int reset_pin;
-	int irq_pin;
+	int soft_reset_pin;
     int cs_pin;
 
     // spi device

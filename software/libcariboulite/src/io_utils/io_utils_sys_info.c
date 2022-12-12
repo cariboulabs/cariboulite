@@ -10,7 +10,13 @@
 #include <time.h>
 #include "zf_log/zf_log.h"
 #include "io_utils_sys_info.h"
+#include "io_utils_fs.h"
 
+//=====================================================================
+static int io_utils_get_rpi_serial_number(char* serial, int len)
+{
+	return io_utils_read_string_from_file("/sys/firmware/devicetree/base/", "serial-number", serial, len);
+}
 
 //=====================================================================
 static void io_utils_fill_sys_info(io_utils_sys_info_st *sys_info)
@@ -54,8 +60,9 @@ static void io_utils_fill_sys_info(io_utils_sys_info_st *sys_info)
     else if (!strcmp(sys_info->ram, "2G")) sys_info->ram_size_mbytes = 2000;
     else if (!strcmp(sys_info->ram, "4G")) sys_info->ram_size_mbytes = 4000;
     else if (!strcmp(sys_info->ram, "8G")) sys_info->ram_size_mbytes = 8000;
+	
+	io_utils_get_rpi_serial_number(sys_info->serial_number, 31);
 }
-
 
 //=====================================================================
 int io_utils_get_rpi_info(io_utils_sys_info_st *info)

@@ -51,6 +51,17 @@
 #define DRIVER_NAME "smi-stream-dev"
 #define DEVICE_MINOR 0
 
+typedef enum
+{
+	smi_stream_dir_smi_to_device = 0,		// device data-bus is highZ
+	smi_stream_dir_device_to_smi = 1,		// device data-bus is push-pull
+} smi_stream_direction_en;
+
+typedef enum
+{
+	smi_stream_channel_0 = 0,				// channel 900 MHz	(RX)
+	smi_stream_channel_1 = 1,				// channel 2400 MHz	(RX)
+} smi_stream_channel_en;
 
 #ifdef __KERNEL__
 struct bcm2835_smi_instance {

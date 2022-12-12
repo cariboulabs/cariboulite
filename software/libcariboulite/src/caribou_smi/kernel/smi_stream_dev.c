@@ -57,14 +57,20 @@
 
 #include "smi_stream_dev.h"
 
-
-#define FIFO_SIZE_MULTIPLIER 12
+#define FIFO_SIZE_MULTIPLIER 	(14)
+#define ADDR_DIR_OFFSET			(2)			// GPIO3_SA2 (fpga i_smi_a[1]) - Tx SMI (0) / Rx SMI (1) select
+#define ADDR_CH_OFFSET			(3)			// GPIO2_SA3 (fpga i_smi_a[2]) - RX09 / RX24 channel select
 
 struct bcm2835_smi_dev_instance 
 {
 	struct device *dev;
 	struct bcm2835_smi_instance *smi_inst;
 
+	// address related
+	smi_stream_direction_en dir;
+	smi_stream_channel_en channel;
+	unsigned int cur_address;
+	
 	struct task_struct *reader_thread;
 	struct task_struct *writer_thread;
 	struct kfifo rx_fifo;
@@ -101,8 +107,6 @@ static const char *const ioctl_names[] =
 *
 ***************************************************************************/
 
-
-
 /***************************************************************************/
 static void write_smi_reg(struct bcm2835_smi_instance *inst, u32 val, unsigned reg)
 {
@@ -114,6 +118,21 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 {
 	return readl(inst->smi_regs_ptr + reg);
 }
+
+/***************************************************************************/
+static void set_address_direction(smi_stream_direction_en)
+{
+	inst->cur_address &= ~(1<<ADDR_DIR_OFFSET)
+	bcm2835_smi_get_address(inst->smi_inst, &cur_addr);
+	
+}
+
+/***************************************************************************/
+static void set_address_channel(smi_stream_direction_en)
+{
+	
+}
+
 
 #define BUSY_WAIT_WHILE_TIMEOUT(C,T,R) 			{int t = (T); while ((C) && t>0){t--;} (R)=t>0;}
 

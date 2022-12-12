@@ -152,7 +152,7 @@ int main_single_read()
     caribou_smi_init(&dev, caribou_smi_error_event, program_name);
 
     caribou_smi_timeout_read(&dev, address, b8, read_count*sizeof(uint32_t), 1000);
-    dump_hex(b8, read_count*sizeof(uint32_t));
+    smi_utils_dump_hex(b8, read_count*sizeof(uint32_t));
     print_iq(buffer, read_count);
     caribou_smi_close (&dev);
     return 0;

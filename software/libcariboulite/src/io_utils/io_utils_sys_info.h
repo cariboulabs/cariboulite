@@ -33,6 +33,7 @@ typedef struct
    char *processor;
    char *type;
    char revision[1024];
+   char serial_number[32];
 
    io_utils_processor_type_en processor_type;
    uint32_t ram_size_mbytes;

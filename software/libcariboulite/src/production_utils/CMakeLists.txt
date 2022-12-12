@@ -9,7 +9,7 @@ include_directories(${SUPER_DIR})
 
 #However, the file(GLOB...) allows for wildcard additions:
 set(SOURCES lcd.c test_lcd.c)
-set(SOURCES_LIB production_utils.c hat_powermon.c lcd.c)
+set(SOURCES_LIB production_utils.c hat_powermon.c lcd.c production_testing.c)
 #add_compile_options(-Wall -Wextra -pedantic -Werror)
 add_compile_options(-Wall -Wextra -Wno-missing-braces)
 

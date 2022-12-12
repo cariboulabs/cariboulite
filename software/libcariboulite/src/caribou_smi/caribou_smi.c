@@ -47,46 +47,6 @@ static void caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings
 static int caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type_en type, caribou_smi_channel_en ch);
 
 
-#define TIMING_PERF_SYNC  (0)
-
-#if (TIMING_PERF_SYNC)
-	#define TIMING_PERF_SYNC_VARS									\
-			struct timeval tv_pre = {0};							\
-			struct timeval tv_post = {0};							\
-			long long total_samples = 0,last_total_samples = 0;		\
-			double time_pre = 0, batch_time = 0, sample_rate = 0;	\
-			double time_post = 0, process_time = 0;					\
-			double temp_pre;										\
-			double num_samples = 0, num_samples_avg = 0;
-
-	#define TIMING_PERF_SYNC_TICK									\
-			gettimeofday(&tv_pre, NULL);
-
-	#define TIMING_PERF_SYNC_TOCK													\
-			gettimeofday(&tv_post, NULL);											\
-			num_samples = (double)(st->read_ret_value) / 4.0;						\
-			num_samples_avg = num_samples_avg*0.1 + num_samples*0.9;				\
-			temp_pre = tv_pre.tv_sec + ((double)(tv_pre.tv_usec)) / 1e6;			\
-			time_post = tv_post.tv_sec + ((double)(tv_post.tv_usec)) / 1e6;			\
-			batch_time = temp_pre - time_pre;										\
-			sample_rate = sample_rate*0.1 + (num_samples / batch_time) * 0.9;		\
-			process_time = process_time*0.1 + (time_post - temp_pre)*0.9;			\
-			time_pre = temp_pre;													\
-			total_samples += st->read_ret_value;									\
-			if ((total_samples - last_total_samples) > 4000000*4)					\
-			{																		\
-				last_total_samples = total_samples;									\
-				ZF_LOGD("sample_rate = %.2f SPS, process_time = %.2f usec"			\
-						", num_samples_avg = %.1f", 								\
-						sample_rate, process_time * 1e6, num_samples_avg);			\
-			}
-#else
-	#define TIMING_PERF_SYNC_VARS
-	#define TIMING_PERF_SYNC_TICK
-	#define TIMING_PERF_SYNC_TOCK
-#endif
-
-
 //=========================================================================
 char* caribou_smi_get_error_string(caribou_smi_error_en err)
 {
@@ -167,7 +127,8 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
 
 	ZF_LOGD("Current SMI Settings:");
     caribou_smi_print_smi_settings(dev, &settings);
-
+	
+	// Debug options
 	caribou_smi_set_debug_mode(dev, false, false, false);
 
     // initialize streams (TODO: add error check)
@@ -279,13 +240,6 @@ again:
 }
 
 //=========================================================================
-uint8_t caribou_smi_lfsr(uint8_t n)
-{
-	uint8_t bit = ((n >> 2) ^ (n >> 3)) & 1;
-	return (n >> 1) | (bit << 7);
-}
-
-
 double caribou_smi_analyze_data(uint8_t *buffer, 
 							size_t length_bytes, 
 							caribou_smi_sample_complex_int16* cmplx_vec, 
@@ -314,10 +268,10 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 		//int last_error = -1;
 		static double error_rate = 0;
 
-		//dump_hex(buffer, 12);
+		//smi_utils_dump_hex(buffer, 12);
 		for (size_t i = 0; i < length_bytes; i++)
 		{
-			if (buffer[i] != caribou_smi_lfsr(last_correct_byte) || buffer[i] == 0)
+			if (buffer[i] != smi_utils_lfsr(last_correct_byte) || buffer[i] == 0)
 			{
 				if (first_error == -1) first_error = i;
 				//last_error = i;
@@ -343,7 +297,7 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 
 	if (pull_debug_mode || push_debug_mode)
 	{
-		//dump_hex(buffer, 64);
+		//smi_utils_dump_hex(buffer, 64);
 		uint32_t *values = (uint32_t*)buffer;
 		uint32_t num_values = length_bytes / 4;
 		static uint32_t error_accum_counter = 0;
@@ -371,11 +325,11 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 
 	// check data offset
 	unsigned int offs = 0;
-	//dump_bin(buffer, 16);
+	//smi_utils_dump_bin(buffer, 16);
 	for (offs = 0; offs<8; offs++)
 	{
 		uint32_t s = __builtin_bswap32(*((uint32_t*)(&buffer[offs])));
-		//print_bin(s);
+		//smi_utils_print_bin(s);
 		if ((s & 0xC001C000) == 0x80004000) break;
 		//if ((s & 0xC000C000) == 0x80004000) break;
 	}
@@ -421,7 +375,7 @@ void* caribou_smi_analyze_thread(void* arg)
     caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
     ZF_LOGD("Entered SMI analysis thread id %lu, running = %d", tid, st->read_analysis_thread_running);
-    set_realtime_priority(2);
+    smi_utils_set_realtime_priority(2);
 
 	// ****************************************
 	//  MAIN LOOP
@@ -470,7 +424,7 @@ void* caribou_smi_thread(void *arg)
     caribou_smi_channel_en ch = (caribou_smi_channel_en)(st->stream_id & 0x1);
 
     ZF_LOGD("Entered thread id %lu, running = %d, Perf-Verbosity = %d", tid, st->running, TIMING_PERF_SYNC);
-    set_realtime_priority(0);
+    smi_utils_set_realtime_priority(0);
 
     // create the analysis thread and mutexes
     if (pthread_mutex_init(&st->read_analysis_lock, NULL) != 0)
@@ -596,7 +550,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 	caribou_smi_set_driver_streaming_state(dev, 0);
 
     // allocate the buffer vector
-    if (allocate_buffer_vec(&st->buffers, st->num_of_buffers, st->batch_length) != 0)
+    if (smi_utils_allocate_buffer_vec(&st->buffers, st->num_of_buffers, st->batch_length) != 0)
     {
         ZF_LOGE("read buffer-vector allocation failed");
         return -1;
@@ -608,7 +562,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 	if (st->app_cmplx_vec == NULL)
 	{
 		ZF_LOGE("application complex buffer allocation failed");
-		release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
+		smi_utils_release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
         return -1;
 	}
 
@@ -617,7 +571,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
 	if (st->app_meta_vec == NULL)
 	{
 		ZF_LOGE("application meta-data buffer allocation failed");
-		release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
+		smi_utils_release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
 		free(st->app_cmplx_vec);
         return -1;
 	}
@@ -634,7 +588,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
     if (ret != 0)
     {
         ZF_LOGE("read stream thread creation failed");
-        release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
+        smi_utils_release_buffer_vec(st->buffers, st->num_of_buffers, st->batch_length);
 		free(st->app_cmplx_vec);
 		free(st->app_meta_vec);
         st->buffers = NULL;
@@ -726,7 +680,7 @@ int caribou_smi_destroy_stream(caribou_smi_st* dev, int id)
         ZF_LOGE("Killed with pthread_cancel");
     }
 
-    release_buffer_vec(dev->streams[id].buffers, dev->streams[id].num_of_buffers, dev->streams[id].batch_length);
+    smi_utils_release_buffer_vec(dev->streams[id].buffers, dev->streams[id].num_of_buffers, dev->streams[id].batch_length);
     free(dev->streams[id].app_cmplx_vec);
 	free(dev->streams[id].app_meta_vec);
 

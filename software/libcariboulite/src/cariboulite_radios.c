@@ -58,7 +58,7 @@ static int add_entropy(uint8_t byte)
 }
 
 //======================================================================
-int cariboulite_init_radios(cariboulite_radios_st* radios, cariboulite_st *sys)
+int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys)
 {
     memset (radios, 0, sizeof(cariboulite_radios_st));
 
@@ -131,6 +131,31 @@ int cariboulite_dispose_radios(cariboulite_radios_st* radios)
     rad_6g->state = at86rf215_radio_state_cmd_trx_off;
 
     caribou_fpga_set_io_ctrl_mode (&rad_6g->cariboulite_sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
+}
+
+
+//=======================================================================================
+int cariboulite_setup_ext_ref ( sys_st *sys, cariboulite_ext_ref_freq_en ref)
+{
+    switch(ref)
+    {
+        case cariboulite_ext_ref_26mhz:
+            ZF_LOGD("Setting ext_ref = 26MHz");
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_26mhz);
+            rffc507x_setup_reference_freq(&sys->mixer, 26e6);
+            break;
+        case cariboulite_ext_ref_32mhz:
+            ZF_LOGD("Setting ext_ref = 32MHz");
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_32mhz);
+            rffc507x_setup_reference_freq(&sys->mixer, 32e6);
+            break;
+        case cariboulite_ext_ref_off:
+            ZF_LOGD("Setting ext_ref = OFF");
+            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_off);
+        default:
+            return -1;
+        break;
+    }
 }
 
 //======================================================================

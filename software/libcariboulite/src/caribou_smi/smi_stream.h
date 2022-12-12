@@ -15,9 +15,17 @@ typedef enum
 	smi_stream_event_type_start = 1,
 	smi_stream_event_type_end = 2,
 	smi_stream_released = 3,
+	smi_stream_error = 4,
 } smi_stream_event_type_en;
 
+typedef enum
+{
+	smi_stream_dir_rx = 0,
+	smi_stream_dir_tx = 1,
+} smi_stream_direction_en;
+
 typedef void (*smi_stream_data_callback)(int stream_addr,
+										smi_stream_direction_en dir,
 										uint8_t* data,
 										size_t data_length,
 										void* context);
@@ -37,6 +45,7 @@ typedef struct
 	bool initialized;					// is this stream initialized
 	
 	// Buffers
+	size_t buffer_length;
 	uint8_t *smi_read_buffers[2];
     uint8_t *smi_read_point;        	// the buffer that is currently in the SMI DMA
     uint8_t *app_read_point;        	// the buffer that is currently analyzed / written by the application callback
@@ -44,6 +53,10 @@ typedef struct
 	uint8_t *smi_write_buffers[2];
 	uint8_t *smi_write_point;        	// the buffer that is currently in the SMI DMA
     uint8_t *app_write_point;        	// the buffer that is currently analyzed / written by the application callback
+	
+	// Performance
+	float rx_bitrate_mbps;
+	float tx_bitrate_mbps;
 	
 	// Threads
 	pthread_t reader_thread;

@@ -14,7 +14,7 @@
 
 
 //=========================================================================
-void set_realtime_priority(int priority_deter)
+void smi_utils_set_realtime_priority(int priority_deter)
 {
     int ret;
 
@@ -57,7 +57,7 @@ void set_realtime_priority(int priority_deter)
 }
 
 //=========================================================================
-void dump_hex(const void* data, size_t size)
+void smi_utils_dump_hex(const void* data, size_t size)
 {
 	char ascii[17];
 	size_t i, j;
@@ -98,7 +98,7 @@ void dump_hex(const void* data, size_t size)
 }
 
 //=========================================================================
-void dump_bin(const uint8_t* data, size_t size)
+void smi_utils_dump_bin(const uint8_t* data, size_t size)
 {
 	char str[16] = {0};
 
@@ -119,7 +119,7 @@ void dump_bin(const uint8_t* data, size_t size)
 }
 
 //=========================================================================
-void print_bin(uint32_t v)
+void smi_utils_print_bin(uint32_t v)
 {
 	char str[48] = {0};
 	int i = 0;
@@ -133,7 +133,7 @@ void print_bin(uint32_t v)
 }
 
 //=========================================================================
-int allocate_buffer_vec(uint8_t*** mat, int num_buffers, int buffer_size)
+int smi_utils_allocate_buffer_vec(uint8_t*** mat, int num_buffers, int buffer_size)
 {
     ZF_LOGI("Allocating buffer vectors");
     (*mat) = (uint8_t**) malloc( num_buffers * sizeof(uint8_t*) );
@@ -172,7 +172,7 @@ int allocate_buffer_vec(uint8_t*** mat, int num_buffers, int buffer_size)
 }
 
 //=========================================================================
-void release_buffer_vec(uint8_t** mat, int num_buffers, int buffer_size)
+void smi_utils_release_buffer_vec(uint8_t** mat, int num_buffers, int buffer_size)
 {
     ZF_LOGI("Releasing buffer vectors");
     if (mat == NULL)
@@ -187,7 +187,7 @@ void release_buffer_vec(uint8_t** mat, int num_buffers, int buffer_size)
 }
 
 //=========================================================================
-int search_offset_in_buffer(uint8_t *buff, int len)
+int smi_utils_search_offset_in_buffer(uint8_t *buff, int len)
 {
 	bool succ = false;
 	int off = 0;
@@ -204,8 +204,22 @@ int search_offset_in_buffer(uint8_t *buff, int len)
 }
 
 //=========================================================================
-uint8_t caribou_smi_lfsr(uint8_t n)
+uint8_t smi_utils_lfsr(uint8_t n)
 {
 	uint8_t bit = ((n >> 2) ^ (n >> 3)) & 1;
 	return (n >> 1) | (bit << 7);
+}
+
+//=========================================================================
+double smi_calculate_performance(size_t bytes, struct timeval *old_time, double old_mbps)
+{
+	struct timeval current_time = {0,0};
+	
+	gettimeofday(&current_time, NULL);
+	
+	double elapsed_us = (current_time.tv_sec - old_time->tv_sec) + ((double)(current_time.tv_usec - old_time.tv_usec)) / 1000000.0;
+	double speed_mbps = (double)(bytes * 8) / elapsed_us / 1e6;
+	old_time->tv_sec = current_time.tv_sec;
+	old_time->tv_usec = current_time.tv_usec;
+	return old_mbps * 0.98 + speed_mbps * 0.02;
 }

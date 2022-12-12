@@ -34,6 +34,7 @@ set_frequency lvds_clock_buf 64
 
 # CLOCK
 set_io i_glob_clock     A29
+set_io i_rst_b          A43
 
 # PMOD
 set_io io_pmod[0]       B24
@@ -80,7 +81,6 @@ set_io o_led1		            A39
 # SMI TO RPI
 set_io o_smi_write_req	    A19
 set_io o_smi_read_req	    B19
-set_io i_smi_a1	            A43
 set_io i_smi_a2		        A48
 set_io i_smi_a3		        A47
 

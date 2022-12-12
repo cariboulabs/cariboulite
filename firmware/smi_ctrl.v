@@ -48,18 +48,6 @@ module smi_ctrl (	input               i_rst_b,
     localparam
         module_version  = 8'b00000001;
 
-    // SMI ADDRESS DEFS
-    // ----------------
-    localparam
-        smi_address_idle = 3'b000,
-        smi_address_write_900 = 3'b001,
-        smi_address_write_2400 = 3'b010,
-        smi_address_write_res2 = 3'b011,
-        smi_address_read_res1 = 3'b100,
-        smi_address_read_900 = 3'b101,
-        smi_address_read_2400 = 3'b110,
-        smi_address_read_res = 3'b111;
-
     always @(posedge i_sys_clk)
     begin
         if (i_rst_b == 1'b0) begin
@@ -114,7 +102,7 @@ module smi_ctrl (	input               i_rst_b,
             w_fifo_09_pull_trigger <= (int_cnt_09 == 5'd7) && !i_smi_test;
             w_fifo_24_pull_trigger <= (int_cnt_24 == 5'd7) && !i_smi_test;
 
-            if (i_smi_a == smi_address_read_900) begin
+            if (i_smi_a[2] == 1'b0) begin
                 if ( i_smi_test ) begin
                     o_smi_data_out <= r_smi_test_count_09;
                     r_smi_test_count_09 <= {((r_smi_test_count_09[2] ^ r_smi_test_count_09[3]) & 1'b1), r_smi_test_count_09[7:1]};		    
@@ -123,7 +111,7 @@ module smi_ctrl (	input               i_rst_b,
                     o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09:int_cnt_09-7];
                 end
 
-            end else if (i_smi_a == smi_address_read_2400) begin
+            end else if (i_smi_a[2] == 1'b1) begin
                 if ( i_smi_test ) begin
                     o_smi_data_out <= r_smi_test_count_24;
                     r_smi_test_count_24 <= {((r_smi_test_count_24[2] ^ r_smi_test_count_24[3]) & 1'b1), r_smi_test_count_24[7:1]};
@@ -157,6 +145,34 @@ module smi_ctrl (	input               i_rst_b,
 
     assign o_fifo_09_pull = !r_fifo_09_pull_1 && r_fifo_09_pull && !i_fifo_09_empty;
     assign o_fifo_24_pull = !r_fifo_24_pull_1 && r_fifo_24_pull && !i_fifo_24_empty;
-    assign o_smi_writing = i_smi_a[2];
+    
+	// SMI Addressing description
+	// ==========================
+	// In CaribouLite, the SMI addresses are connected as follows:
+	//
+	//		RPI PIN			| 	FPGA TOP-LEVEL SIGNAL
+	//		------------------------------------------------------------------------
+	//		GPIO2_SA3		| 	i_smi_a[2] - RX09 / RX24 channel select
+	//		GPIO3_SA2		| 	i_smi_a[1] - Tx SMI (0) / Rx SMI (1) select
+	//		GPIO4_SA1		| 	i_smi_a[0] - used as a sys async reset (GBIN1)
+	//		GPIO5_SA0		| 	Not connected to FPGA (MixerRst)
+	//
+	// In order to perform SMI data bus direction selection (highZ / PushPull)
+	// signal a[0] was chosen, while the '0' level (default) denotes RPI => FPGA
+	// direction, and the DATA bus is highZ (recessive mode).
+	// The signal a[2] selects the RX source (900 MHZ or 2.4GHz)
+	// The signal a[1] can be used in the future for other purposes
+	//
+	// Description	|	a[2]	|	   a[1]		|	
+	// -------------|-----------|---------------|
+	// 				|	  0		|	   0		|		
+	// 		TX		|-----------| RPI => FPGA   |
+	// 				|	  1		| Data HighZ	|		
+	// -------------|-----------|---------------|
+	// 		RX09	|	  0		|	   1		|	
+	// -------------|-----------| FPGA => RPI	|	
+	// 		RX24	|	  1		| Data PushPull	|		
+	// -------------|-----------|---------------|
+	assign o_smi_writing = i_smi_a[1];
 
 endmodule // smi_ctrl

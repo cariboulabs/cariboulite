@@ -7,7 +7,6 @@ extern "C" {
 
 
 #include "cariboulite_radios.h"
-
 #include "caribou_fpga/caribou_fpga.h"
 #include "at86rf215/at86rf215.h"
 #include "rffc507x/rffc507x.h"
@@ -55,13 +54,6 @@ typedef enum
     cariboulite_signal_registration_failed      = 7,
 } cariboulite_errors_en;
 
-typedef enum
-{
-    cariboulite_ext_ref_off     = 0,
-    cariboulite_ext_ref_26mhz   = 26,
-    cariboulite_ext_ref_32mhz   = 32,
-} cariboulite_ext_ref_freq_en;
-
 int cariboulite_init_driver(sys_st *sys, hat_board_info_st *info);
 int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info);
 int cariboulite_setup_signal_handler (sys_st *sys,
@@ -77,11 +69,6 @@ int cariboulite_release_io (sys_st* sys);
 int cariboulite_init_submodules (sys_st* sys);
 int cariboulite_release_submodules(sys_st* sys);
 int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res);
-int cariboulite_setup_ext_ref ( cariboulite_st *sys, cariboulite_ext_ref_freq_en ref);
-int cariboulite_setup_frequency(    sys_st *sys,
-                                    cariboulite_channel_en ch, 
-                                    cariboulite_channel_dir_en dir,
-                                    double *freq);
                                     
 #ifdef __cplusplus
 }

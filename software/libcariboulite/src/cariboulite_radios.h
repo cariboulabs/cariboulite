@@ -8,7 +8,6 @@ extern "C" {
 #include "config/config.h"
 #include "at86rf215/at86rf215.h"
 
-
 typedef enum
 {
     cariboulite_channel_dir_rx = 0,
@@ -20,6 +19,13 @@ typedef enum
     cariboulite_channel_s1g = 0,
     cariboulite_channel_6g = 1,
 } cariboulite_channel_en;
+
+typedef enum
+{
+    cariboulite_ext_ref_off     = 0,
+    cariboulite_ext_ref_26mhz   = 26,
+    cariboulite_ext_ref_32mhz   = 32,
+} cariboulite_ext_ref_freq_en;
 
 typedef struct
 {
@@ -64,7 +70,6 @@ typedef struct
     at86rf215_radio_f_cut_en            tx_fcut;
     at86rf215_radio_sample_rate_en      tx_fs;
 
-    // at86rf215_radio_energy_detection_st rx_energy_detection;
     float                               rx_energy_detection_value;
     float                               rx_rssi;
 
@@ -99,8 +104,13 @@ typedef struct
     cariboulite_radio_state_st radio_6g;
 } cariboulite_radios_st;
 
+
+
+// API
 int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys);
 int cariboulite_dispose_radios(cariboulite_radios_st* radios);
+int cariboulite_setup_ext_ref (sys_st *sys, cariboulite_ext_ref_freq_en ref);
+
 int cariboulite_sync_radio_information(cariboulite_radios_st* radios);
 
 int cariboulite_get_mod_state (cariboulite_radios_st* radios, 

@@ -65,12 +65,12 @@ int main(int argc, char *argv[])
     }
 
     // setup the signal handler
-    cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, cariboulite_signal_handler_op_last, &cariboulite_sys);
+    cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, signal_handler_op_last, &cariboulite_sys);
 
     sleep(1);
 	while (program_running)
 	{
-		int ret = app_menu(&hermonsdr_sys);
+		int ret = app_menu(&cariboulite_sys);
 
 		if (ret < 0)
 		{

@@ -14,6 +14,7 @@ extern "C" {
 #include "io_utils/io_utils_sys_info.h"
 
 typedef int (*test_function)(void* context, void* tests);
+#define PROD_TESTING_PWR_MON_ADDR	(0x25)
 
 typedef struct
 {
@@ -32,7 +33,7 @@ typedef struct
 	
 	// timing
 	struct tm start_time_of_test;
-    struct tm end_time_of_test
+    struct tm end_time_of_test;
 
 	// outputs
 	void* test_result_context;
@@ -45,19 +46,21 @@ typedef struct
 {
 	lcd_st lcd;
     production_tester_st tester;
-    hat_board_info_st board_info;
-    hat_power_monitor_st powermon;
 
     production_test_st *tests;
 	uint32_t number_of_tests;
     void* context;
+	
+	// state
+	uint32_t current_test_number;
+	bool current_tests_pass;
 } production_sequence_st;
 
 
-int cariboulite_production_init(production_sequence_st* prod, production_test_st* tests, int num_tests);
-int cariboulite_production_close(production_sequence_st* prod);
-int cariboulite_production_start_tests(production_sequence_st* prod);
-int cariboulite_production_generate_report(production_sequence_st* prod, char* path);
+int production_init(production_sequence_st* prod, production_test_st* tests, int num_tests, void* context);
+int production_close(production_sequence_st* prod);
+int production_start_tests(production_sequence_st* prod);
+int production_generate_report(production_sequence_st* prod, char* path, uint64_t serial_number);
 
 
 #ifdef __cplusplus

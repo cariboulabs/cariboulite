@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "cariboulite_config.h"
+#include "config/config.h"
 
 // PINOUT SPI
 #define CARIBOULITE_SPI_DEV 1
@@ -13,11 +13,12 @@ extern "C" {
 #define CARIBOULITE_SCK 21
 #define CARIBOULITE_MISO 19
 
-// PINOUT FPGA - ICE40
+// PINOUT FPGA
 #define CARIBOULITE_FPGA_SPI_CHANNEL 0
 #define CARIBOULITE_FPGA_SS 18
 #define CARIBOULITE_FPGA_CDONE 27
 #define CARIBOULITE_FPGA_CRESET 26
+#define CARIBOULITE_FPGA_SOFT_RESET 4
 
 // PINOUT AT86 - AT86RF215
 #define CARIBOULITE_MODEM_SPI_CHANNEL 1
@@ -34,7 +35,7 @@ extern "C" {
 // SYSTEM DEFINITIONS & CONFIGURATIONS
 //=======================================================================================
 #define CARIBOULITE_CONFIG_DEFAULT(a)                                   \
-                cariboulite_st(a)={                                     \
+                sys_st(a)={                                     		\
                     .board_info = {0},                                  \
                     .spi_dev =                                          \
                     {                                                   \
@@ -51,20 +52,19 @@ extern "C" {
                     {                                                   \
                         .initialized = 0,                               \
                     },                                                  \
-                    .ice40 =                                            \
-                    {                                                   \
-                        .cs_pin = CARIBOULITE_FPGA_SS,                  \
-                        .cdone_pin = CARIBOULITE_FPGA_CDONE,            \
-                        .reset_pin = CARIBOULITE_FPGA_CRESET,           \
-                        .verbose = 1,                                   \
-                        .initialized = 0,                               \
-                    },                                                  \
                     .fpga =                                             \
                     {                                                   \
                         .reset_pin = CARIBOULITE_FPGA_CRESET,           \
+						.soft_reset_pin = CARIBOULITE_FPGA_SOFT_RESET,	\
                         .cs_pin = CARIBOULITE_FPGA_SS,                  \
                         .spi_dev = CARIBOULITE_SPI_DEV,                 \
                         .spi_channel = CARIBOULITE_FPGA_SPI_CHANNEL,    \
+                        .prog_dev = 									\
+						{												\
+							.cs_pin = CARIBOULITE_FPGA_SS,				\
+							.cdone_pin = CARIBOULITE_FPGA_CDONE,		\
+							.reset_pin = CARIBOULITE_FPGA_CRESET,		\
+						},												\
                         .initialized = 0,                               \
                     },                                                  \
                     .modem =                                            \
@@ -85,7 +85,7 @@ extern "C" {
                         .initialized = 0,                               \
                     },                                                  \
                     .reset_fpga_on_startup = 1,                         \
-					.system_status = cariboulite_sys_status_unintialized,\
+					.system_status = sys_status_unintialized,			\
                 }
 
 #ifdef __cplusplus

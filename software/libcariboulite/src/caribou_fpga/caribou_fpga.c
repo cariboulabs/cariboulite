@@ -115,10 +115,10 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
     ZF_LOGI("configuring reset and irq pins");
 	// Configure GPIO pins
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
-	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
-
+	io_utils_setup_gpio(dev->soft_reset_pin, io_utils_dir_output, io_utils_pull_up);
+	
 	// set to known state
-	//io_utils_write_gpio(dev->reset_pin, 1);
+	io_utils_write_gpio(dev->soft_reset_pin, 1);
 
     ZF_LOGI("Initializing io_utils_spi");
     io_utils_hard_spi_st hard_dev_fpga = {  .spi_dev_id = dev->spi_dev,
@@ -127,15 +127,6 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
                         						io_utils_spi_chip_type_fpga_comm,
                                                 &hard_dev_fpga);
 
-    if (io_utils_setup_interrupt(dev->irq_pin, caribou_fpga_interrupt_handler, dev) < 0)
-    {
-        ZF_LOGE("interrupt registration for irq_pin (%d) failed", dev->irq_pin);
-        io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
-        io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
-        io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
-        return -1;
-    }
-	
 	// Init FPGA programming
     if (caribou_prog_init(&dev->prog_dev, dev->io_spi) < 0)
     {
@@ -241,15 +232,10 @@ int caribou_fpga_close(caribou_fpga_st* dev)
 int caribou_fpga_soft_reset(caribou_fpga_st* dev)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_soft_reset");
-    caribou_fpga_opcode_st oc =
-    {
-        .rw  = caribou_fpga_rw_write,
-        .mid = caribou_fpga_mid_sys_ctrl,
-        .ioc = IOC_SYS_CTRL_SYS_SOFT_RST
-    };
 
-    uint8_t res = 0;
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &res);
+	io_utils_write_gpio_with_wait(dev->soft_reset_pin, 0, 1000);
+	io_utils_write_gpio_with_wait(dev->soft_reset_pin, 1, 1000);
+	return 0;
 }
 
 //--------------------------------------------------------------
@@ -304,7 +290,6 @@ int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* v
     return 0;
 }
 
-//--------------------------------------------------------------
 //--------------------------------------------------------------
 int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool dbg_fifo_pull, bool dbg_smi)
 {

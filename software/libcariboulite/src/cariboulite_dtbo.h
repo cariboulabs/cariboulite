@@ -17,15 +17,15 @@ extern "C" {
 
 /*
  * Time tagging of the module through the 'struct tm' structure 
- *     Date: 2022-11-21
- *     Time: 23:30:06
+ *     Date: 2022-12-12
+ *     Time: 14:33:16
  */
 struct tm cariboulite_dtbo_date_time = {
-   .tm_sec = 6,
-   .tm_min = 30,
-   .tm_hour = 23,
-   .tm_mday = 21,
-   .tm_mon = 10,   /* +1    */
+   .tm_sec = 16,
+   .tm_min = 33,
+   .tm_hour = 14,
+   .tm_mday = 12,
+   .tm_mon = 11,   /* +1    */
    .tm_year = 122,  /* +1900 */
 };
 

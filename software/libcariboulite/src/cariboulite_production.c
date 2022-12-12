@@ -101,7 +101,7 @@ typedef enum
 
 //================================================================
 // TEST FUNCTIONS
-static int cariboulite_test_hat_parameters(void* context, void* test_context);		
+static int cariboulite_test_parameters(void* context, void* test_context);		
 static int cariboulite_test_hat_eeprom(void* context, void* test_context);		
 static int cariboulite_test_fpga_programming(void* context, void* test_context);
 static int cariboulite_test_fpga_communication(void* context, void* test_context);
@@ -131,35 +131,35 @@ static int cariboulite_test_rf_tx_power(void* context, void* test_context);
 // TEST DEFINITIONS
 production_test_st tests[] = 
 {
-	{.test_name = "parameters", 				.group = 0, 	.test_number = cariboulite_test_en_rpi_params, 				.func = cariboulite_test_hat_parameters,		},
-	{.test_name = "hat eeprom", 				.group = 0, 	.test_number = cariboulite_test_en_rpi_id_eeprom, 			.func = cariboulite_test_hat_eeprom,			},
-	{.test_name = "fpga programming", 			.group = 1, 	.test_number = cariboulite_test_en_fpga_programming, 		.func = cariboulite_test_fpga_programming,		},
-	{.test_name = "fpga communication", 		.group = 1, 	.test_number = cariboulite_test_en_fpga_communication, 		.func = cariboulite_test_fpga_communication,	},
-	{.test_name = "fpga communication", 		.group = 1, 	.test_number = cariboulite_test_en_fpga_id_resistors, 		.func = cariboulite_test_fpga_id_resistors,		},
-	{.test_name = "fpga soft reset", 			.group = 1, 	.test_number = cariboulite_test_en_fpga_reset, 				.func = cariboulite_test_fpga_soft_reset,		},
-	{.test_name = "fpga pmod", 					.group = 1, 	.test_number = cariboulite_test_en_fpga_pmod, 				.func = cariboulite_test_fpga_pmod,				},
-	{.test_name = "fpga switch", 				.group = 1, 	.test_number = cariboulite_test_en_fpga_switch, 			.func = cariboulite_test_fpga_switch,			},
-	{.test_name = "fpga leds", 					.group = 1, 	.test_number = cariboulite_test_en_fpga_leds, 				.func = cariboulite_test_fpga_leds,				},
-	{.test_name = "fpga smi", 					.group = 1, 	.test_number = cariboulite_test_en_fpga_smi, 				.func = cariboulite_test_fpga_smi,				},
-	{.test_name = "mixer reset", 				.group = 2, 	.test_number = cariboulite_test_en_mixer_reset, 			.func = cariboulite_test_mixer_reset,			},
-	{.test_name = "mixer communication", 		.group = 2, 	.test_number = cariboulite_test_en_mixer_communication, 	.func = cariboulite_test_mixer_communication,	},
-	{.test_name = "mixer version id", 			.group = 2, 	.test_number = cariboulite_test_en_mixer_versions, 			.func = cariboulite_test_mixer_versions,		},
-	{.test_name = "modem reset", 				.group = 3, 	.test_number = cariboulite_test_en_modem_reset, 			.func = cariboulite_test_modem_reset,			},
-	{.test_name = "modem communication", 		.group = 3, 	.test_number = cariboulite_test_en_modem_communication, 	.func = cariboulite_test_modem_communication,	},
-	{.test_name = "modem version", 				.group = 3, 	.test_number = cariboulite_test_en_modem_versions, 			.func = cariboulite_test_modem_version,			},
-	{.test_name = "modem leds", 				.group = 3, 	.test_number = cariboulite_test_en_modem_leds, 				.func = cariboulite_test_modem_leds,			},	
-	{.test_name = "modem interrupt", 			.group = 3, 	.test_number = cariboulite_test_en_modem_interrupt, 		.func = cariboulite_test_modem_interrupt,		},
-	{.test_name = "current system", 			.group = 4, 	.test_number = cariboulite_test_en_current_system, 			.func = cariboulite_test_current_system,		},
-	{.test_name = "current modem rx", 			.group = 4, 	.test_number = cariboulite_test_en_current_modem_rx, 		.func = cariboulite_test_current_modem_rx,		},
-	{.test_name = "current modem tx", 			.group = 4, 	.test_number = cariboulite_test_en_current_modem_tx, 		.func = cariboulite_test_current_modem_tx,		},
-	{.test_name = "current mixer", 				.group = 4, 	.test_number = cariboulite_test_en_current_mixer, 			.func = cariboulite_test_current_mixer,			},
-	{.test_name = "system smi data", 			.group = 5, 	.test_number = cariboulite_test_en_system_smi_data, 		.func = cariboulite_test_smi_data,				},
-	{.test_name = "system rf loopback",			.group = 5, 	.test_number = cariboulite_test_en_system_rf_loopback, 		.func = cariboulite_test_rf_loopback,			},
-	{.test_name = "system rf tx power",			.group = 5, 	.test_number = cariboulite_test_en_system_rf_tx_power, 		.func = cariboulite_test_rf_tx_power,			},
+	{.test_name = "parameters", 				.group = 0, 	.test_number = cariboulite_test_en_rpi_params, 				.func = cariboulite_test_parameters,			},
+	{.test_name = "hat_eeprom", 				.group = 0, 	.test_number = cariboulite_test_en_rpi_id_eeprom, 			.func = cariboulite_test_hat_eeprom,			},
+	{.test_name = "fpga_programming", 			.group = 1, 	.test_number = cariboulite_test_en_fpga_programming, 		.func = cariboulite_test_fpga_programming,		},
+	{.test_name = "fpga_communication", 		.group = 1, 	.test_number = cariboulite_test_en_fpga_communication, 		.func = cariboulite_test_fpga_communication,	},
+	{.test_name = "fpga_id_resistors", 			.group = 1, 	.test_number = cariboulite_test_en_fpga_id_resistors, 		.func = cariboulite_test_fpga_id_resistors,		},
+	{.test_name = "fpga_soft_reset", 			.group = 1, 	.test_number = cariboulite_test_en_fpga_reset, 				.func = cariboulite_test_fpga_soft_reset,		},
+	{.test_name = "fpga_pmod", 					.group = 1, 	.test_number = cariboulite_test_en_fpga_pmod, 				.func = cariboulite_test_fpga_pmod,				},
+	{.test_name = "fpga_switch", 				.group = 1, 	.test_number = cariboulite_test_en_fpga_switch, 			.func = cariboulite_test_fpga_switch,			},
+	{.test_name = "fpga_leds", 					.group = 1, 	.test_number = cariboulite_test_en_fpga_leds, 				.func = cariboulite_test_fpga_leds,				},
+	{.test_name = "fpga_smi", 					.group = 1, 	.test_number = cariboulite_test_en_fpga_smi, 				.func = cariboulite_test_fpga_smi,				},
+	{.test_name = "mixer_reset", 				.group = 2, 	.test_number = cariboulite_test_en_mixer_reset, 			.func = cariboulite_test_mixer_reset,			},
+	{.test_name = "mixer_communication", 		.group = 2, 	.test_number = cariboulite_test_en_mixer_communication, 	.func = cariboulite_test_mixer_communication,	},
+	{.test_name = "mixer_version_id", 			.group = 2, 	.test_number = cariboulite_test_en_mixer_versions, 			.func = cariboulite_test_mixer_versions,		},
+	{.test_name = "modem_reset", 				.group = 3, 	.test_number = cariboulite_test_en_modem_reset, 			.func = cariboulite_test_modem_reset,			},
+	{.test_name = "modem_communication", 		.group = 3, 	.test_number = cariboulite_test_en_modem_communication, 	.func = cariboulite_test_modem_communication,	},
+	{.test_name = "modem_version", 				.group = 3, 	.test_number = cariboulite_test_en_modem_versions, 			.func = cariboulite_test_modem_version,			},
+	{.test_name = "modem_leds", 				.group = 3, 	.test_number = cariboulite_test_en_modem_leds, 				.func = cariboulite_test_modem_leds,			},	
+	{.test_name = "modem_interrupt", 			.group = 3, 	.test_number = cariboulite_test_en_modem_interrupt, 		.func = cariboulite_test_modem_interrupt,		},
+	{.test_name = "current_system", 			.group = 4, 	.test_number = cariboulite_test_en_current_system, 			.func = cariboulite_test_current_system,		},
+	{.test_name = "current_modem rx", 			.group = 4, 	.test_number = cariboulite_test_en_current_modem_rx, 		.func = cariboulite_test_current_modem_rx,		},
+	{.test_name = "current_modem tx", 			.group = 4, 	.test_number = cariboulite_test_en_current_modem_tx, 		.func = cariboulite_test_current_modem_tx,		},
+	{.test_name = "current_mixer", 				.group = 4, 	.test_number = cariboulite_test_en_current_mixer, 			.func = cariboulite_test_current_mixer,			},
+	{.test_name = "system_smi_data", 			.group = 5, 	.test_number = cariboulite_test_en_system_smi_data, 		.func = cariboulite_test_smi_data,				},
+	{.test_name = "system_rf_loopback",			.group = 5, 	.test_number = cariboulite_test_en_system_rf_loopback, 		.func = cariboulite_test_rf_loopback,			},
+	{.test_name = "system_rf_tx_power",			.group = 5, 	.test_number = cariboulite_test_en_system_rf_tx_power, 		.func = cariboulite_test_rf_tx_power,			},
 };
 
 //=================================================
-int cariboulite_test_hat_parameters(void *context, void* test_context)
+int cariboulite_test_parameters(void *context, void* test_context)
 {
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* tests = (production_sequence_st*)test_context;
@@ -413,7 +413,7 @@ void hat_powermon_event(void* context, hat_powermon_state_st* state)
 }
 
 //=================================================
-int cariboulite_production_init(cariboulite_production_sequence_st* prod)
+int cariboulite_production_init(void)
 {
 	production_utils_rpi_leds_init(1);
 	production_utils_rpi_leds_blink_start_tests();
@@ -436,24 +436,6 @@ int cariboulite_production_init(cariboulite_production_sequence_st* prod)
 
 	// init the power-monitor
 	return hat_powermon_init(&prod->powermon, HAT_POWER_MON_ADDRESS, hat_powermon_event, prod);
-}
-
-//=================================================
-int cariboulite_production_close(cariboulite_production_sequence_st* prod)
-{
-
-}
-
-//=================================================
-int cariboulite_production_start_tests(cariboulite_production_sequence_st* prod)
-{
-
-}
-
-//=================================================
-int cariboulite_production_generate_report(cariboulite_production_sequence_st* prod, char* path)
-{
-
 }
 
 //=================================================

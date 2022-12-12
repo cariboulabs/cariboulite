@@ -6,7 +6,8 @@
 `include "complex_fifo.v"
 
 module top(	input i_glob_clock,
-
+			input i_rst_b,
+			
 			// RF FRONT-END PATH
 			output o_rx_h_tx_l,
 			output o_rx_h_tx_l_b,
@@ -41,8 +42,33 @@ module top(	input i_glob_clock,
 			output o_led0,
 			output o_led1,
 
-			// SMI TO RPI
-			input i_smi_a1,
+			// SMI Addressing description
+			// ==========================
+			// In CaribouLite, the SMI addresses are connected as follows:
+			//
+			//		RPI PIN			| 	FPGA TOP-LEVEL SIGNAL
+			//		------------------------------------------------------------------------
+			//		GPIO2_SA3		| 	i_smi_a[2] - RX09 / RX24 channel select
+			//		GPIO3_SA2		| 	i_smi_a[1] - Tx SMI (0) / Rx SMI (1) select
+			//		GPIO4_SA1		| 	i_smi_a[0] - used as a sys async reset (GBIN1)
+			//		GPIO5_SA0		| 	Not connected to FPGA (MixerRst)
+			//
+			// In order to perform SMI data bus direction selection (highZ / PushPull)
+			// signal a[0] was chosen, while the '0' level (default) denotes RPI => FPGA
+			// direction, and the DATA bus is highZ (recessive mode).
+			// The signal a[2] selects the RX source (900 MHZ or 2.4GHz)
+			// The signal a[1] can be used in the future for other purposes
+			//
+			// Description	|	a[2]	|	   a[1]		|	
+			// -------------|-----------|---------------|
+			// 				|	  0		|	   0		|		
+			// 		TX		|-----------| RPI => FPGA   |
+			// 				|	  1		| Data HighZ	|		
+			// -------------|-----------|---------------|
+			// 		RX09	|	  0		|	   1		|	
+			// -------------|-----------| FPGA => RPI	|	
+			// 		RX24	|	  1		| Data PushPull	|		
+			// -------------|-----------|---------------|	
 			input i_smi_a2,
 			input i_smi_a3,
 
@@ -71,20 +97,10 @@ module top(	input i_glob_clock,
 	wire [3:0]  w_cs;
 	wire        w_fetch;
 	wire        w_load;
-	reg         r_reset;
-	wire        w_soft_reset;
 
 	wire [7:0]  w_tx_data_sys;
 	wire [7:0]  w_tx_data_io;
 	wire [7:0]  w_tx_data_smi;
-
-	//=========================================================================
-	// INITIAL STATE
-	//=========================================================================
-	initial begin
-		r_counter = 1'b0;
-		r_reset = 1'b1;
-	end
 
 	//=========================================================================
 	// INSTANCES
@@ -93,7 +109,7 @@ module top(	input i_glob_clock,
 	// SPI
 	spi_if spi_if_ins
 	(
-		.i_rst_b (w_soft_reset),
+		.i_rst_b (i_rst_b),
 		.i_sys_clk (w_clock_sys),
 		.o_ioc (w_ioc),
 		.o_data_in (w_rx_data),
@@ -115,7 +131,7 @@ module top(	input i_glob_clock,
 	// SYSTEM CTRL
 	sys_ctrl sys_ctrl_ins
 	(
-		.i_rst_b (r_reset),
+		.i_rst_b (i_rst_b),
 		.i_sys_clk (w_clock_sys),
 		.i_ioc (w_ioc),
 		.i_data_in (w_rx_data),
@@ -123,7 +139,6 @@ module top(	input i_glob_clock,
 		.i_cs (w_cs[0]),
 		.i_fetch_cmd (w_fetch),
 		.i_load_cmd (w_load),
-		.o_soft_reset (w_soft_reset),
 
 		.i_error_list ({o_address_error, 7'b0000000}),
 		.o_debug_fifo_push (w_debug_fifo_push),
@@ -138,7 +153,7 @@ module top(	input i_glob_clock,
 	// IO CTRL
 	io_ctrl io_ctrl_ins
 	(
-		.i_rst_b (w_soft_reset),
+		.i_rst_b (i_rst_b),
 		.i_sys_clk (w_clock_sys),
 		.i_ioc (w_ioc),
 		.i_data_in (w_rx_data),
@@ -173,15 +188,19 @@ module top(	input i_glob_clock,
 
 	always @(posedge i_glob_clock)
 	begin
-		r_counter <= !r_counter;
+		if (i_rst_b == 1'b0) begin
+            r_counter <= 1'b0;
+        end else begin
+			r_counter <= !r_counter;
 
-		case (w_cs)
-			4'b0001: r_tx_data <= w_tx_data_sys;
-			4'b0010: r_tx_data <= w_tx_data_io;
-			4'b0100: r_tx_data <= w_tx_data_smi;
-			4'b1000: r_tx_data <= 8'b10100101;  // 0xA5: reserved
-			4'b0000: r_tx_data <= 8'b00000000;  // no module selected
-		endcase
+			case (w_cs)
+				4'b0001: r_tx_data <= w_tx_data_sys;
+				4'b0010: r_tx_data <= w_tx_data_io;
+				4'b0100: r_tx_data <= w_tx_data_smi;
+				4'b1000: r_tx_data <= 8'b10100101;  // 0xA5: reserved
+				4'b0000: r_tx_data <= 8'b00000000;  // no module selected
+			endcase
+		end
 	end
 
 	//=========================================================================
@@ -250,7 +269,7 @@ module top(	input i_glob_clock,
 
 	lvds_rx lvds_rx_09_inst
 	(
-		.i_rst_b (w_soft_reset),
+		.i_rst_b (i_rst_b),
 		.i_ddr_clk (lvds_clock_buf),
 
 		.i_ddr_data ({w_lvds_rx_09_d1, w_lvds_rx_09_d0}),
@@ -268,7 +287,7 @@ module top(	input i_glob_clock,
 
 	lvds_rx lvds_rx_24_inst
 	(
-		.i_rst_b (w_soft_reset),
+		.i_rst_b (i_rst_b),
 		.i_ddr_clk (lvds_clock_buf),
 
 		.i_ddr_data ({!w_lvds_rx_24_d1, !w_lvds_rx_24_d0}),
@@ -285,11 +304,11 @@ module top(	input i_glob_clock,
 	);
 
 	complex_fifo rx_09_fifo(
-		.wr_rst_b_i (w_soft_reset),
+		.wr_rst_b_i (i_rst_b),
 		.wr_clk_i (w_rx_09_fifo_write_clk),
 		.wr_en_i (w_rx_09_fifo_push),
 		.wr_data_i (w_rx_09_fifo_data),
-		.rd_rst_b_i (w_soft_reset),
+		.rd_rst_b_i (i_rst_b),
 		.rd_clk_i (w_clock_sys),
 		.rd_en_i (w_rx_09_fifo_pull),
 		.rd_data_o (w_rx_09_fifo_pulled_data),
@@ -300,11 +319,11 @@ module top(	input i_glob_clock,
 	);
 
 	complex_fifo rx_24_fifo(
-		.wr_rst_b_i (w_soft_reset),
+		.wr_rst_b_i (i_rst_b),
 		.wr_clk_i (w_rx_24_fifo_write_clk),
 		.wr_en_i (w_rx_24_fifo_push),
 		.wr_data_i (w_rx_24_fifo_data),
-		.rd_rst_b_i (w_soft_reset),
+		.rd_rst_b_i (i_rst_b),
 		.rd_clk_i (w_clock_sys),
 		.rd_en_i (w_rx_24_fifo_pull),
 		.rd_data_o (w_rx_24_fifo_pulled_data),
@@ -316,7 +335,7 @@ module top(	input i_glob_clock,
 
 	smi_ctrl smi_ctrl_ins
 	(
-		.i_rst_b (w_soft_reset),
+		.i_rst_b (i_rst_b),
 		.i_sys_clk (w_clock_sys),
 		.i_fast_clk (i_glob_clock),
 		.i_ioc (w_ioc),
