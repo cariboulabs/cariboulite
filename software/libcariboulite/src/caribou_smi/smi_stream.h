@@ -8,6 +8,8 @@ extern "C" {
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "kernel/bcm2835_smi.h"
+#include "kernel/smi_stream_dev.h"
 
 typedef enum
 {
@@ -18,31 +20,29 @@ typedef enum
 	smi_stream_error = 4,
 } smi_stream_event_type_en;
 
-typedef enum
-{
-	smi_stream_dir_rx = 0,
-	smi_stream_dir_tx = 1,
-} smi_stream_direction_en;
+typedef void (*smi_stream_rx_data_callback)(smi_stream_channel_en channel,
+											uint8_t* data,
+											size_t data_length,
+											void* context);
+											
+typedef size_t (*smi_stream_tx_data_callback)(	uint8_t* data,
+												size_t* data_length,
+												void* context);
 
-typedef void (*smi_stream_data_callback)(int stream_addr,
-										smi_stream_direction_en dir,
-										uint8_t* data,
-										size_t data_length,
-										void* context);
-
-typedef void (*smi_stream_event_callback)(	int stream_addr,
+typedef void (*smi_stream_event_callback)(	smi_stream_channel_en channel,
 											smi_stream_event_type_en event,
 											void* metadata,
 											void* context);
 
 typedef struct
 {
-    int stream_addr;     				// stream SMI address (5-bits) 0..31
-	smi_stream_data_callback data_cb;  	// data callback for this stream (read and write)
-	smi_stream_event_callback event_cb; // event callback for the stream
-	void* context;                   	// the pointer to the owning
-	int filedesc;						// smi device file descriptor
-	bool initialized;					// is this stream initialized
+    smi_stream_channel_en channel;			// stream SMI channel - 900 / 2400 - finally translated to smi address
+	smi_stream_rx_data_callback rx_data_cb; // data callback for this stream's received data
+	smi_stream_tx_data_callback tx_data_cb; // data callback for this stream's transmitted data
+	smi_stream_event_callback event_cb; 	// event callback for the stream
+	void* context;                   		// the pointer to the owning
+	int filedesc;							// smi device file descriptor
+	bool initialized;						// is this stream initialized
 	
 	// Buffers
 	size_t buffer_length;
@@ -69,8 +69,9 @@ typedef struct
 
 int smi_stream_init(smi_stream_st* st,
 					int filedesc,
-					int stream_addr,
-					smi_stream_data_callback data_cb,
+					smi_stream_channel_en channel,
+					smi_stream_rx_data_callback rx_data_cb,
+					smi_stream_tx_data_callback tx_data_cb,
 					smi_stream_event_callback event_cb,
 					void* context);
 								
@@ -81,7 +82,7 @@ int smi_stream_read_buffer_info(smi_stream_st* st,
 								int* num_buffers);
 											
 int smi_stream_set_state(smi_stream_st* dev, int run);
-
+void smi_stream_get_datarate(smi_stream_st* dev, float *tx_mbps, float *rx_mbps);
 
 #ifdef __cplusplus
 }

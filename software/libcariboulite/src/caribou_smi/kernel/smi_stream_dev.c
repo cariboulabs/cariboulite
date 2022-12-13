@@ -120,20 +120,22 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 }
 
 /***************************************************************************/
-static void set_address_direction(smi_stream_direction_en)
+static void set_address_direction(smi_stream_direction_en dir)
 {
+	uint32_t t = (uint32_t)dir;
 	inst->cur_address &= ~(1<<ADDR_DIR_OFFSET);
-	inst->cur_address 
-	bcm2835_smi_get_address(inst->smi_inst, &cur_addr);
-	
+	inst->cur_address |= t<<ADDR_DIR_OFFSET;
+	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 }
 
 /***************************************************************************/
-static void set_address_channel(smi_stream_direction_en)
+static void set_address_channel(smi_stream_channel_en ch)
 {
-	
+	uint32_t t = (uint32_t)ch;
+	inst->cur_address &= ~(1<<ADDR_CH_OFFSET);
+	inst->cur_address |= t<<ADDR_CH_OFFSET;
+	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 }
-
 
 #define BUSY_WAIT_WHILE_TIMEOUT(C,T,R) 			{int t = (T); while ((C) && t>0){t--;} (R)=t>0;}
 
@@ -167,7 +169,7 @@ static inline int smi_enabled(struct bcm2835_smi_instance *inst)
 }
 
 /***************************************************************************/
-static int smi_disable(struct bcm2835_smi_instance *inst, enum dma_transfer_direction direction)
+/*static int smi_disable(struct bcm2835_smi_instance *inst, enum dma_transfer_direction direction)
 {
 	// put smi in power save state while maintaining read/write capability from registers
 	int smics_temp = read_smi_reg(inst, SMICS) & ~SMICS_ENABLE;
@@ -192,7 +194,7 @@ static int smi_disable(struct bcm2835_smi_instance *inst, enum dma_transfer_dire
 	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(inst), 10000, success);
 	if (!success) return -1;
 	return 0;
-}
+}*/
 
 /***************************************************************************/
 static int smi_init_programmed_read(struct bcm2835_smi_instance *inst, int num_transfers)
@@ -225,7 +227,7 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *inst, int num_t
 	{
 		return -1;
 	}
-
+	set_address_direction(smi_stream_dir_device_to_smi);
 	write_smi_reg(inst, smics_temp, SMICS);
 	smics_temp |= SMICS_START;
 	write_smi_reg(inst, smics_temp, SMICS);
@@ -252,6 +254,7 @@ static int smi_init_programmed_write(struct bcm2835_smi_instance *inst, int num_
 	write_smi_reg(inst, num_transfers, SMIL);
 
 	/* setup, re-enable and start: */
+	set_address_direction(smi_stream_dir_smi_to_device);
 	smics_temp |= SMICS_WRITE | SMICS_ENABLE;
 	write_smi_reg(inst, smics_temp, SMICS);
 	smics_temp |= SMICS_START;
@@ -310,6 +313,13 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 		bcm2835_smi_set_address(inst->smi_inst, arg);
 		break;
 	}
+	//-------------------------------
+	case SMI_STREAM_IOC_SET_STREAM_IN_CHANNEL:
+	{
+		dev_info(inst->dev, "SMI channel: 0x%02x", (int)arg);
+		set_address_channel((smi_stream_channel_en)arg);
+		break;
+	}	
 	//-------------------------------
 	case SMI_STREAM_IOC_GET_NATIVE_BUF_SIZE:
 	{

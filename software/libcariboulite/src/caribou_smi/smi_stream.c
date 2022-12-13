@@ -4,23 +4,14 @@
 
 #define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
 #define ZF_LOG_TAG "SMI_STREAM"
+#include "zf_log/zf_log.h"
 
 #define _GNU_SOURCE
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-	#include "kernel/bcm2835_smi.h"
-#ifdef __cplusplus
-}
-#endif
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/time.h>
-
-#include "zf_log/zf_log.h"
 
 #include "utils.h"
 #include "smi_stream.h"
@@ -185,14 +176,15 @@ static void* smi_stream_reader_thread(void* arg)
     // ****************************************	
     while (st->active)
     {
-        pthread_mutex_lock(&st->reader_lock);
+        //pthread_mutex_lock(&st->reader_lock);
         if (!st->active) break;
 		
 		int ret = smi_stream_timeout_read(st, st->smi_read_point, st->buffer_length, 200);
         if (ret < 0)
         {
             if (st->event_cb) dev->event_cb(st->stream_addr, smi_stream_error, NULL, st->context);
-            break;
+			continue;
+            //break;
         }
         else if (ret == 0)  // timeout
         {
@@ -203,7 +195,7 @@ static void* smi_stream_reader_thread(void* arg)
 		smi_stream_swap_buffers(st, smi_stream_dir_rx);
 		
 		// Notify app
-		if (st->data_cb) st->data_cb(st->stream_addr, smi_stream_dir_rx, st->app_read_point, ret, st->context);
+		if (st->rx_data_cb) st->rx_data_cb(st->stream_addr, st->app_read_point, ret, st->context);
 		
 		// Performance
 		st->rx_bitrate_mbps = smi_calculate_performance(ret, &current_time, st->rx_bitrate_mbps);
@@ -216,7 +208,8 @@ static void* smi_stream_reader_thread(void* arg)
 //=========================================================================
 static void* smi_stream_writer_thread(void* arg)
 {
-smi_stream_st* st = (smi_stream_st*)arg;
+	smi_stream_st* st = (smi_stream_st*)arg;
+	size_t data_len_to_write = 0;
     pthread_t tid = pthread_self();
 	smi_utils_set_realtime_priority(2);
 	
@@ -230,28 +223,39 @@ smi_stream_st* st = (smi_stream_st*)arg;
     // ****************************************	
     while (st->active)
     {
-        pthread_mutex_lock(&st->writer_lock);
+        //pthread_mutex_lock(&st->writer_lock);
         if (!st->active) break;
+		
+		// Notify app
+		if (st->tx_data_cb) 
+		{
+			data_len_to_write = st->txdata_cb(st->app_write_point, ret, st->context);
+		}
+		
+		// check if there is something to write
+		if (data_len_to_write == 0)
+		{
+			io_utils_usleep(10000);
+			continue;
+		}
 		
 		int ret = smi_stream_timeout_write(st, st->smi_write_point, st->buffer_length, 200);
         if (ret < 0)
         {
             if (st->event_cb) dev->event_cb(st->stream_addr, smi_stream_error, NULL, st->context);
-            break;
+			continue;
+            //break;
         }
         else if (ret == 0)  // timeout
         {
             continue;
         }
 		
-		// Swap the buffers
-		smi_stream_swap_buffers(st, smi_stream_dir_tx);
-		
-		// Notify app
-		if (st->data_cb) st->data_cb(st->stream_addr, smi_stream_dir_tx, st->app_read_point, ret, st->context);
-		
 		// Performance
 		st->tx_bitrate_mbps = smi_calculate_performance(ret, &current_time, st->tx_bitrate_mbps);
+		
+		// Swap the buffers
+		smi_stream_swap_buffers(st, smi_stream_dir_tx);
     }
 
     ZF_LOGD("Leaving SMI writer thread id %lu", tid);
@@ -261,10 +265,11 @@ smi_stream_st* st = (smi_stream_st*)arg;
 //=========================================================================
 int smi_stream_init(smi_stream_st* st,
 					int filedesc,
-					int stream_addr,
-					smi_stream_data_callback data_cb,
+					smi_stream_channel_en channel,
+					smi_stream_rx_data_callback rx_data_cb,
+					smi_stream_tx_data_callback tx_data_cb,
 					smi_stream_event_callback event_cb,
-					void* context)
+					void* context)								
 {
 	ZF_LOGI("Initializing smi stream address (%d) from filedesc (%d)", stream_addr, filedesc);
 	
@@ -280,7 +285,8 @@ int smi_stream_init(smi_stream_st* st,
 	
 	// App data
 	st->stream_addr = stream_addr;
-	st->data_cb = data_cb;
+	st->rx_data_cb = rx_data_cb;
+	st->tx_data_cb = tx_data_cb;
 	st->event_cb = event_cb;
 	st->context = context;
 	st->filedesc = filedesc;
@@ -375,4 +381,11 @@ int smi_stream_release(smi_stream_st* st)
 	
 	st->initialized = false;
 	return 0;
+}
+
+//=========================================================================
+void smi_stream_get_datarate(smi_stream_st* dev, float *tx_mbps, float *rx_mbps)
+{
+	if (tx_mbps) *tx_mbps = dev->st->tx_bitrate_mbps;
+	if (rx_mbps) *rx_mbps = dev->st->rx_bitrate_mbps;
 }
