@@ -1,57 +1,23 @@
 #ifndef ZF_LOG_LEVEL
     #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 #endif
-
 #define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
 #define ZF_LOG_TAG "CARIBOU_SMI"
+#include "zf_log/zf_log.h"
 
 #define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sched.h>
-#include <pthread.h>
-#include <string.h>
-#include <fcntl.h>
-#include <stdint.h>
-#include <time.h>
-#include <errno.h>
-#include <aio.h>
-#include <signal.h>
 
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/select.h>
-#include <sys/time.h>
-
-#include "zf_log/zf_log.h"
 #include "caribou_smi.h"
+#include "smi_stream.h"
 #include "utils.h"
 #include "io_utils/io_utils.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-    #include "kernel/smi_stream_dev.h"
-	#include "kernel/bcm2835_smi.h"
-#ifdef __cplusplus
-}
-#endif
-
-
-static char *error_strings[] = CARIBOU_SMI_ERROR_STRS;
-
 static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_settings *settings);
 static void caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings);
-static int caribou_smi_init_stream(caribou_smi_st* dev, caribou_smi_stream_type_en type, caribou_smi_channel_en ch);
-
-
-//=========================================================================
-char* caribou_smi_get_error_string(caribou_smi_error_en err)
-{
-    return error_strings[err];
-}
 
 //=========================================================================
 int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, void* context)
@@ -67,7 +33,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
 		ZF_LOGE("Problem reloading SMI kernel modules");
 		return -1;
 	}
-	
+
     // open the smi device file
     int fd = open(smi_file, O_RDWR | O_NONBLOCK);
     if (fd < 0)
@@ -77,13 +43,15 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
     }
     dev->filedesc = fd;
 
-	// setup the IOs
-	for (int i = 4; i <= 15; i++)
+	// Setup the bus I/Os
+	for (int i = 6; i <= 15; i++)
 	{
-		io_utils_set_gpio_mode(i, io_utils_alt_1);
+		io_utils_set_gpio_mode(i, io_utils_alt_1);  // 8xData + SWE + SOE
 	}
-	io_utils_set_gpio_mode(24, io_utils_alt_1);
-	io_utils_set_gpio_mode(25, io_utils_alt_1);
+    io_utils_set_gpio_mode(2, io_utils_alt_1);  // addr
+    io_utils_set_gpio_mode(3, io_utils_alt_1);  // addr
+	io_utils_set_gpio_mode(24, io_utils_alt_1); // rwreq
+	io_utils_set_gpio_mode(25, io_utils_alt_1); // rwreq
 
     // Retrieve the current settings
     int ret = ioctl(fd, BCM2835_SMI_IOC_GET_SETTINGS, &settings);
@@ -104,17 +72,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
         return -1;
     }
 
-    // set the address to first channel
-    ret = ioctl(fd, BCM2835_SMI_IOC_ADDRESS, caribou_smi_address_read_900);
-    if (ret != 0)
-    {
-        ZF_LOGE("failed setting smi address (idle / %d) to device", caribou_smi_address_idle);
-        close (fd);
-        return -1;
-    }
-    dev->current_address = caribou_smi_address_read_900;
-
-	// get the native batch length in bytes
+    // get the native batch length in bytes
 	ret = ioctl(fd, SMI_STREAM_IOC_GET_NATIVE_BUF_SIZE, &dev->native_batch_length_bytes);
     if (ret != 0)
     {
@@ -127,7 +85,7 @@ int caribou_smi_init(caribou_smi_st* dev, caribou_smi_error_callback error_cb, v
 
 	ZF_LOGD("Current SMI Settings:");
     caribou_smi_print_smi_settings(dev, &settings);
-	
+
 	// Debug options
 	caribou_smi_set_debug_mode(dev, false, false, false);
 
@@ -161,14 +119,14 @@ int caribou_smi_close (caribou_smi_st* dev)
 }
 
 //=========================================================================
-int caribou_smi_timeout_read(caribou_smi_st* dev, 
-                            caribou_smi_address_en source, 
-                            char* buffer, 
-                            int size_of_buf, 
+int caribou_smi_timeout_read(caribou_smi_st* dev,
+                            caribou_smi_address_en source,
+                            char* buffer,
+                            int size_of_buf,
                             int timeout_num_millisec)
 {
 	//ZF_LOGI("Requesting timeout read for %d bytes", size_of_buf);
-	
+
     // set the address
     if (source > 0 && CARIBOU_SMI_READ_ADDR(source))
     {
@@ -208,7 +166,7 @@ again:
         int error = errno;
         switch(error)
         {
-            case EBADF:         // An invalid file descriptor was given in one of the sets. 
+            case EBADF:         // An invalid file descriptor was given in one of the sets.
                                 // (Perhaps a file descriptor that was already closed, or one on which an error has occurred.)
                 ZF_LOGE("SMI filedesc select error - invalid file descriptor in one of the sets");
                 break;
@@ -240,9 +198,9 @@ again:
 }
 
 //=========================================================================
-double caribou_smi_analyze_data(uint8_t *buffer, 
-							size_t length_bytes, 
-							caribou_smi_sample_complex_int16* cmplx_vec, 
+double caribou_smi_analyze_data(uint8_t *buffer,
+							size_t length_bytes,
+							caribou_smi_sample_complex_int16* cmplx_vec,
 							caribou_smi_sample_meta* meta_vec,
 							bool smi_debug_mode, bool pull_debug_mode, bool push_debug_mode)
 {
@@ -284,7 +242,7 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 
 		if (cnt > 10)
 		{
-			printf("	[%02X, %02X, LAST:%02X] Received Debug Errors:  Curr. %d , Accum %d, FirstErr %d, BER: %.3g, BitRate[Mbps]: %.2f\n", 
+			printf("	[%02X, %02X, LAST:%02X] Received Debug Errors:  Curr. %d , Accum %d, FirstErr %d, BER: %.3g, BitRate[Mbps]: %.2f\n",
 						buffer[0], buffer[length_bytes-1], last_correct_byte,
 						error_counter_current, error_accum_counter, first_error, error_rate,
 						speed_bps_out / 1e6);
@@ -313,7 +271,7 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 				error_counter_current ++;
 			}
 		}
-		printf("	Received Debug Errors:  Curr. %d , Accum %d, First %d, BitRate[Mbps]: %.2f\n", 
+		printf("	Received Debug Errors:  Curr. %d , Accum %d, First %d, BitRate[Mbps]: %.2f\n",
 						error_counter_current, error_accum_counter, first_error, speed_bps_out / 1e6);
 
 		return speed_bps_out;
@@ -333,8 +291,8 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 		if ((s & 0xC001C000) == 0x80004000) break;
 		//if ((s & 0xC000C000) == 0x80004000) break;
 	}
-	
-	if (offs > 0) 
+
+	if (offs > 0)
 	{
 		length_bytes -= (offs/4 + 1) * 4;
 	}
@@ -354,7 +312,7 @@ double caribou_smi_analyze_data(uint8_t *buffer,
 		cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
 		s >>= 3;
 		cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
-		
+
 		if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
         if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
 	}
@@ -379,7 +337,7 @@ void* caribou_smi_analyze_thread(void* arg)
 
 	// ****************************************
 	//  MAIN LOOP
-    // ****************************************	
+    // ****************************************
     while (st->read_analysis_thread_running)
     {
         pthread_mutex_lock(&st->read_analysis_lock);
@@ -389,15 +347,15 @@ void* caribou_smi_analyze_thread(void* arg)
 		current_data_size = st->read_ret_value;
 		//if (offset != 0) current_data_size -= 4;
 
-		dev-> rx_bitrate_mbps = caribou_smi_analyze_data(st->current_app_buffer, 
-								current_data_size, 
-								st->app_cmplx_vec, 
+		dev-> rx_bitrate_mbps = caribou_smi_analyze_data(st->current_app_buffer,
+								current_data_size,
+								st->app_cmplx_vec,
 								st->app_meta_vec,
 								dev->smi_debug, dev->fifo_push_debug, dev->fifo_pull_debug);
 		dev-> rx_bitrate_mbps /= 1e6;
 
-        if (st->data_cb) st->data_cb(dev->cb_context, 
-									st->service_context, 
+        if (st->data_cb) st->data_cb(dev->cb_context,
+									st->service_context,
 									type,
 									caribou_smi_event_type_data,
 									ch,
@@ -405,7 +363,7 @@ void* caribou_smi_analyze_thread(void* arg)
                                     st->app_cmplx_vec,
                                     st->app_meta_vec,
 									st->batch_length / 4);
-        
+
 		TIMING_PERF_SYNC_TOCK;
     }
 
@@ -436,7 +394,7 @@ void* caribou_smi_thread(void *arg)
     }
     pthread_mutex_lock(&st->read_analysis_lock);
     st->read_analysis_thread_running = 1;
-    
+
     int ret = pthread_create(&st->read_analysis_thread, NULL, &caribou_smi_analyze_thread, st);
     if (ret != 0)
     {
@@ -448,16 +406,16 @@ void* caribou_smi_thread(void *arg)
     st->active = 1;
 
     // start thread notification
-    if (st->data_cb != NULL) st->data_cb(dev->cb_context, 
+    if (st->data_cb != NULL) st->data_cb(dev->cb_context,
 										st->service_context,
 										caribou_smi_stream_type_read,
-                                        caribou_smi_event_type_start, 
-										ch, 
+                                        caribou_smi_event_type_start,
+										ch,
 										0, NULL, NULL, 0);
 
     // ****************************************
 	//  MAIN LOOP
-    // ****************************************	
+    // ****************************************
     while (st->active)
     {
         if (!st->running)
@@ -487,8 +445,8 @@ void* caribou_smi_thread(void *arg)
         }
 
         st->read_ret_value = ret;
-        st->current_app_buffer = st->current_smi_buffer;   
-        pthread_mutex_unlock(&st->read_analysis_lock);      
+        st->current_app_buffer = st->current_smi_buffer;
+        pthread_mutex_unlock(&st->read_analysis_lock);
 
         st->current_smi_buffer_index ++;
         if (st->current_smi_buffer_index >= (int)(st->num_of_buffers)) st->current_smi_buffer_index = 0;
@@ -498,14 +456,14 @@ void* caribou_smi_thread(void *arg)
     }
 
     st->read_analysis_thread_running = 0;
-    pthread_mutex_unlock(&st->read_analysis_lock);  
+    pthread_mutex_unlock(&st->read_analysis_lock);
     pthread_join(st->read_analysis_thread, NULL);   // check if cancel is needed
     pthread_mutex_destroy(&st->read_analysis_lock);
 
     // exit thread notification
     if (st->data_cb != NULL) st->data_cb(dev->cb_context, st->service_context,
-										caribou_smi_stream_type_read, 
-                                        caribou_smi_event_type_end, 
+										caribou_smi_stream_type_read,
+                                        caribou_smi_event_type_end,
 										(caribou_smi_channel_en)(st->stream_id>>1),
                                         0, NULL, NULL, 0);
 
@@ -557,7 +515,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
     }
 
 	// Allocate the complex vector and metadata vector
-	st->app_cmplx_vec = 
+	st->app_cmplx_vec =
 		(caribou_smi_sample_complex_int16*)malloc(sizeof(caribou_smi_sample_complex_int16) * st->batch_length / 4);
 	if (st->app_cmplx_vec == NULL)
 	{
@@ -566,7 +524,7 @@ int caribou_smi_setup_stream(caribou_smi_st* dev,
         return -1;
 	}
 
-	st->app_meta_vec = 
+	st->app_meta_vec =
 				(caribou_smi_sample_meta*)malloc(sizeof(caribou_smi_sample_meta) * st->batch_length / 4);
 	if (st->app_meta_vec == NULL)
 	{
@@ -672,7 +630,7 @@ int caribou_smi_destroy_stream(caribou_smi_st* dev, int id)
     ts.tv_sec += 2;
 
     s = pthread_timedjoin_np(dev->streams[id].stream_thread, NULL, &ts);
-    if (s != 0) 
+    if (s != 0)
     {
         ZF_LOGE("pthread timed_joid returned with error %d, timeout = %d", s, ETIMEDOUT);
         pthread_cancel(dev->streams[id].stream_thread);

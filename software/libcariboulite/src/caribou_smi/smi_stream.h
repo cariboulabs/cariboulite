@@ -24,7 +24,7 @@ typedef void (*smi_stream_rx_data_callback)(smi_stream_channel_en channel,
 											uint8_t* data,
 											size_t data_length,
 											void* context);
-											
+
 typedef size_t (*smi_stream_tx_data_callback)(	uint8_t* data,
 												size_t* data_length,
 												void* context);
@@ -43,21 +43,21 @@ typedef struct
 	void* context;                   		// the pointer to the owning
 	int filedesc;							// smi device file descriptor
 	bool initialized;						// is this stream initialized
-	
+
 	// Buffers
 	size_t buffer_length;
 	uint8_t *smi_read_buffers[2];
     uint8_t *smi_read_point;        	// the buffer that is currently in the SMI DMA
     uint8_t *app_read_point;        	// the buffer that is currently analyzed / written by the application callback
-	
+
 	uint8_t *smi_write_buffers[2];
 	uint8_t *smi_write_point;        	// the buffer that is currently in the SMI DMA
     uint8_t *app_write_point;        	// the buffer that is currently analyzed / written by the application callback
-	
+
 	// Performance
 	float rx_bitrate_mbps;
 	float tx_bitrate_mbps;
-	
+
 	// Threads
 	pthread_t reader_thread;
 	pthread_mutex_t reader_lock;
@@ -74,13 +74,13 @@ int smi_stream_init(smi_stream_st* st,
 					smi_stream_tx_data_callback tx_data_cb,
 					smi_stream_event_callback event_cb,
 					void* context);
-								
+
 int smi_stream_release(smi_stream_st* st);
 
 int smi_stream_read_buffer_info(smi_stream_st* st,
-								size_t *batch_length_bytes, 
+								size_t *batch_length_bytes,
 								int* num_buffers);
-											
+
 int smi_stream_set_state(smi_stream_st* dev, int run);
 void smi_stream_get_datarate(smi_stream_st* dev, float *tx_mbps, float *rx_mbps);
 
