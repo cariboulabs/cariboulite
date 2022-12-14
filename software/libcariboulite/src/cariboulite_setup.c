@@ -325,7 +325,7 @@ int cariboulite_init_submodules (sys_st* sys)
         .tx_control_with_iq_if = false,
         .radio09_mode = at86rf215_iq_if_mode,
         .radio24_mode = at86rf215_iq_if_mode,
-        .clock_skew = at86rf215_iq_clock_data_skew_2_906ns,
+        .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
     };
     at86rf215_setup_iq_if(&sys->modem, &modem_iq_config);
 

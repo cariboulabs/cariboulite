@@ -178,7 +178,7 @@ void at86rf215_radio_set_state(at86rf215_st* dev, at86rf215_rf_channel_en ch, at
     }
 }
 
-static double _fine_freq_starts[] = {0, 350e6, 754e6, 2366e6, 2550e6};
+static double _fine_freq_starts[] = {0, 377e6, 754e6, 2366e6, 2550e6};
 static double _fine_freq_pll_src[] = {0, 6.5e6, 13e6, 26e6};
 //static int _fine_freq_ccf_min[] = {0, 126030, 126030, 85700};
 //static int _fine_freq_ccf_max[] = {0, 1340967, 1340967, 296172};
@@ -187,19 +187,19 @@ static double _fine_freq_pll_src[] = {0, 6.5e6, 13e6, 26e6};
 int at86rf215_radio_get_good_channel(double wanted_frequency_hz, at86rf215_radio_channel_mode_en *mode,
                                                                 at86rf215_rf_channel_en *ch)
 {
-    if (   wanted_frequency_hz > _fine_freq_starts[at86rf215_radio_channel_mode_fine_high]
+    if (   wanted_frequency_hz >= _fine_freq_starts[at86rf215_radio_channel_mode_fine_high]
         && wanted_frequency_hz < _fine_freq_starts[at86rf215_radio_channel_mode_fine_high+1])
     {
         *ch = at86rf215_rf_channel_2400mhz;
         *mode = at86rf215_radio_channel_mode_fine_high;
     }
-    else if (  wanted_frequency_hz > _fine_freq_starts[at86rf215_radio_channel_mode_fine_mid]
+    else if (  wanted_frequency_hz >= _fine_freq_starts[at86rf215_radio_channel_mode_fine_mid]
             && wanted_frequency_hz < _fine_freq_starts[at86rf215_radio_channel_mode_fine_high] )
     {
         *ch = at86rf215_rf_channel_900mhz;
         *mode = at86rf215_radio_channel_mode_fine_mid;
     }
-    else if (  wanted_frequency_hz > _fine_freq_starts[at86rf215_radio_channel_mode_fine_low]
+    else if (  wanted_frequency_hz >= _fine_freq_starts[at86rf215_radio_channel_mode_fine_low]
             && wanted_frequency_hz < _fine_freq_starts[at86rf215_radio_channel_mode_fine_mid] )
     {
         *ch = at86rf215_rf_channel_900mhz;
