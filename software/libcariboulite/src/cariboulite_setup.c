@@ -275,7 +275,11 @@ int cariboulite_init_submodules (sys_st* sys)
     // SMI Init
     //------------------------------------------------------
     ZF_LOGD("INIT FPGA SMI communication");
-    res = caribou_smi_init(&sys->smi, caribou_smi_error_event, &sys);
+    res = caribou_smi_init(&sys->smi, 
+							caribou_smi_error_event, 
+							caribou_smi_rx_data_event, 
+							caribou_smi_tx_data_event, 
+							&sys);
     if (res < 0)
     {
         ZF_LOGE("Error setting up smi submodule");

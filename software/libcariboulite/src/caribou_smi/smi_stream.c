@@ -19,9 +19,13 @@
 #include <stdint.h>
 #include <time.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 
 #include "utils.h"
+#include "io_utils/io_utils.h"
 #include "smi_stream.h"
 
 //=========================================================================
@@ -46,8 +50,22 @@ static int smi_stream_set_address(int filedesc, int address)
 }
 
 //=========================================================================
+static int smi_stream_set_channel(int filedesc, smi_stream_channel_en ch)
+{
+	int ret = ioctl(filedesc, SMI_STREAM_IOC_SET_STREAM_IN_CHANNEL, (uint32_t)ch);
+	if (ret != 0)
+	{
+		ZF_LOGE("failed setting smi stream channel (%d) to device", ch);
+		return -1;
+	}
+	return 0;
+}
+
+//=========================================================================
 static int smi_stream_poll(smi_stream_st* st, uint32_t timeout_num_millisec, smi_stream_direction_en dir)
 {
+	int rv = 0;
+	
 	// Calculate the timeout
 	struct timeval timeout = {0};
 	int num_sec = timeout_num_millisec / 1000;
@@ -60,9 +78,8 @@ static int smi_stream_poll(smi_stream_st* st, uint32_t timeout_num_millisec, smi
     FD_SET(st->filedesc, &set);    // add only our file descriptor to the set
 
 again:
-	int rv = 0;
-	if (dir == smi_stream_dir_rx) 		rv = select(st->filedesc + 1, &set, NULL, NULL, &timeout);
-	else if ((dir == smi_stream_dir_tx) rv = select(st->filedesc + 1, NULL, &set, NULL, &timeout);
+	if (dir == smi_stream_dir_device_to_smi)		rv = select(st->filedesc + 1, &set, NULL, NULL, &timeout);
+	else if (dir == smi_stream_dir_smi_to_device)	rv = select(st->filedesc + 1, NULL, &set, NULL, &timeout);
 	else return -1;
 
     if(rv == -1)
@@ -103,10 +120,11 @@ static int smi_stream_timeout_write(smi_stream_st* st,
                             size_t len,
                             uint32_t timeout_num_millisec)
 {
-    // Set the address
-    smi_stream_set_address(st->filedesc, st->stream_addr)
+    // Set the address - no need to do it, as the TX size has 
+	// anyway a single channel
+    // smi_stream_set_channel(st->filedesc, st->channel);
 
-	int res = smi_stream_poll(st, timeout_num_millisec, smi_stream_dir_tx);
+	int res = smi_stream_poll(st, timeout_num_millisec, smi_stream_dir_device_to_smi);
 
 	if (res < 0)
 	{
@@ -128,10 +146,10 @@ static int smi_stream_timeout_read(smi_stream_st* st,
 								size_t len,
 								uint32_t timeout_num_millisec)
 {
-    // Set the address
-    smi_stream_set_address(st->filedesc, st->stream_addr)
+    // Set the rx address
+    smi_stream_set_channel(st->filedesc, st->channel);
 
-	int res = smi_stream_poll(st, timeout_num_millisec, smi_stream_dir_rx);
+	int res = smi_stream_poll(st, timeout_num_millisec, smi_stream_dir_smi_to_device);
 
 	if (res < 0)
 	{
@@ -152,13 +170,13 @@ static void smi_stream_swap_buffers(smi_stream_st* st, smi_stream_direction_en d
 {
 	uint8_t * temp = NULL;
 
-	if (dir == smi_stream_dir_rx)
+	if (dir == smi_stream_dir_device_to_smi)
 	{
 		temp = st->smi_read_point;
 		st->smi_read_point = st->app_read_point;
 		st->app_read_point = temp;
 	}
-	else if (dir == smi_stream_dir_rx)
+	else if (dir == smi_stream_dir_smi_to_device)
 	{
 		temp = st->smi_write_point;
 		st->smi_write_point = st->app_write_point;
@@ -187,10 +205,14 @@ static void* smi_stream_reader_thread(void* arg)
         //pthread_mutex_lock(&st->reader_lock);
         if (!st->active) break;
 
+		// switch to this channel
+		
+		
+		// try read
 		int ret = smi_stream_timeout_read(st, st->smi_read_point, st->buffer_length, 200);
         if (ret < 0)
         {
-            if (st->event_cb) dev->event_cb(st->stream_addr, smi_stream_error, NULL, st->context);
+            if (st->event_cb) st->event_cb(st->channel, smi_stream_error, NULL, st->context);
 			continue;
             //break;
         }
@@ -200,10 +222,10 @@ static void* smi_stream_reader_thread(void* arg)
         }
 
 		// Swap the buffers
-		smi_stream_swap_buffers(st, smi_stream_dir_rx);
+		smi_stream_swap_buffers(st, smi_stream_dir_device_to_smi);
 
 		// Notify app
-		if (st->rx_data_cb) st->rx_data_cb(st->stream_addr, st->app_read_point, ret, st->context);
+		if (st->rx_data_cb) st->rx_data_cb(st->channel, st->app_read_point, ret, st->context);
 
 		// Performance
 		st->rx_bitrate_mbps = smi_calculate_performance(ret, &current_time, st->rx_bitrate_mbps);
@@ -216,6 +238,7 @@ static void* smi_stream_reader_thread(void* arg)
 //=========================================================================
 static void* smi_stream_writer_thread(void* arg)
 {
+	int ret = 0;
 	smi_stream_st* st = (smi_stream_st*)arg;
 	size_t data_len_to_write = 0;
     pthread_t tid = pthread_self();
@@ -237,7 +260,8 @@ static void* smi_stream_writer_thread(void* arg)
 		// Notify app
 		if (st->tx_data_cb)
 		{
-			data_len_to_write = st->txdata_cb(st->app_write_point, ret, st->context);
+			size_t buffer_len = st->buffer_length;
+			data_len_to_write = st->tx_data_cb(st->channel, st->app_write_point, &buffer_len, st->context);
 		}
 
 		// check if there is something to write
@@ -247,10 +271,10 @@ static void* smi_stream_writer_thread(void* arg)
 			continue;
 		}
 
-		int ret = smi_stream_timeout_write(st, st->smi_write_point, st->buffer_length, 200);
+		ret = smi_stream_timeout_write(st, st->smi_write_point, data_len_to_write, 200);
         if (ret < 0)
         {
-            if (st->event_cb) dev->event_cb(st->stream_addr, smi_stream_error, NULL, st->context);
+            if (st->event_cb) st->event_cb(st->channel, smi_stream_error, NULL, st->context);
 			continue;
             //break;
         }
@@ -263,7 +287,7 @@ static void* smi_stream_writer_thread(void* arg)
 		st->tx_bitrate_mbps = smi_calculate_performance(ret, &current_time, st->tx_bitrate_mbps);
 
 		// Swap the buffers
-		smi_stream_swap_buffers(st, smi_stream_dir_tx);
+		smi_stream_swap_buffers(st, smi_stream_dir_smi_to_device);
     }
 
     ZF_LOGD("Leaving SMI writer thread id %lu", tid);
@@ -279,11 +303,11 @@ int smi_stream_init(smi_stream_st* st,
 					smi_stream_event_callback event_cb,
 					void* context)
 {
-	ZF_LOGI("Initializing smi stream address (%d) from filedesc (%d)", stream_addr, filedesc);
+	ZF_LOGI("Initializing smi stream channel (%d) from filedesc (%d)", channel, filedesc);
 
 	if (st->initialized)
 	{
-		ZF_LOGE("The requested smi stream address is already initialized (%d)", stream_addr);
+		ZF_LOGE("The requested smi stream channel is already initialized (%d)", channel);
         return 1;
 	}
 
@@ -292,7 +316,7 @@ int smi_stream_init(smi_stream_st* st,
 	memset(st, 0, sizeof(smi_stream_st));
 
 	// App data
-	st->stream_addr = stream_addr;
+	st->channel = channel;
 	st->rx_data_cb = rx_data_cb;
 	st->tx_data_cb = tx_data_cb;
 	st->event_cb = event_cb;
@@ -301,12 +325,13 @@ int smi_stream_init(smi_stream_st* st,
 
 	// Buffers allocation
 	// -------------------------------------------------------
-	st->buffer_length = smi_stream_get_native_buffer_length(st->filedesc);
-	if (st->buffer_length < 0)
+	int ret	= smi_stream_get_native_buffer_length(st->filedesc);
+	if (ret < 0)
 	{
 		ZF_LOGE("Reading smi stream native buffer length failed, setting default");
 		st->buffer_length = DMA_BOUNCE_BUFFER_SIZE;
 	}
+	else st->buffer_length = (size_t)ret;
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -319,11 +344,11 @@ int smi_stream_init(smi_stream_st* st,
 			return -1;
 		}
 	}
-	st->smi_read_point = smi_read_buffers[0];
-	st->app_read_point = smi_read_buffers[1];
+	st->smi_read_point = st->smi_read_buffers[0];
+	st->app_read_point = st->smi_read_buffers[1];
 
-	st->smi_write_point = smi_write_buffers[0];
-	st->app_write_point = smi_write_buffers[1];
+	st->smi_write_point = st->smi_write_buffers[0];
+	st->app_write_point = st->smi_write_buffers[1];
 
 	// Reader thread
 	// -------------------------------------------------------
@@ -340,7 +365,7 @@ int smi_stream_init(smi_stream_st* st,
     {
         ZF_LOGE("SMI stream reader thread creation failed");
         smi_stream_release(st);
-        return NULL;
+        return -1;
     }
 
 	// Writer thread
@@ -357,7 +382,7 @@ int smi_stream_init(smi_stream_st* st,
     {
         ZF_LOGE("SMI stream writer thread creation failed");
         smi_stream_release(st);
-        return NULL;
+        return -1;
     }
 
 	// declare initialized
@@ -381,8 +406,8 @@ int smi_stream_release(smi_stream_st* st)
 	// Release the buffers
 	for (int i = 0; i < 2; i++)
 	{
-		if (smi_read_buffers[i] != NULL) free(smi_read_buffers[i]);
-		if (smi_write_buffers[i] != NULL) free(smi_write_buffers[i]);
+		if (st->smi_read_buffers[i] != NULL) free(st->smi_read_buffers[i]);
+		if (st->smi_write_buffers[i] != NULL) free(st->smi_write_buffers[i]);
 	}
 
 	usleep(500);
@@ -392,8 +417,8 @@ int smi_stream_release(smi_stream_st* st)
 }
 
 //=========================================================================
-void smi_stream_get_datarate(smi_stream_st* dev, float *tx_mbps, float *rx_mbps)
+void smi_stream_get_datarate(smi_stream_st* st, float *tx_mbps, float *rx_mbps)
 {
-	if (tx_mbps) *tx_mbps = dev->st->tx_bitrate_mbps;
-	if (rx_mbps) *rx_mbps = dev->st->rx_bitrate_mbps;
+	if (tx_mbps) *tx_mbps = st->tx_bitrate_mbps;
+	if (rx_mbps) *rx_mbps = st->rx_bitrate_mbps;
 }

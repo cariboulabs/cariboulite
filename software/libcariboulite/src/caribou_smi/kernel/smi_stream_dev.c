@@ -107,6 +107,9 @@ static const char *const ioctl_names[] =
 *
 ***************************************************************************/
 
+
+#define BUSY_WAIT_WHILE_TIMEOUT(C,T,R) 			{int t = (T); while ((C) && t>0){t--;} (R)=t>0;}
+
 /***************************************************************************/
 static void write_smi_reg(struct bcm2835_smi_instance *inst, u32 val, unsigned reg)
 {
@@ -137,7 +140,19 @@ static void set_address_channel(smi_stream_channel_en ch)
 	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 }
 
-#define BUSY_WAIT_WHILE_TIMEOUT(C,T,R) 			{int t = (T); while ((C) && t>0){t--;} (R)=t>0;}
+/***************************************************************************/
+static smi_stream_channel_en get_address_channel(void)
+{
+	return (smi_stream_channel_en)((inst->cur_address >> ADDR_CH_OFFSET) & 0x1);
+}
+
+/***************************************************************************/
+static void switch_address_channel(void)
+{
+	smi_stream_channel_en cur_ch = get_address_channel();
+	if (cur_ch == smi_stream_channel_0) set_address_channel(smi_stream_channel_0);
+	else set_address_channel(smi_stream_channel_1);
+}
 
 /***************************************************************************/
 static void smi_setup_clock(struct bcm2835_smi_instance *inst)

@@ -25,7 +25,8 @@ typedef void (*smi_stream_rx_data_callback)(smi_stream_channel_en channel,
 											size_t data_length,
 											void* context);
 
-typedef size_t (*smi_stream_tx_data_callback)(	uint8_t* data,
+typedef size_t (*smi_stream_tx_data_callback)(	smi_stream_channel_en channel,
+												uint8_t* data,
 												size_t* data_length,
 												void* context);
 

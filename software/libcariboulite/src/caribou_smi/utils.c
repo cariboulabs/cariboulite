@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include "utils.h"
 #include "zf_log/zf_log.h"
 
@@ -217,7 +219,7 @@ double smi_calculate_performance(size_t bytes, struct timeval *old_time, double 
 	
 	gettimeofday(&current_time, NULL);
 	
-	double elapsed_us = (current_time.tv_sec - old_time->tv_sec) + ((double)(current_time.tv_usec - old_time.tv_usec)) / 1000000.0;
+	double elapsed_us = (current_time.tv_sec - old_time->tv_sec) + ((double)(current_time.tv_usec - old_time->tv_usec)) / 1000000.0;
 	double speed_mbps = (double)(bytes * 8) / elapsed_us / 1e6;
 	old_time->tv_sec = current_time.tv_sec;
 	old_time->tv_usec = current_time.tv_usec;

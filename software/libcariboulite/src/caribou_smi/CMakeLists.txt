@@ -19,5 +19,5 @@ add_compile_options(-Wall -Wextra -Wno-unused-parameter -Wno-missing-braces -Wno
 add_library(caribou_smi STATIC ${SOURCES_LIB})
 #add_dependencies(caribou_smi smi_modules)
 
-add_executable(test_caribou_smi ${SOURCES})
-target_link_libraries(test_caribou_smi ${EXTERN_LIBS} m rt pthread)
+#add_executable(test_caribou_smi ${SOURCES})
+#target_link_libraries(test_caribou_smi ${EXTERN_LIBS} m rt pthread)

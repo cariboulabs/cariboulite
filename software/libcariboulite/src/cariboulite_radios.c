@@ -16,46 +16,10 @@
 #include "cariboulite_radios.h"
 #include "cariboulite_events.h"
 #include "cariboulite_setup.h"
-
+#include "datatypes/entropy.h"
 
 #define GET_RADIO_PTR(radio,chan)   ((chan)==cariboulite_channel_s1g?&((radio)->radio_sub1g):&((radio)->radio_6g))
 #define GET_CH(rad_ch)              ((rad_ch)==cariboulite_channel_s1g?at86rf215_rf_channel_900mhz:at86rf215_rf_channel_2400mhz)
-//======================================================================
-typedef struct {
-    int bit_count;               /* number of bits of entropy in data */
-    int byte_count;              /* number of bytes of data in array */
-    unsigned char buf[1];
-} entropy_t;
-
-static int add_entropy(uint8_t byte)
-{
-    int rand_fid = open("/dev/urandom", O_RDWR);
-    if (rand_fid != 0)
-    {
-        // error opening device
-        ZF_LOGE("Opening /dev/urandom device file failed");
-        return -1;
-    }
-
-    entropy_t ent = {
-        .bit_count = 8,
-        .byte_count = 1,
-        .buf = {byte},
-    };
-
-    if (ioctl(rand_fid, RNDADDENTROPY, &ent) != 0)
-    {
-        ZF_LOGE("IOCTL to /dev/urandom device file failed");
-    }
-
-    if (close(rand_fid) !=0 )
-    {
-        ZF_LOGE("Closing /dev/urandom device file failed");
-        return -1;
-    }
-
-    return 0;
-}
 
 //======================================================================
 int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys)
@@ -69,8 +33,7 @@ int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys)
     radios->radio_sub1g.type = cariboulite_channel_s1g;
     radios->radio_sub1g.cw_output = false;
     radios->radio_sub1g.lo_output = false;
-    radios->radio_sub1g.rx_stream_id = -1;
-    radios->radio_sub1g.tx_stream_id = -1;
+	radios->radio_sub1g.smi_channel_id = caribou_smi_channel_900;
 
     // Wide band channel
     radios->radio_6g.cariboulite_sys = sys;
@@ -79,8 +42,7 @@ int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys)
     radios->radio_6g.type = cariboulite_channel_6g;
     radios->radio_6g.cw_output = false;
     radios->radio_6g.lo_output = false;
-    radios->radio_6g.rx_stream_id = -1;
-    radios->radio_6g.tx_stream_id = -1;
+	radios->radio_sub1g.smi_channel_id = caribou_smi_channel_2400;
 
     cariboulite_sync_radio_information(radios);
 }
@@ -88,41 +50,15 @@ int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys)
 //======================================================================
 int cariboulite_dispose_radios(cariboulite_radios_st* radios)
 {
-    radios->radio_sub1g.active = false;
-    radios->radio_6g.active = false;
-
-    // If streams are active - destroy them
-    if (radios->radio_sub1g.rx_stream_id != -1)
-    {
-        caribou_smi_destroy_stream(&radios->radio_sub1g.cariboulite_sys->smi, radios->radio_sub1g.rx_stream_id);
-        radios->radio_sub1g.rx_stream_id = -1;
-    }
-
-    if (radios->radio_sub1g.tx_stream_id != -1)
-    {
-        caribou_smi_destroy_stream(&radios->radio_sub1g.cariboulite_sys->smi, radios->radio_sub1g.tx_stream_id);
-        radios->radio_sub1g.tx_stream_id = -1;
-    }
-
-    if (radios->radio_6g.rx_stream_id != -1)
-    {
-        caribou_smi_destroy_stream(&radios->radio_6g.cariboulite_sys->smi, radios->radio_sub1g.rx_stream_id);
-        radios->radio_6g.rx_stream_id = -1;
-    }
-
-    if (radios->radio_6g.tx_stream_id != -1)
-    {
-        caribou_smi_destroy_stream(&radios->radio_6g.cariboulite_sys->smi, radios->radio_sub1g.tx_stream_id);
-        radios->radio_6g.tx_stream_id = -1;
-    }
-    usleep(100000);
-
-    cariboulite_radio_state_st* rad_s1g = GET_RADIO_PTR(radios,cariboulite_channel_s1g);
+	cariboulite_radio_state_st* rad_s1g = GET_RADIO_PTR(radios,cariboulite_channel_s1g);
     cariboulite_radio_state_st* rad_6g = GET_RADIO_PTR(radios,cariboulite_channel_6g);
+	
+    rad_s1g->active = false;
+    rad_6g->active = false;
 
     at86rf215_radio_set_state( &rad_s1g->cariboulite_sys->modem, 
                                     GET_CH(cariboulite_channel_s1g), 
-                                    at86rf215_radio_state_cmd_trx_off);
+                                    at86rf215_radio_state_cmd_trx_off);									
     rad_s1g->state = at86rf215_radio_state_cmd_trx_off;
 
     at86rf215_radio_set_state( &rad_6g->cariboulite_sys->modem, 

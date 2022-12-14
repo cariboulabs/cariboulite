@@ -9,64 +9,30 @@
 #include "cariboulite_events.h"
 
 //=================================================================
-void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_error_en err)
+void caribou_smi_error_event(caribou_smi_channel_en channel, void* context)
 {
-    sys_st* sys = (sys_st*)ctx;
+    sys_st* sys = (sys_st*)context;
 }
 
 //=================================================================
-void caribou_smi_data_event(void *ctx, 
-                            void *service_context,
-                            caribou_smi_stream_type_en type,
-							caribou_smi_event_type_en ev,
-                            caribou_smi_channel_en ch,
-                            size_t num_samples_in_vec,
-							caribou_smi_sample_complex_int16 *cplx_vec,
-							caribou_smi_sample_meta *metadat_vec,
-                            size_t total_length_samples)
+void caribou_smi_rx_data_event(	caribou_smi_channel_en channel, 
+								caribou_smi_sample_complex_int16 *cplx_vec, 
+								size_t num_samples_in_vec, 
+								void* context)
 {
-    sys_st* sys = (sys_st*)ctx;
-
-	//-------------------------------------------------------
-    if (ev==caribou_smi_event_type_start)
-	{
-		ZF_LOGD("start event: stream batch length: %lu samples\n", total_length_samples);
-		return;
-	}
-	else if (ev==caribou_smi_event_type_end)
-	{
-		ZF_LOGD("end event: stream batch length: %lu samples\n", total_length_samples);
-		return;
-	}
-
+    sys_st* sys = (sys_st*)context;
 	
-    switch(type)
+    switch(channel)
     {
         //-------------------------------------------------------
-        case caribou_smi_stream_type_read:
+        case caribou_smi_channel_900:
             {
-                if (ch == caribou_smi_channel_900)
-                {
-
-                }
-                else if (ch == caribou_smi_channel_2400)
-                {
-
-                }
             }
             break;
 
         //-------------------------------------------------------
-        case caribou_smi_stream_type_write:
+        case caribou_smi_channel_2400:
             {
-                if (ch == caribou_smi_channel_900)
-                {
-
-                }
-                else if (ch == caribou_smi_channel_2400)
-                {
-                    
-                }
             }
             break;
 
@@ -74,4 +40,13 @@ void caribou_smi_data_event(void *ctx,
         default:
             break;
     }
+}
+
+//=================================================================
+size_t caribou_smi_tx_data_event(	caribou_smi_channel_en channel, 
+									caribou_smi_sample_complex_int16 *cplx_vec, 
+									size_t *num_samples_in_vec, 
+									void* context)
+{
+	return 0;
 }

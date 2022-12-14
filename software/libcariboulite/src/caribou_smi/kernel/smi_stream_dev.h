@@ -61,6 +61,7 @@ typedef enum
 {
 	smi_stream_channel_0 = 0,				// channel 900 MHz	(RX)
 	smi_stream_channel_1 = 1,				// channel 2400 MHz	(RX)
+	smi_stream_channel_max,
 } smi_stream_channel_en;
 
 #ifdef __KERNEL__
