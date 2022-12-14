@@ -19,7 +19,6 @@
 #include "datatypes/entropy.h"
 
 #define GET_RADIO_PTR(radio,chan)   ((chan)==cariboulite_channel_s1g?&((radio)->radio_sub1g):&((radio)->radio_6g))
-#define GET_CH(rad_ch)              ((rad_ch)==cariboulite_channel_s1g?at86rf215_rf_channel_900mhz:at86rf215_rf_channel_2400mhz)
 
 //======================================================================
 int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys)
@@ -41,31 +40,6 @@ int cariboulite_dispose_radios(cariboulite_radios_st* radios)
 {
 	cariboulite_radio_dispose(&radios->radio_sub1g);
 	cariboulite_radio_dispose(&radios->radio_6g);
-}
-
-
-//=======================================================================================
-int cariboulite_setup_ext_ref ( sys_st *sys, cariboulite_ext_ref_freq_en ref)
-{
-    switch(ref)
-    {
-        case cariboulite_ext_ref_26mhz:
-            ZF_LOGD("Setting ext_ref = 26MHz");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_26mhz);
-            rffc507x_setup_reference_freq(&sys->mixer, 26e6);
-            break;
-        case cariboulite_ext_ref_32mhz:
-            ZF_LOGD("Setting ext_ref = 32MHz");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_32mhz);
-            rffc507x_setup_reference_freq(&sys->mixer, 32e6);
-            break;
-        case cariboulite_ext_ref_off:
-            ZF_LOGD("Setting ext_ref = OFF");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_2ma, at86rf215_clock_out_freq_off);
-        default:
-            return -1;
-        break;
-    }
 }
 
 //======================================================================

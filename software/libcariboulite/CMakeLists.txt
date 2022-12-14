@@ -15,10 +15,10 @@ set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
 add_subdirectory(src/ustimer EXCLUDE_FROM_ALL)
+add_subdirectory(src/caribou_programming EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_fpga EXCLUDE_FROM_ALL)
 add_subdirectory(src/at86rf215 EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_smi EXCLUDE_FROM_ALL)
-add_subdirectory(src/caribou_programming EXCLUDE_FROM_ALL)
 add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
 add_subdirectory(src/config EXCLUDE_FROM_ALL)
@@ -35,16 +35,16 @@ target_link_libraries(cariboulite   datatypes
                                     at86rf215
                                     rffc507x
                                     caribou_smi
-                                    caribou_programming
+                                    caribou_prog
                                     io_utils
                                     config
                                     hat
-				    production_utils
+									production_utils
                                     zf_log
                                     rt
                                     m
                                     pthread
-				    iir)
+									iir)
 
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
@@ -88,7 +88,7 @@ SOAPY_SDR_MODULE_UTIL(
 # ----------------------------------
 set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
-set(SOURCES_MAIN src/cariboulite.c)
+set(SOURCES_MAIN src/cariboulite.c src/app_menu.c)
 
 add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})

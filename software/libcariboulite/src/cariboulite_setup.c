@@ -348,7 +348,7 @@ int cariboulite_init_submodules (sys_st* sys)
 			// by default the ext_ref for the mixer - from the modem, 32MHz
 			sys->ext_ref_settings.src = cariboulite_ext_ref_src_modem;
     		sys->ext_ref_settings.freq_hz = 32000000;
-            cariboulite_setup_ext_ref (sys, cariboulite_ext_ref_32mhz);
+            cariboulite_radio_ext_ref (sys, cariboulite_ext_ref_32mhz);
 			break;
 			
 		//---------------------------------------------------
@@ -356,7 +356,7 @@ int cariboulite_init_submodules (sys_st* sys)
             ZF_LOGD("This board is a ISM version CaribouLite - setting ext_ref: OFF");
 			sys->ext_ref_settings.src = cariboulite_ext_ref_src_na;
     		sys->ext_ref_settings.freq_hz = 0;
-            cariboulite_setup_ext_ref (sys, cariboulite_ext_ref_off);
+            cariboulite_radio_ext_ref (sys, cariboulite_ext_ref_off);
 			
 		//---------------------------------------------------
 		default:

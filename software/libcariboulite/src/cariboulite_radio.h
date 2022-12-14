@@ -5,9 +5,8 @@
 extern "C" {
 #endif
 
-#include "cariboulite_config/cariboulite_config.h"
+#include "config/config.h"
 #include "at86rf215/at86rf215.h"
-
 
 typedef enum
 {
@@ -21,27 +20,17 @@ typedef enum
     cariboulite_channel_6g = 1,
 } cariboulite_channel_en;
 
-typedef struct
+typedef enum
 {
-    cariboulite_channel_en              type;
-    bool                                cw_out;
-    bool                                lo_out;
-    cariboulite_ext_ref_src_en          ext_ref_src;
-    uint32_t                            ext_ref_freq_hz;
+    cariboulite_ext_ref_off     = 0,
+    cariboulite_ext_ref_26mhz   = 26,
+    cariboulite_ext_ref_32mhz   = 32,
+} cariboulite_ext_ref_freq_en;
 
-    double                              requested_freq;
-    double                              modem_actual_freq;
-    double                              mixer_actual_freq;
-    double                              actual_freq;
-    double                              actual_freq_error;
-
-    bool                                modem_lock;
-    bool                                mixer_lock;    
-} cariboulite_freq_construction_st;
 
 typedef struct
 {
-    cariboulite_st*                     cariboulite_sys;
+    sys_st*                     		sys;
     cariboulite_channel_dir_en          channel_direction;
     cariboulite_channel_en              type;
     bool                                active;
@@ -76,11 +65,9 @@ typedef struct
     double                              actual_rf_frequency;
     double                              requested_rf_frequency;
     double                              rf_frequency_error;
-    //cariboulite_freq_construction_st    freq;
 
     // SMI STREAMS
-    int                                 rx_stream_id;
-    int                                 tx_stream_id;
+    caribou_smi_channel_en              smi_channel_id;
 
     // OTHERS
     uint8_t                             random_value;
@@ -93,9 +80,10 @@ typedef struct
     float                               tx_power_gain_calibration[6001];
 } cariboulite_radio_state_st;
 
-void cariboulite_radio_init(cariboulite_radio_state_st* radio, cariboulite_st *sys, cariboulite_channel_en type);
+void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cariboulite_channel_en type);
 int cariboulite_radio_dispose(cariboulite_radio_state_st* radio);
 int cariboulite_radio_sync_information(cariboulite_radio_state_st* radio);
+int cariboulite_radio_ext_ref (sys_st *sys, cariboulite_ext_ref_freq_en ref);
 
 int cariboulite_radio_get_mod_state (cariboulite_radio_state_st* radio, at86rf215_radio_state_cmd_en *state);
 

@@ -6,15 +6,16 @@
 typedef enum
 {
 	app_selection_hard_reset_fpga = 0,
-	app_selection_versions = 1,
-	app_selection_program_fpga = 2,
-	app_selection_self_test = 3,
-	app_selection_fpga_dig_control = 4,
-	app_selection_fpga_rffe_control = 5,
-	app_selection_fpga_smi_fifo = 6,
-	app_selection_modem_tx_cw = 7,
-	app_selection_smi_streaming = 8,
-	app_selection_smi_stress_test = 9,
+	app_selection_soft_reset_fpga,
+	app_selection_versions,
+	app_selection_program_fpga,
+	app_selection_self_test,
+	app_selection_fpga_dig_control,
+	app_selection_fpga_rffe_control,
+	app_selection_fpga_smi_fifo,
+	app_selection_modem_tx_cw,
+	app_selection_smi_streaming,
+	app_selection_smi_stress_test,
 	app_selection_quit = 99,
 } app_selection_en;
 
@@ -28,6 +29,7 @@ typedef struct
 } app_menu_item_st;
 
 static void app_hard_reset_fpga(sys_st *sys);
+static void app_soft_reset_fpga(sys_st *sys);
 static void app_versions_printout(sys_st *sys);
 static void app_fpga_programming(sys_st *sys);
 static void app_self_test(sys_st *sys);
@@ -35,13 +37,12 @@ static void fpga_control_io(sys_st *sys);
 static void fpga_rf_control(sys_st *sys);
 static void fpga_smi_fifo(sys_st *sys);
 static void modem_tx_cw(sys_st *sys);
-static void smi_streaming(sys_st *sys);
-static void smi_stress_test(sys_st *sys);
 
 //=================================================
 app_menu_item_st handles[] =
 {
 	{app_selection_hard_reset_fpga, app_hard_reset_fpga, "Hard reset FPGA",},
+	{app_selection_hard_reset_fpga, app_soft_reset_fpga, "Soft reset FPGA",},
 	{app_selection_versions, app_versions_printout, "Print out versions",},
 	{app_selection_program_fpga, app_fpga_programming, "Program FPGA",},
 	{app_selection_self_test, app_self_test, "Perform a Self-Test",},
@@ -49,8 +50,6 @@ app_menu_item_st handles[] =
 	{app_selection_fpga_rffe_control, fpga_rf_control, "FPGA RFFE control",},
 	{app_selection_fpga_smi_fifo, fpga_smi_fifo, "FPGA SMI fifo status",},
 	{app_selection_modem_tx_cw, modem_tx_cw, "Modem transmit CW signal",},
-	{app_selection_smi_streaming, smi_streaming, "SMI streaming",},
-	{app_selection_smi_stress_test, smi_stress_test, "SMI Stress Testing",},
 };
 #define NUM_HANDLES 	(int)(sizeof(handles)/sizeof(app_menu_item_st))
 
@@ -58,9 +57,13 @@ app_menu_item_st handles[] =
 //=================================================
 static void app_hard_reset_fpga(sys_st *sys)
 {
-	hermon_fpga_hard_reset(&sys->fpga);
-	io_utils_usleep(100000);
-	hermon_fpga_hard_reset(&sys->fpga);
+	caribou_fpga_hard_reset(&sys->fpga);
+}
+
+//=================================================
+static void app_soft_reset_fpga(sys_st *sys)
+{
+	caribou_fpga_soft_reset(&sys->fpga);
 }
 
 //=================================================
@@ -70,7 +73,7 @@ static void app_versions_printout(sys_st *sys)
 	hat_print_board_info(&sys->board_info);
 
 	printf("\nFPGA Versions:\n");
-	hermon_fpga_get_versions (&sys->fpga, NULL);
+	caribou_fpga_get_versions (&sys->fpga, NULL);
 
 	printf("\nModem Versions:\n");
 	uint8_t pn, vn;
@@ -99,13 +102,12 @@ static void app_fpga_programming(sys_st *sys)
 	}
 	printf("	FPGA programming successful, Versions:\n");
 
-	hermon_fpga_soft_reset(&sys->fpga, true);
+	caribou_fpga_soft_reset(&sys->fpga);
 	io_utils_usleep(100000);
 
-	hermon_fpga_get_versions (&sys->fpga, NULL);
+	caribou_fpga_get_versions (&sys->fpga, NULL);
 
-	hermon_fpga_set_io_ctrl_mode (&sys->fpga, 0, hermon_fpga_io_ctrl_rx_ant1_lna_bypass);
-	//app_self_test(sys);
+	caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
 }
 
 //=================================================
@@ -122,7 +124,7 @@ static void fpga_control_io(sys_st *sys)
 	int led0 = 0, led1 = 0, btn = 0, cfg = 0;
 	while (1)
 	{
-		hermon_fpga_get_io_ctrl_dig (&sys->fpga, &led0, &led1, &btn, &cfg);
+		caribou_fpga_get_io_ctrl_dig (&sys->fpga, &led0, &led1, &btn, &cfg);
 		printf("\n	FPGA Digital I/O state:\n");
 		printf("		LED0 = %d, LED1 = %d, BTN = %d, CFG = (%d, %d, %d, %d)\n",
 					led0, led1, btn,
@@ -137,11 +139,11 @@ static void fpga_control_io(sys_st *sys)
 		{
 			case 1:
 				led0 = !led0;
-				hermon_fpga_set_io_ctrl_dig (&sys->fpga, led0, led1);
+				caribou_fpga_set_io_ctrl_dig (&sys->fpga, led0, led1);
 				break;
 			case 2:
 				led1 = !led1;
-				hermon_fpga_set_io_ctrl_dig (&sys->fpga, led0, led1);
+				caribou_fpga_set_io_ctrl_dig (&sys->fpga, led0, led1);
 				break;
 			case 99: return;
 			default: continue;
@@ -154,40 +156,41 @@ static void fpga_rf_control(sys_st *sys)
 {
 	int choice = 0;
 	uint8_t debug = 0;
-	hermon_fpga_io_ctrl_rf_pin_modes_en mode;
+	caribou_fpga_io_ctrl_rfm_en mode;
 	while (1)
 	{
-		hermon_fpga_get_io_ctrl_mode (&sys->fpga, &debug, &mode);
+		caribou_fpga_get_io_ctrl_mode (&sys->fpga, &debug, &mode);
 		printf("\n	FPGA RFFE state:\n");
-		printf("		DEBUG = %d, MODE: '%s'\n", debug, hermon_fpga_get_mode_name (mode));
+		printf("		DEBUG = %d, MODE: '%s'\n", debug, caribou_fpga_get_mode_name (mode));
 
 		printf("	Available Modes:\n");
-		for (int i=hermon_fpga_io_ctrl_low_power; i<=hermon_fpga_io_ctrl_tx_ant2; i++)
+		for (int i=caribou_fpga_io_ctrl_rfm_low_power; i<=caribou_fpga_io_ctrl_rfm_tx_hipass; i++)
 		{
-			if (i != hermon_fpga_io_ctrl_reserved) printf("	[%d] %s\n", i, hermon_fpga_get_mode_name (i));
+			printf("	[%d] %s\n", i, caribou_fpga_get_mode_name (i));
 		}
 		printf("	[99] Return to main menu\n");
 		printf("\n	Choose a new mode:    ");
 		if (scanf("%d", &choice) != 1) continue;
 
 		if (choice == 99) return;
-		if (choice <hermon_fpga_io_ctrl_low_power || choice >hermon_fpga_io_ctrl_tx_ant2 ||
-			choice == hermon_fpga_io_ctrl_reserved)
+		if (choice <caribou_fpga_io_ctrl_rfm_low_power || choice >caribou_fpga_io_ctrl_rfm_tx_hipass)
 		{
 			printf("	Wrong choice '%d'\n", choice);
 			continue;
 		}
 
-		hermon_fpga_set_io_ctrl_mode (&sys->fpga, 0, (hermon_fpga_io_ctrl_rf_pin_modes_en)choice);
+		caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, (caribou_fpga_io_ctrl_rfm_en)choice);
 	}
 }
 
 //=================================================
 static void fpga_smi_fifo(sys_st *sys)
 {
-	hermon_fpga_smi_fifo_status_st status = {0};
-	hermon_fpga_get_smi_ctrl_fifo_status (&sys->fpga, &status);
-	printf("	FPGA SMI info: RX_FIFO_EMPTY: %d, RX_FIFO_FULL: %d\n", status.rx_fifo_09_empty, status.rx_fifo_09_full);
+	caribou_fpga_smi_fifo_status_st status = {0};
+	caribou_fpga_get_smi_ctrl_fifo_status (&sys->fpga, &status);
+	
+	printf("	FPGA SMI info: RX_FIFO_09_EMPTY: %d, RX_FIFO_09_FULL: %d\n", status.rx_fifo_09_empty, status.rx_fifo_09_full);
+	printf("	FPGA SMI info: RX_FIFO_24_EMPTY: %d, RX_FIFO_24_FULL: %d\n", status.rx_fifo_24_empty, status.rx_fifo_24_full);
 }
 
 //=================================================
@@ -258,11 +261,8 @@ static void modem_tx_cw(sys_st *sys)
 		{
 			switch(choice)
 			{
-				case 4: hermon_fpga_set_io_ctrl_mode (&sys->fpga, 0, hermon_fpga_io_ctrl_tx_ant1); break;
-				case 5: hermon_fpga_set_io_ctrl_mode (&sys->fpga, 0, hermon_fpga_io_ctrl_tx_ant2); break;
-				case 7: hermon_fpga_set_io_ctrl_mode (&sys->fpga, 0, hermon_fpga_io_ctrl_rx_ant2_lna); break;
-				case 6:
-				default: hermon_fpga_set_io_ctrl_mode (&sys->fpga, 0, hermon_fpga_io_ctrl_rx_ant1_lna); break;
+				//// TODO
+				default: break;
 			}
 		}
 		else if (choice == 99)
@@ -275,250 +275,19 @@ static void modem_tx_cw(sys_st *sys)
 }
 
 //=================================================
-static void app_test_smi_data_callback (void *ctx,                              	// The context of the requesting application
-                                        void *serviced_context,                 	// the context of the session within the app
-                                        hermon_smi_stream_type_en type,        		// which type of stream is it? read / write?
-										hermon_smi_event_type_en ev,				// the event (start / stop)
-                                        size_t num_samples,                    		// for "read stream only" - number of read data bytes in buffer
-                                        hermon_smi_sample_complex_int16 *cplx_vec, 	// for "read" - complex vector of samples to be analyzed
-                                                                                    // for "write" - complex vector of samples to be written into
-										hermon_smi_sample_meta *metadat_vec,		// for "read" - the metadata send by the receiver for each sample
-																					// for "write" - the metadata to be written by app for each sample
-                                        size_t total_length_samples)
-{
-	hermon_smi_st* smi = (hermon_smi_st*)ctx;
-	sys_st* sys_serviced = (sys_st*)serviced_context;
-
-	printf("	Received SMI type: '%s', event: '%s', #Samples: %ld\n", type==0?"Write":"Read",
-					ev==0?"Data":(ev==1?"Start":"End"), num_samples);
-
-	if (ev == hermon_smi_event_type_data && cplx_vec != NULL)	// data
-	{
-		for (int i = 0; i < 10; i++)
-		{
-			printf("%c(%d, %d), ", metadat_vec[i].sync?'S':' ', cplx_vec[i].i, cplx_vec[i].q);
-		}
-		printf("\n");
-	}
-}
-
-static void smi_streaming(sys_st *sys)
-{
-	bool state = false;
-	int choice = 0;
-	int streamid = -1;
-	double current_freq = 900e6;
-	int current_freq_ind = 0;
-	cariboulite_antenna_en ant_state = cariboulite_ant1;
-	cariboulite_bypass_state_en bypass_state = bypass_off;
-
-	// create the radio
-	cariboulite_radio_state_st radio = {0};
-	cariboulite_radio_init(&radio, sys);
-	cariboulite_radio_set_frequency(&radio, true, &current_freq);
-	cariboulite_radio_activate_channel(&radio, false);
-	hermon_fpga_set_debug_modes (&sys->fpga, false, false, false);
-
-	cariboulite_set_frontend_state (&radio,
-                                    ant_state,
-                                    bypass_state,
-                                    false);
-									
-	//hermon_fpga_set_io_ctrl_mode (&radio.cariboulite_sys->fpga, false, hermon_fpga_io_ctrl_rx_ant1_lna_bypass);
-	
-	while (1)
-	{
-		printf("	Stream control:\n");
-		printf("	[1] %s Stream\n", state?"Stop":"Start");
-		printf("	[2] Switch frequency (to %.2f Hz)\n", current_freq_ind==0?910e6:900e6);
-		printf("	[3] Switch antenna (to %d)\n", ant_state==cariboulite_ant1?2:1);
-		printf("	[4] Switch bypass (to %s)\n", bypass_state==bypass_off?"ON":"OFF");
-		printf("	[99] Return to main menu\n");
-		printf("	Choice: ");
-		if (scanf("%d", &choice) != 1) continue;
-		if (choice == 99) break;
-
-		if (choice == 1)
-		{
-			if (state == false)
-			{
-				if (cariboulite_radio_create_smi_stream(&radio,
-										cariboulite_channel_dir_rx,
-										app_test_smi_data_callback,
-										sys) != -1)
-				{
-					state = true;
-
-					// start the modem RX mode
-					cariboulite_radio_activate_channel(&radio, true);
-					io_utils_usleep(200000);
-
-					fpga_smi_fifo(sys);
-					cariboulite_radio_run_pause_stream(&radio,
-										cariboulite_channel_dir_rx,
-										true);
-					//cariboulite_radio_sync_information(&radio);
-				}
-			}
-			else
-			{
-				state = false;
-				cariboulite_radio_run_pause_stream(&radio,
-										cariboulite_channel_dir_rx,
-										false);
-
-				cariboulite_radio_destroy_smi_stream(&radio, cariboulite_channel_dir_rx);
-
-				// stop the modem RX mode
-				cariboulite_radio_activate_channel(&radio, false);
-
-				fpga_smi_fifo(sys);
-			}
-		}
-		else if (choice == 2)
-		{
-			if (current_freq_ind == 0) 
-			{
-				current_freq_ind = 1;
-				current_freq = 910e6;
-			}
-			else 
-			{
-				current_freq_ind = 0;
-				current_freq = 900e6;
-			}
-			cariboulite_radio_set_frequency(&radio, true, &current_freq);
-		}
-		else if (choice == 3)
-		{
-			ant_state = (ant_state==cariboulite_ant1)?cariboulite_ant2:cariboulite_ant1;
-			cariboulite_set_frontend_state (&radio,
-                                    ant_state,
-                                    bypass_state,
-                                    false);
-		}
-		else if (choice == 4)
-		{
-			bypass_state = (bypass_state==bypass_off)?bypass_on:bypass_off;
-			cariboulite_set_frontend_state (&radio,
-                                    ant_state,
-                                    bypass_state,
-                                    false);
-		}
-	}
-}
-
-//=================================================
-static void app_test_smi_stress_data_callback (void *ctx,                           // The context of the requesting application
-                                        void *serviced_context,                 	// the context of the session within the app
-                                        hermon_smi_stream_type_en type,        		// which type of stream is it? read / write?
-										hermon_smi_event_type_en ev,				// the event (start / stop)
-                                        size_t num_samples,                    		// for "read stream only" - number of read data bytes in buffer
-                                        hermon_smi_sample_complex_int16 *cplx_vec, 	// for "read" - complex vector of samples to be analyzed
-                                                                                    // for "write" - complex vector of samples to be written into
-										hermon_smi_sample_meta *metadat_vec,		// for "read" - the metadata send by the receiver for each sample
-																					// for "write" - the metadata to be written by app for each sample
-                                        size_t total_length_samples)
-{
-	hermon_smi_st* smi = (hermon_smi_st*)ctx;
-	sys_st* sys_serviced = (sys_st*)serviced_context;
-
-	/*printf("	Received SMI type: '%s', event: '%s', #Samples: %ld\n", 
-				type==0?"Write":"Read", ev==0?"Data":(ev==1?"Start":"End"), num_samples);*/
-				
-	if (ev == hermon_smi_event_type_data && cplx_vec != NULL)	// data
-	{
-		/*int i = 0;
-		for (i = 0; i < 8; i ++)
-		{
-			uint8_t *v = (uint8_t*)&cplx_vec[i];
-			printf("  %02X, %02X, %02X, %02X, ", v[0], v[1], v[2], v[3]);
-		}
-		printf("\n");*/
-	}
-}
-
-//=================================================
-static void smi_stress_test(sys_st *sys)
-{
-	bool state = false;
-	bool push_debug_state = false;
-	bool pull_debug_state = false;
-	bool smi_debug_state = false;
-	int choice = 0;
-	int streamid = -1;
-	cariboulite_radio_state_st radio = {0};
-	cariboulite_radio_init(&radio, sys);
-	cariboulite_radio_activate_channel(&radio, false);
-
-	while (1)
-	{
-		printf("	Stress Stream control:\n");
-		printf("	[1] %s Stream\n", state?"Stop":"Start");
-		printf("	[2] %s Fifo Push Debug\n", push_debug_state?"Stop":"Start");
-		printf("	[3] %s Fifo Pull Debug\n", pull_debug_state?"Stop":"Start");
-		printf("	[4] %s SMI Debug\n", smi_debug_state?"Stop":"Start");
-		printf("	[99] Return to main menu\n");
-		printf("	Choice: ");
-		if (scanf("%d", &choice) != 1) continue;
-		if (choice == 99) break;
-
-		if (choice == 1)
-		{
-			if (state == false)
-			{
-				if (cariboulite_radio_create_smi_stream(&radio,
-										cariboulite_channel_dir_rx,
-										app_test_smi_stress_data_callback,
-										sys) != -1)
-				{
-					state = true;
-					fpga_smi_fifo(sys);
-					cariboulite_radio_run_pause_stream(&radio,
-										cariboulite_channel_dir_rx,
-										true);
-				}
-			}
-			else
-			{
-				state = false;
-				cariboulite_radio_run_pause_stream(&radio,
-										cariboulite_channel_dir_rx,
-										false);
-				cariboulite_radio_destroy_smi_stream(&radio, cariboulite_channel_dir_rx);
-				fpga_smi_fifo(sys);
-			}
-		}
-		else if (choice == 2)
-		{
-			push_debug_state = !push_debug_state;
-			hermon_fpga_set_debug_modes (&sys->fpga, push_debug_state, pull_debug_state, smi_debug_state);
-			hermon_smi_set_debug_mode(&sys->smi, smi_debug_state, push_debug_state, pull_debug_state);
-		}
-		else if (choice == 3)
-		{
-			pull_debug_state = !pull_debug_state;
-			hermon_fpga_set_debug_modes (&sys->fpga, push_debug_state, pull_debug_state, smi_debug_state);
-			hermon_smi_set_debug_mode(&sys->smi, smi_debug_state, push_debug_state, pull_debug_state);
-		}
-		else if (choice == 4)
-		{
-			smi_debug_state = !smi_debug_state;
-			hermon_fpga_set_debug_modes (&sys->fpga, push_debug_state, pull_debug_state, smi_debug_state);
-			hermon_smi_set_debug_mode(&sys->smi, smi_debug_state, push_debug_state, pull_debug_state);
-		}
-	}
-	hermon_fpga_set_debug_modes (&sys->fpga, false, false, false);
-	hermon_smi_set_debug_mode(&sys->smi, false, false, false);
-}
-
-//=================================================
 int app_menu(sys_st* sys)
 {
 	int choice = 0;
 	while (1)
 	{
-		printf("\n");
+		printf("\n");																			
+		printf("	   ____           _ _                 _     _ _         \n");
+		printf("	  / ___|__ _ _ __(_) |__   ___  _   _| |   (_) |_ ___   \n");
+		printf("	 | |   / _` | '__| | '_ \\ / _ \\| | | | |   | | __/ _ \\  \n");
+		printf("	 | |__| (_| | |  | | |_) | (_) | |_| | |___| | ||  __/  \n");
+		printf("	  \\____\\__,_|_|  |_|_.__/ \\___/ \\__,_|_____|_|\\__\\___|  \n");
+		printf("\n\n");
+
 		printf("	Select a function:\n");
 		for (int i = 0; i < NUM_HANDLES; i++)
 		{

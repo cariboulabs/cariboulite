@@ -7,6 +7,7 @@ extern "C" {
 
 #include "config/config.h"
 #include "at86rf215/at86rf215.h"
+#include "cariboulite_radio.h"
 
 
 typedef struct
@@ -18,7 +19,6 @@ typedef struct
 // API
 int cariboulite_init_radios(cariboulite_radios_st* radios, sys_st *sys);
 int cariboulite_dispose_radios(cariboulite_radios_st* radios);
-int cariboulite_setup_ext_ref (sys_st *sys, cariboulite_ext_ref_freq_en ref);
 
 int cariboulite_sync_radio_information(cariboulite_radios_st* radios);
 

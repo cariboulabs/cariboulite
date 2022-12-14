@@ -125,20 +125,9 @@ typedef struct
  */
 int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi);
 
-/**
- * @brief close and release the firmware control device and programmer
- *
- * @param dev device context
- * @return int success (0) / failure (-1)
- */
 int caribou_fpga_close(caribou_fpga_st* dev);
-/**
- * @brief reset firmware - fully soft reset or using the reset pin
- *
- * @param dev device context
- * @return int success(0) / failure (-1)
- */
 int caribou_fpga_soft_reset(caribou_fpga_st* dev);
+int caribou_fpga_hard_reset(caribou_fpga_st* dev);
 
 // programming
 int caribou_fpga_get_status(caribou_fpga_st* dev, caribou_fpga_status_en *stat);
@@ -149,6 +138,8 @@ int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, char *filename,
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st *vers);
 void caribou_fpga_print_versions (caribou_fpga_st* dev);
 int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map);
+char* caribou_fpga_get_mode_name (caribou_fpga_io_ctrl_rfm_en mode);
+int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool dbg_fifo_pull, bool dbg_smi);
 
 // I/O Controller
 int caribou_fpga_set_io_ctrl_mode (caribou_fpga_st* dev, uint8_t debug_mode, caribou_fpga_io_ctrl_rfm_en rfm);

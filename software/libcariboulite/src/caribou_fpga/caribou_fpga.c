@@ -239,6 +239,15 @@ int caribou_fpga_soft_reset(caribou_fpga_st* dev)
 }
 
 //--------------------------------------------------------------
+int caribou_fpga_hard_reset(caribou_fpga_st* dev)
+{
+	CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_hard_reset (disposing firmware)");
+	io_utils_write_gpio_with_wait(dev->reset_pin, 0, 1000);
+	io_utils_write_gpio_with_wait(dev->reset_pin, 1, 1000);
+	return 0;
+}
+
+//--------------------------------------------------------------
 // System Controller
 void caribou_fpga_print_versions (caribou_fpga_st* dev)
 {
@@ -250,6 +259,7 @@ void caribou_fpga_print_versions (caribou_fpga_st* dev)
 	printf("  SMI Ctrl Version: %02X\n", dev->versions.smi_ctrl_mod_ver);
 }
 
+//--------------------------------------------------------------
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* vers)
 {
     caribou_fpga_opcode_st oc =
@@ -288,6 +298,25 @@ int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* v
 	}
 
     return 0;
+}
+
+
+//--------------------------------------------------------------
+static char caribou_fpga_mode_names[][64] =
+{
+	"Low Power (0)",
+	"RX / TX bypass (1)",
+	"RX lowpass (up-conversion) (2)",
+	"RX hipass (down-conversion) (3)",
+	"TX lowpass (down-conversion) (4)",
+	"RX hipass (up-conversion) (5)",
+};
+
+char* caribou_fpga_get_mode_name (caribou_fpga_io_ctrl_rfm_en mode)
+{
+	if (mode >= caribou_fpga_io_ctrl_rfm_low_power && mode <= caribou_fpga_io_ctrl_rfm_tx_hipass)
+		return caribou_fpga_mode_names[mode];
+	return NULL;
 }
 
 //--------------------------------------------------------------
