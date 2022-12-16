@@ -27,7 +27,7 @@ static void* hat_powermon_reader_thread(void* arg)
 
 	while (dev->thread_running)
 	{
-		io_utils_usleep(20000);
+		io_utils_usleep(500000);
 
 		if (hat_powermon_read_fault(dev, &fault) != 0)
 		{

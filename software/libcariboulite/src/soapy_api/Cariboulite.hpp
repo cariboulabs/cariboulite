@@ -30,7 +30,7 @@ public:
 	~SoapyCaribouliteSession(void);
 
 public:
-        static cariboulite_st cariboulite_sys;
+        static sys_st cariboulite_sys;
         static std::mutex sessionMutex;
         static size_t sessionCount;
 };
@@ -140,8 +140,7 @@ public:
 
 public:
         cariboulite_radio_state_st radio;
-		SoapySDR::Stream* sample_queue_tx;
-		SoapySDR::Stream* sample_queue_rx;
+		SoapySDR::Stream* sample_queue;
 
         // Static load time initializations
         static SoapyCaribouliteSession sess;

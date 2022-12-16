@@ -1,6 +1,6 @@
 #include <math.h>
 #include "Cariboulite.hpp"
-#include "cariboulite_config/cariboulite_config_default.h"
+#include "cariboulite_config_default.h"
 
 SoapyCaribouliteSession Cariboulite::sess;
 
@@ -57,7 +57,7 @@ SoapySDR::Kwargs Cariboulite::getHardwareInfo() const
     uint32_t serial_number = 0;
     uint32_t deviceId = 0;
     int count = 0;
-    cariboulite_get_serial_number((cariboulite_st*)&sess.cariboulite_sys, &serial_number, &count) ;
+    cariboulite_get_serial_number((sys_st*)&sess.cariboulite_sys, &serial_number, &count) ;
 
     args["device_id"] = std::to_string(deviceId);
     args["serial_number"] = std::to_string(serial_number);

@@ -1,65 +1,25 @@
 #include "Cariboulite.hpp"
-#include "cariboulite_config/cariboulite_config_default.h"
+#include "cariboulite_config_default.h"
 
 //=================================================================
-void caribou_stream_data_event( void *ctx, 
-								void *service_context,
-								caribou_smi_stream_type_en type,
-								caribou_smi_channel_en ch,
-								size_t sample_count,
-								caribou_smi_sample_complex_int16 *cmplx_vec,
-								caribou_smi_sample_meta *meta_vec,
-								size_t buffers_capacity_samples)
+void caribou_stream_rx_data_event(caribou_smi_channel_en channel,
+								caribou_smi_sample_complex_int16 *samples,
+								size_t num_of_samples,
+								void* context)
 {
-    //cariboulite_st* sys = (cariboulite_st*)ctx;
-    Cariboulite *soapy_obj = (Cariboulite*)service_context;
+    Cariboulite *soapy_obj = (Cariboulite*)context;
 
 	// Basic sanity checking
-	cariboulite_channel_en ch_type = ch == caribou_smi_channel_900 ? cariboulite_channel_s1g : cariboulite_channel_6g;
+	cariboulite_channel_en ch_type = cariboulite_channel_s1g;
+	if (channel == caribou_smi_channel_2400) ch_type = cariboulite_channel_6g;
+	
 	if (soapy_obj->radio.type != ch_type)
 	{
-		SoapySDR_logf(SOAPY_SDR_ERROR, "caribou_stream_data_event: reaceived wrong CH <=> service_context pair");
+		SoapySDR_logf(SOAPY_SDR_ERROR, "caribou_stream_data_event: reaceived wrong CH <=> context pair");
 		return;
 	}
 
-    switch(type)
-    {
-        //-------------------------------------------------------
-        case caribou_smi_stream_type_read:
-            {
-				// SMI read samples from Caribou and these samples are written into the Soapy buffer
-                soapy_obj->sample_queue_rx->Write(cmplx_vec, sample_count, 0, 10000L);
-            }
-            break;
-
-        //-------------------------------------------------------
-        case caribou_smi_stream_type_write:
-            {
-				// SMI requests to get (read) samples from Soapy and write them to Caribou
-				soapy_obj->sample_queue_tx->Read(cmplx_vec, sample_count, 0, 10000L);
-            }
-            break;
-
-        //-------------------------------------------------------
-        case caribou_smi_stream_start:
-            {
-                SoapySDR_logf(SOAPY_SDR_DEBUG, "start event: stream channel %d, batch length: %d samples", 
-                                    ch, buffers_capacity_samples);
-            }
-            break;
-
-        //-------------------------------------------------------
-        case caribou_smi_stream_end:
-            {
-                SoapySDR_logf(SOAPY_SDR_DEBUG, "end event: stream channel %d, batch length: %d sample", 
-                                    ch, buffers_capacity_samples);
-            }
-            break;
-
-        //-------------------------------------------------------
-        default:
-            break;
-    }
+	soapy_obj->sample_queue_rx->Write(samples, num_of_samples, 0, 10000L);
 }
 
 //========================================================

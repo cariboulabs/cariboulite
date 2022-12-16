@@ -15,6 +15,11 @@ extern "C" {
 #include <stdbool.h>
 
 typedef void (*lcd_key_callback)(void* context, int key1, int key2);
+typedef enum
+{
+	lcd_button_bottom = 0,
+	lcd_button_top = 1,
+} lcd_button_en;
 
 typedef struct
 {
@@ -23,6 +28,7 @@ typedef struct
 	bool thread_running;
 	void* cb_context;
 	lcd_key_callback cb;
+	pid_t py_pid;
 	
 	// key state
 	int key1;

@@ -270,25 +270,22 @@ int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* v
 
     uint8_t *poc = (uint8_t*)&oc;
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_versions");
-    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(vers,"caribou_fpga_get_versions","vers");
-
-    memset(vers, 0, sizeof(caribou_fpga_versions_st));
 
     oc.ioc = IOC_SYS_CTRL_SYS_VERSION;
-    caribou_fpga_spi_transfer (dev, poc, &vers->sys_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.sys_ver);
 
     oc.ioc = IOC_SYS_CTRL_MANU_ID;
-    caribou_fpga_spi_transfer (dev, poc, &vers->sys_manu_id);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.sys_manu_id);
 
     oc.ioc = IOC_MOD_VER;
     oc.mid = caribou_fpga_mid_sys_ctrl;
-    caribou_fpga_spi_transfer (dev, poc, &vers->sys_ctrl_mod_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.sys_ctrl_mod_ver);
 
     oc.mid = caribou_fpga_mid_io_ctrl;
-    caribou_fpga_spi_transfer (dev, poc, &vers->io_ctrl_mod_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.io_ctrl_mod_ver);
 
     oc.mid = caribou_fpga_mid_smi_ctrl;
-    caribou_fpga_spi_transfer (dev, poc, &vers->smi_ctrl_mod_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.smi_ctrl_mod_ver);
 
 	caribou_fpga_print_versions (dev);
 

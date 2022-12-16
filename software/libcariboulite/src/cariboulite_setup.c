@@ -486,7 +486,58 @@ int cariboulite_release_submodules(sys_st* sys)
 }
 
 //=================================================
-int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info)
+int cariboulite_init_system_production(sys_st *sys)
+{
+	zf_log_set_output_level(ZF_LOG_VERBOSE);
+	ZF_LOGI("driver initializing");
+
+	if (sys->system_status != sys_status_unintialized)
+	{
+		ZF_LOGE("System is already initialized! returning");
+		return 0;
+	}
+
+    // signals
+	ZF_LOGI("Initializing signals");
+    if(cariboulite_setup_signals(sys) != 0)
+    {
+        ZF_LOGE("error signal list registration");
+        return -cariboulite_signal_registration_failed;
+    }
+
+    // IO
+	if (cariboulite_setup_io(sys) != 0)
+    {
+        return -cariboulite_io_setup_failed;
+    }
+	
+	// FPGA Init and Programming
+    ZF_LOGD("Initializing FPGA");
+    if (caribou_fpga_init(&sys->fpga, &sys->spi_dev) < 0)
+    {
+        ZF_LOGE("FPGA communication init failed");
+		cariboulite_deinit_system_production(sys);
+		return -1;
+    }
+	
+	return 0;
+}
+
+//=================================================
+int cariboulite_deinit_system_production(sys_st *sys)
+{
+	caribou_fpga_close(&sys->fpga);
+	
+    ZF_LOGI("Releasing board I/Os - closing SPI");
+    io_utils_spi_close(&sys->spi_dev);
+
+    ZF_LOGI("Releasing board I/Os - io_utils_cleanup");
+    io_utils_cleanup();
+    return 0;
+}
+
+//=================================================
+int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool production)
 {
     zf_log_set_output_level(ZF_LOG_VERBOSE);
 	ZF_LOGI("driver initializing");
@@ -542,9 +593,16 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info)
 		led0, led1, btn, (cfg >> 0) & 0x1, (cfg >> 1) & 0x1, (cfg >> 2) & 0x1, (cfg >> 3) & 0x1);
 	sys->fpga_config_resistor_state = cfg;
 
-    ZF_LOGI("Detected Board Information:");
+	// if we are in the production phase, don't check hat configurations
+	if (production)
+	{
+		sys->system_status = sys_status_minimal_init;
+		return cariboulite_ok;
+	}
+	
     if (info == NULL)
     {
+		ZF_LOGI("Detecting Board Information");
         int detected = config_detect_board(sys);
         if (!detected)
         {
@@ -569,7 +627,7 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info)
 //=================================================
 int cariboulite_init_driver(sys_st *sys, hat_board_info_st *info)
 {
-	int ret = cariboulite_init_driver_minimal(sys, info);
+	int ret = cariboulite_init_driver_minimal(sys, info, false);
 	if (ret < 0)
 	{
 		return ret;

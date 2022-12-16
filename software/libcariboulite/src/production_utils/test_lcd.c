@@ -26,10 +26,9 @@ int main ()
 	lcd_init(&dev, callback, &dev);
 	lcd_clear_screan(&dev);
 	
-	lcd_write(&dev, 0, 0, "Hello");
-	lcd_write(&dev, 1, 0, "World");
+	sleep(1);
+	lcd_writeln(&dev, "Hello", "World", 1);
 
-	
 	lcd_close(&dev);
 	return 0;
 }

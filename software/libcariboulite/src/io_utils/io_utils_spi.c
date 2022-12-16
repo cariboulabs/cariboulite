@@ -230,7 +230,7 @@ static int io_utils_ice40_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_s
     // in this case the chipselect is controlled outside due to
     // ice40 FPGA specifics
 
-	for (int byte_num = 0; byte_num < len; byte_num++)
+	for (unsigned int byte_num = 0; byte_num < len; byte_num++)
 	{
 		uint8_t current_tx_byte = tx[byte_num];
 
@@ -261,7 +261,7 @@ static int io_utils_modem_bitbang_transfer_spi(io_utils_spi_st* dev, io_utils_sp
 
     io_utils_write_gpio_with_wait(cs_pin, 0, nop_cnt);
 
-	for (int byte_num = 0; byte_num < len; byte_num++)
+	for (unsigned int byte_num = 0; byte_num < len; byte_num++)
 	{
 		uint8_t current_tx_byte = tx[byte_num];
         uint8_t rx_byte = 0;
@@ -460,7 +460,7 @@ int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
 	}
 	else
 	{
-		dev->current_chip == NULL;
+		dev->current_chip = NULL;
 		io_utils_set_gpio_mode(dev->miso, io_utils_alt_4);
 		io_utils_set_gpio_mode(dev->mosi, io_utils_alt_4);
 		io_utils_set_gpio_mode(dev->sck, io_utils_alt_4);
@@ -541,7 +541,7 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
         case io_utils_spi_chip_type_modem:
         {
             // a regular spi communication through lg_spi / spi_dev
-            ret = spiXfer(dev->current_chip->hard_spi_handle, (unsigned char*)tx_buf, rx_buf, length);
+            ret = spiXfer(dev->current_chip->hard_spi_handle, (char*)tx_buf, (char*)rx_buf, length);
             if (ret < 0)
             {
                 ZF_LOGE("spi transfer failed (%d)", ret);

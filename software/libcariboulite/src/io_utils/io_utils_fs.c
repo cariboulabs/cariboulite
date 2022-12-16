@@ -14,6 +14,7 @@
 #include <endian.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/prctl.h>
 #include  <sys/types.h>
 
 #include "io_utils_fs.h"
@@ -181,7 +182,7 @@ int io_utils_execute_command(char **argv)
 
      if ((pid = fork()) < 0) {     // fork a child process
           printf("*** ERROR: forking child process failed\n");
-          exit(1);
+          return -1;
      }
      else if (pid == 0) {          // for the child process:
           if (execvp(*argv, argv) < 0) {     // execute the command
@@ -194,6 +195,51 @@ int io_utils_execute_command(char **argv)
                ;
      }
 	 return status;
+}
+
+//===========================================================
+pid_t io_utils_execute_command_parallel(char **argv)
+{
+	pid_t  pid;
+
+	// fork a child process
+	if ((pid = fork()) < 0) 
+	{
+		printf("*** ERROR: forking child process failed\n");
+		return -1;
+	}
+	// for the child process:
+	else if (pid == 0) 
+	{          
+		int r = prctl(PR_SET_PDEATHSIG, SIGTERM);
+		if (r == -1) 
+		{ 
+			perror(0); 
+			exit(1); 
+		}
+		// test in case the original parent exited just
+		// before the prctl() call
+		if (getppid() == 1)
+		{
+			exit(1);
+		}
+
+		// execute the command
+		if (execvp(*argv, argv) < 0) 
+		{
+			printf("*** ERROR: exec failed\n");
+			exit(1);
+		}
+	}
+	return pid;
+}
+
+//===========================================================
+int io_utils_wait_command_parallel(pid_t pid)
+{
+	int    status;
+	while (wait(&status) != pid) {}
+    return status;
 }
 
 //=======================================================================================

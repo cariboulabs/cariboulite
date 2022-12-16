@@ -12,8 +12,10 @@ def main():
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind("tcp://*:55550")
+    
+    working = True
 
-    while True:
+    while working:
         #  Wait for next request from client
         input = socket.recv().decode("utf-8")
         output = "ok"
@@ -41,9 +43,9 @@ def main():
             key1, key2 = lcd.keys
             output = "{}{}".format(int(key1), int(key2))
     
-        elif event == 99:     # quit task
+        elif event == 9:     # quit task
+            print("EXITING")
             working = False
-            exit()
             
         # send response
         socket.send(output.encode('utf-8'))

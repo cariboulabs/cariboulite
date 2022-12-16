@@ -11,7 +11,7 @@
 SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
 {
     int count = 0;
-    cariboulite_board_info_st board_info;
+    hat_board_info_st board_info;
     std::vector<SoapySDR::Kwargs> results;
 
 
@@ -30,7 +30,7 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
                 lib_version.major_version, lib_version.minor_version, lib_version.revision);
 
 	// Detect CaribouLite board
-    if ( ( count = cariboulite_config_detect_board(&board_info) ) <= 0)
+    if ( ( count = hat_detect_board(&board_info) ) <= 0)
     {
         SoapySDR_logf(SOAPY_SDR_DEBUG, "No Cariboulite boards found");
         return results;

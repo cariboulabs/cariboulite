@@ -436,9 +436,9 @@ int hat_fill_in(hat_st *hat)
 	// [6:5] pulltype    0=leave at default setting,  1=pullup, 2=pulldown, 3=no pull
 	// [  7] is_used     1=board uses this pin, 0=not connected and therefore not used
 
-	gpio->pins[2] = GPIO_MAP_BITS(0,0,0);	// COG0
-	gpio->pins[3] = GPIO_MAP_BITS(0,0,0);	// COG1
-	gpio->pins[4] = GPIO_MAP_BITS(5,2,1);	// SMI SA1
+	gpio->pins[2] = GPIO_MAP_BITS(5,2,0);	// SMI SA3
+	gpio->pins[3] = GPIO_MAP_BITS(5,2,0);	// SMI SA2
+	gpio->pins[4] = GPIO_MAP_BITS(1,0,1);	// FPGA SOFT RESET
 	gpio->pins[5] = GPIO_MAP_BITS(1,0,1);	// MXR_RESET
 	gpio->pins[6] = GPIO_MAP_BITS(5,2,1);	// SMI SOE_SE
 	gpio->pins[7] = GPIO_MAP_BITS(5,2,1);	// SMI SWE_SRW

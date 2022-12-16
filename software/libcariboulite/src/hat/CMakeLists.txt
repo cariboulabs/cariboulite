@@ -15,6 +15,8 @@ add_compile_options(-Wall -Wextra -Wmissing-braces)
 
 #Generate the static library from the sources
 add_library(hat STATIC ${SOURCES_LIB})
+target_link_libraries(hat rt m pthread)
+
 add_executable(test_hat ${SOURCES})
 target_link_libraries(test_hat rt pthread ${EXTERN_LIBS})
 

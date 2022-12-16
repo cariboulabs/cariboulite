@@ -30,16 +30,16 @@ add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 # Create the library LibCaribouLite
 add_library(cariboulite STATIC ${SOURCES_LIB})
 target_link_libraries(cariboulite   datatypes
+									production_utils
                                     ustimer
                                     caribou_fpga
                                     at86rf215
                                     rffc507x
                                     caribou_smi
                                     caribou_prog
+									config
+									hat
                                     io_utils
-                                    config
-                                    hat
-									production_utils
                                     zf_log
                                     rt
                                     m
@@ -70,18 +70,18 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     add_definitions(-Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-psabi)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
-SOAPY_SDR_MODULE_UTIL(
-    TARGET SoapyCariboulite
-    SOURCES
-        src/soapy_api/SoapyCariboulite.cpp
-        src/soapy_api/Cariboulite.cpp
-        src/soapy_api/Cariboulite.hpp
-        src/soapy_api/CaribouliteStream.cpp
-        src/soapy_api/CaribouliteSampleQueue.cpp
-        src/soapy_api/CaribouliteSession.cpp
-        src/soapy_api/CaribouliteSensors.cpp
-    LIBRARIES cariboulite
-)
+#SOAPY_SDR_MODULE_UTIL(
+#    TARGET SoapyCariboulite
+#    SOURCES
+#        src/soapy_api/SoapyCariboulite.cpp
+#        src/soapy_api/Cariboulite.cpp
+#        src/soapy_api/Cariboulite.hpp
+#        src/soapy_api/CaribouliteStream.cpp
+#        src/soapy_api/CaribouliteSampleQueue.cpp
+#        src/soapy_api/CaribouliteSession.cpp
+#        src/soapy_api/CaribouliteSensors.cpp
+#    LIBRARIES cariboulite
+#)
 
 # ----------------------------------
 # TESTS - source files for the tests
@@ -89,19 +89,22 @@ SOAPY_SDR_MODULE_UTIL(
 set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
 set(SOURCES_MAIN src/cariboulite.c src/app_menu.c)
+set(SOURCES_PROD src/cariboulite_production.c)
 
 add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_app ${SOURCES_MAIN})
-add_custom_command(
-	TARGET cariboulite_app POST_BUILD
-	COMMAND sudo chown root:root "./cariboulite_app"
-	COMMAND sudo chmod 4775 "./cariboulite_app"
-	VERBATIM)
+add_executable(cariboulite_prod ${SOURCES_PROD})
+#add_custom_command(
+#	TARGET cariboulite_app POST_BUILD
+#	COMMAND sudo chown root:root "./cariboulite_app"
+#	COMMAND sudo chmod 4775 "./cariboulite_app"
+#	VERBATIM)
 
 target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
 target_link_libraries(cariboulite_app cariboulite)
+target_link_libraries(cariboulite_prod cariboulite zmq)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)

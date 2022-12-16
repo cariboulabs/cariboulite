@@ -14,7 +14,7 @@
 // DEFINITIONS
 
 // STATIC VARIABLES
-static uint32_t *gpio_map;
+//static uint32_t *gpio_map;
 static char *io_utils_gpio_mode_strs[] = {"IN","OUT","ALT5","ALT4","ALT0","ALT1","ALT2","ALT3"};
 
 // STATIC FUNCTIONS

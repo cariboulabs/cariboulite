@@ -198,17 +198,18 @@ static void modem_tx_cw(sys_st *sys)
 {
 	double current_freq = 900e6;
 	float current_power = 14;
+	
 	int state = 0;
 	int choice = 0;
 
 	// create the radio
 	cariboulite_radio_state_st radio = {0};
 
-	cariboulite_radio_init(&radio, sys);
+	cariboulite_radio_init(&radio, sys, cariboulite_channel_s1g);
 	cariboulite_radio_set_tx_power(&radio, -12);		// start low to not burn system when not needed :)
 	cariboulite_radio_set_frequency(&radio, true, &current_freq);
 	cariboulite_radio_activate_channel(&radio, 0);
-	cariboulite_radio_set_cw_outputs(&radio, true);
+	cariboulite_radio_set_cw_outputs(&radio, false, true);
 	cariboulite_radio_sync_information(&radio);
 
 	current_freq = radio.actual_rf_frequency;

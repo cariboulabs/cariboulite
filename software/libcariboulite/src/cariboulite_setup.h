@@ -55,7 +55,9 @@ typedef enum
 } cariboulite_errors_en;
 
 int cariboulite_init_driver(sys_st *sys, hat_board_info_st *info);
-int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info);
+int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool production);
+int cariboulite_init_system_production(sys_st *sys);
+int cariboulite_deinit_system_production(sys_st *sys);
 int cariboulite_setup_signal_handler (sys_st *sys,
                                         signal_handler handler,
                                         signal_handler_operation_en op,
