@@ -127,8 +127,6 @@ typedef struct
     event_st hi_energy_measure_event;
 } at86rf215_events_st;
 
-
-
 typedef struct
 {
     // pinout
@@ -147,6 +145,7 @@ typedef struct
     at86rf215_cal_results_st cal;
     bool override_cal;
     at86rf215_events_st events;
+	int num_interrupts;
 } at86rf215_st;
 
 

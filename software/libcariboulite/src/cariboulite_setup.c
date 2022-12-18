@@ -296,9 +296,6 @@ int cariboulite_init_submodules (sys_st* sys)
         goto cariboulite_init_submodules_fail;
     }
 
-	// Print the SPI information
-	io_utils_spi_print_setup(&sys->spi_dev);
-
     // Configure modem
     //------------------------------------------------------
     ZF_LOGD("Configuring modem initial state");
@@ -382,6 +379,9 @@ int cariboulite_init_submodules (sys_st* sys)
 		//rffc507x_setup_reference_freq(&sys->mixer, 26e6);
 		rffc507x_calibrate(&sys->mixer);
 	}
+
+	// Print the SPI information
+	io_utils_spi_print_setup(&sys->spi_dev);
 
     ZF_LOGI("Cariboulite submodules successfully initialized");
     return 0;
@@ -526,6 +526,12 @@ int cariboulite_init_system_production(sys_st *sys)
 //=================================================
 int cariboulite_deinit_system_production(sys_st *sys)
 {
+	if (sys->sys_type == system_type_cariboulite_full)
+	{
+		ZF_LOGD("CLOSE MIXER - RFFC5072");
+		rffc507x_release(&sys->mixer);
+	}
+		
 	caribou_fpga_close(&sys->fpga);
 	
     ZF_LOGI("Releasing board I/Os - closing SPI");

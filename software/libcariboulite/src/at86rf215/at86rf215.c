@@ -162,6 +162,7 @@ int at86rf215_init(at86rf215_st* dev,
     at86rf215_irq_st irq = {0};
     at86rf215_get_irqs(dev, &irq, 0);
 
+	dev->num_interrupts = 0;
     if (io_utils_setup_interrupt(dev->irq_pin, at86rf215_interrupt_handler, dev) < 0)
     {
         ZF_LOGE("interrupt registration for irq_pin (%d) failed", dev->irq_pin);

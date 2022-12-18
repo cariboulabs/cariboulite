@@ -148,17 +148,10 @@ void at86rf215_interrupt_handler (int event, int level, uint32_t tick, void *dat
     // first read the irqs
     at86rf215_get_irqs(dev, &irq, 0);
     uint8_t *tmp = (uint8_t *)&irq;
+	dev->num_interrupts ++;
 
     if (tmp[0] != 0) at86rf215_radio_event_handler (dev, at86rf215_rf_channel_900mhz, &irq.radio09);
     if (tmp[1] != 0) at86rf215_radio_event_handler (dev, at86rf215_rf_channel_2400mhz, &irq.radio24);
     if (tmp[2] != 0) at86rf215_baseband_event_handler (dev, at86rf215_rf_channel_900mhz, &irq.bb0);
     if (tmp[3] != 0) at86rf215_baseband_event_handler (dev, at86rf215_rf_channel_2400mhz, &irq.bb1);
-
-    /*for (i=0; i<e; i++)
-    {
-        printf("u=%d t=%"PRIu64" c=%d g=%d l=%d f=%d (%d of %d)\n",
-        dev, evt[i].report.timestamp, evt[i].report.chip,
-        evt[i].report.gpio, evt[i].report.level,
-        evt[i].report.flags, i+1, e);
-    }*/
 }

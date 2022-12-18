@@ -92,6 +92,7 @@ int rffc507x_regs_commit(rffc507x_st* dev);
 // Set frequency (MHz)
 double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz);
 
+void rffc507x_reset(rffc507x_st* dev);
 void rffc507x_enable(rffc507x_st* dev);
 void rffc507x_disable(rffc507x_st* dev);
 void rffc507x_set_gpo(rffc507x_st* dev, uint8_t gpo);
