@@ -615,7 +615,7 @@ int hat_detect_board(hat_board_info_st *info)
     exists = io_utils_file_exists(hat_dir_path, &size, &dir, &file, &dev);
     if (!exists || !dir)
 	{
-		ZF_LOGI("This board is not configured yet as a hat. Please follow the configuration steps.");
+		ZF_LOGI("This board is not configured yet as a hat.");
 		return 0;
 	}
 
@@ -648,6 +648,51 @@ int hat_detect_board(hat_board_info_st *info)
 	}
 
     return 1;
+}
+
+//===========================================================
+int hat_detect_from_eeprom(hat_board_info_st *info)
+{
+	hat_st hat = 
+	{
+		.dev = 
+		{
+			.i2c_address =  0x50,    // the i2c address of the eeprom chip
+			.eeprom_type = eeprom_type_24c32,
+		},
+	};
+	
+	if (hat_init(&hat) != 0 || (info == NULL))
+	{
+		return -1;
+	}
+	
+	if (!hat.eeprom_initialized)
+	{
+		return 0;
+	}
+	
+	sprintf(info->category_name, "hat");
+	memcpy(info->product_name, VENDOR_PSTR_POINT(&hat.vinf), hat.vinf.pslen);
+	info->product_name[hat.vinf.pslen] = 0;
+	sprintf(info->product_id, "%d", hat.vinf.pid);
+	sprintf(info->product_version, "%d", hat.vinf.pver);
+	memcpy(info->product_vendor, VENDOR_VSTR_POINT(&hat.vinf), hat.vinf.vslen);
+	info->product_vendor[hat.vinf.vslen] = 0;
+
+	sprintf(info->product_uuid, "%08x-%04x-%04x-%04x-%04x%08x", hat.vinf.serial_4,
+															hat.vinf.serial_3>>16,
+															hat.vinf.serial_3 & 0xffff,
+															hat.vinf.serial_2>>16,
+															hat.vinf.serial_2 & 0xffff,
+															hat.vinf.serial_1);
+	
+	info->numeric_version = hat.vinf.pver;
+	info->numeric_product_id = hat.vinf.pid;
+	
+	serial_from_uuid(info->product_uuid, &info->numeric_serial_number);
+	
+	return 1;
 }
 
 //===========================================================

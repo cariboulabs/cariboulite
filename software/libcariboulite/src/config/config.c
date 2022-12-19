@@ -14,7 +14,12 @@ int config_detect_board(sys_st *sys)
 {
 	if (hat_detect_board(&sys->board_info) == 0)
 	{
-		return 0;
+		// the board was not configured as a hat. Lets try and detect it directly
+		// through its EEPROM
+		if (hat_detect_from_eeprom(&sys->board_info) == 0)
+		{
+			return 0;
+		}
 	}
 
 	sys->sys_type = (system_type_en)sys->board_info.numeric_product_id;
