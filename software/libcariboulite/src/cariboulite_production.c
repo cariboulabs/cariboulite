@@ -140,8 +140,8 @@ production_test_st tests[] =
 	{.name_short = "MDM VER",		.test_name = "modem_version", 			.group = 3, 	.test_number = cariboulite_test_en_modem_versions, 			.func = cariboulite_test_modem_version,			},
 	{.name_short = "MDM LED",		.test_name = "modem_leds", 				.group = 3, 	.test_number = cariboulite_test_en_modem_leds, 				.func = cariboulite_test_modem_leds,			},	
 	{.name_short = "MDM INT",		.test_name = "modem_interrupt", 		.group = 3, 	.test_number = cariboulite_test_en_modem_interrupt, 		.func = cariboulite_test_modem_interrupt,		},
-	{.name_short = "CURR. RX",		.test_name = "current_modem rx", 		.group = 4, 	.test_number = cariboulite_test_en_current_modem_rx, 		.func = cariboulite_test_current_modem_rx,		},
-	{.name_short = "CURR. TX",		.test_name = "current_modem tx", 		.group = 4, 	.test_number = cariboulite_test_en_current_modem_tx, 		.func = cariboulite_test_current_modem_tx,		},
+	{.name_short = "CURR. RX",		.test_name = "current_modem_rx", 		.group = 4, 	.test_number = cariboulite_test_en_current_modem_rx, 		.func = cariboulite_test_current_modem_rx,		},
+	{.name_short = "CURR. TX",		.test_name = "current_modem_tx", 		.group = 4, 	.test_number = cariboulite_test_en_current_modem_tx, 		.func = cariboulite_test_current_modem_tx,		},
 	{.name_short = "SMI DATA",		.test_name = "system_smi_data", 		.group = 5, 	.test_number = cariboulite_test_en_system_smi_data, 		.func = cariboulite_test_smi_data,				},
 	{.name_short = "RF LB",			.test_name = "system_rf_loopback",		.group = 5, 	.test_number = cariboulite_test_en_system_rf_loopback, 		.func = cariboulite_test_rf_loopback,			},
 	{.name_short = "RF TXPWR",		.test_name = "system_rf_tx_power",		.group = 5, 	.test_number = cariboulite_test_en_system_rf_tx_power, 		.func = cariboulite_test_rf_tx_power,			},
@@ -274,6 +274,9 @@ int cariboulite_test_fpga_id_resistors(void *context, void* test_context, int te
 		tests[test_num].test_result_float = -1;
 		sprintf(tests[test_num].test_result_textual, "Pass - detected %s", (cfg & 0x1) ? "CaribouFull" : "CaribouISM");
 		tests[test_num].test_pass = true;
+		
+		prod->system_type_valid = true;
+		sprintf(prod->product_name, "%s", (cfg & 0x1) ? "CaribouFull" : "CaribouISM");
 	}
 	
 	
@@ -287,7 +290,8 @@ int cariboulite_test_fpga_soft_reset(void *context, void* test_context, int test
 	production_sequence_st* prod = (production_sequence_st*)test_context;
 	
 	caribou_fpga_soft_reset(&sys->fpga);
-	return cariboulite_test_fpga_communication(context, test_context, cariboulite_test_en_fpga_communication);
+	
+	return cariboulite_test_fpga_communication(context, test_context, cariboulite_test_en_fpga_reset);
 }
 
 //=================================================
@@ -400,19 +404,12 @@ int cariboulite_test_fpga_smi(void *context, void* test_context, int test_num)
 		status.rx_fifo_24_empty, status.rx_fifo_24_full);
 	
 	
-	if (status.rx_fifo_09_empty && !status.rx_fifo_09_full &&
-		status.rx_fifo_24_empty && !status.rx_fifo_24_full)
-	{
-		tests[test_num].test_result_float = -1;
-		sprintf(tests[test_num].test_result_textual, "Pass");
-		tests[test_num].test_pass = true;
-	}
-	else
-	{
-		tests[test_num].test_result_float = -1;
-		sprintf(tests[test_num].test_result_textual, "Pass - SMI FIFO not consistent");
-		tests[test_num].test_pass = true;
-	}
+	tests[test_num].test_result_float = -1;
+	sprintf(tests[test_num].test_result_textual, "Pass - 09Empty: %d, 09Full: %d, 24Empty: %d, 24Full:%d",
+			status.rx_fifo_09_empty, status.rx_fifo_09_full,
+			status.rx_fifo_24_empty, status.rx_fifo_24_full);
+	tests[test_num].test_pass = true;
+	
 	return tests[test_num].test_pass;
 }
 
@@ -463,8 +460,11 @@ int cariboulite_test_hat_eeprom(void *context, void* test_context, int test_num)
 		sprintf(tests[test_num].test_result_textual, "Pass");
 		tests[test_num].test_pass = true;
 		hat_print(&hat);
+		
+		prod->serial_number_written_and_valid = true;
+		prod->serial_number = hat.generated_serial;
 	}
-
+	
 	return tests[test_num].test_pass;
 }
 
@@ -478,6 +478,9 @@ int cariboulite_test_mixer_communication(void *context, void* test_context, int 
 	if (sys->sys_type != system_type_cariboulite_full)
 	{
 		ZF_LOGI("MIXER testing not applicable");
+		tests[test_num].test_result_float = -1;
+		sprintf(tests[test_num].test_result_textual, "N/A - ISM");
+		tests[test_num].test_pass = true;
 		return true;
 	}
 	
@@ -487,8 +490,17 @@ int cariboulite_test_mixer_communication(void *context, void* test_context, int 
 	if (res < 0)
 	{
 		ZF_LOGE("Error initializing mixer 'rffc5072'");
+		
+		tests[test_num].test_result_float = -1;
+		sprintf(tests[test_num].test_result_textual, "Fail");
+		tests[test_num].test_pass = false;
+		
 		return false;
 	}
+	
+	tests[test_num].test_result_float = -1;
+	sprintf(tests[test_num].test_result_textual, "Pass");
+	tests[test_num].test_pass = true;
 
 	// calibrate
 	rffc507x_calibrate(&sys->mixer);
@@ -505,6 +517,9 @@ int cariboulite_test_mixer_versions(void *context, void* test_context, int test_
 	if (sys->sys_type != system_type_cariboulite_full)
 	{
 		ZF_LOGI("MIXER testing not applicable");
+		tests[test_num].test_result_float = -1;
+		sprintf(tests[test_num].test_result_textual, "N/A - ISM");
+		tests[test_num].test_pass = true;
 		return true;
 	}
 	
@@ -540,6 +555,9 @@ int cariboulite_test_modem_communication(void *context, void* test_context, int 
     if (res < 0)
     {
         ZF_LOGE("Error initializing modem 'at86rf215'");
+		tests[test_num].test_result_float = -1;
+		sprintf(tests[test_num].test_result_textual, "Fail");
+		tests[test_num].test_pass = false;
         return false;
     }
 	
@@ -583,6 +601,10 @@ int cariboulite_test_modem_communication(void *context, void* test_context, int 
 	
 	cariboulite_radio_ext_ref (sys, cariboulite_ext_ref_32mhz);
 	
+	tests[test_num].test_result_float = -1;
+	sprintf(tests[test_num].test_result_textual, "Pass");
+	tests[test_num].test_pass = true;
+	
 	return true;
 }
 
@@ -598,7 +620,13 @@ int cariboulite_test_modem_version(void *context, void* test_context, int test_n
 	at86rf215_get_versions(&sys->modem, &pn, &vn);
 	
 	if ((pn == 0x34 || pn == 0x35) && vn > 0 && vn < 5) pass = true;
-	if (!pass) return pass;
+	if (!pass) 
+	{
+		tests[test_num].test_result_float = -1;
+		sprintf(tests[test_num].test_result_textual, "Fail, PN: 0x%02X, VER: %d, wrong P/N", pn, vn);
+		tests[test_num].test_pass = false;
+		return pass;
+	}
 	
     if (pn==0x34)
         sprintf(pn_st, "AT86RF215");
@@ -614,7 +642,11 @@ int cariboulite_test_modem_version(void *context, void* test_context, int test_n
     printf("TEST:AT86RF215:VERSIONS:PASS=%d\n", pass);
     printf("TEST:AT86RF215:VERSIONS:INFO=The component PN is %s (0x%02X), Version %d\n", pn_st, pn, vn);
 	
-	return pass;
+	tests[test_num].test_result_float = -1;
+	sprintf(tests[test_num].test_result_textual, "Pass, PN: %s, VER: %d", pn_st, vn);
+	tests[test_num].test_pass = true;
+	
+	return tests[test_num].test_pass;
 }
 
 //=================================================
@@ -720,12 +752,14 @@ int cariboulite_test_current_modem_rx(void *context, void* test_context, int tes
 	{
 		tests[test_num].test_result_float = current_ma;
 		sprintf(tests[test_num].test_result_textual, "High modem RX current %.1f mA, fault: %d", current_diff, fault);
+		tests[test_num].test_pass = false;
 		pass = false;
 	}
 	else
 	{
 		tests[test_num].test_result_float = current_ma;
-		sprintf(tests[test_num].test_result_textual, "Pass");
+		sprintf(tests[test_num].test_result_textual, "Pass, %.1f mA", current_diff);
+		tests[test_num].test_pass = true;
 		pass = true;
 	}			
 	
@@ -761,13 +795,15 @@ int cariboulite_test_current_modem_tx(void *context, void* test_context, int tes
 	{
 		tests[test_num].test_result_float = current_ma;
 		sprintf(tests[test_num].test_result_textual, "High modem RX current %.1f mA, fault: %d", current_diff, fault);
+		tests[test_num].test_pass = false;
 		pass = false;
 		hat_powermon_set_power_state(&prod->powermon, false);
 	}
 	else
 	{
 		tests[test_num].test_result_float = current_ma;
-		sprintf(tests[test_num].test_result_textual, "Pass");
+		sprintf(tests[test_num].test_result_textual, "Pass, %.1f mA", current_diff);
+		tests[test_num].test_pass = true;
 		pass = true;
 	}			
 
@@ -780,6 +816,9 @@ int cariboulite_test_smi_data(void *context, void* test_context, int test_num)
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* prod = (production_sequence_st*)test_context;
 	
+	tests[test_num].test_result_float = -1;
+	sprintf(tests[test_num].test_result_textual, "Pass");
+	tests[test_num].test_pass = true;
 	return true;
 }
 
@@ -789,6 +828,9 @@ int cariboulite_test_rf_loopback(void *context, void* test_context, int test_num
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* prod = (production_sequence_st*)test_context;
 	
+	tests[test_num].test_result_float = -1;
+	sprintf(tests[test_num].test_result_textual, "Pass");
+	tests[test_num].test_pass = true;
 	return true;
 }
 
@@ -798,6 +840,9 @@ int cariboulite_test_rf_tx_power(void *context, void* test_context, int test_num
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* prod = (production_sequence_st*)test_context;
 	
+	tests[test_num].test_result_float = -1;
+	sprintf(tests[test_num].test_result_textual, "Pass");
+	tests[test_num].test_pass = true;
 	return true;
 }
 
@@ -831,10 +876,13 @@ int cariboulite_production_app_close(production_sequence_st* prod)
 	return 0;
 }
 
+
+
 //=================================================
 int main(int argc, char *argv[])
 {
 	bool fault = false;
+	char report_file_path[2048] = {0};
 	float i, v, p;
 	production_sequence_st prod = {};
 	
@@ -869,6 +917,8 @@ int main(int argc, char *argv[])
 		int ret = 0;
 		production_wait_for_button(&prod, lcd_button_bottom, "MOUNT, START", "<== CLICK HERE");
 		
+		prod.serial_number_written_and_valid = false;
+		prod.system_type_valid = false;
 		ret = production_start_tests(&prod);
 
 		// close the driver and release resources
@@ -876,8 +926,18 @@ int main(int argc, char *argv[])
 				
 		if (ret == false)
 		{
-			production_wait_for_button(&prod, lcd_button_bottom, "FAIL! UNMOUNT", "<== CLICK HERE");
+			production_wait_for_button(&prod, lcd_button_bottom, "F A I L! UNMOUNT", "<== CLICK HERE");
 		}
+		else
+		{
+			production_wait_for_button(&prod, lcd_button_bottom, "P A S S! UNMOUNT", "<== CLICK HERE");
+		}
+		
+		
+		//sprintf(report_file_path, "%s/%08x_%s.yml", PRODUCTION_GIT_DIR, prod.prod->serial_number, ret?"PASS":"FAIL");
+		production_generate_report(&prod, PRODUCTION_GIT_DIR, prod.serial_number);
+		
+		production_git_sync_sequence(&prod, "auto commit");
 		production_rewind(&prod);
 	}
 	

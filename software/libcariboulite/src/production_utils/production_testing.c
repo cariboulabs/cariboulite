@@ -268,7 +268,7 @@ int production_start_tests(production_sequence_st* prod)
 }
 
 //===================================================================
-int production_generate_report(production_sequence_st* prod, char* path, uint64_t serial_number)
+int production_generate_report(production_sequence_st* prod, char* path, uint32_t serial_number)
 {
 	uint32_t i;
 	
@@ -279,7 +279,7 @@ int production_generate_report(production_sequence_st* prod, char* path, uint64_
 	lcd_writeln(&prod->lcd, "Generating", "Report", true);
 	strftime(date1, 128, "%Y_%m_%d__%H_%M_%S", &prod->tests[0].start_time_of_test);
 	strftime(date, 256, "%d/%m/%Y %H:%M:%S", &prod->tests[0].start_time_of_test);
-	sprintf(filename, "%s/%llu__%s.yml", path, serial_number, date1);
+	sprintf(filename, "%s/boards/%08x__%s.yml", path, serial_number, date1);
 	
 	FILE* fid = fopen(filename, "w");
 	if (fid == NULL)
@@ -291,7 +291,7 @@ int production_generate_report(production_sequence_st* prod, char* path, uint64_
 	fprintf(fid, "version: 1\n");
 	fprintf(fid, "file_type: cariboulite_test_results\n");
 	fprintf(fid, "date: %s\n", date);
-	fprintf(fid, "product_name: %s\n", "cariboulite_full_r2.8");					// <====
+	fprintf(fid, "product_name: %s\n", prod->product_name);
 	fprintf(fid, "rpi_serial_number: %s\n", prod->tester.rpi_info.serial_number);
 	fprintf(fid, "summary_test_results: %s\n", prod->current_tests_pass?"PASS":"FAIL");
 	fprintf(fid, "test_results:\n");

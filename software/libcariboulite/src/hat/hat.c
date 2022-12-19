@@ -19,7 +19,7 @@
 
 
 //===========================================================
-static int serial_from_uuid(char* uuid, uint32_t *serial)
+int serial_from_uuid(char* uuid, uint32_t *serial)
 {
 	uint32_t data0 = 0, data4 = 0;
 	uint16_t data1 = 0, data2 = 0, data3 = 0, data5 = 0;
@@ -410,6 +410,13 @@ int hat_fill_in(hat_st *hat)
 															vinf->serial_2>>16,
 															vinf->serial_2 & 0xffff,
 															vinf->serial_1);
+		sprintf(hat->generated_uuid, "%08x-%04x-%04x-%04x-%04x%08x", vinf->serial_4,
+															vinf->serial_3>>16,
+															vinf->serial_3 & 0xffff,
+															vinf->serial_2>>16,
+															vinf->serial_2 & 0xffff,
+															vinf->serial_1);
+		serial_from_uuid(hat->generated_uuid, &hat->generated_serial);
 	}
 
 	atom->type = ATOM_VENDOR_TYPE;
@@ -559,6 +566,17 @@ int hat_generate_write_config(hat_st *hat)
 		eeprom_write(&hat->dev, hat->write_buffer, hat->write_buffer_used_size);
 		ZF_LOGI("Writing into HAT - Done");
 	}
+	else
+	{
+		
+		sprintf(hat->generated_uuid, "%08x-%04x-%04x-%04x-%04x%08x", hat->vinf.serial_4,
+															hat->vinf.serial_3>>16,
+															hat->vinf.serial_3 & 0xffff,
+															hat->vinf.serial_2>>16,
+															hat->vinf.serial_2 & 0xffff,
+															hat->vinf.serial_1);
+		serial_from_uuid(hat->generated_uuid, &hat->generated_serial);
+	}
 	return 0;
 }
 
@@ -622,7 +640,7 @@ int hat_detect_board(hat_board_info_st *info)
 	else
 		sscanf(info->product_id, "%08x", &info->numeric_product_id);
 	
-	// seiral number
+	// serial number
 	if (serial_from_uuid(info->product_uuid, &info->numeric_serial_number) != 0)
 	{
 		// should never happen

@@ -70,6 +70,13 @@ typedef struct
 	// state
 	uint32_t current_test_number;
 	bool current_tests_pass;
+	
+	// temporary data
+	bool serial_number_written_and_valid;
+	uint32_t serial_number;
+	
+	bool system_type_valid;
+	char product_name[64];
 } production_sequence_st;
 
 int production_init(production_sequence_st* prod, production_test_st* tests, int num_tests, void* context);
@@ -77,7 +84,7 @@ int production_set_git_repo(production_sequence_st* prod, char* pat, char* repo,
 int production_rewind(production_sequence_st* prod);
 int production_close(production_sequence_st* prod);
 int production_start_tests(production_sequence_st* prod);
-int production_generate_report(production_sequence_st* prod, char* path, uint64_t serial_number);
+int production_generate_report(production_sequence_st* prod, char* path, uint32_t serial_number);
 int production_wait_for_button(production_sequence_st* prod, lcd_button_en but, char* top_line, char* bottom_line);
 void production_git_sync_sequence(production_sequence_st* prod, char* commit_string);
 int production_monitor_power_fault(production_sequence_st* prod, bool* fault, float *i, float* v, float* p);

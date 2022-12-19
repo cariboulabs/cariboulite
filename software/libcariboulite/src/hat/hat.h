@@ -147,6 +147,10 @@ typedef struct
 	struct gpio_map_t gpiomap;
 	struct dt_data_t dt_data;
 	unsigned char* custom_data;
+	
+	// temporary date
+	char generated_uuid[128];
+	uint32_t generated_serial;
 }  hat_st;
 
 int hat_init(hat_st *ee);
@@ -159,6 +163,7 @@ int hat_generate_write_config(hat_st *ee);
 // restarted. In this stage the sysfs shall contain the hat definitions
 int hat_detect_board(hat_board_info_st *info);
 void hat_print_board_info(hat_board_info_st *info);
+int serial_from_uuid(char* uuid, uint32_t *serial);
 
 #ifdef __cplusplus
 }
