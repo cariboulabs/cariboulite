@@ -163,7 +163,7 @@ int hat_generate_write_config(hat_st *ee);
 // restarted. In this stage the sysfs shall contain the hat definitions
 int hat_detect_board(hat_board_info_st *info);
 int hat_detect_from_eeprom(hat_board_info_st *info);
-void hat_print_board_info(hat_board_info_st *info);
+void hat_print_board_info(hat_board_info_st *info, bool log);
 int serial_from_uuid(char* uuid, uint32_t *serial);
 
 #ifdef __cplusplus

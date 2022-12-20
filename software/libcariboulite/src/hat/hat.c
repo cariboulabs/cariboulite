@@ -696,12 +696,24 @@ int hat_detect_from_eeprom(hat_board_info_st *info)
 }
 
 //===========================================================
-void hat_print_board_info(hat_board_info_st *info)
+void hat_print_board_info(hat_board_info_st *info, bool log)
 {
-	ZF_LOGI("# Board Info - Category name: %s", info->category_name);
-	ZF_LOGI("# Board Info - Product name: %s", info->product_name);
-	ZF_LOGI("# Board Info - Product ID: %s, Numeric: %d", info->product_id, info->numeric_product_id);
-	ZF_LOGI("# Board Info - Product Version: %s, Numeric: %d", info->product_version, info->numeric_version);
-	ZF_LOGI("# Board Info - Product UUID: %s, Numeric serial: 0x%08X", info->product_uuid, info->numeric_serial_number);
-	ZF_LOGI("# Board Info - Vendor: %s", info->product_vendor);
+	if (log)
+	{
+		ZF_LOGI("# Board Info - Category name: %s", info->category_name);
+		ZF_LOGI("# Board Info - Product name: %s", info->product_name);
+		ZF_LOGI("# Board Info - Product ID: %s, Numeric: %d", info->product_id, info->numeric_product_id);
+		ZF_LOGI("# Board Info - Product Version: %s, Numeric: %d", info->product_version, info->numeric_version);
+		ZF_LOGI("# Board Info - Product UUID: %s, Numeric serial: 0x%08X", info->product_uuid, info->numeric_serial_number);
+		ZF_LOGI("# Board Info - Vendor: %s", info->product_vendor);
+	}
+	else
+	{
+		printf("	Category name: %s\n", info->category_name);
+		printf("	Product name: %s\n", info->product_name);
+		printf("	Product ID: %s, Numeric: %d\n", info->product_id, info->numeric_product_id);
+		printf("	Product Version: %s, Numeric: %d\n", info->product_version, info->numeric_version);
+		printf("	Product UUID: %s, Numeric serial: 0x%08X\n", info->product_uuid, info->numeric_serial_number);
+		printf("	Vendor: %s\n", info->product_vendor);
+	}
 }

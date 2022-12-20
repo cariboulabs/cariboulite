@@ -253,15 +253,15 @@ int at86rf215_print_version(at86rf215_st* dev)
 	at86rf215_get_versions(dev, &pn, &vn);
 	if (pn == 0x34)
     {
-        ZF_LOGI("The assembled modem is a AT86RF215 (with basebands), version: %02x", vn);
+        printf("	MODEM Version: AT86RF215 (with basebands), version: %02x", vn);
     }
     else if (pn == 0x35)
     {
-        ZF_LOGI("The assembled modem is a AT86RF215IQ (without basebands), version: %02x", vn);
+        printf("	MODEM Version: AT86RF215IQ (without basebands), version: %02x", vn);
     }
     else
     {
-        ZF_LOGE("The assembled modem is not AT86RF215 IQ capable modem (product number: 0x%02x, versions %02x)", pn, vn);
+        printf("	MODEM Version: not AT86RF215 IQ capable modem (product number: 0x%02x, versions %02x)", pn, vn);
     }
 	return pn;
 }

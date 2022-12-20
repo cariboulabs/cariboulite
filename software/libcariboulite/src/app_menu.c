@@ -42,7 +42,7 @@ static void modem_tx_cw(sys_st *sys);
 app_menu_item_st handles[] =
 {
 	{app_selection_hard_reset_fpga, app_hard_reset_fpga, "Hard reset FPGA",},
-	{app_selection_hard_reset_fpga, app_soft_reset_fpga, "Soft reset FPGA",},
+	{app_selection_soft_reset_fpga, app_soft_reset_fpga, "Soft reset FPGA",},
 	{app_selection_versions, app_versions_printout, "Print out versions",},
 	{app_selection_program_fpga, app_fpga_programming, "Program FPGA",},
 	{app_selection_self_test, app_self_test, "Perform a Self-Test",},
@@ -69,14 +69,9 @@ static void app_soft_reset_fpga(sys_st *sys)
 //=================================================
 static void app_versions_printout(sys_st *sys)
 {
-	printf("\nBoard Information (HAT)\n");
-	hat_print_board_info(&sys->board_info);
-
-	printf("\nFPGA Versions:\n");
+	printf("Board Information (HAT)\n");
+	config_print_board_info(sys, false);
 	caribou_fpga_get_versions (&sys->fpga, NULL);
-
-	printf("\nModem Versions:\n");
-	uint8_t pn, vn;
 	at86rf215_print_version(&sys->modem);
 
 	printf("\nLibrary Versions:\n");
@@ -196,105 +191,179 @@ static void fpga_smi_fifo(sys_st *sys)
 //=================================================
 static void modem_tx_cw(sys_st *sys)
 {
-	double current_freq = 900e6;
-	float current_power = 14;
+	double current_freq_lo = 900e6;
+	double current_freq_hi = 900e6;
+	float current_power_lo = -12;
+	float current_power_hi = -12;
 	
-	int state = 0;
+	int state_lo = 0;
+	int state_hi = 0;
 	int choice = 0;
 
 	// create the radio
-	cariboulite_radio_state_st radio = {0};
+	cariboulite_radio_state_st radio_low = {0};
+	cariboulite_radio_state_st radio_hi = {0};
 
-	cariboulite_radio_init(&radio, sys, cariboulite_channel_s1g);
-	cariboulite_radio_set_tx_power(&radio, -12);		// start low to not burn system when not needed :)
-	cariboulite_radio_set_frequency(&radio, true, &current_freq);
-	cariboulite_radio_activate_channel(&radio, 0);
-	cariboulite_radio_set_cw_outputs(&radio, false, true);
-	cariboulite_radio_sync_information(&radio);
+	// init
+	cariboulite_radio_init(&radio_low, sys, cariboulite_channel_s1g);
+	cariboulite_radio_init(&radio_hi, sys, cariboulite_channel_6g);
+	
+	// output power
+	cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
+	cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
+	
+	// frequency
+	cariboulite_radio_set_frequency(&radio_low, true, &current_freq_lo);
+	cariboulite_radio_set_frequency(&radio_hi, true, &current_freq_hi);
+	
+	// deactivate - just to be sure
+	cariboulite_radio_activate_channel(&radio_low, false);
+	cariboulite_radio_activate_channel(&radio_hi, false);
+	
+	// setup cw outputs from modem
+	cariboulite_radio_set_cw_outputs(&radio_low, false, true);
+	cariboulite_radio_set_cw_outputs(&radio_hi, false, true);
+	
+	// synchronize
+	cariboulite_radio_sync_information(&radio_low);
+	cariboulite_radio_sync_information(&radio_hi);
 
-	current_freq = radio.actual_rf_frequency;
-	current_power = radio.tx_power;
-	state = radio.state == at86rf215_radio_state_cmd_rx;
+	// update params
+	current_freq_lo = radio_low.actual_rf_frequency;
+	current_freq_hi = radio_hi.actual_rf_frequency;
+	current_power_lo = radio_low.tx_power;
+	current_power_hi = radio_hi.tx_power;
+	
+	state_lo = radio_low.state == at86rf215_radio_state_cmd_rx;
+	state_hi = radio_hi.state == at86rf215_radio_state_cmd_rx;
 
 	while (1)
 	{
 		printf("	Parameters:\n");
-		printf("	[1] Frequency [%.2f MHz]\n", current_freq);
-		printf("	[2] Power out [%.2f dBm]\n", current_power);
-		printf("	[3] On/off CW output [%s]\n", state?"ON":"OFF");
-		printf("	[4] TX PA ANT1\n");
-		printf("	[5] TX PA ANT2\n");
-		printf("	[6] TX Bypass ANT1\n");
-		printf("	[7] TX Bypass ANT2\n");
+		printf("	[1] Frequency @ Low Channel [%.2f MHz]\n", current_freq_lo);
+		printf("	[2] Frequency @ High Channel [%.2f MHz]\n", current_freq_hi);
+		printf("	[3] Power out @ Low Channel [%.2f dBm]\n", current_power_lo);
+		printf("	[4] Power out @ High Channel [%.2f dBm]\n", current_power_hi);
+		printf("	[5] On/off CW output @ Low Channel [Currently %s]\n", state_lo?"ON":"OFF");
+		printf("	[6] On/off CW output @ High Channel [Currently %s]\n", state_hi?"ON":"OFF");
 		printf("	[99] Return to Main Menu\n");
 		printf("	Choice: ");
 		if (scanf("%d", &choice) != 1) continue;
-
-		if (choice == 1)
+		
+		switch (choice)
 		{
-			printf("	Enter frequency [MHz]:   ");
-			if (scanf("%lf", &current_freq) != 1) continue;
-
-			cariboulite_radio_set_frequency(&radio, true, &current_freq);
-			cariboulite_radio_set_tx_power(&radio, current_power);
-			if (state == false)
+			//---------------------------------------------------------
+			case 1:
 			{
-				cariboulite_radio_activate_channel(&radio, 0);
-			}
-			current_freq = radio.actual_rf_frequency;
-		}
-		else if (choice == 2)
-		{
-			printf("	Enter power [dBm]:   ");
-			if (scanf("%f", &current_power) != 1) continue;
+				printf("	Enter frequency @ Low Channel [MHz]:   ");
+				if (scanf("%lf", &current_freq_lo) != 1) continue;
 
-			cariboulite_radio_set_tx_power(&radio, current_power);
-			current_power = radio.tx_power;
-		}
-		else if (choice == 3)
-		{
-			state = !state;
-			cariboulite_radio_activate_channel(&radio, state);
-			printf("	Power output was %s\n\n", state?"ENABLED":"DISABLED");
-			if (state == 1) cariboulite_radio_set_tx_power(&radio, current_power);
-		}
-		else if (choice >= 4 && choice <= 7)
-		{
-			switch(choice)
-			{
-				//// TODO
-				default: break;
+				cariboulite_radio_set_frequency(&radio_low, true, &current_freq_lo);
+				cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
+				if (state_lo == false)
+				{
+					cariboulite_radio_activate_channel(&radio_low, false);
+				}
+				current_freq_lo = radio_low.actual_rf_frequency;
 			}
-		}
-		else if (choice == 99)
-		{
 			break;
+			
+			//---------------------------------------------------------
+			case 2:
+			{
+				printf("	Enter frequency @ High Channel [MHz]:   ");
+				if (scanf("%lf", &current_freq_hi) != 1) continue;
+
+				cariboulite_radio_set_frequency(&radio_hi, true, &current_freq_hi);
+				cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
+				if (state_hi == false)
+				{
+					cariboulite_radio_activate_channel(&radio_hi, false);
+				}
+				current_freq_hi = radio_hi.actual_rf_frequency;
+			}
+			break;
+			
+			//---------------------------------------------------------
+			case 3:
+			{
+				printf("	Enter power @ Low Channel [dBm]:   ");
+				if (scanf("%f", &current_power_lo) != 1) continue;
+
+				cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
+				current_power_lo = radio_low.tx_power;
+			}
+			break;
+			
+			//---------------------------------------------------------
+			case 4:
+			{
+				printf("	Enter power @ High Channel [dBm]:   ");
+				if (scanf("%f", &current_power_hi) != 1) continue;
+
+				cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
+				current_power_hi = radio_hi.tx_power;
+			}
+			break;
+			
+			//---------------------------------------------------------
+			case 5:
+			{
+				state_lo = !state_lo;
+				cariboulite_radio_activate_channel(&radio_low, state_lo);
+				//printf("	Power output was %s\n\n", state_lo?"ENABLED":"DISABLED");
+				if (state_lo == 1) cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
+			}
+			break;
+			
+			//---------------------------------------------------------
+			case 6: 
+			{
+				state_hi = !state_hi;
+				cariboulite_radio_activate_channel(&radio_hi, state_hi);
+				//printf("	Power output was %s\n\n", state_hi?"ENABLED":"DISABLED");
+				if (state_hi == 1) cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
+			}
+			break;
+			
+			//---------------------------------------------------------
+			case 99: 
+			{
+				cariboulite_radio_dispose(&radio_low);
+				cariboulite_radio_dispose(&radio_hi);
+				return;
+			}
+			break;
+			
+			//---------------------------------------------------------
+			default: break;
 		}
 	}
 
-	cariboulite_radio_dispose(&radio);
+	cariboulite_radio_dispose(&radio_low);
+	cariboulite_radio_dispose(&radio_hi);
 }
 
 //=================================================
 int app_menu(sys_st* sys)
 {
 	int choice = 0;
+	printf("\n");																			
+	printf("	   ____           _ _                 _     _ _         \n");
+	printf("	  / ___|__ _ _ __(_) |__   ___  _   _| |   (_) |_ ___   \n");
+	printf("	 | |   / _` | '__| | '_ \\ / _ \\| | | | |   | | __/ _ \\  \n");
+	printf("	 | |__| (_| | |  | | |_) | (_) | |_| | |___| | ||  __/  \n");
+	printf("	  \\____\\__,_|_|  |_|_.__/ \\___/ \\__,_|_____|_|\\__\\___|  \n");
+	printf("\n\n");
+	
 	while (1)
 	{
-		printf("\n");																			
-		printf("	   ____           _ _                 _     _ _         \n");
-		printf("	  / ___|__ _ _ __(_) |__   ___  _   _| |   (_) |_ ___   \n");
-		printf("	 | |   / _` | '__| | '_ \\ / _ \\| | | | |   | | __/ _ \\  \n");
-		printf("	 | |__| (_| | |  | | |_) | (_) | |_| | |___| | ||  __/  \n");
-		printf("	  \\____\\__,_|_|  |_|_.__/ \\___/ \\__,_|_____|_|\\__\\___|  \n");
-		printf("\n\n");
-
-		printf("	Select a function:\n");
+		printf(" Select a function:\n");
 		for (int i = 0; i < NUM_HANDLES; i++)
 		{
-			printf("      [%d]  %s\n", handles[i].num, handles[i].text);
+			printf(" [%d]  %s\n", handles[i].num, handles[i].text);
 		}
-		printf("      [%d]  %s\n", app_selection_quit, "Quit");
+		printf("[%d]  %s\n", app_selection_quit, "Quit");
 
 		printf("    Choice:   ");
 		if (scanf("%d", &choice) != 1) continue;
@@ -306,9 +375,9 @@ int app_menu(sys_st* sys)
 			{
 				if (handles[i].handle != NULL)
 				{
-					printf("\n\n=====================================\n");
+					printf("\n=====================================\n");
 					handles[i].handle(sys);
-					printf("\n=====================================\n\n");
+					printf("\n=====================================\n");
 				}
 				else
 				{

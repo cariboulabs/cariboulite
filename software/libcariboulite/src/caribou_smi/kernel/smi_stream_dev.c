@@ -57,7 +57,7 @@
 
 #include "smi_stream_dev.h"
 
-#define FIFO_SIZE_MULTIPLIER 	(14)
+#define FIFO_SIZE_MULTIPLIER 	(8)
 #define ADDR_DIR_OFFSET			(2)			// GPIO3_SA2 (fpga i_smi_a[1]) - Tx SMI (0) / Rx SMI (1) select
 #define ADDR_CH_OFFSET			(3)			// GPIO2_SA3 (fpga i_smi_a[2]) - RX09 / RX24 channel select
 
@@ -287,7 +287,7 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 {
 	long ret = 0;
 
-	dev_info(inst->dev, "serving ioctl...");
+	//dev_info(inst->dev, "serving ioctl...");
 
 	switch (cmd) 
 	{
@@ -331,7 +331,7 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	//-------------------------------
 	case SMI_STREAM_IOC_SET_STREAM_IN_CHANNEL:
 	{
-		dev_info(inst->dev, "SMI channel: 0x%02x", (int)arg);
+		//dev_info(inst->dev, "SMI channel: 0x%02x", (int)arg);
 		set_address_channel((smi_stream_channel_en)arg);
 		break;
 	}	
@@ -883,7 +883,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
-	smi_stream_print_smi_inst(inst->smi_inst);
+	//smi_stream_print_smi_inst(inst->smi_inst);
 
 	inst->dev = dev;
 

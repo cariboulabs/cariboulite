@@ -133,7 +133,7 @@ static int smi_stream_timeout_write(smi_stream_st* st,
 	}
 	else if (res == 0)	// timeout
 	{
-		ZF_LOGD("smi write fd timeout");
+		//ZF_LOGD("smi write fd timeout");
 		return 0;
 	}
 
@@ -158,7 +158,7 @@ static int smi_stream_timeout_read(smi_stream_st* st,
 	}
 	else if (res == 0)	// timeout
 	{
-		ZF_LOGD("smi read fd timeout");
+		//ZF_LOGD("smi read fd timeout");
 		return 0;
 	}
 

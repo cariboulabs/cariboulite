@@ -98,7 +98,7 @@ typedef struct sys_st_t
 
 // Board detection
 int config_detect_board(sys_st *sys);
-void config_print_board_info(sys_st *sys);
+void config_print_board_info(sys_st *sys, bool log);
 
 #ifdef __cplusplus
 }

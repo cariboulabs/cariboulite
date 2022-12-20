@@ -251,12 +251,12 @@ int caribou_fpga_hard_reset(caribou_fpga_st* dev)
 // System Controller
 void caribou_fpga_print_versions (caribou_fpga_st* dev)
 {
-	printf("CARIBOU FPGA VERSIONS\n");
-	printf("  System Version: %02X\n", dev->versions.sys_ver);
-	printf("  Manu. ID: %02X\n", dev->versions.sys_manu_id);
-	printf("  Sys. Ctrl Version: %02X\n", dev->versions.sys_ctrl_mod_ver);
-	printf("  IO Ctrl Version: %02X\n", dev->versions.io_ctrl_mod_ver);
-	printf("  SMI Ctrl Version: %02X\n", dev->versions.smi_ctrl_mod_ver);
+	printf("FPGA Versions:\n");
+	printf("	System Version: %02X\n", dev->versions.sys_ver);
+	printf("	Manu. ID: %02X\n", dev->versions.sys_manu_id);
+	printf("	Sys. Ctrl Version: %02X\n", dev->versions.sys_ctrl_mod_ver);
+	printf("	IO Ctrl Version: %02X\n", dev->versions.io_ctrl_mod_ver);
+	printf("	SMI Ctrl Version: %02X\n", dev->versions.smi_ctrl_mod_ver);
 }
 
 //--------------------------------------------------------------

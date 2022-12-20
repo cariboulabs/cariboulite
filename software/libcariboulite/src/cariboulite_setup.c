@@ -622,7 +622,7 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool p
     {
         memcpy(&sys->board_info, info, sizeof(hat_board_info_st));
     }
-    config_print_board_info(sys);
+    config_print_board_info(sys, true);
 
 	sys->system_status = sys_status_minimal_init;
 

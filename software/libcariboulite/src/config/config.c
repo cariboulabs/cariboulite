@@ -27,15 +27,28 @@ int config_detect_board(sys_st *sys)
 }
 
 //===========================================================
-void config_print_board_info(sys_st *sys)
+void config_print_board_info(sys_st *sys, bool log)
 {
-	hat_print_board_info(&sys->board_info);
+	hat_print_board_info(&sys->board_info, log);
 
-	switch (sys->sys_type)
+	if (log)
 	{
-		case system_type_cariboulite_full: ZF_LOGI("# Board Info - Product Type: CaribouLite FULL"); break;
-		case system_type_cariboulite_ism: ZF_LOGI("# Board Info - Product Type: CaribouLite ISM"); break;
-		case system_type_unknown: 
-		default: ZF_LOGI("# Board Info - Product Type: Unknown"); break;
+		switch (sys->sys_type)
+		{
+			case system_type_cariboulite_full: ZF_LOGI("# Board Info - Product Type: CaribouLite FULL"); break;
+			case system_type_cariboulite_ism: ZF_LOGI("# Board Info - Product Type: CaribouLite ISM"); break;
+			case system_type_unknown: 
+			default: ZF_LOGI("# Board Info - Product Type: Unknown"); break;
+		}
+	}
+	else
+	{
+		switch (sys->sys_type)
+		{
+			case system_type_cariboulite_full: printf("	Product Type: CaribouLite FULL"); break;
+			case system_type_cariboulite_ism: printf("	Product Type: CaribouLite ISM"); break;
+			case system_type_unknown: 
+			default: printf("	Product Type: Unknown"); break;
+		}
 	}
 }
