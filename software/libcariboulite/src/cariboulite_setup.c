@@ -354,6 +354,7 @@ int cariboulite_init_submodules (sys_st* sys)
 			sys->ext_ref_settings.src = cariboulite_ext_ref_src_na;
     		sys->ext_ref_settings.freq_hz = 0;
             cariboulite_radio_ext_ref (sys, cariboulite_ext_ref_off);
+			break;
 			
 		//---------------------------------------------------
 		default:

@@ -192,7 +192,7 @@ static void fpga_smi_fifo(sys_st *sys)
 static void modem_tx_cw(sys_st *sys)
 {
 	double current_freq_lo = 900e6;
-	double current_freq_hi = 900e6;
+	double current_freq_hi = 2400e6;
 	float current_power_lo = -12;
 	float current_power_hi = -12;
 	
