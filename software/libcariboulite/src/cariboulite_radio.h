@@ -72,12 +72,6 @@ typedef struct
     // OTHERS
     uint8_t                             random_value;
     float                               rx_thermal_noise_floor;
-
-    // CALIBRATION
-    int                                 num_of_rx_cal_points;
-    int                                 num_of_tx_cal_points;
-    float                               rx_power_gain_calibration[6001];
-    float                               tx_power_gain_calibration[6001];
 } cariboulite_radio_state_st;
 
 void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cariboulite_channel_en type);

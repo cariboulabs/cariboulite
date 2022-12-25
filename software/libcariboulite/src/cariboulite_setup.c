@@ -196,7 +196,6 @@ static int cariboulite_setup_signals(sys_st *sys)
 	return 0;
 }
 
-
 //=======================================================================================
 int cariboulite_setup_io (sys_st* sys)
 {

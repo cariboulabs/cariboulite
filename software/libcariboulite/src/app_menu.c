@@ -14,8 +14,8 @@ typedef enum
 	app_selection_fpga_rffe_control,
 	app_selection_fpga_smi_fifo,
 	app_selection_modem_tx_cw,
-	app_selection_smi_streaming,
-	app_selection_smi_stress_test,
+	app_selection_modem_rx_iq,
+	
 	app_selection_quit = 99,
 } app_selection_en;
 
@@ -37,6 +37,7 @@ static void fpga_control_io(sys_st *sys);
 static void fpga_rf_control(sys_st *sys);
 static void fpga_smi_fifo(sys_st *sys);
 static void modem_tx_cw(sys_st *sys);
+static void modem_rx_iq(sys_st *sys);
 
 //=================================================
 app_menu_item_st handles[] =
@@ -50,6 +51,7 @@ app_menu_item_st handles[] =
 	{app_selection_fpga_rffe_control, fpga_rf_control, "FPGA RFFE control",},
 	{app_selection_fpga_smi_fifo, fpga_smi_fifo, "FPGA SMI fifo status",},
 	{app_selection_modem_tx_cw, modem_tx_cw, "Modem transmit CW signal",},
+	{app_selection_modem_rx_iq, modem_rx_iq, "Modem receive I/Q stream",},
 };
 #define NUM_HANDLES 	(int)(sizeof(handles)/sizeof(app_menu_item_st))
 
@@ -255,7 +257,7 @@ static void modem_tx_cw(sys_st *sys)
 			//---------------------------------------------------------
 			case 1:
 			{
-				printf("	Enter frequency @ Low Channel [MHz]:   ");
+				printf("	Enter frequency @ Low Channel [Hz]:   ");
 				if (scanf("%lf", &current_freq_lo) != 1) continue;
 
 				cariboulite_radio_set_frequency(&radio_low, true, &current_freq_lo);
@@ -271,7 +273,7 @@ static void modem_tx_cw(sys_st *sys)
 			//---------------------------------------------------------
 			case 2:
 			{
-				printf("	Enter frequency @ High Channel [MHz]:   ");
+				printf("	Enter frequency @ High Channel [Hz]:   ");
 				if (scanf("%lf", &current_freq_hi) != 1) continue;
 
 				cariboulite_radio_set_frequency(&radio_hi, true, &current_freq_hi);
@@ -340,6 +342,72 @@ static void modem_tx_cw(sys_st *sys)
 		}
 	}
 
+	cariboulite_radio_dispose(&radio_low);
+	cariboulite_radio_dispose(&radio_hi);
+}
+
+//=================================================
+static void modem_rx_iq(sys_st *sys)
+{
+	int choice = 0;
+	bool low_active_rx = false;
+	bool high_active_rx = false;
+	double current_freq_lo = 900e6;
+	double current_freq_hi = 2400e6;
+	
+	// create the radio
+	cariboulite_radio_state_st radio_low = {0};
+	cariboulite_radio_state_st radio_hi = {0};
+	
+	// init
+	cariboulite_radio_init(&radio_low, sys, cariboulite_channel_s1g);
+	cariboulite_radio_init(&radio_hi, sys, cariboulite_channel_6g);
+	
+	// frequency
+	cariboulite_radio_set_frequency(&radio_low, true, &current_freq_lo);
+	cariboulite_radio_set_frequency(&radio_hi, true, &current_freq_hi);
+	
+	// synchronize
+	cariboulite_radio_sync_information(&radio_low);
+	cariboulite_radio_sync_information(&radio_hi);
+	
+	while (1)
+	{
+		printf("	Parameters:\n");
+		printf("	[1] Ch1 (%.5f MHz) RX %s\n", current_freq_lo / 1e6, low_active_rx?"Active":"Not Active");
+		printf("	[2] Ch2 (%.5f MHz) RX %s\n", current_freq_hi / 1e6, high_active_rx?"Active":"Not Active");
+	
+		printf("	Choice: ");
+		if (scanf("%d", &choice) != 1) continue;
+		
+		switch (choice)
+		{
+			//--------------------------------------------
+			case 1:
+			{
+				low_active_rx = !low_active_rx;
+				cariboulite_radio_activate_channel(&radio_low, low_active_rx);
+			}
+			break;
+			
+			//--------------------------------------------
+			case 2:
+			{
+				high_active_rx = !high_active_rx;
+				cariboulite_radio_activate_channel(&radio_low, high_active_rx);
+			}
+			break;
+			
+			//--------------------------------------------
+			default:
+			{
+			}
+			break;
+		}
+		
+		
+	}
+	
 	cariboulite_radio_dispose(&radio_low);
 	cariboulite_radio_dispose(&radio_hi);
 }

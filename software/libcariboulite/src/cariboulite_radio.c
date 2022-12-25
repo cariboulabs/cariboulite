@@ -17,8 +17,8 @@
 #include "cariboulite_events.h"
 #include "cariboulite_setup.h"
 
-#define GET_CH(rad_ch)			((rad_ch)==cariboulite_channel_s1g ?at86rf215_rf_channel_900mhz : at86rf215_rf_channel_2400mhz)
-#define GET_SMI_CH(rad_ch)		((rad_ch)==cariboulite_channel_s1g ?caribou_smi_channel_900 : caribou_smi_channel_2400)
+#define GET_MODEM_CH(rad_ch)	((rad_ch)==cariboulite_channel_s1g ? at86rf215_rf_channel_900mhz : at86rf215_rf_channel_2400mhz)
+#define GET_SMI_CH(rad_ch)		((rad_ch)==cariboulite_channel_s1g ? caribou_smi_channel_900 : caribou_smi_channel_2400)
 
 //=========================================================================
 void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cariboulite_channel_en type)
@@ -31,7 +31,7 @@ void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cari
     radio->type = type;
     radio->cw_output = false;
     radio->lo_output = false;
-    radio->smi_channel_id = type == cariboulite_channel_s1g ? caribou_smi_channel_900 : caribou_smi_channel_2400;
+    radio->smi_channel_id = GET_SMI_CH(type);
 }
 
 //=========================================================================
@@ -40,7 +40,7 @@ int cariboulite_radio_dispose(cariboulite_radio_state_st* radio)
 	radio->active = false;
 
     at86rf215_radio_set_state( &radio->sys->modem, 
-								GET_CH(radio->type), 
+								GET_MODEM_CH(radio->type), 
 								at86rf215_radio_state_cmd_trx_off);
     radio->state = at86rf215_radio_state_cmd_trx_off;
 
@@ -89,7 +89,7 @@ int cariboulite_radio_ext_ref ( sys_st *sys, cariboulite_ext_ref_freq_en ref)
 //=========================================================================
 int cariboulite_radio_get_mod_state (cariboulite_radio_state_st* radio, at86rf215_radio_state_cmd_en *state)
 {
-    radio->state  = at86rf215_radio_get_state(&radio->sys->modem, GET_CH(radio->type));
+    radio->state  = at86rf215_radio_get_state(&radio->sys->modem, GET_MODEM_CH(radio->type));
 
     if (state) *state = radio->state;
     return 0;
@@ -130,7 +130,7 @@ int cariboulite_radio_set_rx_gain_control(cariboulite_radio_state_st* radio,
         .gain_control_word = control_gain_val,
     };
 
-    at86rf215_radio_setup_agc(&radio->sys->modem, GET_CH(radio->type), &rx_gain_control);
+    at86rf215_radio_setup_agc(&radio->sys->modem, GET_MODEM_CH(radio->type), &rx_gain_control);
     radio->rx_agc_on = rx_agc_on;
     radio->rx_gain_value_db = rx_gain_value_db;
     return 0;
@@ -142,7 +142,7 @@ int cariboulite_radio_get_rx_gain_control(cariboulite_radio_state_st* radio,
                                     int *rx_gain_value_db)
 {
     at86rf215_radio_agc_ctrl_st agc_ctrl = {0};
-    at86rf215_radio_get_agc(&radio->sys->modem, GET_CH(radio->type), &agc_ctrl);
+    at86rf215_radio_get_agc(&radio->sys->modem, GET_MODEM_CH(radio->type), &agc_ctrl);
 
     radio->rx_agc_on = agc_ctrl.enable_cmd;
     radio->rx_gain_value_db = agc_ctrl.gain_control_word * 3;
@@ -194,7 +194,7 @@ int cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* radio,
         .fcut = radio->rx_fcut,             // keep the same
         .fs = radio->rx_fs,                 // keep the same
     };
-    at86rf215_radio_set_rx_bandwidth_sampling(&radio->sys->modem, GET_CH(radio->type), &cfg);
+    at86rf215_radio_set_rx_bandwidth_sampling(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->rx_bw = rx_bw;
     return 0;
 }
@@ -204,7 +204,7 @@ int cariboulite_radio_get_rx_bandwidth(cariboulite_radio_state_st* radio,
                                  at86rf215_radio_rx_bw_en *rx_bw)
 {
     at86rf215_radio_set_rx_bw_samp_st cfg = {0};
-    at86rf215_radio_get_rx_bandwidth_sampling(&radio->sys->modem, GET_CH(radio->type), &cfg);
+    at86rf215_radio_get_rx_bandwidth_sampling(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->rx_bw = cfg.bw;
     radio->rx_fcut = cfg.fcut;
     radio->rx_fs = cfg.fs;
@@ -228,7 +228,7 @@ int cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* radio,
         .fcut = rx_cutoff,
         .fs = rx_sample_rate,
     };
-    at86rf215_radio_set_rx_bandwidth_sampling(&radio->sys->modem, GET_CH(radio->type), &cfg);
+    at86rf215_radio_set_rx_bandwidth_sampling(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->rx_fs = rx_sample_rate;
     radio->rx_fcut = rx_cutoff;
     return 0;
@@ -288,7 +288,7 @@ int cariboulite_radio_set_tx_power(cariboulite_radio_state_st* radio,
         .direct_modulation = 0,
     };
 
-    at86rf215_radio_setup_tx_ctrl(&radio->sys->modem, GET_CH(radio->type), &cfg);
+    at86rf215_radio_setup_tx_ctrl(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->tx_power = tx_power_dbm;
 	
     return 0;
@@ -299,7 +299,7 @@ int cariboulite_radio_get_tx_power(cariboulite_radio_state_st* radio,
                              int *tx_power_dbm)
 {
     at86rf215_radio_tx_ctrl_st cfg = {0};
-    at86rf215_radio_get_tx_ctrl(&radio->sys->modem, GET_CH(radio->type), &cfg);
+    at86rf215_radio_get_tx_ctrl(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
 	
 	float x = cfg.tx_power;
 	float actual_model;
@@ -338,7 +338,7 @@ int cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio,
         .direct_modulation = 0,
     };
 
-    at86rf215_radio_setup_tx_ctrl(&radio->sys->modem, GET_CH(radio->type), &cfg);
+    at86rf215_radio_setup_tx_ctrl(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->tx_bw = tx_bw;
 
     return 0;
@@ -370,7 +370,7 @@ int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
         .direct_modulation = 0,
     };
 
-    at86rf215_radio_setup_tx_ctrl(&radio->sys->modem, GET_CH(radio->type), &cfg);
+    at86rf215_radio_setup_tx_ctrl(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->tx_fcut = tx_cutoff;
     radio->tx_fs = tx_sample_rate;
     
@@ -391,7 +391,7 @@ int cariboulite_radio_get_tx_samp_cutoff(cariboulite_radio_state_st* radio,
 //=========================================================================
 int cariboulite_radio_get_rssi(cariboulite_radio_state_st* radio, float *rssi_dbm)
 {
-    float rssi = at86rf215_radio_get_rssi_dbm(&radio->sys->modem, GET_CH(radio->type));
+    float rssi = at86rf215_radio_get_rssi_dbm(&radio->sys->modem, GET_MODEM_CH(radio->type));
     if (rssi >= -127.0 && rssi <= 4)   // register only valid values
     {
         radio->rx_rssi = rssi;
@@ -409,7 +409,7 @@ int cariboulite_radio_get_rssi(cariboulite_radio_state_st* radio, float *rssi_db
 int cariboulite_radio_get_energy_det(cariboulite_radio_state_st* radio, float *energy_det_val)
 {
     at86rf215_radio_energy_detection_st det = {0};
-    at86rf215_radio_get_energy_detection(&radio->sys->modem, GET_CH(radio->type), &det);
+    at86rf215_radio_get_energy_detection(&radio->sys->modem, GET_MODEM_CH(radio->type), &det);
     
     if (det.energy_detection_value >= -127.0 && det.energy_detection_value <= 4)   // register only valid values
     {
@@ -463,7 +463,7 @@ static int add_entropy(uint8_t byte)
 //=========================================================================
 int cariboulite_radio_get_rand_val(cariboulite_radio_state_st* radio, uint8_t *rnd)
 {
-    radio->random_value = at86rf215_radio_get_random_value(&radio->sys->modem, GET_CH(radio->type));
+    radio->random_value = at86rf215_radio_get_random_value(&radio->sys->modem, GET_MODEM_CH(radio->type));
     if (rnd) *rnd = radio->random_value;
 
 	// add the random number to the system entropy. why not :)
@@ -528,7 +528,7 @@ bool cariboulite_radio_wait_modem_lock(cariboulite_radio_state_st* radio, int re
 	int relock_retries = retries;
 	do
 	{
-		at86rf215_radio_get_pll_ctrl(&radio->sys->modem, GET_CH(radio->type), &cfg);
+		at86rf215_radio_get_pll_ctrl(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
 	} while (!cfg.pll_locked && relock_retries--);
 
 	return cfg.pll_locked;
@@ -763,7 +763,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 
         // Make sure the LO and the IF PLLs are locked
         at86rf215_radio_set_state( &radio->sys->modem, 
-                                    GET_CH(radio->type), 
+                                    GET_MODEM_CH(radio->type), 
                                     at86rf215_radio_state_cmd_tx_prep);
         radio->state = at86rf215_radio_state_cmd_tx_prep;
 
@@ -816,7 +816,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     if (radio->state != at86rf215_radio_state_cmd_tx_prep)
     {
         at86rf215_radio_set_state( &radio->sys->modem, 
-                                    GET_CH(radio->type), 
+                                    GET_MODEM_CH(radio->type), 
                                     at86rf215_radio_state_cmd_tx_prep);
         radio->state = at86rf215_radio_state_cmd_tx_prep;
         ZF_LOGD("Setup Modem state tx_prep");
@@ -825,7 +825,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     if (!active)
     {
         at86rf215_radio_set_state( &radio->sys->modem, 
-                                    GET_CH(radio->type), 
+                                    GET_MODEM_CH(radio->type), 
                                     at86rf215_radio_state_cmd_trx_off);
         radio->state = at86rf215_radio_state_cmd_trx_off;
         ZF_LOGD("Setup Modem state trx_off");
@@ -840,7 +840,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     if (radio->channel_direction == cariboulite_channel_dir_rx)
     {
         at86rf215_radio_set_state( &radio->sys->modem, 
-                                GET_CH(radio->type),
+                                GET_MODEM_CH(radio->type),
                                 at86rf215_radio_state_cmd_rx);
         ZF_LOGD("Setup Modem state cmd_rx");
     }
@@ -871,13 +871,13 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 
             // CW output - constant I/Q values override
             at86rf215_radio_set_tx_dac_input_iq(&radio->sys->modem, 
-                                                GET_CH(radio->type), 
+                                                GET_MODEM_CH(radio->type), 
                                                 radio->cw_output, 0x7E, 
                                                 radio->cw_output, 0x3F);
 
             // transition to state TX
             at86rf215_radio_set_state(&radio->sys->modem, 
-                                        GET_CH(radio->type),
+                                        GET_MODEM_CH(radio->type),
                                         at86rf215_radio_state_cmd_tx);
 
         }
@@ -922,12 +922,8 @@ int cariboulite_radio_get_cw_outputs(cariboulite_radio_state_st* radio,
     return 0;
 }
 
-
-
-
-/*
 //=========================================================================
-int cariboulite_radio_create_smi_stream(cariboulite_radio_state_st* radio, 
+/*int cariboulite_radio_create_stream(cariboulite_radio_state_st* radio, 
 										cariboulite_channel_dir_en dir,
 										void* context)
 {
