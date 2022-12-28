@@ -5,7 +5,7 @@
 #define ZF_LOG_TAG "CARIBOULITE Events"
 #include "zf_log/zf_log.h"
 
-#include "cariboulite_config_default.h"
+#include "cariboulite.h"
 #include "cariboulite_events.h"
 
 //=================================================================

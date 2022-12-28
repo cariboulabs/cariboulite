@@ -13,6 +13,7 @@
 #include <linux/random.h>
 #include <sys/ioctl.h>
 
+#include "cariboulite.h"
 #include "cariboulite_radio.h"
 #include "cariboulite_events.h"
 #include "cariboulite_setup.h"

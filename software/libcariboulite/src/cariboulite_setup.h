@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-
+#include "cariboulite.h"
 #include "cariboulite_radios.h"
 #include "caribou_fpga/caribou_fpga.h"
 #include "at86rf215/at86rf215.h"
@@ -54,6 +54,8 @@ typedef enum
     cariboulite_signal_registration_failed      = 7,
 } cariboulite_errors_en;
 
+int cariboulite_detect_board(sys_st *sys);
+void cariboulite_print_board_info(sys_st *sys, bool log);
 int cariboulite_init_driver(sys_st *sys, hat_board_info_st *info);
 int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool production);
 int cariboulite_init_system_production(sys_st *sys);

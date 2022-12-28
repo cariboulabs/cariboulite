@@ -21,6 +21,8 @@ int program_running = 1;
 int signal_shown = 0;
 CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
 
+int app_menu(sys_st* sys);
+
 //=================================================
 int stop_program ()
 {
@@ -48,7 +50,7 @@ void sighandler( struct sys_st_t *sys,
         case SIGABRT:
         case SIGILL:
         case SIGSEGV:
-        case SIGFPE: stop_program (); break;
+        case SIGFPE: stop_program(); break;
         default: return; break;
     }
 }

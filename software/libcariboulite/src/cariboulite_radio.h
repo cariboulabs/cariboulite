@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-#include "config/config.h"
 #include "at86rf215/at86rf215.h"
 
 typedef enum
@@ -28,9 +27,17 @@ typedef enum
 } cariboulite_ext_ref_freq_en;
 
 
+typedef void (*cariboulite_radio_rx_data_callback)(caribou_smi_sample_complex_int16 *samples,
+													size_t num_of_samples,
+													void* context);
+													
+typedef void (*cariboulite_radio_tx_data_callback)(caribou_smi_sample_complex_int16 *samples,
+													size_t num_of_samples,
+													void* context);
+
 typedef struct
 {
-    sys_st*                     		sys;
+    struct sys_st_t*               		sys;
     cariboulite_channel_dir_en          channel_direction;
     cariboulite_channel_en              type;
     bool                                active;
@@ -68,16 +75,18 @@ typedef struct
 
     // SMI STREAMS
     caribou_smi_channel_en              smi_channel_id;
+	cariboulite_radio_rx_data_callback	rx_cb;
+	cariboulite_radio_tx_data_callback	tx_cb;
 
     // OTHERS
     uint8_t                             random_value;
     float                               rx_thermal_noise_floor;
 } cariboulite_radio_state_st;
 
-void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cariboulite_channel_en type);
+void cariboulite_radio_init(cariboulite_radio_state_st* radio, struct sys_st_t *sys, cariboulite_channel_en type);
 int cariboulite_radio_dispose(cariboulite_radio_state_st* radio);
 int cariboulite_radio_sync_information(cariboulite_radio_state_st* radio);
-int cariboulite_radio_ext_ref (sys_st *sys, cariboulite_ext_ref_freq_en ref);
+int cariboulite_radio_ext_ref (struct sys_st_t *sys, cariboulite_ext_ref_freq_en ref);
 
 int cariboulite_radio_get_mod_state (cariboulite_radio_state_st* radio, at86rf215_radio_state_cmd_en *state);
 

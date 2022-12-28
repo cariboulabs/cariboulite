@@ -21,7 +21,6 @@ add_subdirectory(src/at86rf215 EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_smi EXCLUDE_FROM_ALL)
 add_subdirectory(src/io_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
-add_subdirectory(src/config EXCLUDE_FROM_ALL)
 add_subdirectory(src/hat EXCLUDE_FROM_ALL)
 add_subdirectory(src/production_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
@@ -37,7 +36,6 @@ target_link_libraries(cariboulite   datatypes
                                     rffc507x
                                     caribou_smi
                                     caribou_prog
-									config
 									hat
                                     io_utils
                                     zf_log
@@ -88,7 +86,7 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 # ----------------------------------
 set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
-set(SOURCES_MAIN src/cariboulite.c src/app_menu.c)
+set(SOURCES_MAIN src/cariboulite_app.c src/app_menu.c)
 set(SOURCES_PROD src/cariboulite_production.c)
 
 add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})

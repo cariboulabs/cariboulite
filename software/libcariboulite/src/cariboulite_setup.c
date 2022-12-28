@@ -275,9 +275,7 @@ int cariboulite_init_submodules (sys_st* sys)
     //------------------------------------------------------
     ZF_LOGD("INIT FPGA SMI communication");
     res = caribou_smi_init(&sys->smi, 
-							caribou_smi_error_event, 
-							caribou_smi_rx_data_event, 
-							caribou_smi_tx_data_event, 
+							caribou_smi_error_event,
 							&sys);
     if (res < 0)
     {
@@ -382,6 +380,14 @@ int cariboulite_init_submodules (sys_st* sys)
 
 	// Print the SPI information
 	io_utils_spi_print_setup(&sys->spi_dev);
+	
+	// Initialize the two Radio High-Level devices	
+	cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);
+	cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_6g);
+	cariboulite_radio_activate_channel(&sys->radio_low, false);
+	cariboulite_radio_activate_channel(&sys->radio_high, false);
+	cariboulite_radio_sync_information(&sys->radio_low);
+	cariboulite_radio_sync_information(&sys->radio_high);
 
     ZF_LOGI("Cariboulite submodules successfully initialized");
     return 0;
@@ -390,6 +396,55 @@ cariboulite_init_submodules_fail:
     // release the resources
     cariboulite_release_submodules(sys);
 	return -1;
+}
+
+//=======================================================================================
+int cariboulite_release_submodules(sys_st* sys)
+{
+    int res = 0;
+
+	if (sys->system_status == sys_status_full_init)
+	{
+		// Dispose high-level radio devices
+		cariboulite_radio_dispose(&sys->radio_low);
+		cariboulite_radio_dispose(&sys->radio_high);
+		
+		// SMI Module
+		//------------------------------------------------------
+		ZF_LOGD("CLOSE SMI");
+		caribou_smi_close(&sys->smi);
+		usleep(10000);
+
+		// AT86RF215
+		//------------------------------------------------------
+		ZF_LOGD("CLOSE MODEM - AT86RF215");
+		at86rf215_stop_iq_radio_receive (&sys->modem, at86rf215_rf_channel_900mhz);
+		at86rf215_stop_iq_radio_receive (&sys->modem, at86rf215_rf_channel_2400mhz);
+		at86rf215_close(&sys->modem);
+
+		//------------------------------------------------------
+		// RFFC5072 only relevant to the full version
+		if (sys->board_info.numeric_product_id == system_type_cariboulite_full)
+		{
+			ZF_LOGD("CLOSE MIXER - RFFC5072");
+			rffc507x_release(&sys->mixer);
+		}
+	}
+
+	if  (sys->system_status == sys_status_minimal_init)
+	{
+		// FPGA Module
+		//------------------------------------------------------
+		ZF_LOGD("CLOSE FPGA communication");
+		res = caribou_fpga_close(&sys->fpga);
+		if (res < 0)
+		{
+			ZF_LOGE("FPGA communication release failed (%d)", res);
+			return -1;
+		}
+	}
+
+    return 0;
 }
 
 //=======================================================================================
@@ -427,7 +482,6 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res)
 
     //------------------------------------------------------
     ZF_LOGI("Testing smi communication");
-    // TBD
 
     // check and report problems
     if (!error_occured)
@@ -438,51 +492,6 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res)
 
     ZF_LOGE("Self-test process finished with errors");
     return -1;
-}
-
-//=======================================================================================
-int cariboulite_release_submodules(sys_st* sys)
-{
-    int res = 0;
-
-	if (sys->system_status == sys_status_full_init)
-	{
-		// SMI Module
-		//------------------------------------------------------
-		ZF_LOGD("CLOSE SMI");
-		caribou_smi_close(&sys->smi);
-		usleep(10000);
-
-		// AT86RF215
-		//------------------------------------------------------
-		ZF_LOGD("CLOSE MODEM - AT86RF215");
-		at86rf215_stop_iq_radio_receive (&sys->modem, at86rf215_rf_channel_900mhz);
-		at86rf215_stop_iq_radio_receive (&sys->modem, at86rf215_rf_channel_2400mhz);
-		at86rf215_close(&sys->modem);
-
-		//------------------------------------------------------
-		// RFFC5072 only relevant to the full version
-		if (sys->board_info.numeric_product_id == system_type_cariboulite_full)
-		{
-			ZF_LOGD("CLOSE MIXER - RFFC5072");
-			rffc507x_release(&sys->mixer);
-		}
-	}
-
-	if  (sys->system_status == sys_status_minimal_init)
-	{
-		// FPGA Module
-		//------------------------------------------------------
-		ZF_LOGD("CLOSE FPGA communication");
-		res = caribou_fpga_close(&sys->fpga);
-		if (res < 0)
-		{
-			ZF_LOGE("FPGA communication release failed (%d)", res);
-			return -1;
-		}
-	}
-
-    return 0;
 }
 
 //=================================================
@@ -609,7 +618,7 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool p
     if (info == NULL)
     {
 		ZF_LOGI("Detecting Board Information");
-        int detected = config_detect_board(sys);
+        int detected = cariboulite_detect_board(sys);
         if (!detected)
         {
             ZF_LOGW("The RPI HAT interface didn't detect any connected boards");
@@ -622,7 +631,7 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool p
     {
         memcpy(&sys->board_info, info, sizeof(hat_board_info_st));
     }
-    config_print_board_info(sys, true);
+    cariboulite_print_board_info(sys, true);
 
 	sys->system_status = sys_status_minimal_init;
 
@@ -711,4 +720,48 @@ void cariboulite_lib_version(cariboulite_lib_version_st* v)
     v->major_version = CARIBOULITE_MAJOR_VERSION;
     v->minor_version = CARIBOULITE_MINOR_VERSION;
     v->revision = CARIBOULITE_REVISION;
+}
+
+//===========================================================
+int cariboulite_detect_board(sys_st *sys)
+{
+	if (hat_detect_board(&sys->board_info) == 0)
+	{
+		// the board was not configured as a hat. Lets try and detect it directly
+		// through its EEPROM
+		if (hat_detect_from_eeprom(&sys->board_info) == 0)
+		{
+			return 0;
+		}
+	}
+
+	sys->sys_type = (system_type_en)sys->board_info.numeric_product_id;
+    return 1;
+}
+
+//===========================================================
+void cariboulite_print_board_info(sys_st *sys, bool log)
+{
+	hat_print_board_info(&sys->board_info, log);
+
+	if (log)
+	{
+		switch (sys->sys_type)
+		{
+			case system_type_cariboulite_full: ZF_LOGI("# Board Info - Product Type: CaribouLite FULL"); break;
+			case system_type_cariboulite_ism: ZF_LOGI("# Board Info - Product Type: CaribouLite ISM"); break;
+			case system_type_unknown: 
+			default: ZF_LOGI("# Board Info - Product Type: Unknown"); break;
+		}
+	}
+	else
+	{
+		switch (sys->sys_type)
+		{
+			case system_type_cariboulite_full: printf("	Product Type: CaribouLite FULL"); break;
+			case system_type_cariboulite_ism: printf("	Product Type: CaribouLite ISM"); break;
+			case system_type_unknown: 
+			default: printf("	Product Type: Unknown"); break;
+		}
+	}
 }

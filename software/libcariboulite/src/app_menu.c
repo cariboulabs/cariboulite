@@ -44,7 +44,7 @@ app_menu_item_st handles[] =
 {
 	{app_selection_hard_reset_fpga, app_hard_reset_fpga, "Hard reset FPGA",},
 	{app_selection_soft_reset_fpga, app_soft_reset_fpga, "Soft reset FPGA",},
-	{app_selection_versions, app_versions_printout, "Print out versions",},
+	{app_selection_versions, app_versions_printout, "Print board info and versions",},
 	{app_selection_program_fpga, app_fpga_programming, "Program FPGA",},
 	{app_selection_self_test, app_self_test, "Perform a Self-Test",},
 	{app_selection_fpga_dig_control, fpga_control_io, "FPGA Diginal I/O",},
@@ -72,7 +72,7 @@ static void app_soft_reset_fpga(sys_st *sys)
 static void app_versions_printout(sys_st *sys)
 {
 	printf("Board Information (HAT)\n");
-	config_print_board_info(sys, false);
+	cariboulite_print_board_info(sys, false);
 	caribou_fpga_get_versions (&sys->fpga, NULL);
 	at86rf215_print_version(&sys->modem);
 
@@ -203,41 +203,37 @@ static void modem_tx_cw(sys_st *sys)
 	int choice = 0;
 
 	// create the radio
-	cariboulite_radio_state_st radio_low = {0};
-	cariboulite_radio_state_st radio_hi = {0};
+	cariboulite_radio_state_st *radio_low = &sys->radio_low;
+	cariboulite_radio_state_st *radio_hi = &sys->radio_high;
 
-	// init
-	cariboulite_radio_init(&radio_low, sys, cariboulite_channel_s1g);
-	cariboulite_radio_init(&radio_hi, sys, cariboulite_channel_6g);
-	
 	// output power
-	cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
-	cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
+	cariboulite_radio_set_tx_power(radio_low, current_power_lo);
+	cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
 	
 	// frequency
-	cariboulite_radio_set_frequency(&radio_low, true, &current_freq_lo);
-	cariboulite_radio_set_frequency(&radio_hi, true, &current_freq_hi);
+	cariboulite_radio_set_frequency(radio_low, true, &current_freq_lo);
+	cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
 	
 	// deactivate - just to be sure
-	cariboulite_radio_activate_channel(&radio_low, false);
-	cariboulite_radio_activate_channel(&radio_hi, false);
+	cariboulite_radio_activate_channel(radio_low, false);
+	cariboulite_radio_activate_channel(radio_hi, false);
 	
 	// setup cw outputs from modem
-	cariboulite_radio_set_cw_outputs(&radio_low, false, true);
-	cariboulite_radio_set_cw_outputs(&radio_hi, false, true);
+	cariboulite_radio_set_cw_outputs(radio_low, false, true);
+	cariboulite_radio_set_cw_outputs(radio_hi, false, true);
 	
 	// synchronize
-	cariboulite_radio_sync_information(&radio_low);
-	cariboulite_radio_sync_information(&radio_hi);
+	cariboulite_radio_sync_information(radio_low);
+	cariboulite_radio_sync_information(radio_hi);
 
 	// update params
-	current_freq_lo = radio_low.actual_rf_frequency;
-	current_freq_hi = radio_hi.actual_rf_frequency;
-	current_power_lo = radio_low.tx_power;
-	current_power_hi = radio_hi.tx_power;
+	current_freq_lo = radio_low->actual_rf_frequency;
+	current_freq_hi = radio_hi->actual_rf_frequency;
+	current_power_lo = radio_low->tx_power;
+	current_power_hi = radio_hi->tx_power;
 	
-	state_lo = radio_low.state == at86rf215_radio_state_cmd_rx;
-	state_hi = radio_hi.state == at86rf215_radio_state_cmd_rx;
+	state_lo = radio_low->state == at86rf215_radio_state_cmd_rx;
+	state_hi = radio_hi->state == at86rf215_radio_state_cmd_rx;
 
 	while (1)
 	{
@@ -260,13 +256,13 @@ static void modem_tx_cw(sys_st *sys)
 				printf("	Enter frequency @ Low Channel [Hz]:   ");
 				if (scanf("%lf", &current_freq_lo) != 1) continue;
 
-				cariboulite_radio_set_frequency(&radio_low, true, &current_freq_lo);
-				cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
+				cariboulite_radio_set_frequency(radio_low, true, &current_freq_lo);
+				cariboulite_radio_set_tx_power(radio_low, current_power_lo);
 				if (state_lo == false)
 				{
-					cariboulite_radio_activate_channel(&radio_low, false);
+					cariboulite_radio_activate_channel(radio_low, false);
 				}
-				current_freq_lo = radio_low.actual_rf_frequency;
+				current_freq_lo = radio_low->actual_rf_frequency;
 			}
 			break;
 			
@@ -276,13 +272,13 @@ static void modem_tx_cw(sys_st *sys)
 				printf("	Enter frequency @ High Channel [Hz]:   ");
 				if (scanf("%lf", &current_freq_hi) != 1) continue;
 
-				cariboulite_radio_set_frequency(&radio_hi, true, &current_freq_hi);
-				cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
+				cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
+				cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
 				if (state_hi == false)
 				{
-					cariboulite_radio_activate_channel(&radio_hi, false);
+					cariboulite_radio_activate_channel(radio_hi, false);
 				}
-				current_freq_hi = radio_hi.actual_rf_frequency;
+				current_freq_hi = radio_hi->actual_rf_frequency;
 			}
 			break;
 			
@@ -292,8 +288,8 @@ static void modem_tx_cw(sys_st *sys)
 				printf("	Enter power @ Low Channel [dBm]:   ");
 				if (scanf("%f", &current_power_lo) != 1) continue;
 
-				cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
-				current_power_lo = radio_low.tx_power;
+				cariboulite_radio_set_tx_power(radio_low, current_power_lo);
+				current_power_lo = radio_low->tx_power;
 			}
 			break;
 			
@@ -303,8 +299,8 @@ static void modem_tx_cw(sys_st *sys)
 				printf("	Enter power @ High Channel [dBm]:   ");
 				if (scanf("%f", &current_power_hi) != 1) continue;
 
-				cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
-				current_power_hi = radio_hi.tx_power;
+				cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
+				current_power_hi = radio_hi->tx_power;
 			}
 			break;
 			
@@ -312,9 +308,9 @@ static void modem_tx_cw(sys_st *sys)
 			case 5:
 			{
 				state_lo = !state_lo;
-				cariboulite_radio_activate_channel(&radio_low, state_lo);
+				cariboulite_radio_activate_channel(radio_low, state_lo);
 				//printf("	Power output was %s\n\n", state_lo?"ENABLED":"DISABLED");
-				if (state_lo == 1) cariboulite_radio_set_tx_power(&radio_low, current_power_lo);
+				if (state_lo == 1) cariboulite_radio_set_tx_power(radio_low, current_power_lo);
 			}
 			break;
 			
@@ -322,17 +318,15 @@ static void modem_tx_cw(sys_st *sys)
 			case 6: 
 			{
 				state_hi = !state_hi;
-				cariboulite_radio_activate_channel(&radio_hi, state_hi);
+				cariboulite_radio_activate_channel(radio_hi, state_hi);
 				//printf("	Power output was %s\n\n", state_hi?"ENABLED":"DISABLED");
-				if (state_hi == 1) cariboulite_radio_set_tx_power(&radio_hi, current_power_hi);
+				if (state_hi == 1) cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
 			}
 			break;
 			
 			//---------------------------------------------------------
 			case 99: 
 			{
-				cariboulite_radio_dispose(&radio_low);
-				cariboulite_radio_dispose(&radio_hi);
 				return;
 			}
 			break;
@@ -341,9 +335,6 @@ static void modem_tx_cw(sys_st *sys)
 			default: break;
 		}
 	}
-
-	cariboulite_radio_dispose(&radio_low);
-	cariboulite_radio_dispose(&radio_hi);
 }
 
 //=================================================
@@ -356,26 +347,26 @@ static void modem_rx_iq(sys_st *sys)
 	double current_freq_hi = 2400e6;
 	
 	// create the radio
-	cariboulite_radio_state_st radio_low = {0};
-	cariboulite_radio_state_st radio_hi = {0};
-	
-	// init
-	cariboulite_radio_init(&radio_low, sys, cariboulite_channel_s1g);
-	cariboulite_radio_init(&radio_hi, sys, cariboulite_channel_6g);
-	
+	cariboulite_radio_state_st *radio_low = &sys->radio_low;
+	cariboulite_radio_state_st *radio_hi = &sys->radio_high;
+		
 	// frequency
-	cariboulite_radio_set_frequency(&radio_low, true, &current_freq_lo);
-	cariboulite_radio_set_frequency(&radio_hi, true, &current_freq_hi);
+	cariboulite_radio_set_frequency(radio_low, true, &current_freq_lo);
+	cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
 	
 	// synchronize
-	cariboulite_radio_sync_information(&radio_low);
-	cariboulite_radio_sync_information(&radio_hi);
+	cariboulite_radio_sync_information(radio_low);
+	cariboulite_radio_sync_information(radio_hi);
+	
+	cariboulite_radio_activate_channel(radio_low, false);
+	cariboulite_radio_activate_channel(radio_hi, false);
 	
 	while (1)
 	{
 		printf("	Parameters:\n");
 		printf("	[1] Ch1 (%.5f MHz) RX %s\n", current_freq_lo / 1e6, low_active_rx?"Active":"Not Active");
 		printf("	[2] Ch2 (%.5f MHz) RX %s\n", current_freq_hi / 1e6, high_active_rx?"Active":"Not Active");
+		printf("	[99] Return to main menu\n");
 	
 		printf("	Choice: ");
 		if (scanf("%d", &choice) != 1) continue;
@@ -386,7 +377,7 @@ static void modem_rx_iq(sys_st *sys)
 			case 1:
 			{
 				low_active_rx = !low_active_rx;
-				cariboulite_radio_activate_channel(&radio_low, low_active_rx);
+				cariboulite_radio_activate_channel(radio_low, low_active_rx);
 			}
 			break;
 			
@@ -394,9 +385,15 @@ static void modem_rx_iq(sys_st *sys)
 			case 2:
 			{
 				high_active_rx = !high_active_rx;
-				cariboulite_radio_activate_channel(&radio_low, high_active_rx);
+				cariboulite_radio_activate_channel(radio_low, high_active_rx);
 			}
 			break;
+			
+			//--------------------------------------------
+			case 99:
+				cariboulite_radio_activate_channel(radio_low, false);
+				cariboulite_radio_activate_channel(radio_hi, false);	
+				return;
 			
 			//--------------------------------------------
 			default:
@@ -404,18 +401,12 @@ static void modem_rx_iq(sys_st *sys)
 			}
 			break;
 		}
-		
-		
 	}
-	
-	cariboulite_radio_dispose(&radio_low);
-	cariboulite_radio_dispose(&radio_hi);
 }
 
 //=================================================
 int app_menu(sys_st* sys)
 {
-	int choice = 0;
 	printf("\n");																			
 	printf("	   ____           _ _                 _     _ _         \n");
 	printf("	  / ___|__ _ _ __(_) |__   ___  _   _| |   (_) |_ ___   \n");
@@ -426,12 +417,13 @@ int app_menu(sys_st* sys)
 	
 	while (1)
 	{
+		int choice = -1;
 		printf(" Select a function:\n");
 		for (int i = 0; i < NUM_HANDLES; i++)
 		{
 			printf(" [%d]  %s\n", handles[i].num, handles[i].text);
 		}
-		printf("[%d]  %s\n", app_selection_quit, "Quit");
+		printf(" [%d]  %s\n", app_selection_quit, "Quit");
 
 		printf("    Choice:   ");
 		if (scanf("%d", &choice) != 1) continue;

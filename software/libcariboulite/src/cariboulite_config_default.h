@@ -5,8 +5,6 @@
 extern "C" {
 #endif
 
-#include "config/config.h"
-
 // PINOUT SPI
 #define CARIBOULITE_SPI_DEV 1
 #define CARIBOULITE_MOSI 20
