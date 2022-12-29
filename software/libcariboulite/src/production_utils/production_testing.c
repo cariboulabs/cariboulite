@@ -268,6 +268,29 @@ int production_start_tests(production_sequence_st* prod)
 }
 
 //===================================================================
+int production_generate_event_file(production_sequence_st* prod, char* path, char* event, char* tester)
+{
+	char filename[256] = {0};
+	char date1[128] = {0};
+	
+	strftime(date1, 128, "%Y_%m_%d__%H_%M_%S", &prod->tests[0].start_time_of_test);
+	sprintf(filename, "%s/boards/%s__%s.yml", path, date1, tester);
+	
+	FILE* fid = fopen(filename, "w");
+	if (fid == NULL)
+	{
+		ZF_LOGE("File opening failed for results generation");
+		return -1;
+	}
+	
+	fprintf(fid, event);
+	
+	fflush(fid);
+	fclose(fid);
+	return 0;
+}
+
+//===================================================================
 int production_generate_report(production_sequence_st* prod, char* path, uint32_t serial_number)
 {
 	uint32_t i;
@@ -279,7 +302,7 @@ int production_generate_report(production_sequence_st* prod, char* path, uint32_
 	lcd_writeln(&prod->lcd, "Generating", "Report", true);
 	strftime(date1, 128, "%Y_%m_%d__%H_%M_%S", &prod->tests[0].start_time_of_test);
 	strftime(date, 256, "%d/%m/%Y %H:%M:%S", &prod->tests[0].start_time_of_test);
-	sprintf(filename, "%s/boards/%08x__%s.yml", path, serial_number, date1);
+	sprintf(filename, "%s/boards/%s__%08x.yml", path, date1, serial_number);
 	
 	FILE* fid = fopen(filename, "w");
 	if (fid == NULL)
@@ -299,6 +322,7 @@ int production_generate_report(production_sequence_st* prod, char* path, uint32_
 	for (i = 0; i < prod->number_of_tests; i++)
 	{
 		fprintf(fid, "\t%s: \"%s\"\n", prod->tests[i].test_name, prod->tests[i].test_result_textual);
+		fflush(fid);
 	}
 	
 	fclose(fid);

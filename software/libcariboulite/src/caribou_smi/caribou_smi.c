@@ -353,7 +353,7 @@ int caribou_smi_close (caribou_smi_st* dev)
 }
 
 //=========================================================================
-int caribou_smi_setup_data_callbacks (caribou_smi_st* dev, 
+void caribou_smi_setup_data_callbacks (caribou_smi_st* dev, 
 									caribou_smi_rx_data_callback rx_cb, 
 									caribou_smi_tx_data_callback tx_cb, 
 									void *data_context)

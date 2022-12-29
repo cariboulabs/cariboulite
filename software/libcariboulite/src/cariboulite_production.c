@@ -850,7 +850,8 @@ int cariboulite_test_rf_tx_power(void *context, void* test_context, int test_num
 // GIT REPO
 #define PRODUCTION_GIT_DIR		"/home/pi/cariboulite_production_results"
 #define PRODUCTION_PAT_PATH		"/home/pi/manufacturing_PAT.txt"
-#define PRODUCTION_DIT_URI		"github.com/cariboulabs/cariboulite_production_results.git"
+//#define PRODUCTION_GIT_URI	"github.com/cariboulabs/cariboulite_production_results.git"
+#define PRODUCTION_GIT_URI		"gitee.com/meexmachina/cariboulite_production_results.git"
 
 //=================================================
 int cariboulite_production_connectivity_init(production_sequence_st* prod)
@@ -876,8 +877,6 @@ int cariboulite_production_app_close(production_sequence_st* prod)
 	return 0;
 }
 
-
-
 //=================================================
 int main(int argc, char *argv[])
 {
@@ -901,7 +900,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
-	production_set_git_repo(&prod, PRODUCTION_PAT_PATH, PRODUCTION_DIT_URI, PRODUCTION_GIT_DIR);
+	production_set_git_repo(&prod, PRODUCTION_PAT_PATH, PRODUCTION_GIT_URI, PRODUCTION_GIT_DIR);
 	production_git_sync_sequence(&prod, "auto commit");
 
 	ZF_LOGI("WELLCOME!!");

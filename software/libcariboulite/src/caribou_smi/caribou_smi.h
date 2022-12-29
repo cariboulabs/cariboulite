@@ -93,11 +93,13 @@ typedef struct
 	caribou_smi_debug_data_st debug_data;
 } caribou_smi_st;
 
-int caribou_smi_init(	caribou_smi_st* dev, 
-						caribou_smi_error_callback error_cb, 
-						caribou_smi_rx_data_callback rx_cb,
-						caribou_smi_tx_data_callback tx_cb,
-						void* context);
+int caribou_smi_init(caribou_smi_st* dev, 
+					caribou_smi_error_callback error_cb,
+					void* context);
+void caribou_smi_setup_data_callbacks (caribou_smi_st* dev, 
+									caribou_smi_rx_data_callback rx_cb, 
+									caribou_smi_tx_data_callback tx_cb, 
+									void *data_context);
 int caribou_smi_close (caribou_smi_st* dev);
 int caribou_smi_check_modules(bool reload);
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en mode);
