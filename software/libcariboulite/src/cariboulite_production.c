@@ -900,6 +900,8 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	
+	production_generate_event_file(&prod, PRODUCTION_GIT_DIR, "tester started", prod.tester.rpi_info.serial_number);
+	
 	production_set_git_repo(&prod, PRODUCTION_PAT_PATH, PRODUCTION_GIT_URI, PRODUCTION_GIT_DIR);
 	production_git_sync_sequence(&prod, "auto commit");
 
@@ -926,6 +928,7 @@ int main(int argc, char *argv[])
 		if (ret == false)
 		{
 			production_wait_for_button(&prod, lcd_button_bottom, "F A I L! UNMOUNT", "<== CLICK HERE");
+			production_generate_event_file(&prod, PRODUCTION_GIT_DIR, "board testing failed", prod.tester.rpi_info.serial_number);
 		}
 		else
 		{
@@ -940,6 +943,7 @@ int main(int argc, char *argv[])
 		production_rewind(&prod);
 	}
 	
+	production_generate_event_file(&prod, PRODUCTION_GIT_DIR, "tester stopped", prod.tester.rpi_info.serial_number);
 	cariboulite_production_app_close(&prod);
 	cariboulite_deinit_system_production(&cariboulite_sys);
 	
