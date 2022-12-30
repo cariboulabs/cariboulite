@@ -273,8 +273,11 @@ int production_generate_event_file(production_sequence_st* prod, char* path, cha
 	char filename[256] = {0};
 	char date1[128] = {0};
 	
-	strftime(date1, 128, "%Y_%m_%d__%H_%M_%S", &prod->tests[0].start_time_of_test);
-	sprintf(filename, "%s/boards/%s__%s.yml", path, date1, tester);
+	struct tm event_time;
+	PROD_GET_TIME(event_time);
+	
+	strftime(date1, 128, "%Y_%m_%d__%H_%M_%S", &event_time);
+	sprintf(filename, "%s/events/%s__%s.yml", path, date1, tester);
 	
 	FILE* fid = fopen(filename, "w");
 	if (fid == NULL)
