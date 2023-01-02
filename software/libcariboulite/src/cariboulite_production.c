@@ -160,6 +160,8 @@ int cariboulite_test_current_system(void *context, void* test_context, int test_
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* prod = (production_sequence_st*)test_context;
 	
+	caribou_fpga_hard_reset_keep(&sys->fpga, true);
+	
 	//lcd_writeln(&prod.lcd, "Power on...", "", true);
 	hat_powermon_set_power_state(&prod->powermon, true);
 	io_utils_usleep(400000);
@@ -982,7 +984,7 @@ int cariboulite_production_clear_drivers(production_sequence_st* prod)
 	sys_st* sys = (sys_st*)prod->context;
 	
 	rffc507x_release(&sys->mixer);
-	//caribou_fpga_close(&sys->fpga);
+	caribou_fpga_hard_reset_keep(&sys->fpga, true);
 	at86rf215_close(&sys->modem);
 	
 	return 0;

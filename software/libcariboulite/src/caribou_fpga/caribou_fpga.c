@@ -248,6 +248,20 @@ int caribou_fpga_hard_reset(caribou_fpga_st* dev)
 }
 
 //--------------------------------------------------------------
+int caribou_fpga_hard_reset_keep(caribou_fpga_st* dev, bool reset)
+{
+	if (reset)
+	{
+		io_utils_write_gpio_with_wait(dev->reset_pin, 0, 1000);
+	}
+	else
+	{
+		io_utils_write_gpio_with_wait(dev->reset_pin, 1, 1000);
+	}
+	return 0;
+}
+
+//--------------------------------------------------------------
 // System Controller
 void caribou_fpga_print_versions (caribou_fpga_st* dev)
 {

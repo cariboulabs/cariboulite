@@ -128,6 +128,7 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi);
 int caribou_fpga_close(caribou_fpga_st* dev);
 int caribou_fpga_soft_reset(caribou_fpga_st* dev);
 int caribou_fpga_hard_reset(caribou_fpga_st* dev);
+int caribou_fpga_hard_reset_keep(caribou_fpga_st* dev, bool reset);
 
 // programming
 int caribou_fpga_get_status(caribou_fpga_st* dev, caribou_fpga_status_en *stat);
