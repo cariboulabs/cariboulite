@@ -529,6 +529,10 @@ int cariboulite_init_system_production(sys_st *sys)
 		return -1;
     }
 	
+	// Initialize the two Radio High-Level devices	
+	cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);
+	cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_6g);
+	
 	return 0;
 }
 

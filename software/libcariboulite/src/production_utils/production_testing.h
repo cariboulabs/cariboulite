@@ -21,6 +21,12 @@ typedef struct
     io_utils_sys_info_st rpi_info;
 } production_tester_st;
 
+typedef enum
+{
+	production_sys_version_ism = 0,
+	production_sys_version_full = 1,
+} production_sys_version_en;
+
 typedef struct
 {
 	// inputs
@@ -74,6 +80,7 @@ typedef struct
 	// temporary data
 	bool serial_number_written_and_valid;
 	uint32_t serial_number;
+	production_sys_version_en operator_set_version;
 	
 	bool system_type_valid;
 	char product_name[64];
@@ -87,6 +94,7 @@ int production_start_tests(production_sequence_st* prod);
 int production_generate_report(production_sequence_st* prod, char* path, uint32_t serial_number);
 int production_generate_event_file(production_sequence_st* prod, char* path, char* event, char* tester);
 int production_wait_for_button(production_sequence_st* prod, lcd_button_en but, char* top_line, char* bottom_line);
+int production_wait_input(production_sequence_st* prod, lcd_button_en *but, char* top_line, char* bottom_line);
 void production_git_sync_sequence(production_sequence_st* prod, char* commit_string);
 int production_monitor_power_fault(production_sequence_st* prod, bool* fault, float *i, float* v, float* p);
 

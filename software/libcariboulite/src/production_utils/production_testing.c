@@ -44,6 +44,7 @@ int production_init(production_sequence_st* prod, production_test_st* tests, int
 		ZF_LOGE("LCD init failed");
 		return -1;
 	}
+	//lcd_set_params(&prod->lcd, 255, 190)
 		
 	io_utils_get_rpi_info(&prod->tester.rpi_info);
 	
@@ -193,6 +194,12 @@ int production_rewind(production_sequence_st* prod)
 {
 	prod->current_test_number = 0;
 	prod->current_tests_pass = true;
+	prod->operator_set_version = production_sys_version_ism;
+	prod->serial_number_written_and_valid = false;
+	prod->serial_number = 0;
+	prod->system_type_valid = false;
+	memset(prod->product_name, 0, sizeof(prod->product_name));
+	hat_powermon_set_power_state(&prod->powermon, false);
 	
 	lcd_writeln(&prod->lcd, "TESTER", "RESTARTS...", true);
 	
@@ -354,6 +361,33 @@ int production_wait_for_button(production_sequence_st* prod, lcd_button_en but, 
 	}
 	return 0;
 }
+
+//===================================================================
+int production_wait_input(production_sequence_st* prod, lcd_button_en *but, char* top_line, char* bottom_line)
+{
+	int key1, key2;
+	lcd_writeln(&prod->lcd, top_line, bottom_line, true);
+	
+	while (1)
+	{
+		io_utils_usleep(100000);
+		lcd_get_keys(&prod->lcd, &key1, &key2);
+		
+		if (key1)
+		{
+			if (but) *but = lcd_button_bottom;
+			return 1;
+		}
+		
+		if (key2)
+		{
+			if (but) *but = lcd_button_top;
+			return 1;
+		}
+	}
+	return 0;
+}
+
 
 //===================================================================
 int production_monitor_power_fault(production_sequence_st* prod, bool* fault, float *i, float* v, float* p)

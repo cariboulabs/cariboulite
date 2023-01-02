@@ -103,7 +103,7 @@ def main():
     lcd_get_keys(lcd)
 
     # adjust contrast and brightess
-    lcd.set_contrast(190)
+    lcd.set_contrast(255)
     lcd.set_brightness(255)
 
     # clear display
@@ -112,7 +112,7 @@ def main():
     lcd.goto(0, 0)
     lcd.write("Hello CaribouLite!")
     lcd.goto(0, 1)
-    lcd.write("Hello CaribouLite!")
+    lcd.write("Hello!")
     time.sleep(2.0)
     lcd.clear()
 

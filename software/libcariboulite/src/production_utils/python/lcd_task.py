@@ -3,8 +3,16 @@ import zmq
 
 
 def main():
+    button_polarity = 0
+    
     # invoke LCD instance
     lcd = LCD()
+    
+    major, minor = lcd.version
+    # print('Firmware version %d.%d' % (major, minor))
+    if minor == 9:
+        button_polarity = 1
+ 
     lcd.set_contrast(190)
     lcd.set_brightness(255)
  
@@ -40,7 +48,10 @@ def main():
             lcd.set_contrast(contrast)
             
         elif event == 3:
-            key1, key2 = lcd.keys
+            if button_polarity == 0:
+                key1, key2 = lcd.keys
+            else:
+                key2, key1 = lcd.keys
             output = "{}{}".format(int(key1), int(key2))
     
         elif event == 9:     # quit task

@@ -164,7 +164,7 @@ int cariboulite_test_current_system(void *context, void* test_context, int test_
 	hat_powermon_set_power_state(&prod->powermon, true);
 	io_utils_usleep(400000);
 	
-	for (k = 0; k < 10; k++)
+	for (k = 0; k < 20; k++)
 	{
 		io_utils_usleep(100000);
 		production_monitor_power_fault(prod, &fault, &current_ma, &voltage_mv, &power_mw);
@@ -174,7 +174,7 @@ int cariboulite_test_current_system(void *context, void* test_context, int test_
 	
 	average_current /= (float)(k);
 		
-	if (fault || average_current > 250.0f || voltage_mv < 2500.0f || current_ma < 10.0f)
+	if (fault || average_current > 220.0f || voltage_mv < 2500.0f || current_ma < 10.0f)
 	{
 		tests[test_num].test_result_float = average_current;
 		sprintf(tests[test_num].test_result_textual, "Wrong current %.1f mA, low voltage (%.1f mV), fault: %d", average_current, voltage_mv, fault);
@@ -184,7 +184,7 @@ int cariboulite_test_current_system(void *context, void* test_context, int test_
 	else
 	{
 		tests[test_num].test_result_float = average_current;
-		sprintf(tests[test_num].test_result_textual, "Pass");
+		sprintf(tests[test_num].test_result_textual, "Pass - idle current - %.1f mA", average_current);
 		pass = true;
 	}			
 
@@ -261,26 +261,42 @@ int cariboulite_test_fpga_id_resistors(void *context, void* test_context, int te
 		led0, led1, btn, (cfg >> 0) & 0x1, (cfg >> 1) & 0x1, (cfg >> 2) & 0x1, (cfg >> 3) & 0x1);
 	sys->fpga_config_resistor_state = cfg;
 	
+	// 0xf = full, 0xe = ism
 	if (sys->fpga_config_resistor_state != 0xF && sys->fpga_config_resistor_state != 0xE)
 	{
 		tests[test_num].test_result_float = -1; 
 		sprintf(tests[test_num].test_result_textual, "Failed - unrecognized fpga id resistor config %01X (check R38, R39, R40, R41)", cfg);
-		tests[test_num].test_pass = true;
+		tests[test_num].test_pass = false;
 	}
 	else
 	{
-		sys->sys_type = (cfg & 0x1) ? system_type_cariboulite_full : system_type_cariboulite_ism;
+		sys->sys_type = (cfg == 0xF) ? system_type_cariboulite_full : system_type_cariboulite_ism;
 		
-		tests[test_num].test_result_float = -1;
-		sprintf(tests[test_num].test_result_textual, "Pass - detected %s", (cfg & 0x1) ? "CaribouFull" : "CaribouISM");
-		tests[test_num].test_pass = true;
-		
-		prod->system_type_valid = true;
-		sprintf(prod->product_name, "%s", (cfg & 0x1) ? "CaribouFull" : "CaribouISM");
+		ZF_LOGD("System detected: %s, Operator set: %s", (sys->sys_type == system_type_cariboulite_full) ? "CaribouFull" : "CaribouISM",
+														 (prod->operator_set_version == production_sys_version_ism) ? "CaribouISM" : "CaribouFull");
+														 
+		// mismatch
+		if (((prod->operator_set_version == production_sys_version_ism) && (sys->sys_type == system_type_cariboulite_full)) ||
+			((prod->operator_set_version == production_sys_version_full) && (sys->sys_type == system_type_cariboulite_ism)))
+		{
+			tests[test_num].test_result_float = -1;
+			sprintf(tests[test_num].test_result_textual, "Failed - version mismatch - detected %s, but operator set %s", 
+											(cfg == 0xF) ? "CaribouFull" : "CaribouISM",
+											(prod->operator_set_version == production_sys_version_ism) ? "CaribouISM" : "CaribouFull");
+			tests[test_num].test_pass = false;
+		}
+		else
+		{		
+			tests[test_num].test_result_float = -1;
+			sprintf(tests[test_num].test_result_textual, "Pass - detected %s", (cfg == 0xF) ? "CaribouFull" : "CaribouISM");
+			tests[test_num].test_pass = true;
+			
+			prod->system_type_valid = true;
+			sprintf(prod->product_name, "%s", (cfg == 0xF) ? "CaribouFull" : "CaribouISM");
+		}
 	}
 	
-	
-	return tests[cariboulite_test_en_fpga_programming].test_pass;
+	return tests[test_num].test_pass;
 }
 
 //=================================================
@@ -465,6 +481,8 @@ int cariboulite_test_hat_eeprom(void *context, void* test_context, int test_num)
 		prod->serial_number = hat.generated_serial;
 	}
 	
+	hat_close(&hat);
+	
 	return tests[test_num].test_pass;
 }
 
@@ -490,6 +508,7 @@ int cariboulite_test_mixer_communication(void *context, void* test_context, int 
 	if (res < 0)
 	{
 		ZF_LOGE("Error initializing mixer 'rffc5072'");
+		rffc507x_release(&sys->mixer);
 		
 		tests[test_num].test_result_float = -1;
 		sprintf(tests[test_num].test_result_textual, "Fail");
@@ -537,6 +556,7 @@ int cariboulite_test_mixer_versions(void *context, void* test_context, int test_
 	}
 	else
 	{
+		rffc507x_release(&sys->mixer);
 		tests[test_num].test_result_float = -1;
 		sprintf(tests[test_num].test_result_textual, "Fail: dev-id = %04x, dev-rev = %04x", dev_id.device_id, dev_id.device_rev);
 		tests[test_num].test_pass = false;
@@ -555,6 +575,7 @@ int cariboulite_test_modem_communication(void *context, void* test_context, int 
     if (res < 0)
     {
         ZF_LOGE("Error initializing modem 'at86rf215'");
+		at86rf215_close(&sys->modem);
 		tests[test_num].test_result_float = -1;
 		sprintf(tests[test_num].test_result_textual, "Fail");
 		tests[test_num].test_pass = false;
@@ -622,6 +643,7 @@ int cariboulite_test_modem_version(void *context, void* test_context, int test_n
 	if ((pn == 0x34 || pn == 0x35) && vn > 0 && vn < 5) pass = true;
 	if (!pass) 
 	{
+		at86rf215_close(&sys->modem);
 		tests[test_num].test_result_float = -1;
 		sprintf(tests[test_num].test_result_textual, "Fail, PN: 0x%02X, VER: %d, wrong P/N", pn, vn);
 		tests[test_num].test_pass = false;
@@ -649,12 +671,75 @@ int cariboulite_test_modem_version(void *context, void* test_context, int test_n
 	return tests[test_num].test_pass;
 }
 
+
+//=================================================
+int cariboulite_prod_set_modems_state(sys_st* sys, int state) // state = 0 = off, 1 = rx, 2 = tx
+{
+	double freq_lo = 900e6;
+	double freq_hi = 2400e6;
+	float power_lo = 14;
+	float power_hi = 14;
+	
+	cariboulite_radio_state_st *radio_low = &sys->radio_low;
+	cariboulite_radio_state_st *radio_hi = &sys->radio_high;
+	
+	// frequency
+	cariboulite_radio_set_frequency(radio_low, true, &freq_lo);
+	cariboulite_radio_set_frequency(radio_hi, true, &freq_hi);
+	
+	// deactivate - just to be sure
+	cariboulite_radio_activate_channel(radio_low, false);
+	cariboulite_radio_activate_channel(radio_hi, false);
+	
+	if (state == 0)
+	{
+		cariboulite_radio_set_cw_outputs(radio_low, false, false);
+		cariboulite_radio_set_cw_outputs(radio_hi, false, false);
+		
+		// deactivate
+		cariboulite_radio_activate_channel(radio_low, false);
+		cariboulite_radio_activate_channel(radio_hi, false);
+	}
+	else if (state == 1)
+	{
+		cariboulite_radio_set_cw_outputs(radio_low, false, false);
+		cariboulite_radio_set_cw_outputs(radio_hi, false, false);
+		
+		// synchronize
+		cariboulite_radio_sync_information(radio_low);
+		cariboulite_radio_sync_information(radio_hi);
+		
+		// activate rx
+		cariboulite_radio_activate_channel(radio_low, true);
+		cariboulite_radio_activate_channel(radio_hi, true);
+	}
+	if (state == 2)
+	{
+		// output power
+		cariboulite_radio_set_tx_power(radio_low, power_lo);
+		cariboulite_radio_set_tx_power(radio_hi, power_hi);
+		
+		// setup cw outputs from modem
+		cariboulite_radio_set_cw_outputs(radio_low, false, true);
+		cariboulite_radio_set_cw_outputs(radio_hi, false, true);
+		
+		// synchronize
+		cariboulite_radio_sync_information(radio_low);
+		cariboulite_radio_sync_information(radio_hi);
+		
+		// activate tx
+		cariboulite_radio_activate_channel(radio_low, true);
+		cariboulite_radio_activate_channel(radio_hi, true);
+	}
+	return 0;
+}
+
 //=================================================
 int cariboulite_test_modem_leds(void *context, void* test_context, int test_num)
 {
 	bool pass = false;
 	int key1, key2;
-	int state = at86rf215_radio_state_cmd_rx;
+	int state = 0;
 	
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* prod = (production_sequence_st*)test_context;
@@ -663,12 +748,9 @@ int cariboulite_test_modem_leds(void *context, void* test_context, int test_num)
 	
 	while (1)
 	{
-		io_utils_usleep(300000);
-		if (state == at86rf215_radio_state_cmd_rx) state = at86rf215_radio_state_cmd_tx_prep;
-		else state = at86rf215_radio_state_cmd_rx;
-
-		at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, state);
-		at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, state);
+		io_utils_usleep(500000);
+		cariboulite_prod_set_modems_state(sys, state);
+		state = (state + 1) % 3;
 		
 		lcd_get_keys(&prod->lcd, &key1, &key2);
 		if (key1)
@@ -693,13 +775,14 @@ int cariboulite_test_modem_leds(void *context, void* test_context, int test_num)
 	}
 	else
 	{
+		at86rf215_close(&sys->modem);
 		tests[test_num].test_result_float = -1;
 		sprintf(tests[test_num].test_result_textual, "Fail - Modem LEDs didn't blink");
 		tests[test_num].test_pass = false;
 	}
 	
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_trx_off);
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_trx_off);
+	// deactivate both
+	cariboulite_prod_set_modems_state(sys, 0);
 	
 	return tests[test_num].test_pass;	
 }
@@ -712,6 +795,7 @@ int cariboulite_test_modem_interrupt(void *context, void* test_context, int test
 	
 	if (sys->modem.num_interrupts == 0)
 	{
+		at86rf215_close(&sys->modem);
 		tests[test_num].test_result_float = -1;
 		sprintf(tests[test_num].test_result_textual, "Fail - didn't get modem interrupts");
 		tests[test_num].test_pass = false;
@@ -725,7 +809,6 @@ int cariboulite_test_modem_interrupt(void *context, void* test_context, int test
 	return tests[test_num].test_pass;
 }
 
-
 //=================================================
 int cariboulite_test_current_modem_rx(void *context, void* test_context, int test_num)
 {
@@ -733,35 +816,51 @@ int cariboulite_test_current_modem_rx(void *context, void* test_context, int tes
 	float current_ma = 0.0f, voltage_mv = 0.0f, power_mw = 0.0f;
 	float current_ma_before = 0.0f;
 	float current_diff = 0.0;
+	float current_diff_avg = 0.0;
 	bool pass = true;
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* prod = (production_sequence_st*)test_context;
+	int k = 0;
+	
+	// deactivate
+	cariboulite_prod_set_modems_state(sys, 0);
 	
 	io_utils_usleep(100000);
 	production_monitor_power_fault(prod, &fault, &current_ma, &voltage_mv, &power_mw);
 	current_ma_before = current_ma;
-		
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_rx);
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_rx);
+	
+	// activate rx
+	cariboulite_prod_set_modems_state(sys, 1);
 	io_utils_usleep(300000);
-		
-	production_monitor_power_fault(prod, &fault, &current_ma, &voltage_mv, &power_mw);
-	current_diff = current_ma - current_ma_before;
-		
-	if (fault || current_diff > 100.0f)
+	
+	for (k = 0; k < 20; k ++)
 	{
-		tests[test_num].test_result_float = current_ma;
-		sprintf(tests[test_num].test_result_textual, "High modem RX current %.1f mA, fault: %d", current_diff, fault);
+		io_utils_usleep(50000);
+		production_monitor_power_fault(prod, &fault, &current_ma, &voltage_mv, &power_mw);
+		current_diff = current_ma - current_ma_before;
+		
+		current_diff_avg += current_diff;
+	}
+	current_diff_avg /= (float)(k);
+		
+	if (fault || current_diff_avg > 150.0f)
+	{
+		at86rf215_close(&sys->modem);
+		tests[test_num].test_result_float = current_diff_avg;
+		sprintf(tests[test_num].test_result_textual, "High modem RX extra current %.1f mA, fault: %d", current_diff_avg, fault);
 		tests[test_num].test_pass = false;
 		pass = false;
 	}
 	else
 	{
-		tests[test_num].test_result_float = current_ma;
-		sprintf(tests[test_num].test_result_textual, "Pass, %.1f mA", current_diff);
+		tests[test_num].test_result_float = current_diff_avg;
+		sprintf(tests[test_num].test_result_textual, "Pass, RX extra current %.1f mA", current_diff_avg);
 		tests[test_num].test_pass = true;
 		pass = true;
-	}			
+	}
+	
+	// deactivate
+	cariboulite_prod_set_modems_state(sys, 0);
 	
 	return pass;
 }
@@ -773,40 +872,56 @@ int cariboulite_test_current_modem_tx(void *context, void* test_context, int tes
 	float current_ma = 0.0f, voltage_mv = 0.0f, power_mw = 0.0f;
 	float current_ma_before = 0.0f;
 	float current_diff = 0.0;
+	float current_diff_avg = 0.0;
 	bool pass = true;
 	sys_st* sys = (sys_st*)context;
 	production_sequence_st* prod = (production_sequence_st*)test_context;
-		
-	io_utils_usleep(100000);
-	production_monitor_power_fault(prod, &fault, &current_ma, &voltage_mv, &power_mw);
-	current_ma_before = current_ma;
-		
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_tx_prep);
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_tx_prep);
+	int k = 0;
 	
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_900mhz, at86rf215_radio_state_cmd_tx);
-	at86rf215_radio_set_state(&sys->modem, at86rf215_rf_channel_2400mhz, at86rf215_radio_state_cmd_tx);
+	// deactivate
+	cariboulite_prod_set_modems_state(sys, 0);
+	
+	io_utils_usleep(100000);
+	
+	production_monitor_power_fault(prod, &fault, &current_ma_before, &voltage_mv, &power_mw);
+	
+	// activate tx
+	cariboulite_prod_set_modems_state(sys, 2);
 	io_utils_usleep(300000);
 	
-	production_monitor_power_fault(prod, &fault, &current_ma, &voltage_mv, &power_mw);
-	current_diff = current_ma - current_ma_before;
+	// test the current
 	
-	if (fault || current_diff > 100.0f)
+	for (k = 0; k < 20; k++)
 	{
-		tests[test_num].test_result_float = current_ma;
-		sprintf(tests[test_num].test_result_textual, "High modem RX current %.1f mA, fault: %d", current_diff, fault);
+		io_utils_usleep(100000);
+		production_monitor_power_fault(prod, &fault, &current_ma, &voltage_mv, &power_mw);
+		
+		current_diff = current_ma - current_ma_before;
+		current_diff_avg += current_diff;
+	}
+	
+	current_diff_avg /= (float)(k);
+	
+	if (fault || current_diff_avg > 230.0f)
+	{
+		at86rf215_close(&sys->modem);
+		tests[test_num].test_result_float = current_diff_avg;
+		sprintf(tests[test_num].test_result_textual, "High modem TX extra current %.1f mA, fault: %d", current_diff_avg, fault);
 		tests[test_num].test_pass = false;
 		pass = false;
 		hat_powermon_set_power_state(&prod->powermon, false);
 	}
 	else
 	{
-		tests[test_num].test_result_float = current_ma;
-		sprintf(tests[test_num].test_result_textual, "Pass, %.1f mA", current_diff);
+		tests[test_num].test_result_float = current_diff_avg;
+		sprintf(tests[test_num].test_result_textual, "Pass, TX extra current %.1f mA", current_diff_avg);
 		tests[test_num].test_pass = true;
 		pass = true;
 	}			
 
+	// deactivate
+	cariboulite_prod_set_modems_state(sys, 0);
+	
 	return pass;
 }
 
@@ -854,26 +969,22 @@ int cariboulite_test_rf_tx_power(void *context, void* test_context, int test_num
 #define PRODUCTION_GIT_URI		"gitee.com/meexmachina/cariboulite_production_results.git"
 
 //=================================================
-int cariboulite_production_connectivity_init(production_sequence_st* prod)
-{
-	lcd_writeln(&prod->lcd, "CaribouLite Tst", "CONNECTING WIFI", true);
-	production_utils_rpi_leds_init(1);
-	production_utils_rpi_leds_blink_start_tests();
-
-	// Initialize the wifi
-	production_wifi_status_st wifi_stat;
-	production_check_wifi_state(&wifi_stat);
-	printf("Wifi Status: available: %d, wlan_id = %d, ESSID: %s, InternetAccess: %d\n",
-		wifi_stat.available, wifi_stat.wlan_id, wifi_stat.essid, wifi_stat.internet_access);
-		
-	return 0;
-}
-
-//=================================================
 int cariboulite_production_app_close(production_sequence_st* prod)
 {
 	ZF_LOGI("CLOSING...");
 	production_close(prod);
+	return 0;
+}
+
+//=================================================
+int cariboulite_production_clear_drivers(production_sequence_st* prod)
+{
+	sys_st* sys = (sys_st*)prod->context;
+	
+	rffc507x_release(&sys->mixer);
+	//caribou_fpga_close(&sys->fpga);
+	at86rf215_close(&sys->modem);
+	
 	return 0;
 }
 
@@ -893,15 +1004,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	// wifi connection
-	if (cariboulite_production_connectivity_init(&prod) != 0)
-	{
-		ZF_LOGE("error loading init source");
-		return -1;
-	}
-	
 	production_generate_event_file(&prod, PRODUCTION_GIT_DIR, "tester started", prod.tester.rpi_info.serial_number);
-	
 	production_set_git_repo(&prod, PRODUCTION_PAT_PATH, PRODUCTION_GIT_URI, PRODUCTION_GIT_DIR);
 	production_git_sync_sequence(&prod, "auto commit");
 
@@ -916,12 +1019,27 @@ int main(int argc, char *argv[])
 	while (1)
 	{
 		int ret = 0;
+		char msg_cache[32];
+		lcd_button_en input_button = lcd_button_bottom;
+		
 		production_wait_for_button(&prod, lcd_button_bottom, "MOUNT, START", "<== CLICK HERE");
+		lcd_writeln(&prod.lcd, "Starting Tests...", "", true);
+		sleep(2);
+		
+		production_wait_input(&prod, &input_button, "<== FULL  CHOOSE", "<== ISM");
+		
+		prod.operator_set_version = input_button == lcd_button_bottom ? production_sys_version_ism : production_sys_version_full;
+		sprintf(msg_cache, "VER: %s", prod.operator_set_version == production_sys_version_ism? "ISM" : "FULL");
 		
 		prod.serial_number_written_and_valid = false;
 		prod.system_type_valid = false;
+		
+		// start the tests
 		ret = production_start_tests(&prod);
 
+		sleep(1);
+		hat_powermon_set_power_state(&prod.powermon, false);
+		
 		// close the driver and release resources
 		production_utils_rpi_leds_init(0);
 				
@@ -935,11 +1053,13 @@ int main(int argc, char *argv[])
 			production_wait_for_button(&prod, lcd_button_bottom, "P A S S! UNMOUNT", "<== CLICK HERE");
 		}
 		
+		hat_powermon_set_power_state(&prod.powermon, false);
 		
 		//sprintf(report_file_path, "%s/%08x_%s.yml", PRODUCTION_GIT_DIR, prod.prod->serial_number, ret?"PASS":"FAIL");
 		production_generate_report(&prod, PRODUCTION_GIT_DIR, prod.serial_number);
 		
 		production_git_sync_sequence(&prod, "auto commit");
+		cariboulite_production_clear_drivers(&prod);
 		production_rewind(&prod);
 	}
 	

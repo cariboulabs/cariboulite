@@ -202,7 +202,6 @@ static void modem_tx_cw(sys_st *sys)
 	int state_hi = 0;
 	int choice = 0;
 
-	// create the radio
 	cariboulite_radio_state_st *radio_low = &sys->radio_low;
 	cariboulite_radio_state_st *radio_hi = &sys->radio_high;
 
