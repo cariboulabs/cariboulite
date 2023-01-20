@@ -49,7 +49,7 @@ To compile the API library and SoapySDR API from code please click [here](/softw
 
 Unlike many other HAT projects, CaribouLite utilizes the **SMI** (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500 Mbit/s (depending on the FPGA, data-bus width, etc.) between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
 
-The SMI interface can be accessed from the user space Linux applications as shown in [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/), but Broadcomm also provided a neat minimal charachter device interface in the `/dev` directory using the `open`, `close`, `write`, `read`, and `ioctl` system calls. More on this interesting interface in the [designated readme file](software/libcariboulite/src/caribou_smi/index.md). This device driver needs to be loaded using `modprobe`.
+The SMI interface can be accessed from the user space Linux applications as shown in [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/), but Broadcomm also provided a neat minimal character device interface in the `/dev` directory using the `open`, `close`, `write`, `read`, and `ioctl` system calls. More on this interesting interface in the [designated readme file](software/libcariboulite/src/caribou_smi/index.md). This device driver needs to be loaded using `modprobe`.
 
 More information on this interface can be found [here (HW side)](docs/smi/README.md) and [here (SW side)](software/libcariboulite/src/caribou_smi/README.md).
 
@@ -83,7 +83,7 @@ The second revision ([REV2](hardware/rev2)) - **White** - was then designed to f
 2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI. Even if we have a whole library of custom made FPGA firmware files, switching between them is as simple and fast as a single linux command.
 3. Board layout improvements and overlays (silkscreen) beautification (including logo).
 4. A single system level 3.3V power (while the FPGA still receives 2.5V and 1.2V for its core). A linear regulator (rather than a switching DC-DC) was used to reduce conducted (power and ground) noise levels.
-5. Top and bottom EMI sheilding option - the EMI/RFI shield design models are provided in the [3d directory](hardware/rev2/3d/)
+5. Top and bottom EMI shielding option - the EMI/RFI shield design models are provided in the [3d directory](hardware/rev2/3d/)
 6. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
 
 In summary, in CaribouLite-Rev2.5 PCB design has been thoroughly re-thought to meet its educational needs with performance in mind. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
@@ -130,7 +130,7 @@ In summary, in CaribouLite-Rev2.5 PCB design has been thoroughly re-thought to m
   </tr>
 </table>
 <B>Note</B>:
-The gaps are defined by the design constraints of the system and may not exist in real-life hardware. Actual modem synthesizer outputs test show wider margins at room temperature than those written in the datatsheet, but, as noted by Microchip, performance may suffer.
+The gaps are defined by the design constraints of the system and may not exist in real-life hardware. Actual modem synthesizer outputs test show wider margins at room temperature than those written in the datasheet, but, as noted by Microchip, performance may suffer.
 
 
 <B>FPGA specifications:</B>
