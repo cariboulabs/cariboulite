@@ -1,0 +1,11 @@
+prefix=
+exec_prefix=
+libdir=
+includedir=
+
+Name: 
+Description: IIR filter library.
+Version: 
+URL: 
+Libs: -L${libdir} -liir
+Cflags: -I${includedir}/iir -I${includedir}

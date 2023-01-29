@@ -1,0 +1,2 @@
+/usr/bin/ar qc libio_utils.a CMakeFiles/io_utils.dir/io_utils.c.o CMakeFiles/io_utils.dir/io_utils_spi.c.o CMakeFiles/io_utils.dir/io_utils_sys_info.c.o CMakeFiles/io_utils.dir/io_utils_fs.c.o CMakeFiles/io_utils.dir/io_utils_i2c.c.o CMakeFiles/io_utils.dir/pigpio/pigpio.c.o CMakeFiles/io_utils.dir/pigpio/command.c.o
+/usr/bin/ranlib libio_utils.a

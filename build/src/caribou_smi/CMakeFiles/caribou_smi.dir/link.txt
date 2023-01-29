@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcaribou_smi.a CMakeFiles/caribou_smi.dir/caribou_smi.c.o CMakeFiles/caribou_smi.dir/smi_stream.c.o CMakeFiles/caribou_smi.dir/utils.c.o CMakeFiles/caribou_smi.dir/caribou_smi_modules.c.o
+/usr/bin/ranlib libcaribou_smi.a

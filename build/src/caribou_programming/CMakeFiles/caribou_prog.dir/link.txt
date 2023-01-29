@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcaribou_prog.a CMakeFiles/caribou_prog.dir/caribou_prog.c.o
+/usr/bin/ranlib libcaribou_prog.a

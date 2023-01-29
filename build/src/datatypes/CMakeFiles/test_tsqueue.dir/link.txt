@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/test_tsqueue.dir/test_tsqueue.c.o -o test_tsqueue  libdatatypes.a -lpthread 

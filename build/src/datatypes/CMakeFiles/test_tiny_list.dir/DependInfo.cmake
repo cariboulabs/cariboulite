@@ -1,0 +1,27 @@
+# The set of languages for which implicit dependencies are needed:
+set(CMAKE_DEPENDS_LANGUAGES
+  "C"
+  )
+# The set of files for implicit dependencies of each language:
+set(CMAKE_DEPENDS_CHECK_C
+  "/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/test_tiny_list.c" "/home/pi/projects/cariboulite/build/src/datatypes/CMakeFiles/test_tiny_list.dir/test_tiny_list.c.o"
+  )
+set(CMAKE_C_COMPILER_ID "GNU")
+
+# The include file search paths:
+set(CMAKE_C_TARGET_INCLUDE_PATH
+  "/home/pi/projects/cariboulite/software/libcariboulite/."
+  "/home/pi/projects/cariboulite/software/libcariboulite/./include"
+  "/home/pi/projects/cariboulite/software/libcariboulite/src"
+  "/."
+  "/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/.."
+  "/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes"
+  )
+
+# Targets to which this target links.
+set(CMAKE_TARGET_LINKED_INFO_FILES
+  "/home/pi/projects/cariboulite/build/src/datatypes/CMakeFiles/datatypes.dir/DependInfo.cmake"
+  )
+
+# Fortran module output directory.
+set(CMAKE_Fortran_TARGET_MODULE_DIR "")

@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/circular_buffer.cpp
+circular_buffer.h
+/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/circular_buffer.h
+
+/home/pi/projects/cariboulite/software/libcariboulite/src/datatypes/circular_buffer.h
+string.h
+-
+thread
+-
+mutex
+-
+condition_variable
+-
+

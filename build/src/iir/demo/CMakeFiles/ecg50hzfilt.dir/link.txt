@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -rdynamic CMakeFiles/ecg50hzfilt.dir/ecg50hzfilt.cpp.o -o ecg50hzfilt  ../libiir_static.a 
