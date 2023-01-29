@@ -94,6 +94,8 @@ DtparamSPI=`cat /boot/config.txt | grep "dtparam=spi" | xargs | cut -d\= -f1`
 if [ "$DtparamSPI" = "dtparam" ]; then
     echo "Warning - RespberryPi configuration file at '/boot/config.txt' contains SPI configuration"
     echo "          Please disable SPI by commenting out the line as follows: '#dtparam=spi=on'"
+else
+    echo "Okay :)"
 fi
 
 echo "---- 2. ARM I2C Configuration..."
@@ -101,12 +103,14 @@ DtparamSPI=`cat /boot/config.txt | grep "dtparam=i2c_arm" | xargs | cut -d\= -f1
 if [ "$DtparamSPI" = "dtparam" ]; then
     echo "Warning - RespberryPi configuration file at '/boot/config.txt' contains ARM-I2C configuration"
     echo "          Please disable ARM-I2C by commenting out the line as follows: '#dtparam=i2c_arm=on'"
+else
+    echo "Okay :)"
 fi
 
 echo "---- 3. I2C-VC Configuration..."
 DtparamSPI=`cat /boot/config.txt | grep "dtparam=i2c_vc" | xargs | cut -d\= -f1`
 if [ "$DtparamSPI" = "dtparam" ]; then
-    echo "Okay"
+    echo "Okay :)"
 else
     echo "Warning - To communicate with CaribouLite EEPROM, the i2c_vc device needs to be enabled"
     echo "          Please add the following to the '/boot/config.txt' file: 'dtparam=i2c_vc=on'"
