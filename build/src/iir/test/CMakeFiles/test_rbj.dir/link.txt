@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -rdynamic CMakeFiles/test_rbj.dir/rbj.cpp.o -o test_rbj  ../libiir_static.a 

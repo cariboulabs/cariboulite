@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_hat.dir/hat.c.o CMakeFiles/test_hat.dir/eeprom_utils.c.o CMakeFiles/test_hat.dir/test_hat.c.o -o test_hat  -lrt -lpthread /home/pi/projects/cariboulite/software/libcariboulite/src/hat/../io_utils/build/libio_utils.a /home/pi/projects/cariboulite/software/libcariboulite/src/hat/../zf_log/build/libzf_log.a -lpthread 

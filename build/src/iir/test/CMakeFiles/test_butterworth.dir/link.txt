@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -rdynamic CMakeFiles/test_butterworth.dir/butterworth.cpp.o -o test_butterworth  ../libiir_static.a 

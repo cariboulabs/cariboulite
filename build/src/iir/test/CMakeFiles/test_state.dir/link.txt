@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -rdynamic CMakeFiles/test_state.dir/state.cpp.o -o test_state  ../libiir_static.a 

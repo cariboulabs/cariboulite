@@ -1,2 +1,0 @@
-/usr/bin/ar qc libhat.a CMakeFiles/hat.dir/hat.c.o CMakeFiles/hat.dir/eeprom_utils.c.o
-/usr/bin/ranlib libhat.a

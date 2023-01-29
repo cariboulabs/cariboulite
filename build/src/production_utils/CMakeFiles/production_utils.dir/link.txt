@@ -1,2 +1,0 @@
-/usr/bin/ar qc libproduction_utils.a CMakeFiles/production_utils.dir/production_utils.c.o CMakeFiles/production_utils.dir/hat_powermon.c.o CMakeFiles/production_utils.dir/lcd.c.o CMakeFiles/production_utils.dir/production_testing.c.o
-/usr/bin/ranlib libproduction_utils.a

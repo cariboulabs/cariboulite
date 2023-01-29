@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/test_tiny_list.dir/test_tiny_list.c.o -o test_tiny_list  libdatatypes.a -lpthread 

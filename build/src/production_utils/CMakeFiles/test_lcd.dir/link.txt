@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_lcd.dir/lcd.c.o CMakeFiles/test_lcd.dir/test_lcd.c.o -o test_lcd  -lrt -lm -lpthread -lzmq /home/pi/projects/cariboulite/software/libcariboulite/src/production_utils/../zf_log/build/libzf_log.a /home/pi/projects/cariboulite/software/libcariboulite/src/production_utils/../io_utils/build/libio_utils.a 
