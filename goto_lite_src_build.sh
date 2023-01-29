@@ -1,2 +1,0 @@
-cd software/libcariboulite/build/
-
