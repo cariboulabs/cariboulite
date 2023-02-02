@@ -22,4 +22,5 @@ target_link_libraries(test_power_mon rt m pthread zmq ${SUPER_DIR}/zf_log/build/
 
 #Generate the static library from the sources
 add_library(production_utils STATIC ${SOURCES_LIB})
+target_link_libraries(production_utils zmq)
 target_include_directories(production_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
