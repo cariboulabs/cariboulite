@@ -43,7 +43,7 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
         // nothing to setup => return
         return 0;
     }
-
+    
     if (dev->chips[handle].chip_type == io_utils_spi_chip_ice40_prog ||
         dev->chips[handle].chip_type == io_utils_spi_chip_type_rffc ||
         dev->chips[handle].chip_type == io_utils_spi_chip_type_modem_bitbang)
@@ -87,7 +87,7 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
         io_utils_set_gpio_mode(dev->sck, io_utils_alt_4);
     }
 
-    return 0;
+    return setup_spi_dev;
 }
 
 //=====================================================================================
@@ -526,13 +526,16 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
     // lock the resource
     pthread_mutex_lock(&dev->mtx);
 
-    if (io_utils_spi_setup_chip(dev, chip_handle) < 0)
+    int set_up_hard = io_utils_spi_setup_chip(dev, chip_handle);
+    if (set_up_hard < 0)
     {
         ZF_LOGE("chip setup failed %d", chip_handle);
         goto io_utils_spi_transmit_error;
     }
 
     dev->current_chip = &dev->chips[chip_handle];
+    
+    //printf("dev->current_chip->chip_type ====== %d\n", dev->current_chip->chip_type);
 
     switch (dev->current_chip->chip_type)
     {
@@ -540,8 +543,14 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
         case io_utils_spi_chip_type_fpga_comm:
         case io_utils_spi_chip_type_modem:
         {
-            // a regular spi communication through lg_spi / spi_dev
+            //printf("SPI XFER chiptype = %d\n", dev->current_chip->chip_type);
+            // a regular spi communication
             ret = spiXfer(dev->current_chip->hard_spi_handle, (char*)tx_buf, (char*)rx_buf, length);
+            if (set_up_hard)
+            {
+                // workaround pigpio problem
+                ret = spiXfer(dev->current_chip->hard_spi_handle, (char*)tx_buf, (char*)rx_buf, length);
+            }
             if (ret < 0)
             {
                 ZF_LOGE("spi transfer failed (%d)", ret);

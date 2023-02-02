@@ -65,14 +65,27 @@ int at86rf215_read_byte(at86rf215_st* dev, uint16_t addr)
 {
     uint8_t chunk_tx[3] = {0};
     uint8_t chunk_rx[3] = {0};
+    
     chunk_tx[0] = (addr >> 8) & 0x3F;
     chunk_tx[1] = addr & 0xFF;
-    int ret = io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
-                chunk_tx, chunk_rx, 3, io_utils_spi_read_write);
+    
+    /*printf("TX: ");
+    for (int i = 0; i < 3; i ++)
+        printf(" 0x%02X ", chunk_tx[i]);
+    printf("\n");*/
+    
+    int ret = io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle, 
+            chunk_tx, chunk_rx, 3, io_utils_spi_read_write);
     if (ret < 0)
     {
         return ret;
     }
+    
+    /*printf("RX: ");
+    for (int i = 0; i < 3; i ++)
+        printf(" 0x%02X ", chunk_rx[i]);
+    printf("\n");*/
+    
     return chunk_rx[2];
 }
 
@@ -251,11 +264,13 @@ int at86rf215_print_version(at86rf215_st* dev)
 {
 	uint8_t pn = 0, vn = 0;
 	at86rf215_get_versions(dev, &pn, &vn);
-	if (pn == 0x34)
+    //at86rf215_get_versions(dev, &pn, &vn);
+    
+	if (pn == at86rf215_pn_at86rf215)               // 0x34
     {
         printf("	MODEM Version: AT86RF215 (with basebands), version: %02x", vn);
     }
-    else if (pn == 0x35)
+    else if (pn == at86rf215_pn_at86rf215iq)        // 0x35
     {
         printf("	MODEM Version: AT86RF215IQ (without basebands), version: %02x", vn);
     }
