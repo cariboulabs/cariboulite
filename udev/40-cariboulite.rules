@@ -1,0 +1,10 @@
+# SMI Devices
+KERNEL=="smi", SUBSYSTEM=="bcm2835-smi-dev", MODE="0666"
+KERNEL=="smi", SUBSYSTEM=="smi-stream-dev", MODE="0666"
+
+# Other RPI Devices
+SUBSYSTEM=="i2c-dev", GROUP="i2c", MODE="0666"
+SUBSYSTEM=="spidev", GROUP="spi", MODE="0666"
+SUBSYSTEM=="bcm2835-gpiomem", GROUP="gpio", MODE="0666"
+SUBSYSTEM=="mem", KERNEL=="mem|kmem|port", GROUP="kmem", MODE="0666"
+
