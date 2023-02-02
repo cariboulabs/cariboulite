@@ -23,7 +23,7 @@ SOAPY_UTIL_PATH=`which $SOAPY_UTILS_EXE`
 if test -f "${SOAPY_UTIL_PATH}"; then
     printf "${CYAN}Found SoapySDRUtil at ${SOAPY_UTIL_PATH}${NC}\n"
 else
-    mkdir installations
+    mkdir -p installations
     cd installations
 
     printf "${RED}Did not find SoapySDRUtil${NC}. Do you want to clone and install? (Y/[N]):"
@@ -38,14 +38,14 @@ else
         
         # Soapy
         cd SoapySDR
-        mkdir build && cd build
+        mkdir -p build && cd build
         cmake ../
         make -j4 && sudo -u root make install        
         
         # Soapy Remote (Server)
         cd ../..
         cd SoapyRemote
-        mkdir build && cd build
+        mkdir -p build && cd build
         cmake ../
         make -j4 && sudo -u root make install
     fi
@@ -78,14 +78,14 @@ make
 
 printf "${CYAN}2. SMI kernel module...${NC}\n"
 cd $ROOT_DIR/software/libcariboulite/src/caribou_smi/kernel
-mkdir build
+mkdir -p build
 cd build
 cmake ../
 make
 
 printf "${CYAN}3. Main software...${NC}\n"
 cd $ROOT_DIR
-mkdir build
+mkdir -p build
 cd build
 cmake $ROOT_DIR/software/libcariboulite/
 make
