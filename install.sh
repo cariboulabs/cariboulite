@@ -127,7 +127,8 @@ else
 fi
 
 ## UDEV rules
-## TODO
+# Still the /dev/mem problem. Un-restricting the CONFIG_STRICT_DEVMEM kernel config option doesn't
+# help. Neither adding "pi" to the kmem, dialout and mem groups. pigpiod may be the last resort.
 
 if [ "$ERROR" = "1" ]; then
     printf "\n[  7  ] ${RED}Installation errors occured.${NC}\n\n\n"
