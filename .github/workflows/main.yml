@@ -13,6 +13,7 @@ jobs:
 
     - name: libcaribou
       run: |
+        git submodule update --init --recursive
         cd software/libcariboulite/
         mkdir build
         cd build
