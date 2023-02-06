@@ -349,6 +349,47 @@ typedef struct
     bool *high_active;
 } iq_test_reader_st;
 
+static void print_iq(char* prefix, caribou_smi_sample_complex_int16* buffer, size_t num_samples, int num_head_tail)
+{
+    int i;
+    
+    int ii = 10000, qq = 10000;
+    size_t same_count = 0;
+    size_t max_same_count = 0;
+    
+    for (i = 0; i < (int)num_samples; i++)
+    {
+        if (ii == buffer[i].i && qq == buffer[i].q)
+        {
+            same_count ++;
+            if (same_count > max_same_count)
+            {
+                max_same_count = same_count;
+            }
+        }
+        else
+        {
+            same_count = 1;
+        }
+        
+        ii = buffer[i].i;
+        qq = buffer[i].q;
+    }
+    
+    printf("%s N=%d SC=%d: ", prefix, num_samples, max_same_count);
+    
+    for (i = 0; i < num_head_tail; i++)
+    {
+        printf("[%d, %d] ", buffer[i].i, buffer[i].q);
+    }
+    printf(". . . ");
+    for (i = num_samples-num_head_tail; i < (int)num_samples; i++)
+    {
+        printf("[%d, %d] ", buffer[i].i, buffer[i].q);
+    }
+    printf("\n");
+}
+
 static void* reader_thread_func(void* arg)
 {
     iq_test_reader_st* ctrl = (iq_test_reader_st*)arg;
@@ -385,7 +426,8 @@ static void* reader_thread_func(void* arg)
                 printf("reader thread failed to read SMI. aborting!\n");
                 break;
             }
-            printf("reader_thread_func => read %d samples\n", ret);
+            
+            print_iq("Rx", buffer, ret, 4);
         }
     }
     printf("Leaving sampling thread\n");

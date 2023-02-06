@@ -81,14 +81,16 @@ static int caribou_smi_get_smi_settings(caribou_smi_st *dev, struct smi_settings
 //=========================================================================
 static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings, bool print)
 {
-    settings->read_setup_time = 0;
-    settings->read_strobe_time = 5;
-    settings->read_hold_time = 0;
+    settings->read_setup_time = 1;
+    settings->read_strobe_time = 4;
+    settings->read_hold_time = 1;
     settings->read_pace_time = 0;
-    settings->write_setup_time = 0;
-    settings->write_hold_time = 0;
-    settings->write_pace_time = 0;
+    
+    settings->write_setup_time = 1;
     settings->write_strobe_time = 4;
+    settings->write_hold_time = 1;
+    settings->write_pace_time = 0;
+    
     settings->data_width = SMI_WIDTH_8BIT;
     settings->dma_enable = 1;
     settings->pack_data = 1;
@@ -160,7 +162,7 @@ static void caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 	}
 	else
 	{
-        printf("SMI RX-CB: LenBytes: %d\n", data_length);
+        //printf("SMI RX-CB: LenBytes: %d\n", data_length);
 		// the verilog struct looks as follows:
 		//	[31:30]	[	29:17	] 	[ 16  ] 	[ 15:14 ] 	[	13:1	] 	[ 	0	]
 		//	[ '00']	[ I sample	]	[ '0' ] 	[  '01'	]	[  Q sample	]	[  '0'	]
