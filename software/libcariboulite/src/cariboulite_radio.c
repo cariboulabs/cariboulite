@@ -810,10 +810,19 @@ int cariboulite_radio_get_frequency(cariboulite_radio_state_st* radio,
 //=========================================================================
 int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                             cariboulite_channel_dir_en dir,
-                                			bool active)
+                                			bool activate)
 {
     radio->channel_direction = dir;
-    ZF_LOGD("Activating channel %d, dir = %s, active = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", active);
+    
+    // if channel is already activated on this configuration do nothing
+    if (activate == true &&
+        radio->channel_direction == cariboulite_channel_dir_rx && radio->state == at86rf215_radio_state_cmd_rx ||
+        radio->channel_direction == cariboulite_channel_dir_tx && radio->state == at86rf215_radio_state_cmd_tx)
+    {
+        return 0;
+    }
+    
+    ZF_LOGD("Activating channel %d, dir = %s, activate = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", activate);
     
 	// if the channel state is active, turn it off before reactivating
     if (radio->state != at86rf215_radio_state_cmd_tx_prep)
@@ -825,12 +834,14 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         ZF_LOGD("Setup Modem state tx_prep");
     }
 
-    if (!active)
+    if (activate == false)
     {
         at86rf215_radio_set_state( &radio->sys->modem, 
                                     GET_MODEM_CH(radio->type), 
                                     at86rf215_radio_state_cmd_trx_off);
         radio->state = at86rf215_radio_state_cmd_trx_off;
+        
+        //caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
         ZF_LOGD("Setup Modem state trx_off");
         return 0;
     }
@@ -845,6 +856,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         at86rf215_radio_set_state( &radio->sys->modem, 
                                 GET_MODEM_CH(radio->type),
                                 at86rf215_radio_state_cmd_rx);
+        radio->state = at86rf215_radio_state_cmd_rx;
         ZF_LOGD("Setup Modem state cmd_rx");
     }
 	//===========================================================
@@ -882,7 +894,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             at86rf215_radio_set_state(&radio->sys->modem, 
                                         GET_MODEM_CH(radio->type),
                                         at86rf215_radio_state_cmd_tx);
-
+            radio->state = at86rf215_radio_state_cmd_tx;
         }
     }
 

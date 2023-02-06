@@ -121,7 +121,7 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 }
 
 /***************************************************************************/
-static void set_address_direction(smi_stream_direction_en dir)
+/*static void set_address_direction(smi_stream_direction_en dir)
 {   
 	uint32_t t = (uint32_t)dir;
     
@@ -130,10 +130,10 @@ static void set_address_direction(smi_stream_direction_en dir)
 	inst->cur_address &= ~(1<<ADDR_DIR_OFFSET);
 	inst->cur_address |= t<<ADDR_DIR_OFFSET;
 	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-}
+}*/
 
 /***************************************************************************/
-static void set_address_channel(smi_stream_channel_en ch)
+/*static void set_address_channel(smi_stream_channel_en ch)
 {
 	uint32_t t = (uint32_t)ch;
     
@@ -142,7 +142,7 @@ static void set_address_channel(smi_stream_channel_en ch)
 	inst->cur_address &= ~(1<<ADDR_CH_OFFSET);
 	inst->cur_address |= t<<ADDR_CH_OFFSET;
 	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-}
+}*/
 
 /***************************************************************************/
 /*static smi_stream_channel_en get_address_channel(void)
@@ -168,20 +168,25 @@ static void set_state(smi_stream_state_en state)
 {
     if (inst == NULL) return;
     
-    inst->cur_address = 0;
     if (state == smi_stream_rx_channel_0)
     {
-        inst->cur_address |= smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET;
-        inst->cur_address |= smi_stream_rx_channel_0<<ADDR_CH_OFFSET;
+        inst->cur_address = smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET | smi_stream_rx_channel_0<<ADDR_CH_OFFSET;
     }
     else if (state == smi_stream_rx_channel_1)
     {
-        inst->cur_address |= smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET;
-        inst->cur_address |= smi_stream_rx_channel_1<<ADDR_CH_OFFSET;
+        inst->cur_address = smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET | smi_stream_rx_channel_1<<ADDR_CH_OFFSET;
     }
     else if (state == smi_stream_tx)
     {
-        inst->cur_address |= smi_stream_dir_smi_to_device<<ADDR_DIR_OFFSET;
+        inst->cur_address = smi_stream_dir_smi_to_device<<ADDR_DIR_OFFSET;
+    }
+    else
+    {
+    }
+    
+    if (inst->state != state)
+    {
+        dev_info(inst->dev, "Set STREAMING_STATUS = %d, cur_addr = %d", state, inst->cur_address);
     }
     
     inst->state = state;
@@ -245,68 +250,68 @@ static inline int smi_enabled(struct bcm2835_smi_instance *inst)
 }*/
 
 /***************************************************************************/
-static int smi_init_programmed_read(struct bcm2835_smi_instance *inst, int num_transfers)
+static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int num_transfers)
 {
 	int smics_temp;
 	int success = 0;
 
 	/* Disable the peripheral: */
-	smics_temp = read_smi_reg(inst, SMICS) & ~(SMICS_ENABLE | SMICS_WRITE);
-	write_smi_reg(inst, smics_temp, SMICS);
+	smics_temp = read_smi_reg(smi_inst, SMICS) & ~(SMICS_ENABLE | SMICS_WRITE);
+	write_smi_reg(smi_inst, smics_temp, SMICS);
 
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(inst), 10000, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 10000, success);
 	if (!success)
 	{
 		return -1;
 	}
 
 	/* Program the transfer count: */
-	write_smi_reg(inst, num_transfers, SMIL);
+	write_smi_reg(smi_inst, num_transfers, SMIL);
 
 	/* re-enable and start: */
 	smics_temp |= SMICS_ENABLE;
-	write_smi_reg(inst, smics_temp, SMICS);
+	write_smi_reg(smi_inst, smics_temp, SMICS);
 	smics_temp |= SMICS_CLEAR;
 
 	/* Just to be certain: */
 	mb();
-	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(inst), 10000, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(smi_inst), 10000, success);
 	if (!success)
 	{
 		return -1;
 	}
-	set_address_direction(smi_stream_dir_device_to_smi);
-	write_smi_reg(inst, smics_temp, SMICS);
+	//set_address_direction(smi_stream_dir_device_to_smi);
+	write_smi_reg(smi_inst, smics_temp, SMICS);
 	smics_temp |= SMICS_START;
-	write_smi_reg(inst, smics_temp, SMICS);
+	write_smi_reg(smi_inst, smics_temp, SMICS);
 	return 0;
 }
 
 /***************************************************************************/
-static int smi_init_programmed_write(struct bcm2835_smi_instance *inst, int num_transfers)
+static int smi_init_programmed_write(struct bcm2835_smi_instance *smi_inst, int num_transfers)
 {
 	int smics_temp;
 	int success = 0;
-
+   
 	/* Disable the peripheral: */
-	smics_temp = read_smi_reg(inst, SMICS) & ~SMICS_ENABLE;
-	write_smi_reg(inst, smics_temp, SMICS);
+	smics_temp = read_smi_reg(smi_inst, SMICS) & ~SMICS_ENABLE;
+	write_smi_reg(smi_inst, smics_temp, SMICS);
 
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(inst), 10000, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 10000, success);
 	if (!success)
 	{
 		return -1;
 	}
 
 	/* Program the transfer count: */
-	write_smi_reg(inst, num_transfers, SMIL);
+	write_smi_reg(smi_inst, num_transfers, SMIL);
 
 	/* setup, re-enable and start: */
-	set_address_direction(smi_stream_dir_smi_to_device);
+	//set_address_direction(smi_stream_dir_smi_to_device);
 	smics_temp |= SMICS_WRITE | SMICS_ENABLE;
-	write_smi_reg(inst, smics_temp, SMICS);
+	write_smi_reg(smi_inst, smics_temp, SMICS);
 	smics_temp |= SMICS_START;
-	write_smi_reg(inst, smics_temp, SMICS);
+	write_smi_reg(smi_inst, smics_temp, SMICS);
 	return 0;
 }
 
@@ -365,7 +370,7 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	case SMI_STREAM_IOC_SET_STREAM_IN_CHANNEL:
 	{
 		//dev_info(inst->dev, "SMI channel: 0x%02x", (int)arg);
-		set_address_channel((smi_stream_channel_en)arg);
+		//set_address_channel((smi_stream_channel_en)arg);
 		break;
 	}	
 	//-------------------------------
@@ -383,7 +388,7 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	case SMI_STREAM_IOC_SET_STREAM_STATUS:
 	{
         set_state((smi_stream_state_en)arg);
-		dev_info(inst->dev, "Set STREAMING_STATUS = %d", inst->state);
+		
 		break;
 	}
     //-------------------------------
@@ -525,16 +530,16 @@ int reader_thread_stream_function(void *pv)
 	dev_info(inst->dev, "Enterred reader thread");
 
 	while(!kthread_should_stop())
-	{
-        // sync smi address
-        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-        
+	{       
 		// check if the streaming state is on, if not, sleep and check again
 		if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
 		{
 			msleep(10);
 			continue;
 		}
+        
+        // sync smi address
+        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 
 		//dev_info(inst->dev, "STREAM_SMI_USER_DMA count = %d", stream_smi_dma_callback_user_copy_count);
 		
@@ -589,16 +594,16 @@ int writer_thread_stream_function(void *pv)
 	dev_info(inst->dev, "Enterred writer thread");
 
 	while(!kthread_should_stop())
-	{
-        // sync smi address
-        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-        
+	{        
 		// check if the streaming state is on, if not, sleep and check again
 		if (inst->state != smi_stream_tx)
 		{
 			msleep(10);
 			continue;
 		}
+        
+        // sync smi address
+        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 		
 		// check if the tx fifo contains enough data
 		if (mutex_lock_interruptible(&inst->write_lock))
@@ -801,19 +806,23 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
 }
 
 /***************************************************************************/
-static unsigned int smi_stream_poll(struct file *file, poll_table *pt)
+static unsigned int smi_stream_poll(struct file *filp, struct poll_table_struct *wait)
 {
-	unsigned int mask = 0;
-	poll_wait(file, &inst->poll_event, pt);
-
-	if (inst->readable)
-	{
+	__poll_t mask = 0;
+    
+    //dev_info(inst->dev, "poll_waiting");
+    poll_wait(filp, &inst->poll_event, wait);
+    
+    if (inst->readable)
+    {
+        //dev_info(inst->dev, "poll_wait result => readable=%d", inst->readable);
 		inst->readable = false;
 		mask |= ( POLLIN | POLLRDNORM );
 	}
 	
 	if (inst->writeable)
 	{
+        //dev_info(inst->dev, "poll_wait result => writeable=%d", inst->writeable);
 		inst->writeable = false;
 		mask |= ( POLLOUT | POLLWRNORM );
 	}
@@ -838,7 +847,7 @@ static const struct file_operations smi_stream_fops =
 *   smi_stream_probe - called when the driver is loaded.
 *
 ***************************************************************************/
-static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
+/*static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
 {
 	uint8_t * buff_temp = NULL;
 	int kk = 0;
@@ -882,7 +891,7 @@ static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
 
 	//struct scatterlist buffer_sgl;
 
-}
+}*/
 
 static struct cdev smi_stream_cdev;
 static dev_t smi_stream_devid;

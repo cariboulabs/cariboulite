@@ -15,18 +15,16 @@
 #include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/select.h>
+#include <sys/poll.h>
 #include <sys/time.h>
 #include <sched.h>
 #include <pthread.h>
 #include <time.h>
 #include <errno.h>
 
-
 #include "caribou_smi.h"
 #include "smi_utils.h"
 #include "io_utils/io_utils.h"
-
 
 //=========================================================================
 static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state)
@@ -222,54 +220,49 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
 //=========================================================================
 static int caribou_smi_poll(caribou_smi_st* dev, uint32_t timeout_num_millisec, smi_stream_direction_en dir)
 {
-	int rv = 0;
-	
-	// Calculate the timeout
-	struct timeval timeout = {0};
-	int num_sec = timeout_num_millisec / 1000;
-    timeout.tv_sec = num_sec;
-    timeout.tv_usec = (timeout_num_millisec - num_sec * 1000) * 1000;
+    int ret = 0;
+	struct pollfd fds;
+    fds.fd = dev->filedesc;
 
-	// Poll setting
-    fd_set set;
-    FD_ZERO(&set);                 // clear the set mask
-    FD_SET(dev->filedesc, &set);    // add only our file descriptor to the set
-
-again:
-	if (dir == smi_stream_dir_device_to_smi)		rv = select(dev->filedesc + 1, &set, NULL, NULL, &timeout);
-	else if (dir == smi_stream_dir_smi_to_device)	rv = select(dev->filedesc + 1, NULL, &set, NULL, &timeout);
+    if (dir == smi_stream_dir_device_to_smi) fds.events = POLLIN;
+	else if (dir == smi_stream_dir_smi_to_device) fds.events = POLLOUT;
 	else return -1;
 
-    if(rv == -1)
+again:
+    ret = poll(&fds, 1, timeout_num_millisec);
+    if (ret == -1) 
     {
-        int error = errno;
+		int error = errno;
         switch(error)
         {
-            case EBADF:         // An invalid file descriptor was given in one of the sets.
-                                // (Perhaps a file descriptor that was already closed, or one on which an error has occurred.)
-                ZF_LOGE("SMI filedesc select error - invalid file descriptor in one of the sets");
+            case EFAULT: 
+                ZF_LOGE("fds points outside the process's accessible address space");
                 break;
-            case EINTR:	        // A signal was caught.
+                
+            case EINTR:
+            case EAGAIN:
                 ZF_LOGD("SMI filedesc select error - caught an interrupting signal");
                 goto again;
                 break;
-            case EINVAL:        // nfds is negative or the value contained within timeout is invalid.
-                ZF_LOGE("SMI filedesc select error - nfds is negative or invalid timeout");
+                
+            case EINVAL:
+                ZF_LOGE("The nfds value exceeds the RLIMIT_NOFILE value");
                 break;
-            case ENOMEM:        // unable to allocate memory for internal tables.
-                ZF_LOGE("SMI filedesc select error - internal tables allocation failed");
+                
+            case ENOMEM:
+                ZF_LOGE("Unable to allocate memory for kernel data structures.");
                 break;
+                
             default: break;
         };
-
         return -1;
-    }
-    else if(rv == 0)
+	}
+    else if(ret == 0)
     {
         return 0;
     }
-
-	return FD_ISSET(dev->filedesc, &set);
+    
+    return fds.revents & POLLIN || fds.revents & POLLOUT;
 }
 
 //=========================================================================
@@ -278,16 +271,16 @@ static int caribou_smi_timeout_write(caribou_smi_st* dev,
                             size_t len,
                             uint32_t timeout_num_millisec)
 {
-	int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_device_to_smi);
+	int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_smi_to_device);
 
 	if (res < 0)
 	{
-		//ZF_LOGD("select error");
+		ZF_LOGD("poll error");
 		return -1;
 	}
 	else if (res == 0)	// timeout
 	{
-		//ZF_LOGD("smi write fd timeout");
+		//ZF_LOGD("===> smi write fd timeout");
 		return 0;
 	}
 
@@ -300,16 +293,16 @@ static int caribou_smi_timeout_read(caribou_smi_st* dev,
 								size_t len,
 								uint32_t timeout_num_millisec)
 {
-	int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_smi_to_device);
+	int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_device_to_smi);
 
 	if (res < 0)
 	{
-		//ZF_LOGD("select error");
+		ZF_LOGD("poll error");
 		return -1;
 	}
 	else if (res == 0)	// timeout
 	{
-		//ZF_LOGD("smi read fd timeout");
+		//ZF_LOGD("===> smi read fd timeout");
 		return 0;
 	}
 
@@ -340,7 +333,7 @@ int caribou_smi_init(caribou_smi_st* dev,
 
     // open the smi device file
 	// --------------------------------------------
-    int fd = open(smi_file, O_RDWR | O_NONBLOCK);
+    int fd = open(smi_file, O_RDWR);
     if (fd < 0)
     {
         ZF_LOGE("couldn't open smi driver file '%s'", smi_file);
@@ -441,12 +434,17 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
         {
             return -1;
         }
-        else if (ret == 0) break;        
+        else if (ret == 0) 
+        {
+            printf("caribou_smi_read -> Timeout\n");
+            break;
+        }
         else
         {
             caribou_smi_rx_data_analyze(dev, dev->read_temp_buffer, ret, sample_offset, meta_offset);
         }
-        read_so_far += ret / CARIBOU_SMI_BYTES_PER_SAMPLE;
+        read_so_far += current_read_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
+        left_to_read -= current_read_len;
     }
     
     return read_so_far;
@@ -469,7 +467,6 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
         return -1;
     }
     
-    
     while (left_to_write)
     {
         // prepare the buffer
@@ -486,9 +483,16 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
         else if (ret == 0) break;
         
         written_so_far += current_write_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
+        left_to_write -= ret;
     }
     
     return written_so_far;
     
     return 0;
+}
+
+//=========================================================================
+size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev)
+{
+    return dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
 }

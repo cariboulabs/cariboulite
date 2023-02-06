@@ -337,6 +337,63 @@ static void modem_tx_cw(sys_st *sys)
 }
 
 //=================================================
+typedef struct 
+{
+    bool active;
+    sys_st *sys;
+    
+    cariboulite_radio_state_st *radio_low;
+    cariboulite_radio_state_st *radio_hi;
+    
+    bool *low_active;
+    bool *high_active;
+} iq_test_reader_st;
+
+static void* reader_thread_func(void* arg)
+{
+    iq_test_reader_st* ctrl = (iq_test_reader_st*)arg;
+    cariboulite_radio_state_st *cur_radio = NULL;
+    size_t read_len = caribou_smi_get_native_batch_samples(&ctrl->sys->smi);
+    
+    // allocate buffer
+    caribou_smi_sample_complex_int16* buffer = malloc(sizeof(caribou_smi_sample_complex_int16)*read_len);
+    caribou_smi_sample_meta* metadata = malloc(sizeof(caribou_smi_sample_meta)*read_len);
+    
+    printf("Entering sampling thread\n");
+	while (ctrl->active)
+    {
+        if (*ctrl->low_active)
+        {
+            cur_radio = ctrl->radio_low;
+            
+        }
+        else if (*ctrl->high_active)
+        {
+            cur_radio = ctrl->radio_hi;
+        }
+        else
+        {
+            cur_radio = NULL;
+            usleep(10000);
+        }
+        
+        if (cur_radio)
+        {
+            int ret = cariboulite_radio_read_samples(cur_radio, buffer, metadata, read_len);
+            if (ret < 0)
+            {
+                printf("reader thread failed to read SMI. aborting!\n");
+                break;
+            }
+            printf("reader_thread_func => read %d samples\n", ret);
+        }
+    }
+    printf("Leaving sampling thread\n");
+    free(buffer);
+    free(metadata);
+    return NULL;
+}
+
 static void modem_rx_iq(sys_st *sys)
 {
 	int choice = 0;
@@ -344,11 +401,28 @@ static void modem_rx_iq(sys_st *sys)
 	bool high_active_rx = false;
 	double current_freq_lo = 900e6;
 	double current_freq_hi = 2400e6;
+    
+    iq_test_reader_st ctrl = {0};
 	
 	// create the radio
 	cariboulite_radio_state_st *radio_low = &sys->radio_low;
 	cariboulite_radio_state_st *radio_hi = &sys->radio_high;
-		
+    
+    ctrl.active = true;
+    ctrl.radio_low = radio_low;
+    ctrl.radio_hi = radio_hi;
+    ctrl.sys = sys;
+    ctrl.low_active = &low_active_rx;
+    ctrl.high_active = &high_active_rx;
+    
+    // start the reader thread
+    pthread_t reader_thread;
+    if (pthread_create(&reader_thread, NULL, &reader_thread_func, &ctrl) != 0)
+    {
+        printf("reader thread creation failed\n");
+        return;
+    }
+
 	// frequency
 	cariboulite_radio_set_frequency(radio_low, true, &current_freq_lo);
 	cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
@@ -359,7 +433,7 @@ static void modem_rx_iq(sys_st *sys)
 	
 	cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, false);
 	cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, false);
-	
+    
 	while (1)
 	{
 		printf("	Parameters:\n");
@@ -374,24 +448,41 @@ static void modem_rx_iq(sys_st *sys)
 		{
 			//--------------------------------------------
 			case 1:
-			{
+			{   
+                if (!low_active_rx && high_active_rx)
+                {
+                    // if high is currently active - deactivate it
+                    high_active_rx = false;
+                    cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, high_active_rx);
+                }
+                
 				low_active_rx = !low_active_rx;
-				cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, low_active_rx);
 			}
 			break;
 			
 			//--------------------------------------------
 			case 2:
 			{
+                if (!high_active_rx && low_active_rx)
+                {
+                    // if low is currently active - deactivate it
+                    low_active_rx = false;
+                    cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, low_active_rx);
+                }
+                
 				high_active_rx = !high_active_rx;
-				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, high_active_rx);
 			}
 			break;
 			
 			//--------------------------------------------
 			case 99:
+                low_active_rx = false;
+                high_active_rx = false;
+                ctrl.active = false;
+                pthread_join(reader_thread, NULL);
+                
 				cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, false);
-				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, false);	
+				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, false);
 				return;
 			
 			//--------------------------------------------

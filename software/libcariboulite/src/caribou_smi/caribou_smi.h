@@ -82,6 +82,8 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
 int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel, 
                         caribou_smi_sample_complex_int16* buffer, size_t length_samples);
 
+size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev);
+
 #ifdef __cplusplus
 }
 #endif
