@@ -11,7 +11,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include "utils.h"
+#include "smi_utils.h"
 #include "zf_log/zf_log.h"
 
 

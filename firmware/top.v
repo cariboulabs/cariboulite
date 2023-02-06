@@ -59,16 +59,16 @@ module top(	input i_glob_clock,
 			// The signal a[2] selects the RX source (900 MHZ or 2.4GHz)
 			// The signal a[1] can be used in the future for other purposes
 			//
-			// Description	|	a[2]	|	   a[1]		|	
-			// -------------|-----------|---------------|
-			// 				|	  0		|	   0		|		
-			// 		TX		|-----------| RPI => FPGA   |
-			// 				|	  1		| Data HighZ	|		
-			// -------------|-----------|---------------|
-			// 		RX09	|	  0		|	   1		|	
-			// -------------|-----------| FPGA => RPI	|	
-			// 		RX24	|	  1		| Data PushPull	|		
-			// -------------|-----------|---------------|	
+			// Description	| a[2] (SA3)|   a[1] (SA2)   |	
+			// -------------|------------|---------------|
+			// 				|	  0		 |	   0		 |		
+			// 		TX		|------------| RPI => FPGA   |
+			// 				|	  1		 | Data HighZ	 |		
+			// -------------|------------|---------------|
+			// 		RX09	|	  0		 |	   1		 |	
+			// -------------|------------| FPGA => RPI	 |	
+			// 		RX24	|	  1		 | Data PushPull |		
+			// -------------|------------|---------------|	
 			input i_smi_a2,
 			input i_smi_a3,
 

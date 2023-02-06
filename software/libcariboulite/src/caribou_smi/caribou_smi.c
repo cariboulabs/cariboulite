@@ -14,15 +14,22 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sched.h>
+#include <pthread.h>
+#include <time.h>
+#include <errno.h>
+
 
 #include "caribou_smi.h"
-#include "smi_stream.h"
-#include "utils.h"
+#include "smi_utils.h"
 #include "io_utils/io_utils.h"
 
 
 //=========================================================================
-static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, int state)
+static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state)
 {
 	int ret = ioctl(dev->filedesc, SMI_STREAM_IOC_SET_STREAM_STATUS, state);
 	if (ret != 0)
@@ -103,10 +110,7 @@ static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings 
 }
 
 //=========================================================================
-static void caribou_smi_anayze_smi_debug(caribou_smi_st* dev,
-										 smi_stream_channel_en channel,
-										 uint8_t *data,
-										 size_t len)
+static void caribou_smi_anayze_smi_debug(caribou_smi_st* dev, uint8_t *data, size_t len)
 {
 	uint32_t error_counter_current = 0;
 	int first_error = -1;
@@ -142,34 +146,23 @@ static void caribou_smi_anayze_smi_debug(caribou_smi_st* dev,
 	}
 
 	dev->debug_data.error_rate = dev->debug_data.error_rate * 0.9 + (double)(error_counter_current) / (double)(len) * 0.1;
-
-	// print
-	if (dev->debug_data.cnt > 10)
-	{
-		printf("	[%02X, %02X, LAST:%02X] Received Debug Errors:  Curr. %d , Accum %d, FirstErr %d, BER: %.3g, BitRate[Mbps]: %.2f\n",
-					data[0], data[len-1], dev->debug_data.last_correct_byte,
-					error_counter_current, dev->debug_data.error_accum_counter, first_error, dev->debug_data.error_rate,
-					dev->streams[channel].rx_bitrate_mbps);
-		dev->debug_data.cnt = 0;
-	} else dev->debug_data.cnt++;
 }
-										 
 
 //=========================================================================
-void caribou_smi_stream_rx_data_callback(smi_stream_channel_en channel,
-											uint8_t* data,
-											size_t data_length,
-											void* context)
+static void caribou_smi_rx_data_analyze(caribou_smi_st* dev,
+                                uint8_t* data, size_t data_length, 
+                                caribou_smi_sample_complex_int16* sample_offset, 
+                                caribou_smi_sample_meta* meta_offset)
 {
-	caribou_smi_st* dev = (caribou_smi_st*)context;
-	caribou_smi_sample_complex_int16* cmplx_vec = dev->rx_cplx_buffer[channel];
+	caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;
 	
 	if (dev->debug_mode != caribou_smi_none)
 	{
-		caribou_smi_anayze_smi_debug(dev, channel, data, data_length);
+		caribou_smi_anayze_smi_debug(dev, data, data_length);
 	}
 	else
 	{
+        printf("SMI RX-CB: LenBytes: %d\n", data_length);
 		// the verilog struct looks as follows:
 		//	[31:30]	[	29:17	] 	[ 16  ] 	[ 15:14 ] 	[	13:1	] 	[ 	0	]
 		//	[ '00']	[ I sample	]	[ '0' ] 	[  '01'	]	[  Q sample	]	[  '0'	]
@@ -196,7 +189,7 @@ void caribou_smi_stream_rx_data_callback(smi_stream_channel_en channel,
 		{
 			uint32_t s = __builtin_bswap32(samples[i]);
 
-			//meta_vec[i].sync = s & 0x00000001;
+			meta_offset[i].sync = s & 0x00000001;
 			s >>= 1;
 			cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
 			s >>= 3;
@@ -205,44 +198,132 @@ void caribou_smi_stream_rx_data_callback(smi_stream_channel_en channel,
 			if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
 			if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
 		}
-		
-		if (dev->rx_cb) dev->rx_cb((caribou_smi_channel_en)channel, cmplx_vec, data_length/4, dev->context);
 	}
 }
 
 //=========================================================================
-size_t caribou_smi_stream_tx_data_callback(smi_stream_channel_en channel,
-											uint8_t* data,
-											size_t* data_length,
-											void* context)
+static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t data_length, caribou_smi_sample_complex_int16* sample_offset)
 {
-	return 0;
+    caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
+    uint32_t *samples = (uint32_t*)(data);
+
+    for (unsigned int i = 0; i < data_length / 4; i++)
+    {
+        uint32_t s = (((uint32_t)(cmplx_vec[i].i & 0x1FFF)) << 17) |
+                     (((uint32_t)(cmplx_vec[i].q & 0x1FFF)) << 1) |
+                     ((uint32_t)(0x80004000));
+        
+        s = __builtin_bswap32(s);
+        
+        samples[i] = s;
+    }
 }
 
 //=========================================================================
-void caribou_smi_stream_event_callback(	smi_stream_channel_en channel,
-										smi_stream_event_type_en event,
-										void* metadata,
-										void* context)
+static int caribou_smi_poll(caribou_smi_st* dev, uint32_t timeout_num_millisec, smi_stream_direction_en dir)
 {
-	caribou_smi_st* dev = (caribou_smi_st*)context;
-	if (event == smi_stream_error)
+	int rv = 0;
+	
+	// Calculate the timeout
+	struct timeval timeout = {0};
+	int num_sec = timeout_num_millisec / 1000;
+    timeout.tv_sec = num_sec;
+    timeout.tv_usec = (timeout_num_millisec - num_sec * 1000) * 1000;
+
+	// Poll setting
+    fd_set set;
+    FD_ZERO(&set);                 // clear the set mask
+    FD_SET(dev->filedesc, &set);    // add only our file descriptor to the set
+
+again:
+	if (dir == smi_stream_dir_device_to_smi)		rv = select(dev->filedesc + 1, &set, NULL, NULL, &timeout);
+	else if (dir == smi_stream_dir_smi_to_device)	rv = select(dev->filedesc + 1, NULL, &set, NULL, &timeout);
+	else return -1;
+
+    if(rv == -1)
+    {
+        int error = errno;
+        switch(error)
+        {
+            case EBADF:         // An invalid file descriptor was given in one of the sets.
+                                // (Perhaps a file descriptor that was already closed, or one on which an error has occurred.)
+                ZF_LOGE("SMI filedesc select error - invalid file descriptor in one of the sets");
+                break;
+            case EINTR:	        // A signal was caught.
+                ZF_LOGD("SMI filedesc select error - caught an interrupting signal");
+                goto again;
+                break;
+            case EINVAL:        // nfds is negative or the value contained within timeout is invalid.
+                ZF_LOGE("SMI filedesc select error - nfds is negative or invalid timeout");
+                break;
+            case ENOMEM:        // unable to allocate memory for internal tables.
+                ZF_LOGE("SMI filedesc select error - internal tables allocation failed");
+                break;
+            default: break;
+        };
+
+        return -1;
+    }
+    else if(rv == 0)
+    {
+        return 0;
+    }
+
+	return FD_ISSET(dev->filedesc, &set);
+}
+
+//=========================================================================
+static int caribou_smi_timeout_write(caribou_smi_st* dev,
+                            uint8_t* buffer,
+                            size_t len,
+                            uint32_t timeout_num_millisec)
+{
+	int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_device_to_smi);
+
+	if (res < 0)
 	{
-		if (dev->error_cb)
-		{
-			dev->error_cb((caribou_smi_channel_en)channel, dev->context);
-		}
+		//ZF_LOGD("select error");
+		return -1;
 	}
+	else if (res == 0)	// timeout
+	{
+		//ZF_LOGD("smi write fd timeout");
+		return 0;
+	}
+
+	return write(dev->filedesc, buffer, len);
+}
+
+//=========================================================================
+static int caribou_smi_timeout_read(caribou_smi_st* dev,
+								uint8_t* buffer,
+								size_t len,
+								uint32_t timeout_num_millisec)
+{
+	int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_smi_to_device);
+
+	if (res < 0)
+	{
+		//ZF_LOGD("select error");
+		return -1;
+	}
+	else if (res == 0)	// timeout
+	{
+		//ZF_LOGD("smi read fd timeout");
+		return 0;
+	}
+
+	return read(dev->filedesc, buffer, len);
 }
 
 //=========================================================================
 int caribou_smi_init(caribou_smi_st* dev, 
-					caribou_smi_error_callback error_cb,
 					void* context)
 {
-	int ret = 0;
     char smi_file[] = "/dev/smi";
     struct smi_settings settings = {0};
+    dev->read_temp_buffer = NULL;
+    dev->write_temp_buffer = NULL;
 	
 	ZF_LOGI("initializing caribou_smi");
 
@@ -291,43 +372,19 @@ int caribou_smi_init(caribou_smi_st* dev,
         caribou_smi_close (dev);
         return -1;
     }
-
-	// create streams and complex buffers
-	for (int ch = smi_stream_channel_0; ch < smi_stream_channel_max; ch++)
-	{
-		dev->rx_cplx_buffer[ch] = (caribou_smi_sample_complex_int16 *)malloc(sizeof(caribou_smi_sample_complex_int16) * dev->native_batch_len / 4);
-		if (!dev->rx_cplx_buffer[ch])
-		{
-			ZF_LOGE("SMI RX complex buffer allocation for channel (%d) init failed", ch);
-			caribou_smi_close (dev);
-		}
-		
-		dev->tx_cplx_buffer[ch] = (caribou_smi_sample_complex_int16 *)malloc(sizeof(caribou_smi_sample_complex_int16) * dev->native_batch_len / 4);
-		if (!dev->tx_cplx_buffer[ch])
-		{
-			ZF_LOGE("SMI TX complex buffer allocation for channel (%d) init failed", ch);
-			caribou_smi_close (dev);
-		}
-		
-		ret = smi_stream_init(	&dev->streams[ch],
-								dev->filedesc,
-								(smi_stream_channel_en)ch,
-								caribou_smi_stream_rx_data_callback,
-								caribou_smi_stream_tx_data_callback,
-								caribou_smi_stream_event_callback,
-								dev);
-		if (ret != 0)
-		{
-			ZF_LOGE("SMI stream channel (%d) init failed", ch);
-			caribou_smi_close (dev);
-		}
-	}
-
+    
+    // Initialize temporary buffers
+    dev->read_temp_buffer = malloc (dev->native_batch_len);
+    dev->write_temp_buffer = malloc (dev->native_batch_len);
+    
+    if (dev->read_temp_buffer == NULL || dev->write_temp_buffer == NULL)
+    {
+        ZF_LOGE("smi temporary buffers allocation failed");
+        caribou_smi_close (dev);
+        return -1;
+    }
+	
 	dev->debug_mode = caribou_smi_none;
-    dev->error_cb = error_cb;
-	dev->rx_cb = NULL;
-	dev->tx_cb = NULL;
-    dev->context = context;
     dev->initialized = 1;
 
     return 0;
@@ -336,34 +393,102 @@ int caribou_smi_init(caribou_smi_st* dev,
 //=========================================================================
 int caribou_smi_close (caribou_smi_st* dev)
 {
-	// release streams
-	for (int ch = smi_stream_channel_0; ch < smi_stream_channel_max; ch++)
-	{
-		smi_stream_release(&dev->streams[ch]);
-		
-		if (dev->rx_cplx_buffer[ch]) free(dev->rx_cplx_buffer[ch]);
-		if (dev->tx_cplx_buffer[ch]) free(dev->tx_cplx_buffer[ch]);
-		dev->rx_cplx_buffer[ch] = NULL;
-		dev->tx_cplx_buffer[ch] = NULL;
-	}
-	
+    // release temporary buffers
+    if (dev->read_temp_buffer) free(dev->read_temp_buffer);
+    if (dev->write_temp_buffer) free(dev->write_temp_buffer);
+    
 	// close smi device file
-    close (dev->filedesc);
-    return 0;
-}
-
-//=========================================================================
-void caribou_smi_setup_data_callbacks (caribou_smi_st* dev, 
-									caribou_smi_rx_data_callback rx_cb, 
-									caribou_smi_tx_data_callback tx_cb, 
-									void *data_context)
-{
-	dev->rx_cb = rx_cb;
-	dev->tx_cb = tx_cb;
+    return close (dev->filedesc);
 }
 
 //=========================================================================
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en mode)
 {
 	dev->debug_mode = mode;
+}
+
+//=========================================================================
+int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel, 
+                    caribou_smi_sample_complex_int16* buffer, caribou_smi_sample_meta* metadata, size_t length_samples)
+{
+    size_t left_to_read = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;        // in bytes
+    size_t read_so_far = 0;                                             // in samples
+    uint32_t to_millisec = (2 * length_samples * 1000) / CARIBOU_SMI_SAMPLE_RATE;
+    if (to_millisec < 2) to_millisec = 2;
+    
+    // choose the state
+    smi_stream_state_en state = smi_stream_idle;
+    if (channel == caribou_smi_channel_900)
+        state = smi_stream_rx_channel_0;
+    else if (channel == caribou_smi_channel_2400)
+        state = smi_stream_rx_channel_1;
+    
+    // apply the state
+    if (caribou_smi_set_driver_streaming_state(dev, state) != 0)
+    {
+        return -1;
+    }
+    
+    while (left_to_read)
+    {
+        caribou_smi_sample_complex_int16* sample_offset = buffer + read_so_far;
+        caribou_smi_sample_meta* meta_offset = metadata + read_so_far;
+        
+        // current_read_len in bytes
+        size_t current_read_len = (left_to_read > dev->native_batch_len) ? dev->native_batch_len : left_to_read;
+        int ret = caribou_smi_timeout_read(dev, dev->read_temp_buffer, current_read_len, to_millisec);
+        if (ret < 0)
+        {
+            return -1;
+        }
+        else if (ret == 0) break;        
+        else
+        {
+            caribou_smi_rx_data_analyze(dev, dev->read_temp_buffer, ret, sample_offset, meta_offset);
+        }
+        read_so_far += ret / CARIBOU_SMI_BYTES_PER_SAMPLE;
+    }
+    
+    return read_so_far;
+}
+
+//=========================================================================
+int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel, 
+                        caribou_smi_sample_complex_int16* buffer, size_t length_samples)
+{
+    size_t left_to_write = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;   // in bytes
+    size_t written_so_far = 0;                                      // in samples
+    uint32_t to_millisec = (2 * length_samples * 1000) / CARIBOU_SMI_SAMPLE_RATE;
+    if (to_millisec < 2) to_millisec = 2;
+    
+    smi_stream_state_en state = smi_stream_tx;
+    
+    // apply the state
+    if (caribou_smi_set_driver_streaming_state(dev, state) != 0)
+    {
+        return -1;
+    }
+    
+    
+    while (left_to_write)
+    {
+        // prepare the buffer
+        caribou_smi_sample_complex_int16* sample_offset = buffer + written_so_far;
+        size_t current_write_len = (left_to_write > dev->native_batch_len) ? dev->native_batch_len : left_to_write;
+
+        caribou_smi_generate_data(dev, dev->write_temp_buffer, current_write_len, sample_offset);
+
+        int ret = caribou_smi_timeout_write(dev, dev->write_temp_buffer, current_write_len, to_millisec);
+        if (ret < 0)
+        {
+            return -1;
+        }
+        else if (ret == 0) break;
+        
+        written_so_far += current_write_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
+    }
+    
+    return written_so_far;
+    
+    return 0;
 }

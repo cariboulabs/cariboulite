@@ -67,15 +67,13 @@ struct bcm2835_smi_dev_instance
 	struct bcm2835_smi_instance *smi_inst;
 
 	// address related
-	smi_stream_direction_en dir;
-	smi_stream_channel_en channel;
 	unsigned int cur_address;
 	
 	struct task_struct *reader_thread;
 	struct task_struct *writer_thread;
 	struct kfifo rx_fifo;
 	struct kfifo tx_fifo;
-	bool streaming;
+	smi_stream_state_en state;
 	struct mutex read_lock;
 	struct mutex write_lock;
 	wait_queue_head_t poll_event;
@@ -83,7 +81,7 @@ struct bcm2835_smi_dev_instance
 	bool writeable;
 };
 
-static struct bcm2835_smi_dev_instance *inst;
+static struct bcm2835_smi_dev_instance *inst = NULL;
 
 static const char *const ioctl_names[] = 
 {
@@ -124,8 +122,11 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 
 /***************************************************************************/
 static void set_address_direction(smi_stream_direction_en dir)
-{
+{   
 	uint32_t t = (uint32_t)dir;
+    
+    if (inst == NULL) return;
+    
 	inst->cur_address &= ~(1<<ADDR_DIR_OFFSET);
 	inst->cur_address |= t<<ADDR_DIR_OFFSET;
 	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
@@ -135,23 +136,55 @@ static void set_address_direction(smi_stream_direction_en dir)
 static void set_address_channel(smi_stream_channel_en ch)
 {
 	uint32_t t = (uint32_t)ch;
+    
+    if (inst == NULL) return;
+    
 	inst->cur_address &= ~(1<<ADDR_CH_OFFSET);
 	inst->cur_address |= t<<ADDR_CH_OFFSET;
 	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 }
 
 /***************************************************************************/
-static smi_stream_channel_en get_address_channel(void)
+/*static smi_stream_channel_en get_address_channel(void)
 {
+    if (inst == NULL) return smi_stream_channel_0;
+    
 	return (smi_stream_channel_en)((inst->cur_address >> ADDR_CH_OFFSET) & 0x1);
-}
+}*/
 
 /***************************************************************************/
-static void switch_address_channel(void)
-{
+/*static void switch_address_channel(void)
+{    
 	smi_stream_channel_en cur_ch = get_address_channel();
+    
+    if (inst == NULL) return;
+    
 	if (cur_ch == smi_stream_channel_0) set_address_channel(smi_stream_channel_0);
 	else set_address_channel(smi_stream_channel_1);
+}*/
+
+/***************************************************************************/
+static void set_state(smi_stream_state_en state)
+{
+    if (inst == NULL) return;
+    
+    inst->cur_address = 0;
+    if (state == smi_stream_rx_channel_0)
+    {
+        inst->cur_address |= smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET;
+        inst->cur_address |= smi_stream_rx_channel_0<<ADDR_CH_OFFSET;
+    }
+    else if (state == smi_stream_rx_channel_1)
+    {
+        inst->cur_address |= smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET;
+        inst->cur_address |= smi_stream_rx_channel_1<<ADDR_CH_OFFSET;
+    }
+    else if (state == smi_stream_tx)
+    {
+        inst->cur_address |= smi_stream_dir_smi_to_device<<ADDR_DIR_OFFSET;
+    }
+    
+    inst->state = state;
 }
 
 /***************************************************************************/
@@ -349,10 +382,11 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	//-------------------------------
 	case SMI_STREAM_IOC_SET_STREAM_STATUS:
 	{
-		inst->streaming = arg;
-		dev_info(inst->dev, "Set STREAMING_STATUS = %d", inst->streaming);
+        set_state((smi_stream_state_en)arg);
+		dev_info(inst->dev, "Set STREAMING_STATUS = %d", inst->state);
 		break;
 	}
+    //-------------------------------
 	default:
 		dev_err(inst->dev, "invalid ioctl cmd: %d", cmd);
 		ret = -ENOTTY;
@@ -492,8 +526,11 @@ int reader_thread_stream_function(void *pv)
 
 	while(!kthread_should_stop())
 	{
+        // sync smi address
+        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
+        
 		// check if the streaming state is on, if not, sleep and check again
-		if (!inst->streaming)
+		if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
 		{
 			msleep(10);
 			continue;
@@ -553,8 +590,11 @@ int writer_thread_stream_function(void *pv)
 
 	while(!kthread_should_stop())
 	{
+        // sync smi address
+        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
+        
 		// check if the streaming state is on, if not, sleep and check again
-		if (!inst->streaming)
+		if (inst->state != smi_stream_tx)
 		{
 			msleep(10);
 			continue;
@@ -644,7 +684,7 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 	}
 
 	// when file is being openned, stream state is still idle
-	inst->streaming = 0;
+    set_state(smi_stream_idle);
 	
 	// Create the reader thread
 	// this thread is in charge of continuedly interogating the smi for new rx data and
@@ -695,7 +735,8 @@ static int smi_stream_release(struct inode *inode, struct file *file)
 	}
 
 	// make sure stream is idle
-	inst->streaming = 0;
+	set_state(smi_stream_idle);
+    
 	if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
 	if (inst->writer_thread != NULL) kthread_stop(inst->writer_thread);
 	

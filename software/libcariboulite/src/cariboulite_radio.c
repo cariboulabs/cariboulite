@@ -808,9 +808,11 @@ int cariboulite_radio_get_frequency(cariboulite_radio_state_st* radio,
 }
 
 //=========================================================================
-int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio, 
+int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
+                                            cariboulite_channel_dir_en dir,
                                 			bool active)
 {
+    radio->channel_direction = dir;
     ZF_LOGD("Activating channel %d, dir = %s, active = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", active);
     
 	// if the channel state is active, turn it off before reactivating
@@ -924,55 +926,48 @@ int cariboulite_radio_get_cw_outputs(cariboulite_radio_state_st* radio,
 }
 
 //=========================================================================
-/*int cariboulite_radio_create_stream(cariboulite_radio_state_st* radio, 
-										cariboulite_channel_dir_en dir,
-										void* context)
+// I/O Functions
+//=========================================================================
+int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
+                            caribou_smi_sample_complex_int16* buffer,
+                            caribou_smi_sample_meta* metadata,
+                            size_t length)
 {
-    caribou_smi_channel_en ch = GET_SMI_CH(radio->type);
-    caribou_smi_stream_type_en type = GET_SMI_DIR(dir);
-
-    int stream_id = caribou_smi_setup_stream(&radio->sys->smi,
-                                                type, 
-												ch,
-                                                caribou_smi_data_event,
-                                                context);
+    // Modem configuration to RX on specified channel
+    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true);
     
-    // store the stream id's
-    if (type == caribou_smi_stream_type_read)
+    // CaribouSMI read   
+    int ret = caribou_smi_read(&radio->sys->smi, radio->smi_channel_id, buffer, metadata, length);
+    if (ret < 0)
     {
-        radio->rx_stream_id = stream_id;
+        ZF_LOGE("SMI reading operation failed");
     }
-    else if (type == caribou_smi_stream_type_write)
+    else if (ret == 0)
     {
-        radio->tx_stream_id = stream_id;
+        ZF_LOGD("SMI reading operation returned timeout");
     }
-    return stream_id;
+    
+    return ret;
 }
 
 //=========================================================================
-int cariboulite_radio_destroy_smi_stream(cariboulite_radio_state_st* radio, 
-                               			cariboulite_channel_dir_en dir)
+int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
+                            caribou_smi_sample_complex_int16* buffer,
+                            size_t length)                            
 {
-    int stream_id = (dir == cariboulite_channel_dir_rx) ? radio->rx_stream_id : radio->tx_stream_id;
-    if (stream_id == -1)
+    // Modem configuration for TX on specified channel
+    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, true);
+    
+    // Caribou SMI write
+    int ret = caribou_smi_write(&radio->sys->smi, radio->smi_channel_id, buffer, length);
+    if (ret < 0)
     {
-        ZF_LOGE("The specified channel (%d) doesn't have open stream of type %d", radio->type, dir);
-        return -1;
+        ZF_LOGE("SMI writing operation failed");
     }
-
-    return caribou_smi_destroy_stream(&radio->sys->smi, stream_id);
+    else if (ret == 0)
+    {
+        ZF_LOGD("SMI writing operation returned timeout");
+    }
+    
+    return ret;
 }
-
-//=========================================================================
-int cariboulite_radio_run_pause_stream(cariboulite_radio_state_st* radio, 
-										cariboulite_channel_dir_en dir,
-										bool run)
-{
-	int stream_id = (dir == cariboulite_channel_dir_rx) ? radio->rx_stream_id : radio->tx_stream_id;
-    if (stream_id == -1)
-    {
-        ZF_LOGE("The specified channel (%d) doesn't have open stream of type %d", radio->type, dir);
-        return -1;
-    }
-	return caribou_smi_run_pause_stream (&radio->sys->smi, stream_id, run);
-}*/

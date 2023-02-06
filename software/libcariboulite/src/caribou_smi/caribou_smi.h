@@ -8,13 +8,9 @@ extern "C" {
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "smi_stream.h"
 
-typedef enum
-{
-    caribou_smi_error_read_failed = 0,
-	caribou_smi_error_write_failed = 1,
-} caribou_smi_error_en;
+#include "kernel/bcm2835_smi.h"
+#include "kernel/smi_stream_dev.h"
 
 // DEBUG Information
 typedef enum
@@ -33,11 +29,19 @@ typedef struct
 	uint32_t cnt;
 } caribou_smi_debug_data_st;
 
-#define CARIBOU_SMI_DEBUG_WORD 	(0x01EFCDAB)
+#define CARIBOU_SMI_DEBUG_WORD 	        (0x01EFCDAB)
+#define CARIBOU_SMI_BYTES_PER_SAMPLE    (4)
+#define CARIBOU_SMI_SAMPLE_RATE         (4000000)
+
+typedef enum
+{
+	caribou_smi_channel_900 = smi_stream_channel_0,
+	caribou_smi_channel_2400 = smi_stream_channel_1,
+} caribou_smi_channel_en;
+
 
 // Data container
 #pragma pack(1)
-
 // associated with CS16 - total 4 bytes / element
 typedef struct
 {
@@ -49,44 +53,16 @@ typedef struct
 {
 	uint8_t sync;
 } caribou_smi_sample_meta;
-
-typedef enum
-{
-	caribou_smi_channel_900 = smi_stream_channel_0,
-	caribou_smi_channel_2400 = smi_stream_channel_1,
-} caribou_smi_channel_en;
-
 #pragma pack()
-
-
-typedef void (*caribou_smi_rx_data_callback)(caribou_smi_channel_en channel,
-											caribou_smi_sample_complex_int16 *samples,
-											size_t num_of_samples,
-											void* context);
-
-typedef size_t (*caribou_smi_tx_data_callback)(	caribou_smi_channel_en channel,
-												caribou_smi_sample_complex_int16* data,
-												size_t* num_of_samples,
-												void* context);
-
-typedef void (*caribou_smi_error_callback)(	caribou_smi_channel_en channel,
-											void* context);
-
 
 typedef struct
 {
     int initialized;
     int filedesc;
-    caribou_smi_error_callback error_cb;
-	caribou_smi_rx_data_callback rx_cb;
-	caribou_smi_tx_data_callback tx_cb;
-    void* context;
-
-	// streams 900/2400 MHz
-	smi_stream_st streams[smi_stream_channel_max];
-	caribou_smi_sample_complex_int16 *rx_cplx_buffer[smi_stream_channel_max];
-	caribou_smi_sample_complex_int16 *tx_cplx_buffer[smi_stream_channel_max];
 	size_t native_batch_len;
+    
+    uint8_t *read_temp_buffer;
+    uint8_t *write_temp_buffer;
 
 	// debugging
 	caribou_smi_debug_mode_en debug_mode;
@@ -94,15 +70,17 @@ typedef struct
 } caribou_smi_st;
 
 int caribou_smi_init(caribou_smi_st* dev, 
-					caribou_smi_error_callback error_cb,
 					void* context);
-void caribou_smi_setup_data_callbacks (caribou_smi_st* dev, 
-									caribou_smi_rx_data_callback rx_cb, 
-									caribou_smi_tx_data_callback tx_cb, 
-									void *data_context);
 int caribou_smi_close (caribou_smi_st* dev);
 int caribou_smi_check_modules(bool reload);
+
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en mode);
+
+int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel, 
+                        caribou_smi_sample_complex_int16* buffer, caribou_smi_sample_meta* metadata, size_t length_samples);
+                        
+int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel, 
+                        caribou_smi_sample_complex_int16* buffer, size_t length_samples);
 
 #ifdef __cplusplus
 }

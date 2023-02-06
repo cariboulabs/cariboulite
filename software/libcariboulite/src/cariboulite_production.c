@@ -682,6 +682,8 @@ int cariboulite_prod_set_modems_state(sys_st* sys, int state) // state = 0 = off
 	float power_lo = 14;
 	float power_hi = 14;
 	
+    cariboulite_channel_dir_en chan = state == 2?cariboulite_channel_dir_tx:cariboulite_channel_dir_rx;
+    
 	cariboulite_radio_state_st *radio_low = &sys->radio_low;
 	cariboulite_radio_state_st *radio_hi = &sys->radio_high;
 	
@@ -690,8 +692,8 @@ int cariboulite_prod_set_modems_state(sys_st* sys, int state) // state = 0 = off
 	cariboulite_radio_set_frequency(radio_hi, true, &freq_hi);
 	
 	// deactivate - just to be sure
-	cariboulite_radio_activate_channel(radio_low, false);
-	cariboulite_radio_activate_channel(radio_hi, false);
+	cariboulite_radio_activate_channel(radio_low, chan, false);
+	cariboulite_radio_activate_channel(radio_hi, chan, false);
 	
 	if (state == 0)
 	{
@@ -699,8 +701,8 @@ int cariboulite_prod_set_modems_state(sys_st* sys, int state) // state = 0 = off
 		cariboulite_radio_set_cw_outputs(radio_hi, false, false);
 		
 		// deactivate
-		cariboulite_radio_activate_channel(radio_low, false);
-		cariboulite_radio_activate_channel(radio_hi, false);
+		cariboulite_radio_activate_channel(radio_low, chan, false);
+		cariboulite_radio_activate_channel(radio_hi, chan, false);
 	}
 	else if (state == 1)
 	{
@@ -712,8 +714,8 @@ int cariboulite_prod_set_modems_state(sys_st* sys, int state) // state = 0 = off
 		cariboulite_radio_sync_information(radio_hi);
 		
 		// activate rx
-		cariboulite_radio_activate_channel(radio_low, true);
-		cariboulite_radio_activate_channel(radio_hi, true);
+		cariboulite_radio_activate_channel(radio_low, chan, true);
+		cariboulite_radio_activate_channel(radio_hi, chan, true);
 	}
 	if (state == 2)
 	{
@@ -730,8 +732,8 @@ int cariboulite_prod_set_modems_state(sys_st* sys, int state) // state = 0 = off
 		cariboulite_radio_sync_information(radio_hi);
 		
 		// activate tx
-		cariboulite_radio_activate_channel(radio_low, true);
-		cariboulite_radio_activate_channel(radio_hi, true);
+		cariboulite_radio_activate_channel(radio_low, chan, true);
+		cariboulite_radio_activate_channel(radio_hi, chan, true);
 	}
 	return 0;
 }

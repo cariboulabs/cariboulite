@@ -274,9 +274,7 @@ int cariboulite_init_submodules (sys_st* sys)
     // SMI Init
     //------------------------------------------------------
     ZF_LOGD("INIT FPGA SMI communication");
-    res = caribou_smi_init(&sys->smi, 
-							caribou_smi_error_event,
-							&sys);
+    res = caribou_smi_init(&sys->smi, &sys);
     if (res < 0)
     {
         ZF_LOGE("Error setting up smi submodule");
@@ -384,8 +382,8 @@ int cariboulite_init_submodules (sys_st* sys)
 	// Initialize the two Radio High-Level devices	
 	cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);
 	cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_6g);
-	cariboulite_radio_activate_channel(&sys->radio_low, false);
-	cariboulite_radio_activate_channel(&sys->radio_high, false);
+	cariboulite_radio_activate_channel(&sys->radio_low, cariboulite_channel_dir_rx, false);
+	cariboulite_radio_activate_channel(&sys->radio_high, cariboulite_channel_dir_rx, false);
 	cariboulite_radio_sync_information(&sys->radio_low);
 	cariboulite_radio_sync_information(&sys->radio_high);
 

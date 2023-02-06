@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #include "cariboulite.h"
-#include "cariboulite_radios.h"
+#include "cariboulite_radio.h"
 #include "caribou_fpga/caribou_fpga.h"
 #include "at86rf215/at86rf215.h"
 #include "rffc507x/rffc507x.h"

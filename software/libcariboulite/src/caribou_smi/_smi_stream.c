@@ -218,6 +218,7 @@ static void* smi_stream_reader_thread(void* arg)
         }
         else if (ret == 0)  // timeout
         {
+            //printf("smi_stream_reader_thread - TIMEOUT\n");
             continue;
         }
 
@@ -280,6 +281,7 @@ static void* smi_stream_writer_thread(void* arg)
         }
         else if (ret == 0)  // timeout
         {
+            printf("smi_stream_writer_thread - TIMEOUT\n");
             continue;
         }
 

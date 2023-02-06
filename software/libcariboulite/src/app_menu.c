@@ -214,8 +214,8 @@ static void modem_tx_cw(sys_st *sys)
 	cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
 	
 	// deactivate - just to be sure
-	cariboulite_radio_activate_channel(radio_low, false);
-	cariboulite_radio_activate_channel(radio_hi, false);
+	cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, false);
+	cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, false);
 	
 	// setup cw outputs from modem
 	cariboulite_radio_set_cw_outputs(radio_low, false, true);
@@ -259,7 +259,7 @@ static void modem_tx_cw(sys_st *sys)
 				cariboulite_radio_set_tx_power(radio_low, current_power_lo);
 				if (state_lo == false)
 				{
-					cariboulite_radio_activate_channel(radio_low, false);
+					cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, false);
 				}
 				current_freq_lo = radio_low->actual_rf_frequency;
 			}
@@ -275,7 +275,7 @@ static void modem_tx_cw(sys_st *sys)
 				cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
 				if (state_hi == false)
 				{
-					cariboulite_radio_activate_channel(radio_hi, false);
+					cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, false);
 				}
 				current_freq_hi = radio_hi->actual_rf_frequency;
 			}
@@ -307,7 +307,7 @@ static void modem_tx_cw(sys_st *sys)
 			case 5:
 			{
 				state_lo = !state_lo;
-				cariboulite_radio_activate_channel(radio_low, state_lo);
+				cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, state_lo);
 				//printf("	Power output was %s\n\n", state_lo?"ENABLED":"DISABLED");
 				if (state_lo == 1) cariboulite_radio_set_tx_power(radio_low, current_power_lo);
 			}
@@ -317,7 +317,7 @@ static void modem_tx_cw(sys_st *sys)
 			case 6: 
 			{
 				state_hi = !state_hi;
-				cariboulite_radio_activate_channel(radio_hi, state_hi);
+				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, state_hi);
 				//printf("	Power output was %s\n\n", state_hi?"ENABLED":"DISABLED");
 				if (state_hi == 1) cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
 			}
@@ -357,8 +357,8 @@ static void modem_rx_iq(sys_st *sys)
 	cariboulite_radio_sync_information(radio_low);
 	cariboulite_radio_sync_information(radio_hi);
 	
-	cariboulite_radio_activate_channel(radio_low, false);
-	cariboulite_radio_activate_channel(radio_hi, false);
+	cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, false);
+	cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, false);
 	
 	while (1)
 	{
@@ -376,7 +376,7 @@ static void modem_rx_iq(sys_st *sys)
 			case 1:
 			{
 				low_active_rx = !low_active_rx;
-				cariboulite_radio_activate_channel(radio_low, low_active_rx);
+				cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, low_active_rx);
 			}
 			break;
 			
@@ -384,14 +384,14 @@ static void modem_rx_iq(sys_st *sys)
 			case 2:
 			{
 				high_active_rx = !high_active_rx;
-				cariboulite_radio_activate_channel(radio_low, high_active_rx);
+				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, high_active_rx);
 			}
 			break;
 			
 			//--------------------------------------------
 			case 99:
-				cariboulite_radio_activate_channel(radio_low, false);
-				cariboulite_radio_activate_channel(radio_hi, false);	
+				cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, false);
+				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, false);	
 				return;
 			
 			//--------------------------------------------

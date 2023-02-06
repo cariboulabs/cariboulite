@@ -59,10 +59,18 @@ typedef enum
 
 typedef enum
 {
-	smi_stream_channel_0 = 0,				// channel 900 MHz	(RX)
-	smi_stream_channel_1 = 1,				// channel 2400 MHz	(RX)
+	smi_stream_channel_0 = 0,
+	smi_stream_channel_1 = 1,
 	smi_stream_channel_max,
 } smi_stream_channel_en;
+
+typedef enum
+{
+    smi_stream_idle = 0,
+    smi_stream_rx_channel_0 = 1,
+    smi_stream_rx_channel_1 = 2,
+    smi_stream_tx = 3,
+} smi_stream_state_en;
 
 #ifdef __KERNEL__
 struct bcm2835_smi_instance {

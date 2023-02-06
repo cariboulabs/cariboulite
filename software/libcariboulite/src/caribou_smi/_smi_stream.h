@@ -49,11 +49,11 @@ typedef struct
 	size_t buffer_length;
 	uint8_t *smi_read_buffers[2];
     uint8_t *smi_read_point;        	// the buffer that is currently in the SMI DMA
-    uint8_t *app_read_point;        	// the buffer that is currently analyzed / written by the application callback
+    uint8_t *app_read_point;        	// the buffer that is currently analyzed / read by the application callback
 
 	uint8_t *smi_write_buffers[2];
 	uint8_t *smi_write_point;        	// the buffer that is currently in the SMI DMA
-    uint8_t *app_write_point;        	// the buffer that is currently analyzed / written by the application callback
+    uint8_t *app_write_point;        	// the buffer that is currently generated / written by the application callback
 
 	// Performance
 	float rx_bitrate_mbps;

@@ -75,8 +75,6 @@ typedef struct
 
     // SMI STREAMS
     caribou_smi_channel_en              smi_channel_id;
-	cariboulite_radio_rx_data_callback	rx_cb;
-	cariboulite_radio_tx_data_callback	tx_cb;
 
     // OTHERS
     uint8_t                             random_value;
@@ -155,7 +153,8 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 int cariboulite_radio_get_frequency(cariboulite_radio_state_st* radio, 
                                 	double *freq, double *lo, double* i_f);
 
-int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio, 
+int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
+                                            cariboulite_channel_dir_en dir,
                                 			bool active);
 
 int cariboulite_radio_set_cw_outputs(cariboulite_radio_state_st* radio, 
@@ -164,17 +163,15 @@ int cariboulite_radio_set_cw_outputs(cariboulite_radio_state_st* radio,
 int cariboulite_radio_get_cw_outputs(cariboulite_radio_state_st* radio, 
                                			bool *lo_out, bool *cw_out);
 
-int cariboulite_radio_create_smi_stream(cariboulite_radio_state_st* radio, 
-										cariboulite_channel_dir_en dir,
-										void* context);
-                               
-int cariboulite_radio_destroy_smi_stream(cariboulite_radio_state_st* radio, 
-                               			cariboulite_channel_dir_en dir);
-
-int cariboulite_radio_run_pause_stream(cariboulite_radio_state_st* radio, 
-										cariboulite_channel_dir_en dir,
-										bool run);
-
+int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
+                            caribou_smi_sample_complex_int16* buffer,
+                            caribou_smi_sample_meta* metadata,
+                            size_t length);
+                            
+int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
+                            caribou_smi_sample_complex_int16* buffer,
+                            size_t length);  
+                            
 #ifdef __cplusplus
 }
 #endif
