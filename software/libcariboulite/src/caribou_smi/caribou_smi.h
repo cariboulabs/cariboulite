@@ -27,6 +27,8 @@ typedef struct
 	uint8_t last_correct_byte;
 	double error_rate;
 	uint32_t cnt;
+    double bitrate;
+    struct timeval last_time;
 } caribou_smi_debug_data_st;
 
 #define CARIBOU_SMI_DEBUG_WORD 	        (0x01EFCDAB)

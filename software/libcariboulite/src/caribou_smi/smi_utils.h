@@ -58,6 +58,7 @@ void smi_utils_release_buffer_vec(uint8_t** mat, int num_buffers, int buffer_siz
 int smi_utils_search_offset_in_buffer(uint8_t *buff, int len);
 uint8_t smi_utils_lfsr(uint8_t n);
 double smi_calculate_performance(size_t bytes, struct timeval *old_time, double old_mbps);
+unsigned int smi_utils_count_bit(unsigned int x);
 
 #ifdef __cplusplus
 }

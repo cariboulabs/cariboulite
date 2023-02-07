@@ -242,3 +242,15 @@ double smi_calculate_performance(size_t bytes, struct timeval *old_time, double 
 	old_time->tv_usec = current_time.tv_usec;
 	return old_mbps * 0.98 + speed_mbps * 0.02;
 }
+
+//=========================================================================
+unsigned int smi_utils_count_bit(unsigned int x)
+{
+    x = (x & 0x55555555) + ((x >> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    x = (x & 0x0F0F0F0F) + ((x >> 4) & 0x0F0F0F0F);
+    x = (x & 0x00FF00FF) + ((x >> 8) & 0x00FF00FF);
+    x = (x & 0x0000FFFF) + ((x >> 16)& 0x0000FFFF);
+    return x;
+}
+
