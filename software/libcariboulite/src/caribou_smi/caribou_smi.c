@@ -146,48 +146,126 @@ static void caribou_smi_anayze_smi_debug(caribou_smi_st* dev, uint8_t *data, siz
 	}
 
 	dev->debug_data.error_rate = dev->debug_data.error_rate * 0.9 + (double)(error_counter_current) / (double)(len) * 0.1;
+    if (dev->debug_data.error_rate < 1e-8)
+        dev->debug_data.error_rate = 0.0;
 }
 
 //=========================================================================
-static void caribou_smi_rx_data_analyze(caribou_smi_st* dev,
+static void caribou_smi_print_debug_stats(caribou_smi_st* dev, uint8_t *buffer, size_t len)
+{
+    printf("SMI DBG: ErrAccumCnt: %d, LastCorrectByte: %d, ErrorRate: %.4g, ReadTail: %d\n", 
+                dev->debug_data.error_accum_counter, dev->debug_data.last_correct_byte, dev->debug_data.error_rate, dev->read_tail_len);
+    //smi_utils_dump_hex(buffer, 16);
+}
+
+//=========================================================================
+static unsigned int caribou_smi_count_bit(unsigned int x)
+{
+    x = (x & 0x55555555) + ((x >> 1) & 0x55555555);
+    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+    x = (x & 0x0F0F0F0F) + ((x >> 4) & 0x0F0F0F0F);
+    x = (x & 0x00FF00FF) + ((x >> 8) & 0x00FF00FF);
+    x = (x & 0x0000FFFF) + ((x >> 16)& 0x0000FFFF);
+    return x;
+}
+
+//=========================================================================
+static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, size_t len)
+{
+    size_t offs = 0;
+    bool found = false;
+    
+    if (len < 4)
+    {
+        return -1;
+    }
+    
+    if (dev->debug_mode == caribou_smi_none)
+    {
+        for (offs = 0; offs<(len-4); offs++)
+        {
+            uint32_t s = /*__builtin_bswap32*/(*((uint32_t*)(&buffer[offs])));
+            
+            //printf("%d => %08X\n", offs, s);
+            if ((s & 0xC001C000) == 0x80004000)
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+    else if (dev->debug_mode == caribou_smi_push || dev->debug_mode == caribou_smi_pull)
+    {
+        for (offs = 0; offs<(len-4); offs++)
+        {
+            uint32_t s = /*__builtin_bswap32*/(*((uint32_t*)(&buffer[offs])));
+            //printf("%d => %08X, %08X\n", offs, s, caribou_smi_count_bit(s^CARIBOU_SMI_DEBUG_WORD));
+            if (caribou_smi_count_bit(s^CARIBOU_SMI_DEBUG_WORD) < 10)
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+    else
+    {
+        // the lfsr option
+        return 0;
+    }
+    
+    if (found == false)
+    {
+        return -1;
+    }
+    
+    return (int)offs;
+}
+
+//=========================================================================
+static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
                                 uint8_t* data, size_t data_length, 
-                                caribou_smi_sample_complex_int16* sample_offset, 
+                                caribou_smi_sample_complex_int16* samples_out, 
                                 caribou_smi_sample_meta* meta_offset)
 {
-	caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;
+    int offs = 0;
+	size_t actual_length = data_length;
+	uint32_t *actual_samples = (uint32_t*)(data);
+    
+	caribou_smi_sample_complex_int16* cmplx_vec = samples_out;
+    
+    // find the offset and adjust
+    offs = caribou_smi_find_buffer_offset(dev, data, data_length);
+    if (offs < 0)
+    {
+        //smi_utils_dump_hex(data, 16);
+        ZF_LOGE("incoming buffer synchronization failed");
+        return -1;
+    }
+    else if (offs > 0)
+    {
+        actual_length -= (offs / 4 + 1) * 4;
+        actual_samples = (uint32_t*)(data + offs);
+    }
 	
+    smi_utils_dump_hex_simple(actual_samples, 8, 16);
+    
+    // analyze the data
 	if (dev->debug_mode != caribou_smi_none)
 	{
-		caribou_smi_anayze_smi_debug(dev, data, data_length);
+		caribou_smi_anayze_smi_debug(dev, (uint8_t*)actual_samples, actual_length);
 	}
 	else
 	{
-        //printf("SMI RX-CB: LenBytes: %d\n", data_length);
-		// the verilog struct looks as follows:
+        // Print buffer
+        //smi_utils_dump_bin(buffer, 16);
+        
+		// Data Structure:
 		//	[31:30]	[	29:17	] 	[ 16  ] 	[ 15:14 ] 	[	13:1	] 	[ 	0	]
-		//	[ '00']	[ I sample	]	[ '0' ] 	[  '01'	]	[  Q sample	]	[  '0'	]
+		//	[ '10']	[ I sample	]	[ '0' ] 	[  '01'	]	[  Q sample	]	[  'S'	]
 		
-		// check data offset
-		unsigned int offs = 0;
-		//smi_utils_dump_bin(buffer, 16);
-		for (offs = 0; offs<8; offs++)
+		for (unsigned int i = 0; i < actual_length / 4; i++)
 		{
-			uint32_t s = __builtin_bswap32(*((uint32_t*)(&data[offs])));
-			//smi_utils_print_bin(s);
-			if ((s & 0xC001C000) == 0x80004000) break;
-		}
-
-		if (offs)
-		{
-			data_length -= (offs/4 + 1) * 4;
-		}
-		
-		//printf("data offset %d\n", offs);
-		uint32_t *samples = (uint32_t*)(data + offs);
-
-		for (unsigned int i = 0; i < data_length/4; i++)
-		{
-			uint32_t s = __builtin_bswap32(samples[i]);
+			uint32_t s = __builtin_bswap32(actual_samples[i]);
 
 			meta_offset[i].sync = s & 0x00000001;
 			s >>= 1;
@@ -199,6 +277,8 @@ static void caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 			if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
 		}
 	}
+    
+    return offs;
 }
 
 //=========================================================================
@@ -369,8 +449,9 @@ int caribou_smi_init(caribou_smi_st* dev,
     }
     
     // Initialize temporary buffers
-    dev->read_temp_buffer = malloc (dev->native_batch_len);
-    dev->write_temp_buffer = malloc (dev->native_batch_len);
+    // we add additional bytes to allow data synchronization corrections
+    dev->read_temp_buffer = malloc (dev->native_batch_len + 1024);
+    dev->write_temp_buffer = malloc (dev->native_batch_len + 1024);
     
     if (dev->read_temp_buffer == NULL || dev->write_temp_buffer == NULL)
     {
@@ -378,7 +459,7 @@ int caribou_smi_init(caribou_smi_st* dev,
         caribou_smi_close (dev);
         return -1;
     }
-	
+	dev->read_tail_len = 0;
 	dev->debug_mode = caribou_smi_none;
     dev->initialized = 1;
 
@@ -407,7 +488,7 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
                     caribou_smi_sample_complex_int16* buffer, caribou_smi_sample_meta* metadata, size_t length_samples)
 {
     size_t left_to_read = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;        // in bytes
-    size_t read_so_far = 0;                                             // in samples
+    size_t read_so_far = 0;                                                     // in samples
     uint32_t to_millisec = (2 * length_samples * 1000) / CARIBOU_SMI_SAMPLE_RATE;
     if (to_millisec < 2) to_millisec = 2;
     
@@ -430,8 +511,8 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
         caribou_smi_sample_meta* meta_offset = metadata + read_so_far;
         
         // current_read_len in bytes
-        size_t current_read_len = (left_to_read > dev->native_batch_len) ? dev->native_batch_len : left_to_read;
-        int ret = caribou_smi_timeout_read(dev, dev->read_temp_buffer, current_read_len, to_millisec);
+        size_t current_read_len = ((left_to_read > dev->native_batch_len) ? dev->native_batch_len : left_to_read);
+        int ret = caribou_smi_timeout_read(dev, dev->read_temp_buffer + dev->read_tail_len, current_read_len, to_millisec);
         if (ret < 0)
         {
             return -1;
@@ -443,10 +524,34 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
         }
         else
         {
-            caribou_smi_rx_data_analyze(dev, dev->read_temp_buffer, ret, sample_offset, meta_offset);
+            ret += dev->read_tail_len;
+            int data_affset = caribou_smi_rx_data_analyze(dev, dev->read_temp_buffer, ret, sample_offset, meta_offset);
+            
+            if (data_affset < 0)
+            {
+                dev->read_tail_len = 0;
+                return -1;
+            }
+            if (data_affset > 0)
+            {
+                dev->read_tail_len = 4 - (data_affset % 4);
+                ret -= data_affset;
+                memcpy(dev->read_temp_buffer, dev->read_temp_buffer + ret, dev->read_tail_len);
+            }
+            else
+            {
+                dev->read_tail_len = 0;
+            }
+            
+            // A special functionality for debug modes
+            if (dev->debug_mode != caribou_smi_none)
+            {
+                caribou_smi_print_debug_stats(dev, dev->read_temp_buffer, ret);
+                return -2;  // special for debug
+            }
         }
-        read_so_far += current_read_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
-        left_to_read -= current_read_len;
+        read_so_far += ret / CARIBOU_SMI_BYTES_PER_SAMPLE;
+        left_to_read -= ret;
     }
     
     return read_so_far;

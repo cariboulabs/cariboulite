@@ -16,7 +16,7 @@ module sys_ctrl
         output              o_debug_fifo_push,
         output              o_debug_fifo_pull,
         output              o_debug_smi_test,
-         );
+    );
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------

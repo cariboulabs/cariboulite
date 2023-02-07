@@ -61,6 +61,7 @@ typedef struct
     int filedesc;
 	size_t native_batch_len;
     
+    int read_tail_len;
     uint8_t *read_temp_buffer;
     uint8_t *write_temp_buffer;
 

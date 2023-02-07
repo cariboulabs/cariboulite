@@ -65,7 +65,8 @@ void smi_utils_dump_hex(const void* data, size_t size)
 	size_t i, j;
 	ascii[16] = '\0';
 
-	for (i = 0; i < size; ++i) {
+	for (i = 0; i < size; ++i)
+    {
 		printf("%02X ", ((unsigned char*)data)[i]);
 		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~')
         {
@@ -97,6 +98,22 @@ void smi_utils_dump_hex(const void* data, size_t size)
 			}
 		}
 	}
+}
+
+//=========================================================================
+void smi_utils_dump_hex_simple(const void* data, size_t size, size_t delim)
+{
+    unsigned int temp = 0;
+    for (unsigned int i = 0; i < size; ++i)
+    {
+        temp ++;
+        printf("%02X ", ((unsigned char*)data)[i]);
+        if (delim > 0 && temp > delim)
+        {
+            temp = 0;
+            printf("\n");
+        }
+    }
 }
 
 //=========================================================================

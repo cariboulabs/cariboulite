@@ -340,7 +340,7 @@ int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool
         .mid = caribou_fpga_mid_sys_ctrl,
         .ioc = IOC_SYS_CTRL_DEBUG_MODES
     };
-    uint8_t mode = ((dbg_fifo_push & 0x1) << 0) | ((dbg_fifo_pull & 0x1) << 1) | ((dbg_smi & 0x1) <<2 );
+    uint8_t mode = ((dbg_fifo_push & 0x1) << 0) | ((dbg_fifo_pull & 0x1) << 1) | ((dbg_smi & 0x1) << 2 );
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &mode);
 }
 //--------------------------------------------------------------

@@ -314,8 +314,8 @@ module top(	input i_glob_clock,
 		.rd_data_o (w_rx_09_fifo_pulled_data),
 		.full_o (w_rx_09_fifo_full),
 		.empty_o (w_rx_09_fifo_empty),
-		.debug_pull (1'b0),
-		.debug_push (1'b0)
+		.debug_pull (w_debug_fifo_pull),
+		.debug_push (w_debug_fifo_push)
 	);
 
 	complex_fifo rx_24_fifo(
@@ -329,8 +329,8 @@ module top(	input i_glob_clock,
 		.rd_data_o (w_rx_24_fifo_pulled_data),
 		.full_o (w_rx_24_fifo_full),
 		.empty_o (w_rx_24_fifo_empty),
-		.debug_pull (1'b0),
-		.debug_push (1'b0)
+		.debug_pull (w_debug_fifo_pull),
+		.debug_push (w_debug_fifo_push)
 	);
 
 	smi_ctrl smi_ctrl_ins
@@ -363,7 +363,7 @@ module top(	input i_glob_clock,
 		.o_smi_read_req (w_smi_read_req),
 		.o_smi_write_req (w_smi_write_req),
 		.o_smi_writing (w_smi_writing),
-		.i_smi_test (w_smi_test),
+		.i_smi_test (w_debug_smi_test),
 		.o_address_error ()
 	);
 
@@ -373,9 +373,7 @@ module top(	input i_glob_clock,
 	wire w_smi_read_req;
 	wire w_smi_write_req;
 	wire w_smi_writing;
-	wire w_smi_test;
 
-	assign w_smi_test = 1'b0;
 	assign w_smi_addr = {i_smi_a3, i_smi_a2, i_smi_a1};
 	assign io_smi_data = (w_smi_writing)?w_smi_data_output:8'bZ;
 	assign w_smi_data_input = io_smi_data;

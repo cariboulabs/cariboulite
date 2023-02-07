@@ -85,8 +85,7 @@ module smi_ctrl (	input               i_rst_b,
     reg r_fifo_24_pull;
     reg r_fifo_24_pull_1;
     wire w_fifo_24_pull_trigger;
-    reg [7:0] r_smi_test_count_09;
-    reg [7:0] r_smi_test_count_24;
+    reg [7:0] r_smi_test_count;
 
     wire soe_and_reset;
     assign soe_and_reset = i_rst_b & i_smi_soe_se;
@@ -96,26 +95,23 @@ module smi_ctrl (	input               i_rst_b,
         if (i_rst_b == 1'b0) begin
             int_cnt_09 <= 5'd31;
             int_cnt_24 <= 5'd31;
-            r_smi_test_count_09 <= 8'h56;
-            r_smi_test_count_24 <= 8'h56;
+            r_smi_test_count <= 8'h56;
         end else begin
             w_fifo_09_pull_trigger <= (int_cnt_09 == 5'd7) && !i_smi_test;
             w_fifo_24_pull_trigger <= (int_cnt_24 == 5'd7) && !i_smi_test;
 
-            if (i_smi_a[2] == 1'b0) begin
-                if ( i_smi_test ) begin
-                    o_smi_data_out <= r_smi_test_count_09;
-                    r_smi_test_count_09 <= {((r_smi_test_count_09[2] ^ r_smi_test_count_09[3]) & 1'b1), r_smi_test_count_09[7:1]};		    
+            if ( i_smi_test ) begin
+                if (r_smi_test_count == 0) begin
+                    r_smi_test_count <= 8'h56;
                 end else begin
+                    o_smi_data_out <= r_smi_test_count;
+                    r_smi_test_count <= {((r_smi_test_count[2] ^ r_smi_test_count[3]) & 1'b1), r_smi_test_count[7:1]};
+                end
+            end else begin
+                if (i_smi_a[2] == 1'b0) begin
                     int_cnt_09 <= int_cnt_09 - 8;
                     o_smi_data_out <= i_fifo_09_pulled_data[int_cnt_09:int_cnt_09-7];
-                end
-
-            end else if (i_smi_a[2] == 1'b1) begin
-                if ( i_smi_test ) begin
-                    o_smi_data_out <= r_smi_test_count_24;
-                    r_smi_test_count_24 <= {((r_smi_test_count_24[2] ^ r_smi_test_count_24[3]) & 1'b1), r_smi_test_count_24[7:1]};
-                end else begin
+                end else if (i_smi_a[2] == 1'b1) begin
                     int_cnt_24 <= int_cnt_24 - 8;
                     o_smi_data_out <= i_fifo_24_pulled_data[int_cnt_24:int_cnt_24-7];
                 end

@@ -423,11 +423,12 @@ static void* reader_thread_func(void* arg)
             int ret = cariboulite_radio_read_samples(cur_radio, buffer, metadata, read_len);
             if (ret < 0)
             {
-                printf("reader thread failed to read SMI. aborting!\n");
-                break;
+                if (ret == -1)
+                {
+                    printf("reader thread failed to read SMI!\n");
+                }
             }
-            
-            print_iq("Rx", buffer, ret, 4);
+            else print_iq("Rx", buffer, ret, 4);
         }
     }
     printf("Leaving sampling thread\n");
@@ -441,6 +442,9 @@ static void modem_rx_iq(sys_st *sys)
 	int choice = 0;
 	bool low_active_rx = false;
 	bool high_active_rx = false;
+    bool push_debug = false;
+    bool pull_debug = false;
+    bool lfsr_debug = false;
 	double current_freq_lo = 900e6;
 	double current_freq_hi = 2400e6;
     
@@ -481,6 +485,9 @@ static void modem_rx_iq(sys_st *sys)
 		printf("	Parameters:\n");
 		printf("	[1] Ch1 (%.5f MHz) RX %s\n", current_freq_lo / 1e6, low_active_rx?"Active":"Not Active");
 		printf("	[2] Ch2 (%.5f MHz) RX %s\n", current_freq_hi / 1e6, high_active_rx?"Active":"Not Active");
+        printf("	[3] Push Debug %s\n", push_debug?"Active":"Not Active");
+        printf("	[4] Pull Debug %s\n", pull_debug?"Active":"Not Active");
+        printf("	[5] LFSR Debug %s\n", lfsr_debug?"Active":"Not Active");
 		printf("	[99] Return to main menu\n");
 	
 		printf("	Choice: ");
@@ -513,6 +520,57 @@ static void modem_rx_iq(sys_st *sys)
                 }
                 
 				high_active_rx = !high_active_rx;
+			}
+			break;
+            
+            //--------------------------------------------
+			case 3:
+			{
+                push_debug = !push_debug;
+                
+                if (push_debug)
+                {
+                    pull_debug = false;
+                    lfsr_debug = false;
+                    caribou_smi_set_debug_mode(&sys->smi, caribou_smi_push);
+                }
+                else caribou_smi_set_debug_mode(&sys->smi, caribou_smi_none);
+                
+                caribou_fpga_set_debug_modes (&sys->fpga, push_debug, pull_debug, lfsr_debug);
+			}
+			break;
+            
+            //--------------------------------------------
+			case 4:
+			{
+                pull_debug = !pull_debug;
+                
+                if (pull_debug)
+                {
+                    push_debug = false;
+                    lfsr_debug = false;
+                    caribou_smi_set_debug_mode(&sys->smi, caribou_smi_pull);
+                }
+                else caribou_smi_set_debug_mode(&sys->smi, caribou_smi_none);
+                
+                caribou_fpga_set_debug_modes (&sys->fpga, push_debug, pull_debug, lfsr_debug);
+			}
+			break;
+            
+            //--------------------------------------------
+			case 5:
+			{
+                lfsr_debug = !lfsr_debug;
+                
+                if (lfsr_debug)
+                {
+                    push_debug = false;
+                    pull_debug = false;
+                    caribou_smi_set_debug_mode(&sys->smi, caribou_smi_lfsr);
+                }
+                else caribou_smi_set_debug_mode(&sys->smi, caribou_smi_none);
+                
+                caribou_fpga_set_debug_modes (&sys->fpga, push_debug, pull_debug, lfsr_debug);
 			}
 			break;
 			

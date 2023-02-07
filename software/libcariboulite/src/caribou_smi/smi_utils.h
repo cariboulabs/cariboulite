@@ -50,6 +50,7 @@ extern "C" {
 
 void smi_utils_set_realtime_priority(int priority_deter);
 void smi_utils_dump_hex(const void* data, size_t size);
+void smi_utils_dump_hex_simple(const void* data, size_t size, size_t delim);
 void smi_utils_dump_bin(const uint8_t* data, size_t size);
 void smi_utils_print_bin(const uint32_t v);
 int smi_utils_allocate_buffer_vec(uint8_t*** mat, int num_buffers, int buffer_size);

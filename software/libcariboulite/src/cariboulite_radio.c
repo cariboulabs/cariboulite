@@ -952,7 +952,8 @@ int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
     int ret = caribou_smi_read(&radio->sys->smi, radio->smi_channel_id, buffer, metadata, length);
     if (ret < 0)
     {
-        ZF_LOGE("SMI reading operation failed");
+        // -2 reserved for debug mode
+        if (ret == -1) ZF_LOGE("SMI reading operation failed");
     }
     else if (ret == 0)
     {
