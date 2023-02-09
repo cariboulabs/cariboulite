@@ -92,7 +92,7 @@ set(SOURCES_PROD src/cariboulite_production.c)
 add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_app ${SOURCES_MAIN})
-add_executable(cariboulite_prod ${SOURCES_PROD})
+#add_executable(cariboulite_prod ${SOURCES_PROD})
 #add_custom_command(
 #	TARGET cariboulite_app POST_BUILD
 #	COMMAND sudo chown root:root "./cariboulite_app"
@@ -102,7 +102,7 @@ add_executable(cariboulite_prod ${SOURCES_PROD})
 target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
 target_link_libraries(cariboulite_app cariboulite)
-target_link_libraries(cariboulite_prod cariboulite zmq)
+#target_link_libraries(cariboulite_prod cariboulite zmq)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
