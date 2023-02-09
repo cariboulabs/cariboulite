@@ -28,11 +28,9 @@ cd ~/projects
 git clone https://github.com/cariboulabs/cariboulite
 cd cariboulite
 ```
-4. Depending on whether you run on a headless (not monitor nor keyboard / mouse) system or not use the following setup command:
+4. Use the following setup command:
     ```
-    sudo setup.sh gui
-    # or
-    sudo setup.sh
+    sudo install.sh
     ```
 
     The setup script requires internet connection and it follows the following automatic steps:
