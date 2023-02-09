@@ -24,6 +24,7 @@ typedef enum
 typedef struct
 {
 	uint32_t error_accum_counter;
+    uint32_t cur_err_cnt;
 	uint8_t last_correct_byte;
 	double error_rate;
 	uint32_t cnt;

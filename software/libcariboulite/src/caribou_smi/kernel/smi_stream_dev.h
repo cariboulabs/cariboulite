@@ -53,8 +53,8 @@
 
 typedef enum
 {
-	smi_stream_dir_smi_to_device = 0,		// device data-bus is highZ
-	smi_stream_dir_device_to_smi = 1,		// device data-bus is push-pull
+	smi_stream_dir_smi_to_device = 0,		// device data-bus is highZ (TX)
+	smi_stream_dir_device_to_smi = 1,		// device data-bus is push-pull (RX)
 } smi_stream_direction_en;
 
 typedef enum

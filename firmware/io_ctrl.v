@@ -105,7 +105,7 @@ module io_ctrl(	input               i_rst_b,
     //=========================================================================
     // BUS COMMUNICATION LOGIC & RF CONTROL
     //=========================================================================
-    always @(posedge i_sys_clk)
+    always @(posedge i_sys_clk or negedge i_rst_b)
     begin
         if (i_rst_b == 1'b0) begin
             debug_mode <= debug_mode_none;
@@ -203,7 +203,7 @@ module io_ctrl(	input               i_rst_b,
     end
 
 
-    always @(posedge i_sys_clk)
+    always @(posedge i_sys_clk or negedge i_rst_b)
     begin
     	if (i_rst_b == 1'b0) begin
             

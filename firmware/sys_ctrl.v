@@ -48,7 +48,7 @@ module sys_ctrl
 
     // MODULE MAIN PROCESS
     // -------------------
-    always @(posedge i_sys_clk)
+    always @(posedge i_sys_clk or negedge i_rst_b)
     begin
         if (i_rst_b == 1'b0) begin
             o_data_out <= 8'b00000000;

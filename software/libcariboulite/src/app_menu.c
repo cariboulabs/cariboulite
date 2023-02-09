@@ -406,7 +406,6 @@ static void* reader_thread_func(void* arg)
         if (*ctrl->low_active)
         {
             cur_radio = ctrl->radio_low;
-            
         }
         else if (*ctrl->high_active)
         {
@@ -479,6 +478,7 @@ static void modem_rx_iq(sys_st *sys)
 	
 	cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, false);
 	cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, false);
+    caribou_smi_set_debug_mode(&sys->smi, caribou_smi_none);
     
 	while (1)
 	{
@@ -502,7 +502,8 @@ static void modem_rx_iq(sys_st *sys)
                 {
                     // if high is currently active - deactivate it
                     high_active_rx = false;
-                    cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, high_active_rx);
+                    printf("Turning on Low channel => High channel off\n");
+                    cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, false);
                 }
                 
 				low_active_rx = !low_active_rx;
@@ -516,7 +517,8 @@ static void modem_rx_iq(sys_st *sys)
                 {
                     // if low is currently active - deactivate it
                     low_active_rx = false;
-                    cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, low_active_rx);
+                    printf("Turning on High channel => Low channel off\n");
+                    cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, false);
                 }
                 
 				high_active_rx = !high_active_rx;

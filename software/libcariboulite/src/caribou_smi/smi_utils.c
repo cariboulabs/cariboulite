@@ -114,6 +114,7 @@ void smi_utils_dump_hex_simple(const void* data, size_t size, size_t delim)
             printf("\n");
         }
     }
+    printf("\n");
 }
 
 //=========================================================================

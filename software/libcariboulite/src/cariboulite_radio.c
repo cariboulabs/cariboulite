@@ -33,6 +33,11 @@ void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cari
     radio->cw_output = false;
     radio->lo_output = false;
     radio->smi_channel_id = GET_SMI_CH(type);
+    
+    // activation of the channel
+    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true);
+    usleep(10000);
+    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
 }
 
 //=========================================================================
@@ -809,15 +814,15 @@ int cariboulite_radio_get_frequency(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
-                                            cariboulite_channel_dir_en dir,
-                                			bool activate)
+                                        cariboulite_channel_dir_en dir,
+                                        bool activate)
 {
     radio->channel_direction = dir;
     
     // if channel is already activated on this configuration do nothing
     if (activate == true &&
-        radio->channel_direction == cariboulite_channel_dir_rx && radio->state == at86rf215_radio_state_cmd_rx ||
-        radio->channel_direction == cariboulite_channel_dir_tx && radio->state == at86rf215_radio_state_cmd_tx)
+        (radio->channel_direction == cariboulite_channel_dir_rx && radio->state == at86rf215_radio_state_cmd_rx ||
+         radio->channel_direction == cariboulite_channel_dir_tx && radio->state == at86rf215_radio_state_cmd_tx))
     {
         return 0;
     }
@@ -947,6 +952,7 @@ int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
 {
     // Modem configuration to RX on specified channel
     cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true);
+    //usleep(1000);
     
     // CaribouSMI read   
     int ret = caribou_smi_read(&radio->sys->smi, radio->smi_channel_id, buffer, metadata, length);
@@ -970,6 +976,7 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
 {
     // Modem configuration for TX on specified channel
     cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, true);
+    //usleep(1000);
     
     // Caribou SMI write
     int ret = caribou_smi_write(&radio->sys->smi, radio->smi_channel_id, buffer, length);
