@@ -63,6 +63,7 @@ typedef struct
     int initialized;
     int filedesc;
 	size_t native_batch_len;
+    smi_stream_state_en state;
     
     int read_tail_len;
     uint8_t *read_temp_buffer;
@@ -79,6 +80,8 @@ int caribou_smi_close (caribou_smi_st* dev);
 int caribou_smi_check_modules(bool reload);
 
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en mode);
+int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state);
+smi_stream_state_en caribou_smi_get_driver_streaming_state(caribou_smi_st* dev);
 
 int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel, 
                         caribou_smi_sample_complex_int16* buffer, caribou_smi_sample_meta* metadata, size_t length_samples);

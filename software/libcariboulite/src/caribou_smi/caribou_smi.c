@@ -27,7 +27,7 @@
 #include "io_utils/io_utils.h"
 
 //=========================================================================
-static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state)
+int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state)
 {
 	int ret = ioctl(dev->filedesc, SMI_STREAM_IOC_SET_STREAM_STATUS, state);
 	if (ret != 0)
@@ -35,7 +35,14 @@ static int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_strea
 		ZF_LOGE("failed setting smi stream state (%d)", state);
 		return -1;
 	}
+    dev->state = state;
 	return 0;
+}
+
+//=========================================================================
+smi_stream_state_en caribou_smi_get_driver_streaming_state(caribou_smi_st* dev)
+{
+    return dev->state;
 }
 
 //=========================================================================
@@ -494,25 +501,14 @@ void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en m
 
 //=========================================================================
 int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel, 
-                    caribou_smi_sample_complex_int16* buffer, caribou_smi_sample_meta* metadata, size_t length_samples)
+                    caribou_smi_sample_complex_int16* buffer, 
+                    caribou_smi_sample_meta* metadata, 
+                    size_t length_samples)
 {
     size_t left_to_read = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;        // in bytes
     size_t read_so_far = 0;                                                     // in samples
-    uint32_t to_millisec = (2 * length_samples * 1000) / CARIBOU_SMI_SAMPLE_RATE;
+    uint32_t to_millisec = (2 * dev->native_batch_len * 1000) / CARIBOU_SMI_SAMPLE_RATE;
     if (to_millisec < 2) to_millisec = 2;
-    
-    // choose the state
-    smi_stream_state_en state = smi_stream_idle;
-    if (channel == caribou_smi_channel_900)
-        state = smi_stream_rx_channel_0;
-    else if (channel == caribou_smi_channel_2400)
-        state = smi_stream_rx_channel_1;
-    
-    // apply the state
-    if (caribou_smi_set_driver_streaming_state(dev, state) != 0)
-    {
-        return -1;
-    }
     
     while (left_to_read)
     {

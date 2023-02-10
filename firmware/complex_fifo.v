@@ -86,7 +86,7 @@ module complex_fifo #(	parameter ADDR_WIDTH = 10,
 		else
 			empty_o <= empty_o & (gray_conv(rd_addr) == wr_addr_gray_rd_r);
 
-	reg [DATA_WIDTH-1:0] mem[(1<<ADDR_WIDTH)-1:0];
+	//reg [DATA_WIDTH-1:0] mem[(1<<ADDR_WIDTH)-1:0];
 
 	always @(posedge rd_clk_i) begin
 		if (rd_en_i) begin

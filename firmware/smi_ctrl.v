@@ -16,14 +16,12 @@ module smi_ctrl (	input               i_rst_b,
 					input               i_fifo_empty,
 
 					// SMI INTERFACE
-					//input [2:0]         i_smi_a,
 					input               i_smi_soe_se,
 					input               i_smi_swe_srw,
 					output reg [7:0]    o_smi_data_out,
 					input [7:0]         i_smi_data_in,
 					output              o_smi_read_req,
 					output              o_smi_write_req,
-					output              o_smi_writing,
 					input               i_smi_test,
 
 					// Errors
@@ -57,8 +55,8 @@ module smi_ctrl (	input               i_rst_b,
                         //----------------------------------------------
                         ioc_fifo_status: begin
                             o_data_out[0] <= i_fifo_empty;
-                            o_data_out[1] <= i_fifo_full;
-                            o_data_out[7:2] <= 4'b0000;
+                            //o_data_out[1] <= i_fifo_full;
+                            o_data_out[7:1] <= 7'b0000000;
                         end
 
                     endcase
@@ -106,11 +104,9 @@ module smi_ctrl (	input               i_rst_b,
         if (i_rst_b == 1'b0) begin
             r_fifo_pull <= 1'b0;
             r_fifo_pull_1 <= 1'b0;
-            r_fifo_pull_2 <= 1'b0;
         end else begin
             r_fifo_pull <= w_fifo_pull_trigger;
             r_fifo_pull_1 <= r_fifo_pull;
-            r_fifo_pull_2 <= r_fifo_pull_1;
         end
     end
 

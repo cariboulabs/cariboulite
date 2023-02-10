@@ -427,7 +427,9 @@ static void* reader_thread_func(void* arg)
                     printf("reader thread failed to read SMI!\n");
                 }
             }
-            else print_iq("Rx", buffer, ret, 4);
+            //*ctrl->low_active = false;
+            //*ctrl->high_active = false;
+            //else print_iq("Rx", buffer, ret, 4);
         }
     }
     printf("Leaving sampling thread\n");
@@ -507,6 +509,7 @@ static void modem_rx_iq(sys_st *sys)
                 }
                 
 				low_active_rx = !low_active_rx;
+                cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_rx, low_active_rx);
 			}
 			break;
 			
@@ -522,6 +525,7 @@ static void modem_rx_iq(sys_st *sys)
                 }
                 
 				high_active_rx = !high_active_rx;
+                cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_rx, high_active_rx);
 			}
 			break;
             

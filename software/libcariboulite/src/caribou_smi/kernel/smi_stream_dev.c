@@ -177,7 +177,7 @@ static void set_state(smi_stream_state_en state)
         inst->cur_address = (smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET) | (smi_stream_channel_1<<ADDR_CH_OFFSET);
     }
     else if (state == smi_stream_tx)
-    {
+    { 
         inst->cur_address = smi_stream_dir_smi_to_device<<ADDR_DIR_OFFSET;
     }
     else
@@ -546,8 +546,6 @@ int reader_thread_stream_function(void *pv)
         start = ktime_get();
         // sync smi address
         bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-
-		//dev_info(inst->dev, "STREAM_SMI_USER_DMA count = %d", stream_smi_dma_callback_user_copy_count);
 		
         //--------------------------------------------------------
 		// try setup a new DMA transfer into dma bounce buffer
@@ -564,15 +562,15 @@ int reader_thread_stream_function(void *pv)
         //--------------------------------------------------------
         // Don't wait for the buffer to fill in, copy the "other" 
         // previously filled up buffer into the kfifo
-		/*if (mutex_lock_interruptible(&inst->read_lock))
+		if (mutex_lock_interruptible(&inst->read_lock))
 		{
 			return -EINTR;
-		}*/
+		}
         
         start = ktime_get();
         
 		kfifo_in(&inst->rx_fifo, bounce->buffer[1-current_dma_buffer], DMA_BOUNCE_BUFFER_SIZE);
-		//mutex_unlock(&inst->read_lock);
+		mutex_unlock(&inst->read_lock);
 		
 		// for the polling mechanism
 		inst->readable = true;
@@ -601,7 +599,7 @@ int reader_thread_stream_function(void *pv)
         // Switch the buffers
         current_dma_buffer = 1-current_dma_buffer;
         
-        //dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld ", (long long)t1, (long long)t2, (long long)t3);
+        dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld %d", (long long)t1, (long long)t2, (long long)t3, current_dma_buffer);
 	}
 
 	dev_info(inst->dev, "Left reader thread");
@@ -789,14 +787,14 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 		return -EAGAIN;
 	}
 
-	/*if (mutex_lock_interruptible(&inst->read_lock))
+	if (mutex_lock_interruptible(&inst->read_lock))
 	{
 		return -EINTR;
-	}*/
+	}
 	num_bytes = kfifo_len (&inst->rx_fifo);
 	count_actual = num_bytes > count ? count : num_bytes;
 	ret = kfifo_to_user(&inst->rx_fifo, buf, count_actual, &copied);
-	//mutex_unlock(&inst->read_lock);
+	mutex_unlock(&inst->read_lock);
 
 	return ret ? ret : copied;
 }

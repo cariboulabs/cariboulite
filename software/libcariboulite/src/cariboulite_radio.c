@@ -816,31 +816,24 @@ int cariboulite_radio_get_frequency(cariboulite_radio_state_st* radio,
 int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                         cariboulite_channel_dir_en dir,
                                         bool activate)
-{
+{  
     radio->channel_direction = dir;
     
-    // if channel is already activated on this configuration do nothing
-    if (activate == true &&
-        (radio->channel_direction == cariboulite_channel_dir_rx && radio->state == at86rf215_radio_state_cmd_rx ||
-         radio->channel_direction == cariboulite_channel_dir_tx && radio->state == at86rf215_radio_state_cmd_tx))
-    {
-        return 0;
-    }
-    
     ZF_LOGD("Activating channel %d, dir = %s, activate = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", activate);
-    
-	// if the channel state is active, turn it off before reactivating
-    if (radio->state != at86rf215_radio_state_cmd_tx_prep)
-    {
-        at86rf215_radio_set_state( &radio->sys->modem, 
-                                    GET_MODEM_CH(radio->type), 
-                                    at86rf215_radio_state_cmd_tx_prep);
-        radio->state = at86rf215_radio_state_cmd_tx_prep;
-        ZF_LOGD("Setup Modem state tx_prep");
-    }
 
-    if (activate == false)
+    // Deactivation first
+    if (activate == false) 
     {
+        caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g?0:1, 0);
+        
+        // if we deactivate, first shut off the smi stream
+        if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle) != 0)
+        {
+            return -1;
+        }
+        usleep(200000);
+        
+        // then deactivate the modem's stream
         at86rf215_radio_set_state( &radio->sys->modem, 
                                     GET_MODEM_CH(radio->type), 
                                     at86rf215_radio_state_cmd_trx_off);
@@ -849,6 +842,17 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         //caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
         ZF_LOGD("Setup Modem state trx_off");
         return 0;
+    }
+    
+    
+    // if the channel state is active, turn it off before reactivating
+    if (radio->state != at86rf215_radio_state_cmd_tx_prep)
+    {
+        at86rf215_radio_set_state( &radio->sys->modem, 
+                                    GET_MODEM_CH(radio->type), 
+                                    at86rf215_radio_state_cmd_tx_prep);
+        radio->state = at86rf215_radio_state_cmd_tx_prep;
+        ZF_LOGD("Setup Modem state tx_prep");
     }
 
 	//===========================================================
@@ -863,7 +867,24 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                 at86rf215_radio_state_cmd_rx);
         radio->state = at86rf215_radio_state_cmd_rx;
         ZF_LOGD("Setup Modem state cmd_rx");
+        usleep(200000);
+        
+        // after modem is activated turn on the the smi stream
+        smi_stream_state_en smi_state = smi_stream_idle;
+        if (radio->smi_channel_id == caribou_smi_channel_900)
+            smi_state = smi_stream_rx_channel_0;
+        else if (radio->smi_channel_id == caribou_smi_channel_2400)
+            smi_state = smi_stream_rx_channel_1;
+        
+        caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g?0:1, 0);
+        
+        // apply the state
+        if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_state) != 0)
+        {
+            return -1;
+        }
     }
+    
 	//===========================================================
 	// ACTIVATE TX
 	//===========================================================
@@ -950,12 +971,10 @@ int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
                             caribou_smi_sample_meta* metadata,
                             size_t length)
 {
-    // Modem configuration to RX on specified channel
-    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true);
-    //usleep(1000);
-    
+    int ret = 0;
+      
     // CaribouSMI read   
-    int ret = caribou_smi_read(&radio->sys->smi, radio->smi_channel_id, buffer, metadata, length);
+    ret = caribou_smi_read(&radio->sys->smi, radio->smi_channel_id, buffer, metadata, length);
     if (ret < 0)
     {
         // -2 reserved for debug mode
@@ -975,7 +994,7 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
                             size_t length)                            
 {
     // Modem configuration for TX on specified channel
-    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, true);
+    //cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, true);
     //usleep(1000);
     
     // Caribou SMI write

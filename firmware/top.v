@@ -149,6 +149,7 @@ module top(	input i_glob_clock,
 	wire w_debug_fifo_push;
 	wire w_debug_fifo_pull;
 	wire w_debug_smi_test;
+    reg channel;
 	
 	// IO CTRL
 	io_ctrl io_ctrl_ins
@@ -290,9 +291,9 @@ module top(	input i_glob_clock,
 		.o_debug_state ()
 	);
 
-    wire w_rx_fifo_write_clk = (i_smi_a3 == 1'b0)?w_rx_09_fifo_write_clk:w_rx_24_fifo_write_clk;
-    wire w_rx_fifo_push = (i_smi_a3 == 1'b0)?w_rx_09_fifo_push:w_rx_24_fifo_push;
-    wire [31:0] w_rx_fifo_data = (i_smi_a3 == 1'b0)?w_rx_09_fifo_data:w_rx_24_fifo_data;
+    wire w_rx_fifo_write_clk = (o_led0 == 1'b0)?w_rx_09_fifo_write_clk:w_rx_24_fifo_write_clk;
+    wire w_rx_fifo_push = (o_led0 == 1'b0)?w_rx_09_fifo_push:w_rx_24_fifo_push;
+    wire [31:0] w_rx_fifo_data = (o_led0 == 1'b0)?w_rx_09_fifo_data:w_rx_24_fifo_data;
     wire w_rx_fifo_pull;
     wire [31:0] w_rx_fifo_pulled_data;
     wire w_rx_fifo_full;
@@ -330,14 +331,12 @@ module top(	input i_glob_clock,
 		.i_fifo_full (w_rx_fifo_full),
 		.i_fifo_empty (w_rx_fifo_empty),
 
-		//.i_smi_a (w_smi_addr),
 		.i_smi_soe_se (i_smi_soe_se),
 		.i_smi_swe_srw (i_smi_swe_srw),
 		.o_smi_data_out (w_smi_data_output),
 		.i_smi_data_in (w_smi_data_input),
 		.o_smi_read_req (w_smi_read_req),
 		.o_smi_write_req (w_smi_write_req),
-		.o_smi_writing (w_smi_writing),
 		.i_smi_test (w_debug_smi_test),
 		.o_address_error ()
 	);
@@ -346,20 +345,19 @@ module top(	input i_glob_clock,
 	wire [7:0] w_smi_data_input;
 	wire w_smi_read_req;
 	wire w_smi_write_req;
-	wire w_smi_writing;
 
 	assign io_smi_data = (i_smi_a2)?w_smi_data_output:8'bZ;
 	assign w_smi_data_input = io_smi_data;
-	assign o_smi_write_req = (i_smi_a2)?w_smi_write_req:1'bZ;
-	assign o_smi_read_req = (i_smi_a2)?w_smi_read_req:1'bZ;
+	assign o_smi_write_req = w_smi_write_req;
+	assign o_smi_read_req = w_smi_read_req;
 
     assign io_pmod[0] = w_rx_fifo_push;
     assign io_pmod[1] = w_rx_fifo_pull;
 	assign io_pmod[2] = w_smi_read_req;
 	assign io_pmod[3] = w_rx_fifo_full;
 	assign io_pmod[4] = w_rx_fifo_empty;
-	//assign io_pmod[5] = ..;
-	//assign io_pmod[6] = ..;
+	assign io_pmod[5] = i_smi_a2;
+	assign io_pmod[6] = o_led0;
 	//assign io_pmod[7] = ..;
 	//assign io_pmod[7] = ..;
 
