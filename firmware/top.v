@@ -140,7 +140,7 @@ module top(	input i_glob_clock,
 		.i_fetch_cmd (w_fetch),
 		.i_load_cmd (w_load),
 
-		.i_error_list ({o_address_error, 7'b0000000}),
+		.i_error_list (8'b00000000),
 		.o_debug_fifo_push (w_debug_fifo_push),
 		.o_debug_fifo_pull (w_debug_fifo_pull),
 		.o_debug_smi_test (w_debug_smi_test)
@@ -149,7 +149,6 @@ module top(	input i_glob_clock,
 	wire w_debug_fifo_push;
 	wire w_debug_fifo_pull;
 	wire w_debug_smi_test;
-    reg channel;
 	
 	// IO CTRL
 	io_ctrl io_ctrl_ins
@@ -291,13 +290,15 @@ module top(	input i_glob_clock,
 		.o_debug_state ()
 	);
 
-    wire w_rx_fifo_write_clk = (o_led0 == 1'b0)?w_rx_09_fifo_write_clk:w_rx_24_fifo_write_clk;
-    wire w_rx_fifo_push = (o_led0 == 1'b0)?w_rx_09_fifo_push:w_rx_24_fifo_push;
-    wire [31:0] w_rx_fifo_data = (o_led0 == 1'b0)?w_rx_09_fifo_data:w_rx_24_fifo_data;
+    wire w_rx_fifo_write_clk = (channel == 1'b0)?w_rx_09_fifo_write_clk:w_rx_24_fifo_write_clk;
+    wire w_rx_fifo_push = (channel == 1'b0)?w_rx_09_fifo_push:w_rx_24_fifo_push;
+    wire [31:0] w_rx_fifo_data = (channel == 1'b0)?w_rx_09_fifo_data:w_rx_24_fifo_data;
     wire w_rx_fifo_pull;
     wire [31:0] w_rx_fifo_pulled_data;
     wire w_rx_fifo_full;
     wire w_rx_fifo_empty;
+    wire channel;
+
     
     complex_fifo rx_fifo(
 		.wr_rst_b_i (i_rst_b),
@@ -337,8 +338,9 @@ module top(	input i_glob_clock,
 		.i_smi_data_in (w_smi_data_input),
 		.o_smi_read_req (w_smi_read_req),
 		.o_smi_write_req (w_smi_write_req),
+        .o_channel (channel),
 		.i_smi_test (w_debug_smi_test),
-		.o_address_error ()
+		.o_address_error ()        
 	);
 
 	wire [7:0] w_smi_data_output;
@@ -357,8 +359,7 @@ module top(	input i_glob_clock,
 	assign io_pmod[3] = w_rx_fifo_full;
 	assign io_pmod[4] = w_rx_fifo_empty;
 	assign io_pmod[5] = i_smi_a2;
-	assign io_pmod[6] = o_led0;
-	//assign io_pmod[7] = ..;
-	//assign io_pmod[7] = ..;
+	assign io_pmod[6] = channel;
+	//assign io_pmod[7] = ...;
 
 endmodule // top

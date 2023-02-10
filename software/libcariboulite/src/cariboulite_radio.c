@@ -824,6 +824,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // Deactivation first
     if (activate == false) 
     {
+        caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
         caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g?0:1, 0);
         
         // if we deactivate, first shut off the smi stream
@@ -831,7 +832,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         {
             return -1;
         }
-        usleep(200000);
+        usleep(100000);
         
         // then deactivate the modem's stream
         at86rf215_radio_set_state( &radio->sys->modem, 
@@ -867,7 +868,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                 at86rf215_radio_state_cmd_rx);
         radio->state = at86rf215_radio_state_cmd_rx;
         ZF_LOGD("Setup Modem state cmd_rx");
-        usleep(200000);
+        usleep(100000);
         
         // after modem is activated turn on the the smi stream
         smi_stream_state_en smi_state = smi_stream_idle;
@@ -876,6 +877,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         else if (radio->smi_channel_id == caribou_smi_channel_2400)
             smi_state = smi_stream_rx_channel_1;
         
+        caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
         caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g?0:1, 0);
         
         // apply the state

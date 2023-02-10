@@ -82,12 +82,19 @@ typedef struct
  */
 typedef struct
 {
-    uint8_t rx_fifo_09_empty : 1;       // LSB
-    uint8_t rx_fifo_09_full : 1;
-    uint8_t rx_fifo_24_empty : 1;
-    uint8_t rx_fifo_24_full : 1;
-    uint8_t res : 4;                    // MSB
+    uint8_t rx_fifo_empty : 1;       // LSB
+    uint8_t smi_channel: 1;
+    uint8_t reserved : 6;            // MSB
 } caribou_fpga_smi_fifo_status_st;
+
+/**
+ * @brief SMI channel select
+ */
+typedef enum
+{
+    caribou_fpga_smi_channel_0 = 0,
+    caribou_fpga_smi_channel_1 = 1,
+} caribou_fpga_smi_channel_en;
 
 #pragma pack()
 
@@ -158,7 +165,9 @@ int caribou_fpga_get_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t *val);
 int caribou_fpga_set_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins);
 int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin_st *pins);
 
+// SMI Controller
 int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_smi_fifo_status_st *status);
+int caribou_fpga_set_smi_channel (caribou_fpga_st* dev, caribou_fpga_smi_channel_en channel);
 
 #ifdef __cplusplus
 }

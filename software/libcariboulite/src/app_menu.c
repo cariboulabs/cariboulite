@@ -184,10 +184,10 @@ static void fpga_rf_control(sys_st *sys)
 static void fpga_smi_fifo(sys_st *sys)
 {
 	caribou_fpga_smi_fifo_status_st status = {0};
+    uint8_t *val = (uint8_t *)&status;
 	caribou_fpga_get_smi_ctrl_fifo_status (&sys->fpga, &status);
 	
-	printf("	FPGA SMI info: RX_FIFO_09_EMPTY: %d, RX_FIFO_09_FULL: %d\n", status.rx_fifo_09_empty, status.rx_fifo_09_full);
-	printf("	FPGA SMI info: RX_FIFO_24_EMPTY: %d, RX_FIFO_24_FULL: %d\n", status.rx_fifo_24_empty, status.rx_fifo_24_full);
+	printf("	FPGA SMI info (%02X): RX_FIFO_EMPTY: %d, CHANNEL: %d\n", *val, status.rx_fifo_empty, status.smi_channel);
 }
 
 //=================================================
@@ -427,9 +427,7 @@ static void* reader_thread_func(void* arg)
                     printf("reader thread failed to read SMI!\n");
                 }
             }
-            //*ctrl->low_active = false;
-            //*ctrl->high_active = false;
-            //else print_iq("Rx", buffer, ret, 4);
+            else print_iq("Rx", buffer, ret, 4);
         }
     }
     printf("Leaving sampling thread\n");

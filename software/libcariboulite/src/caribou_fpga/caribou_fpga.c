@@ -29,6 +29,7 @@
 #define IOC_IO_CTRL_MXR_FM_DATA     7
 
 #define IOC_SMI_CTRL_FIFO_STATUS    1
+#define IOC_SMI_CHANNEL_SELECT      2
 
 //--------------------------------------------------------------
 // Internal Data-Types
@@ -531,4 +532,21 @@ int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_sm
     };
     memset(status, 0, sizeof(caribou_fpga_smi_fifo_status_st));
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)status);
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_set_smi_channel (caribou_fpga_st* dev, caribou_fpga_smi_channel_en channel)
+{
+    uint8_t val = 0;
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_smi_channel");
+    
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_smi_ctrl,
+        .ioc = IOC_SMI_CHANNEL_SELECT
+    };
+    val = (channel == caribou_fpga_smi_channel_0) ? 0x0 : 0x1;
+   
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &val);
 }

@@ -14,7 +14,6 @@
 #include "smi_utils.h"
 #include "zf_log/zf_log.h"
 
-
 //=========================================================================
 void smi_utils_set_realtime_priority(int priority_deter)
 {

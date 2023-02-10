@@ -599,7 +599,7 @@ int reader_thread_stream_function(void *pv)
         // Switch the buffers
         current_dma_buffer = 1-current_dma_buffer;
         
-        dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld %d", (long long)t1, (long long)t2, (long long)t3, current_dma_buffer);
+        //dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld %d", (long long)t1, (long long)t2, (long long)t3, current_dma_buffer);
 	}
 
 	dev_info(inst->dev, "Left reader thread");

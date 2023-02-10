@@ -23,9 +23,10 @@ module smi_ctrl (	input               i_rst_b,
 					output              o_smi_read_req,
 					output              o_smi_write_req,
 					input               i_smi_test,
-
+                    output              o_channel,
+                    
 					// Errors
-					output reg          o_address_error );
+					output reg          o_address_error);
 
 
 
@@ -33,7 +34,8 @@ module smi_ctrl (	input               i_rst_b,
     // ------------------------
     localparam
         ioc_module_version  = 5'b00000,     // read only
-        ioc_fifo_status     = 5'b00001;     // read-only
+        ioc_fifo_status     = 5'b00001,     // read-only
+        ioc_channel_select  = 5'b00010;
 
     // MODULE SPECIFIC PARAMS
     // ----------------------
@@ -44,9 +46,12 @@ module smi_ctrl (	input               i_rst_b,
     begin
         if (i_rst_b == 1'b0) begin
             o_address_error <= 1'b0;
-            // put the initial states here
+            w_channel <= 1'b0;
         end else begin
             if (i_cs == 1'b1) begin
+                //=============================================
+                // READ OPERATIONS
+                //=============================================
                 if (i_fetch_cmd == 1'b1) begin
                     case (i_ioc)
                         //----------------------------------------------
@@ -55,10 +60,20 @@ module smi_ctrl (	input               i_rst_b,
                         //----------------------------------------------
                         ioc_fifo_status: begin
                             o_data_out[0] <= i_fifo_empty;
-                            //o_data_out[1] <= i_fifo_full;
-                            o_data_out[7:1] <= 7'b0000000;
+                            o_data_out[1] <= r_channel;
+                            o_data_out[7:2] <= 6'b000000;
                         end
-
+                    endcase
+                end
+                //=============================================
+                // WRITE OPERATIONS
+                //=============================================
+                else if (i_load_cmd == 1'b1) begin
+                    case (i_ioc)
+                        //----------------------------------------------
+                        ioc_channel_select: begin
+                            r_channel <= i_data_in[0];
+                        end
                     endcase
                 end
             end
@@ -71,6 +86,8 @@ module smi_ctrl (	input               i_rst_b,
     reg r_fifo_pull;
     reg r_fifo_pull_1;
     wire w_fifo_pull_trigger;
+    reg r_channel;
+    assign o_channel = r_channel;
     reg [7:0] r_smi_test_count;
 
     wire soe_and_reset;
