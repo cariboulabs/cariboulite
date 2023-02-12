@@ -47,7 +47,7 @@ app_menu_item_st handles[] =
 	{app_selection_versions, app_versions_printout, "Print board info and versions",},
 	{app_selection_program_fpga, app_fpga_programming, "Program FPGA",},
 	{app_selection_self_test, app_self_test, "Perform a Self-Test",},
-	{app_selection_fpga_dig_control, fpga_control_io, "FPGA Diginal I/O",},
+	{app_selection_fpga_dig_control, fpga_control_io, "FPGA Digital I/O",},
 	{app_selection_fpga_rffe_control, fpga_rf_control, "FPGA RFFE control",},
 	{app_selection_fpga_smi_fifo, fpga_smi_fifo, "FPGA SMI fifo status",},
 	{app_selection_modem_tx_cw, modem_tx_cw, "Modem transmit CW signal",},
