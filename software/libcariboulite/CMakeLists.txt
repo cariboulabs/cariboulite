@@ -117,3 +117,7 @@ install(TARGETS libcariboulite DESTINATION /usr/local/lib)
 #install(TARGETS cariboulite_test_app DESTINATION /usr/local/lib)
 #install(TARGETS cariboulite DESTINATION /usr/local/lib)
 
+# SoapySDR installation paths:
+#   /usr/local/lib/SoapySDR/modules0.8/
+#   /lib/SoapySDR/modules0.8/
+#   /usr/lib/SoapySDR/modules0.8/

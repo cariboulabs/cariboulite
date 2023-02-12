@@ -634,8 +634,7 @@ int hat_detect_board(hat_board_info_st *info)
 		sscanf(info->product_version, "%08x", &info->numeric_version);
 
 	// numeric productid
-	if (info->product_id[0] == '0' && (info->product_id[1] == 'x' ||
-											info->product_id[1] == 'X'))
+	if (info->product_id[0] == '0' && (info->product_id[1] == 'x' || info->product_id[1] == 'X'))
 		sscanf(info->product_id, "0x%08x", &info->numeric_product_id);
 	else
 		sscanf(info->product_id, "%08x", &info->numeric_product_id);

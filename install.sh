@@ -40,7 +40,8 @@ else
         cd SoapySDR
         mkdir build && cd build
         cmake ../
-        make -j4 && sudo -u root make install        
+        make -j4 && sudo -u root make install
+        sudo -u root ldconfig
         
         # Soapy Remote (Server)
         cd ../..
@@ -48,6 +49,7 @@ else
         mkdir build && cd build
         cmake ../
         make -j4 && sudo -u root make install
+        sudo -u root ldconfig
     fi
     
     printf "\n[  3  ] ${GREEN}Checking the installed Soapy utilities...${NC}\n"
