@@ -1,304 +1,223 @@
 #include "Cariboulite.hpp"
-#include "cariboulite_config_default.h"
+#include <Iir.h>
+#include <byteswap.h>
+
+#define NUM_BYTES_PER_CPLX_ELEM         ( sizeof(caribou_smi_sample_complex_int16) )
 
 //=================================================================
-void caribou_stream_rx_data_event(caribou_smi_channel_en channel,
-								caribou_smi_sample_complex_int16 *samples,
-								size_t num_of_samples,
-								void* context)
+SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
 {
-    Cariboulite *soapy_obj = (Cariboulite*)context;
+    this->radio = radio;
+    mtu_size = getMTUSizeElements();
+    
+    SoapySDR_logf(SOAPY_SDR_INFO, "Creating SampleQueue MTU: %d I/Q samples (%d bytes)", 
+				mtu_size, mtu_size * sizeof(caribou_smi_sample_complex_int16));
 
-	// Basic sanity checking
-	cariboulite_channel_en ch_type = cariboulite_channel_s1g;
-	if (channel == caribou_smi_channel_2400) ch_type = cariboulite_channel_6g;
-	
-	if (soapy_obj->radio.type != ch_type)
+	// create the actual native queue
+	format = CARIBOULITE_FORMAT_INT16;
+
+	// Init the internal IIR filters
+    // a buffer for conversion between native and emulated formats
+    // the maximal size is the twice the MTU
+    interm_native_buffer = new caribou_smi_sample_complex_int16[2 * mtu_size];
+	filterType = DigitalFilter_None;
+	filter_i = NULL;
+	filter_q = NULL;
+	filt20_i.setup(4e6, 20e3/2);
+	filt50_i.setup(4e6, 50e3/2);
+	filt100_i.setup(4e6, 100e3/2);
+	filt2p5M_i.setup(4e6, 2.5e6/2);
+
+	filt20_q.setup(4e6, 20e3/2);
+	filt50_q.setup(4e6, 50e3/2);
+	filt100_q.setup(4e6, 100e3/2);
+	filt2p5M_q.setup(4e6, 2.5e6/2);
+}
+
+//=================================================================
+size_t SoapySDR::Stream::getMTUSizeElements(void)
+{
+    return cariboulite_get_native_mtu_size_samples(radio);
+}
+
+//=================================================================
+void SoapySDR::Stream::setDigitalFilter(DigitalFilterType type)
+{
+	switch (type)
 	{
-		SoapySDR_logf(SOAPY_SDR_ERROR, "caribou_stream_data_event: reaceived wrong CH <=> context pair");
-		return;
+		case DigitalFilter_20KHz: filter_i = &filt20_i; filter_q = &filt20_q; break;
+		case DigitalFilter_50KHz: filter_i = &filt50_i; filter_q = &filt50_q; break;
+		case DigitalFilter_100KHz: filter_i = &filt100_i; filter_q = &filt100_q; break;
+		case DigitalFilter_2500KHz: filter_i = &filt2p5M_i; filter_q = &filt2p5M_q; break;
+		case DigitalFilter_None:
+		default: 
+			filter_i = NULL;
+			filter_q = NULL;
+			break;
 	}
-
-	soapy_obj->sample_queue_rx->Write(samples, num_of_samples, 0, 10000L);
+	filterType = type;
 }
 
-//========================================================
-/*!
-* Query a list of the available stream formats.
-* \param direction the channel direction RX or TX
-* \param channel an available channel on the device
-* \return a list of allowed format strings. See setupStream() for the format syntax.
-*/
-std::vector<std::string> Cariboulite::getStreamFormats(const int direction, const size_t channel) const
+//=================================================================
+SoapySDR::Stream::~Stream()
 {
-    std::vector<std::string> formats;
-    formats.push_back(SOAPY_SDR_CS16);
-    formats.push_back(SOAPY_SDR_CS8);
-    formats.push_back(SOAPY_SDR_CF32);
-    formats.push_back(SOAPY_SDR_CF64);
-	return formats;
+    filterType = DigitalFilter_None;
+	filter_i = NULL;
+	filter_q = NULL;	
+    delete[] interm_native_buffer;
 }
 
-//========================================================
-/*!
-* Get the hardware's native stream format for this channel.
-* This is the format used by the underlying transport layer,
-* and the direct buffer access API calls (when available).
-* \param direction the channel direction RX or TX
-* \param channel an available channel on the device
-* \param [out] fullScale the maximum possible value
-* \return the native stream buffer format string
-*/
-std::string Cariboulite::getNativeStreamFormat(const int direction, const size_t channel, double &fullScale) const
+//=================================================================
+cariboulite_channel_dir_en SoapySDR::Stream::getInnerStreamType(void)
 {
-    fullScale = (double)((1<<12)-1);
-    return SOAPY_SDR_CS16;
+	return native_dir;
 }
 
-//========================================================
-/*!
-* Query the argument info description for stream args.
-* \param direction the channel direction RX or TX
-* \param channel an available channel on the device
-* \return a list of argument info structures
-*/
-SoapySDR::ArgInfoList Cariboulite::getStreamArgsInfo(const int direction, const size_t channel) const
+//=================================================================
+void SoapySDR::Stream::setInnerStreamType(cariboulite_channel_dir_en direction)
 {
-	SoapySDR::ArgInfoList streamArgs;
-	return streamArgs;
+    native_dir = direction;
 }
 
-//========================================================
-/*!
-* Initialize a stream given a list of channels and stream arguments.
-* The implementation may change switches or power-up components.
-* All stream API calls should be usable with the new stream object
-* after setupStream() is complete, regardless of the activity state.
-*
-* The API allows any number of simultaneous TX and RX streams, but many dual-channel
-* devices are limited to one stream in each direction, using either one or both channels.
-* This call will throw an exception if an unsupported combination is requested,
-* or if a requested channel in this direction is already in use by another stream.
-*
-* When multiple channels are added to a stream, they are typically expected to have
-* the same sample rate. See setSampleRate().
-*
-* \param direction the channel direction (`SOAPY_SDR_RX` or `SOAPY_SDR_TX`)
-* \param format A string representing the desired buffer format in read/writeStream()
-* \parblock
-*
-* The first character selects the number type:
-*   - "C" means complex
-*   - "F" means floating point
-*   - "S" means signed integer
-*   - "U" means unsigned integer
-*
-* The type character is followed by the number of bits per number (complex is 2x this size per sample)
-*
-*  Example format strings:
-*   - "CF32" -  complex float32 (8 bytes per element)
-*   - "CS16" -  complex int16 (4 bytes per element)
-*   - "CS12" -  complex int12 (3 bytes per element)
-*   - "CS4" -  complex int4 (1 byte per element)
-*   - "S32" -  int32 (4 bytes per element)
-*   - "U8" -  uint8 (1 byte per element)
-*
-* \endparblock
-* \param channels a list of channels or empty for automatic.
-* \param args stream args or empty for defaults.
-* \parblock
-*
-*   Recommended keys to use in the args dictionary:
-*    - "WIRE" - format of the samples between device and host
-* \endparblock
-* \return an opaque pointer to a stream handle.
-* \parblock
-*
-* The returned stream is not required to have internal locking, and may not be used
-* concurrently from multiple threads.
-* \endparblock
-*/
-SoapySDR::Stream *Cariboulite::setupStream(const int direction, 
-                            const std::string &format, 
-                            const std::vector<size_t> &channels, 
-                            const SoapySDR::Kwargs &args)
+//=================================================================
+int SoapySDR::Stream::setFormat(const std::string &fmt)
 {
-	// is it a CW TX channel
-	int cw = (args.count("CW") != 0) ? std::atoi(args.at("CW").c_str()) : 0;
-	if (direction == SOAPY_SDR_RX && cw)
+	if (!fmt.compare(SOAPY_SDR_CS16))
+		format = CARIBOULITE_FORMAT_INT16;
+	else if (!fmt.compare(SOAPY_SDR_CS8))
+		format = CARIBOULITE_FORMAT_INT8;
+	else if (!fmt.compare(SOAPY_SDR_CF32))
+		format = CARIBOULITE_FORMAT_FLOAT32;
+	else if (!fmt.compare(SOAPY_SDR_CF64))
+		format = CARIBOULITE_FORMAT_FLOAT64;
+	else
 	{
-		SoapySDR_logf(SOAPY_SDR_ERROR, "setupStream: CW channel can only be used with TX channel");
-		return NULL;
+		return -1;
 	}
+	return 0;
+}
 
-    SoapySDR_logf(SOAPY_SDR_INFO, "setupStream: dir= %s, format= %s, is_cw= %d", 
-                                direction == SOAPY_SDR_TX ? "TX" : "RX", 
-								format.c_str(), cw);
+//=================================================================
+int SoapySDR::Stream::Write(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us)
+{
+	return cariboulite_radio_write_samples(radio, buffer, num_samples);
+}
 
-	// configure the queue
-	SoapySDR::Stream* queue = direction == SOAPY_SDR_RX ? sample_queue_rx : sample_queue_tx;
-	queue->smi_stream_id = -1;	// by default, the smi stream is not configured (e.g. with CS / BB-FSK...)
-    queue->is_cw = cw;
-	if (queue->setFormat(format) != 0)
-	{
-		SoapySDR_logf(SOAPY_SDR_ERROR, "the specified format %s is not supported", format.c_str());
-        throw std::runtime_error( "setupStream invalid format " + format );
-	}
-
-    // configure the radio channel to CW if needed
-	cariboulite_radio_set_cw_outputs(&radio, false, queue->is_cw);
-
-	// configure the smi stream and attach it to the queue
-	if (!cw)
+//=================================================================
+int SoapySDR::Stream::Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us)
+{
+    int ret = cariboulite_radio_read_samples(radio, buffer, (caribou_smi_sample_meta*)meta, num_samples);
+    if (ret < 0)
     {
-		// find out the SMI channel info
-		caribou_smi_stream_type_en type = direction == SOAPY_SDR_RX ? caribou_smi_stream_type_read : caribou_smi_stream_type_write;
-		caribou_smi_channel_en channel = radio.type == cariboulite_channel_s1g ? caribou_smi_channel_900 : caribou_smi_channel_2400;
-        queue->smi_stream_id = caribou_smi_setup_stream(&sess.cariboulite_sys.smi,
-														type, 
-														channel, 
-														caribou_stream_data_event, 
-														this);
-        if (queue->smi_stream_id < 0)
+        if (ret == -1)
         {
-            throw std::runtime_error( "setupStream caribou_smi_setup_stream failed" );
+            printf("reader thread failed to read SMI!\n");
         }
+        // a special case for debug streams which are not
+        // taken care of in the soapy front-end (ret = -2)
+        ret = 0;
     }
-    
-	// Queue inherits Stream class
-    return queue;
+    return ret;
 }
 
-//========================================================
-/*!
-     * Close an open stream created by setupStream
-     * The implementation may change switches or power-down components.
-     * \param stream the opaque pointer to a stream handle
-     */
-void Cariboulite::closeStream(SoapySDR::Stream *stream)
+//=================================================================
+int SoapySDR::Stream::ReadSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us)
 {
-	// if it is a CW stream, disable the output
-	if (stream->is_cw)
+    int res = Read(buffer, num_elements, NULL, timeout_us);
+    if (res < 0)
+    {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Reading %d elements failed from queue", num_elements); 
+        return res;
+    }
+    
+	if (filterType != DigitalFilter_None && filter_i != NULL && filter_q != NULL)
 	{
-		cariboulite_radio_set_cw_outputs(&radio, false, false);
+		for (int i = 0; i < res; i++)
+		{
+			buffer[i].i = (int16_t)filter_i->filter((float)buffer[i].i);
+			buffer[i].q = (int16_t)filter_q->filter((float)buffer[i].q);
+		}
 	}
-    
-	// check if this is a valid SMI stream
-	if (stream->smi_stream_id != -1)
-    {
-		caribou_smi_destroy_stream(&sess.cariboulite_sys.smi, stream->smi_stream_id);
-		stream->smi_stream_id = -1;
-	}	
+
+    return res;  
 }
 
-//========================================================
-/*!
-     * Get the stream's maximum transmission unit (MTU) in number of elements.
-     * The MTU specifies the maximum payload transfer in a stream operation.
-     * This value can be used as a stream buffer allocation size that can
-     * best optimize throughput given the underlying stream implementation.
-     *
-     * \param stream the opaque pointer to a stream handle
-     * \return the MTU in number of stream elements (never zero)
-     */
-size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
+//=================================================================
+int SoapySDR::Stream::ReadSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us)
 {
-    return stream->getMTUSizeElements();
-}
+    num_elements = num_elements > mtu_size ? mtu_size : num_elements;
 
-//========================================================
-/*!
-     * Activate a stream.
-     * Call activate to prepare a stream before using read/write().
-     * The implementation control switches or stimulate data flow.
-     *
-     * The timeNs is only valid when the flags have SOAPY_SDR_HAS_TIME.
-     * The numElems count can be used to request a finite burst size.
-     * The SOAPY_SDR_END_BURST flag can signal end on the finite burst.
-     * Not all implementations will support the full range of options.
-     * In this case, the implementation returns SOAPY_SDR_NOT_SUPPORTED.
-     *
-     * \param stream the opaque pointer to a stream handle
-     * \param flags optional flag indicators about the stream
-     * \param timeNs optional activation time in nanoseconds
-     * \param numElems optional element count for burst control
-     * \return 0 for success or error code on failure
-     */
-int Cariboulite::activateStream(SoapySDR::Stream *stream,
-                                    const int flags,
-                                    const long long timeNs,
-                                    const size_t numElems)
-{
-    cariboulite_radio_activate_channel(&radio, true);
-
-    if (!stream->is_cw)
+    // read out the native data type
+    int res = ReadSamples(interm_native_buffer, num_elements, timeout_us);
+    if (res < 0)
     {
-        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, stream->smi_stream_id, 1);
-    }
-    return 0;
-}
-
-//========================================================
-/*!
-     * Deactivate a stream.
-     * Call deactivate when not using using read/write().
-     * The implementation control switches or halt data flow.
-     *
-     * The timeNs is only valid when the flags have SOAPY_SDR_HAS_TIME.
-     * Not all implementations will support the full range of options.
-     * In this case, the implementation returns SOAPY_SDR_NOT_SUPPORTED.
-     *
-     * \param stream the opaque pointer to a stream handle
-     * \param flags optional flag indicators about the stream
-     * \param timeNs optional deactivation time in nanoseconds
-     * \return 0 for success or error code on failure
-     */
-int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
-{
-	if (!stream->is_cw)
-    {
-        caribou_smi_run_pause_stream (&sess.cariboulite_sys.smi, stream->smi_stream_id, 0);
-		sleep(1);
+        return res;
     }
 
-    cariboulite_radio_activate_channel(&radio, false);
-    return 0;
+    float max_val = 4096.0f;
+
+    for (int i = 0; i < res; i++)
+    {
+        buffer[i].i = (float)(interm_native_buffer[i].i) / max_val;
+        buffer[i].q = (float)(interm_native_buffer[i].q) / max_val;
+    }
+    return res;
 }
 
-//========================================================
-/*!
-     * Read elements from a stream for reception.
-     * This is a multi-channel call, and buffs should be an array of void *,
-     * where each pointer will be filled with data from a different channel.
-     *
-     * **Client code compatibility:**
-     * The readStream() call should be well defined at all times,
-     * including prior to activation and after deactivation.
-     * When inactive, readStream() should implement the timeout
-     * specified by the caller and return SOAPY_SDR_TIMEOUT.
-     *
-     * \param stream the opaque pointer to a stream handle
-     * \param buffs an array of void* buffers num chans in size
-     * \param numElems the number of elements in each buffer 
-     *                  (number of samples - for us its 4 bytes per sample)
-     * \param flags optional flag indicators about the result
-     * \param timeNs the buffer's timestamp in nanoseconds
-     * \param timeoutUs the timeout in microseconds
-     * \return the number of elements read per buffer or error code
-     */
-int Cariboulite::readStream(
-            SoapySDR::Stream *stream,
-            void * const *buffs,
-            const size_t numElems,
-            int &flags,
-            long long &timeNs,
-            const long timeoutUs)
+//=================================================================
+int SoapySDR::Stream::ReadSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us)
 {
-	// Verify that it is an RX stream
-    if (stream->getInnerStreamType() != SOAPY_SDR_RX)
+    num_elements = num_elements > mtu_size ? mtu_size : num_elements;
+
+    // read out the native data type
+    int res = ReadSamples(interm_native_buffer, num_elements, timeout_us);
+    if (res < 0)
     {
-        return SOAPY_SDR_NOT_SUPPORTED;
+        return res;
     }
 
-    return stream->ReadSamplesGen((void*)buffs[0], numElems, timeoutUs);
+    double max_val = 4096.0;
+
+    for (int i = 0; i < res; i++)
+    {
+        buffer[i].i = (double)(interm_native_buffer[i].i) / max_val;
+        buffer[i].q = (double)(interm_native_buffer[i].q) / max_val;
+    }
+
+    return res;
+}
+
+//=================================================================
+int SoapySDR::Stream::ReadSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us)
+{
+    num_elements = num_elements > mtu_size ? mtu_size : num_elements;
+
+    // read out the native data type
+    int res = ReadSamples(interm_native_buffer, num_elements, timeout_us);
+    if (res < 0)
+    {
+        return res;
+    }
+
+    for (int i = 0; i < res; i++)
+    {
+        buffer[i].i = (int8_t)((interm_native_buffer[i].i >> 5)&0x00FF);
+        buffer[i].q = (int8_t)((interm_native_buffer[i].q >> 5)&0x00FF);
+    }
+
+    return res;
+}
+
+//=================================================================
+int SoapySDR::Stream::ReadSamplesGen(void* buffer, size_t num_elements, long timeout_us)
+{
+	switch (format)
+	{
+		case CARIBOULITE_FORMAT_FLOAT32: return ReadSamples((sample_complex_float*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_INT16: return ReadSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_INT8: return ReadSamples((sample_complex_int8*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_FLOAT64: return ReadSamples((sample_complex_double*)buffer, num_elements, timeout_us); break;
+		default: return ReadSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+	}
+	return 0;
 }

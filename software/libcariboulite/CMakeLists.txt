@@ -68,18 +68,18 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     add_definitions(-Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-psabi)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
-#SOAPY_SDR_MODULE_UTIL(
-#    TARGET SoapyCariboulite
-#    SOURCES
-#        src/soapy_api/SoapyCariboulite.cpp
-#        src/soapy_api/Cariboulite.cpp
-#        src/soapy_api/Cariboulite.hpp
-#        src/soapy_api/CaribouliteStream.cpp
-#        src/soapy_api/CaribouliteSampleQueue.cpp
-#        src/soapy_api/CaribouliteSession.cpp
-#        src/soapy_api/CaribouliteSensors.cpp
-#    LIBRARIES cariboulite
-#)
+SOAPY_SDR_MODULE_UTIL(
+    TARGET SoapyCariboulite
+    SOURCES
+        src/soapy_api/SoapyCariboulite.cpp
+        src/soapy_api/Cariboulite.cpp
+        src/soapy_api/Cariboulite.hpp
+        src/soapy_api/CaribouliteStreamFunctions.cpp
+        src/soapy_api/CaribouliteStream.cpp
+        src/soapy_api/CaribouliteSession.cpp
+        src/soapy_api/CaribouliteSensors.cpp
+    LIBRARIES cariboulite
+)
 
 # ----------------------------------
 # TESTS - source files for the tests

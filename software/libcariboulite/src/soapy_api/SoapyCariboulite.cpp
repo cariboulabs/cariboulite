@@ -14,14 +14,11 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
     hat_board_info_st board_info;
     std::vector<SoapySDR::Kwargs> results;
 
-
-	////////////////////////////////////
 	std::cout << "Printing 'findCariboulite' Request:" << std::endl;
 	for (auto const &pair: args) {
         std::cout << "    {" << pair.first << ": " << pair.second << "}\n";
     }
-	////////////////////////////////////
-    
+
 	// Library Version
     cariboulite_lib_version_st lib_version;
     cariboulite_lib_version(&lib_version);

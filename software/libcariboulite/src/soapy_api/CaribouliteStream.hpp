@@ -19,7 +19,6 @@
 
 #include "datatypes/circular_buffer.h"
 #include "cariboulite_setup.h"
-#include "cariboulite_radios.h"
 #include "cariboulite_radio.h"
 
 #define DIG_FILT_ORDER		6
@@ -85,7 +84,7 @@ public:
 	};
 
 public:
-	Stream();
+	Stream(cariboulite_radio_state_st *radio);
 	~Stream();
 	int Write(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us);
 	int Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us);
@@ -96,16 +95,18 @@ public:
 	int ReadSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
 	int ReadSamplesGen(void* buffer, size_t num_elements, long timeout_us);
 
-	int getInnerStreamType(void);
+	cariboulite_channel_dir_en getInnerStreamType(void);
+    void setInnerStreamType(cariboulite_channel_dir_en dir);
 	void setDigitalFilter(DigitalFilterType type);
 	int setFormat(const std::string &fmt);
-
-	int smi_stream_id;
-	int is_cw;
 	
 private:	// Internal data
+    cariboulite_radio_state_st *radio;
+    cariboulite_channel_dir_en native_dir;
+    size_t mtu_size;
+    
 	circular_buffer<caribou_smi_sample_complex_int16> *queue;
-	
+    
 	caribou_smi_sample_complex_int16 *interm_native_buffer;
 	DigitalFilterType filterType;
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER>* filter_i;
@@ -120,6 +121,6 @@ private:	// Internal data
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER> filt2p5M_q;
 
 public:
-	static size_t mtu_size_elements;
-	static size_t getMTUSizeElements(void) {return mtu_size_elements;}
+	size_t getMTUSizeElements(void);
+    
 };

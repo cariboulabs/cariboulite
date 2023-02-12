@@ -824,8 +824,8 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // Deactivation first
     if (activate == false) 
     {
-        caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
-        caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g?0:1, 0);
+        caribou_fpga_set_smi_channel (&radio->sys->fpga, (radio->type == cariboulite_channel_s1g) ? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
+        caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, (radio->type == cariboulite_channel_s1g) ? 0 : 1, 0);
         
         // if we deactivate, first shut off the smi stream
         if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle) != 0)
@@ -994,11 +994,7 @@ int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
 int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
                             caribou_smi_sample_complex_int16* buffer,
                             size_t length)                            
-{
-    // Modem configuration for TX on specified channel
-    //cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, true);
-    //usleep(1000);
-    
+{   
     // Caribou SMI write
     int ret = caribou_smi_write(&radio->sys->smi, radio->smi_channel_id, buffer, length);
     if (ret < 0)
@@ -1011,4 +1007,10 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
     }
     
     return ret;
+}
+
+//=========================================================================
+size_t cariboulite_get_native_mtu_size_samples(cariboulite_radio_state_st* radio)
+{
+    return caribou_smi_get_native_batch_samples(&radio->sys->smi);
 }
