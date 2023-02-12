@@ -353,31 +353,6 @@ static void print_iq(char* prefix, caribou_smi_sample_complex_int16* buffer, siz
 {
     int i;
     
-    int ii = 10000, qq = 10000;
-    size_t same_count = 0;
-    size_t max_same_count = 0;
-    
-    for (i = 0; i < (int)num_samples; i++)
-    {
-        if (ii == buffer[i].i && qq == buffer[i].q)
-        {
-            same_count ++;
-            if (same_count > max_same_count)
-            {
-                max_same_count = same_count;
-            }
-        }
-        else
-        {
-            same_count = 1;
-        }
-        
-        ii = buffer[i].i;
-        qq = buffer[i].q;
-    }
-    
-    printf("%s N=%d SC=%d: ", prefix, num_samples, max_same_count);
-    
     for (i = 0; i < num_head_tail; i++)
     {
         printf("[%d, %d] ", buffer[i].i, buffer[i].q);

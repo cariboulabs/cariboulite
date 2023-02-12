@@ -170,12 +170,11 @@ static void caribou_smi_print_debug_stats(caribou_smi_st* dev, uint8_t *buffer, 
     count ++;
     if (count % 10 == 0)
     {
-        printf("SMI DBG: ErrAccumCnt: %d, LastErrCnt: %d, ErrorRate: %.4g, bitrate: %.2f Mbps, ReadTail: %d\n", 
+        printf("SMI DBG: ErrAccumCnt: %d, LastErrCnt: %d, ErrorRate: %.4g, bitrate: %.2f Mbps", 
                 dev->debug_data.error_accum_counter, 
                 dev->debug_data.cur_err_cnt, 
                 dev->debug_data.error_rate, 
-                dev->debug_data.bitrate, 
-                dev->read_tail_len);
+                dev->debug_data.bitrate);
     }
     //smi_utils_dump_hex(buffer, 16);
 }
@@ -240,25 +239,26 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 {
     int offs = 0;
 	size_t actual_length = data_length;
+    int size_shortening_samples = 0;
 	uint32_t *actual_samples = (uint32_t*)(data);
     
 	caribou_smi_sample_complex_int16* cmplx_vec = samples_out;
     
-    //smi_utils_dump_bin(data, 16);
     // find the offset and adjust
     offs = caribou_smi_find_buffer_offset(dev, data, data_length);
     if (offs < 0)
     {
-        //ZF_LOGE("incoming buffer synchronization failed");
-        //smi_utils_dump_hex_simple(actual_samples, 4, 16);
         return -1;
     }
-    else if (offs > 0)
-    {
-        actual_length -= (offs / 4 + 1) * 4;
-        actual_samples = (uint32_t*)(data + offs);
-    }
     
+    // adjust the lengths accroding to the sample mismatch
+    // this may be accompanied by a few samples losses (sphoradic OS
+    // scheduling) thus trying to stitch buffers one to another may
+    // be not effective. The single sample is interpolated
+    size_shortening_samples = (offs > 0) ? (offs / 4 + 1) : 0;
+    actual_length -= size_shortening_samples * 4;
+    actual_samples = (uint32_t*)(data + offs);
+        
     // analyze the data
 	if (dev->debug_mode != caribou_smi_none)
 	{
@@ -266,6 +266,7 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 	}
 	else
 	{
+        unsigned int i = 0;
         // Print buffer
         //smi_utils_dump_bin(buffer, 16);
         
@@ -273,7 +274,7 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 		//	[31:30]	[	29:17	] 	[ 16  ] 	[ 15:14 ] 	[	13:1	] 	[ 	0	]
 		//	[ '10']	[ I sample	]	[ '0' ] 	[  '01'	]	[  Q sample	]	[  'S'	]
 		
-		for (unsigned int i = 0; i < actual_length / 4; i++)
+		for (i = 0; i < actual_length / 4; i++)
 		{
 			uint32_t s = __builtin_bswap32(actual_samples[i]);
 
@@ -286,6 +287,13 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 			if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
 			if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
 		}
+        
+        // last sample insterpolation (linear for I and Q)
+        if (size_shortening_samples > 0)
+        {
+            cmplx_vec[i].i = 2*cmplx_vec[i-1].i - cmplx_vec[i-2].i;
+            cmplx_vec[i].q = 2*cmplx_vec[i-1].q - cmplx_vec[i-2].q;
+        }
 	}
     
     return offs;
@@ -469,7 +477,6 @@ int caribou_smi_init(caribou_smi_st* dev,
         caribou_smi_close (dev);
         return -1;
     }
-	dev->read_tail_len = 0;
     memset(&dev->debug_data, 0, sizeof(caribou_smi_debug_data_st));
 
 	dev->debug_mode = caribou_smi_none;
@@ -529,25 +536,14 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
             
             if (data_affset < 0)
             {
-                dev->read_tail_len = 0;
                 return -1;
-            }
-            if (data_affset > 0)
-            {
-                //dev->read_tail_len = 4 - (data_affset % 4);
-                //ret -= data_affset;
-                //memcpy(dev->read_temp_buffer, dev->read_temp_buffer + ret, dev->read_tail_len);
-            }
-            else
-            {
-                dev->read_tail_len = 0;
             }
             
             // A special functionality for debug modes
             if (dev->debug_mode != caribou_smi_none)
             {
                 caribou_smi_print_debug_stats(dev, dev->read_temp_buffer, ret);
-                return -2;  // special for debug
+                return -2;
             }
         }
         read_so_far += ret / CARIBOU_SMI_BYTES_PER_SAMPLE;
