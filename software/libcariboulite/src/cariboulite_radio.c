@@ -480,23 +480,6 @@ int cariboulite_radio_get_rand_val(cariboulite_radio_state_st* radio, uint8_t *r
 //=================================================
 // FREQUENCY CONVERSION LOGIC
 //=================================================
-#define CARIBOULITE_MIN_MIX     (1.0e6)        // 30
-#define CARIBOULITE_MAX_MIX     (6000.0e6)      // 6000
-#define CARIBOULITE_MIN_LO      (85.0e6)
-#define CARIBOULITE_MAX_LO      (4200.0e6)
-#define CARIBOULITE_2G4_MIN     (2385.0e6)      // 2400
-#define CARIBOULITE_2G4_MAX     (2495.0e6)      // 2483.5
-#define CARIBOULITE_S1G_MIN1    (377.0e6)		// 389.5e6
-#define CARIBOULITE_S1G_MAX1    (530.0e6)
-#define CARIBOULITE_S1G_MIN2    (779.0e6)
-#define CARIBOULITE_S1G_MAX2    (1020.0e6)
-
-typedef enum
-{
-    conversion_dir_none = 0,
-    conversion_dir_up = 1,
-    conversion_dir_down = 2,
-} conversion_dir_en;
 
 //=================================================
 bool cariboulite_radio_wait_mixer_lock(cariboulite_radio_state_st* radio, int retries)
@@ -570,7 +553,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
     double act_freq = 0.0;
     int error = 0;
     cariboulite_ext_ref_freq_en ext_ref_choice = cariboulite_ext_ref_off;
-    conversion_dir_en conversion_direction = conversion_dir_none;
+    cariboulite_conversion_dir_en conversion_direction = conversion_dir_none;
 
     //--------------------------------------------------------------------------------
     // SUB 1GHZ CONFIGURATION
@@ -682,7 +665,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 
         // Decide the conversion direction and IF/RF/LO
         //-------------------------------------
-        if (f_rf >= CARIBOULITE_MIN_MIX && 
+        if (f_rf >= CARIBOULITE_6G_MIN && 
             f_rf < (CARIBOULITE_2G4_MIN) )
         {
             // region #1 - UP CONVERSION
@@ -714,7 +697,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
         }
         //-------------------------------------
         else if ( f_rf >= (CARIBOULITE_2G4_MAX) && 
-                f_rf < CARIBOULITE_MAX_MIX )
+                f_rf < CARIBOULITE_6G_MAX )
         {
             // region #3 - DOWN-CONVERSION
             // setup modem frequency <= CARIBOULITE_2G4_MIN

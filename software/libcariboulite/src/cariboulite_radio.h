@@ -26,15 +26,26 @@ typedef enum
     cariboulite_ext_ref_32mhz   = 32,
 } cariboulite_ext_ref_freq_en;
 
+// Frequency Ranges
+#define CARIBOULITE_6G_MIN      (1.0e6)
+#define CARIBOULITE_6G_MAX      (6000.0e6)
+#define CARIBOULITE_MIN_LO      (85.0e6)
+#define CARIBOULITE_MAX_LO      (4200.0e6)
+#define CARIBOULITE_2G4_MIN     (2385.0e6)
+#define CARIBOULITE_2G4_MAX     (2495.0e6)
+#define CARIBOULITE_S1G_MIN1    (377.0e6)
+#define CARIBOULITE_S1G_MAX1    (530.0e6)
+#define CARIBOULITE_S1G_MIN2    (779.0e6)
+#define CARIBOULITE_S1G_MAX2    (1020.0e6)
 
-typedef void (*cariboulite_radio_rx_data_callback)(caribou_smi_sample_complex_int16 *samples,
-													size_t num_of_samples,
-													void* context);
-													
-typedef void (*cariboulite_radio_tx_data_callback)(caribou_smi_sample_complex_int16 *samples,
-													size_t num_of_samples,
-													void* context);
+typedef enum
+{
+    conversion_dir_none = 0,
+    conversion_dir_up = 1,
+    conversion_dir_down = 2,
+} cariboulite_conversion_dir_en;
 
+// Radio Struct
 typedef struct
 {
     struct sys_st_t*               		sys;
@@ -81,6 +92,7 @@ typedef struct
     float                               rx_thermal_noise_floor;
 } cariboulite_radio_state_st;
 
+// Radio API
 void cariboulite_radio_init(cariboulite_radio_state_st* radio, struct sys_st_t *sys, cariboulite_channel_en type);
 int cariboulite_radio_dispose(cariboulite_radio_state_st* radio);
 int cariboulite_radio_sync_information(cariboulite_radio_state_st* radio);
