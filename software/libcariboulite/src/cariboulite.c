@@ -35,11 +35,12 @@ typedef struct
     double frequency;
     double gain;
     double ppm_error;
-    uint32_t samples_to_read;
+    int samples_to_read;
     int force_fpga_prog;
     int write_metadata;
     
     // State
+    int sample_infinite;
     int program_running;
     int sys_type;
     size_t native_read_len;
@@ -96,6 +97,7 @@ static void init_program_state(void)
     state.write_metadata = 0;
     
     // state
+    state.sample_infinite = 0;
     state.program_running = 1;
     state.sys_type = system_type_cariboulite_ism;
     state.native_read_len = 1024 * 1024 / 8;
@@ -187,7 +189,8 @@ int analyze_arguments(int argc, char *argv[])
 			state.ppm_error = atoi(optarg);
 			break;
 		case 'n':
-			state.samples_to_read = (uint32_t)atof(optarg);
+			state.samples_to_read = atoi(optarg);
+            state.sample_infinite = state.samples_to_read > 0 ? 0 : 1;
 			break;
         case 'F':
 			state.force_fpga_prog = 1;
@@ -254,6 +257,10 @@ int main(int argc, char *argv[])
         return -1;
     }
     
+    // get the correct radio from the possible two
+    if (state.rx_channel == 0) state.radio = &cariboulite_sys.radio_low;
+    else state.radio = &cariboulite_sys.radio_high;
+    
     // Allocate rx buffer and metadata
     state.native_read_len = cariboulite_get_native_mtu_size_samples(state.radio);
     state.buffer = malloc(sizeof(caribou_smi_sample_complex_int16)*state.native_read_len);
@@ -263,7 +270,7 @@ int main(int argc, char *argv[])
         release_system();
         return -1;
     }
-    
+
     state.metadata = malloc(sizeof(caribou_smi_sample_meta)*state.native_read_len);
     if (state.metadata == NULL)
     {
@@ -273,18 +280,15 @@ int main(int argc, char *argv[])
     }
     
     // Align the length (only if it is >0)
-    if (state.samples_to_read > 0)
+    if (!state.sample_infinite)
     {
         state.samples_to_read = ((state.samples_to_read % state.native_read_len) == 0) ? 
-                            state.samples_to_read : 
-                            (state.samples_to_read / state.native_read_len + 1) * state.native_read_len;
+                                 (state.samples_to_read) : 
+                                 (state.samples_to_read / state.native_read_len + 1) * state.native_read_len;
     }
     
     // Init the radio
-    //-------------------------------------
-    if (state.rx_channel == 0) state.radio = &cariboulite_sys.radio_low;
-    else state.radio = &cariboulite_sys.radio_high;
-    
+    //-------------------------------------    
     // Set radio parameters
     cariboulite_radio_set_frequency(state.radio, true, &state.frequency);
     cariboulite_radio_set_rx_gain_control(state.radio, state.gain == -1.0, state.gain);
@@ -316,13 +320,21 @@ int main(int argc, char *argv[])
             ZF_LOGE("Samples read operation failed. Quiting...");
             state.program_running = 0;
         }
-        if (fwrite(state.buffer, 1, state.native_read_len, state.file) != (size_t)state.native_read_len * 4)
+        
+        // TODO: how should the metadata be expressed in the file?
+        int wret = fwrite(state.buffer, 1, ret*4, state.file);
+        if (wret != (ret*4))
         {
             ZF_LOGE("Writing into file failed, exiting!\n");
             break;
         }
         
-        if (state.samples_to_read > 0) state.samples_to_read -= ret;
+        if (!state.sample_infinite) 
+        {
+            state.samples_to_read -= ret;
+            if (state.samples_to_read <= 0)
+                break;
+        }
     }
 
     // close the driver and release resources

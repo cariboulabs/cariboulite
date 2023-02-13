@@ -129,8 +129,3 @@ set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 install(TARGETS cariboulite DESTINATION ${BIN_DEST}/lib/)
 #install(TARGETS cariboulite_test_app DESTINATION ${BIN_DEST}/bin/)
 install(TARGETS cariboulite_util DESTINATION ${BIN_DEST}/bin/)
-
-# SoapySDR installation paths:
-#   /usr/local/lib/SoapySDR/modules0.8/
-#   /lib/SoapySDR/modules0.8/
-#   /usr/lib/SoapySDR/modules0.8/
