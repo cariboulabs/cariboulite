@@ -224,7 +224,7 @@ int Cariboulite::readStream(
             const long timeoutUs)
 {
 	// Verify that it is an RX stream
-    if (stream->getInnerStreamType() != SOAPY_SDR_RX)
+    if (stream->getInnerStreamType() != cariboulite_channel_dir_rx)
     {
         return SOAPY_SDR_NOT_SUPPORTED;
     }

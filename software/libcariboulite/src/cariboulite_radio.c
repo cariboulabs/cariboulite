@@ -866,6 +866,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         // apply the state
         if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_state) != 0)
         {
+            ZF_LOGD("Failed to configure modem with cmd_rx");
             return -1;
         }
     }

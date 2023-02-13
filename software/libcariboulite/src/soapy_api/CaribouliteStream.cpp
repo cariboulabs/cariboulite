@@ -106,6 +106,7 @@ int SoapySDR::Stream::Write(caribou_smi_sample_complex_int16 *buffer, size_t num
 //=================================================================
 int SoapySDR::Stream::Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us)
 {
+    //printf("Reading %d elements\n", num_samples);
     int ret = cariboulite_radio_read_samples(radio, buffer, (caribou_smi_sample_meta*)meta, num_samples);
     if (ret < 0)
     {
@@ -117,6 +118,7 @@ int SoapySDR::Stream::Read(caribou_smi_sample_complex_int16 *buffer, size_t num_
         // taken care of in the soapy front-end (ret = -2)
         ret = 0;
     }
+    //printf("Read %d elements\n", ret);
     return ret;
 }
 

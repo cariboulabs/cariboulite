@@ -671,6 +671,8 @@ int writer_thread_stream_function(void *pv)
 			}
 		}
 	}
+    
+    dev_info(inst->dev, "Left writer thread");
 	
 	return 0;
 }
@@ -928,7 +930,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *smi_node;
 
-	printk(KERN_INFO DRIVER_NAME": smi_stream_dev_probe()\n");
+	printk(KERN_INFO DRIVER_NAME": smi_stream_dev_probe\n");
 
 	if (!dev->of_node) 
 	{

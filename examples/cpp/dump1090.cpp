@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
         auto stream = device->setupStream(SOAPY_SDR_RX, format, channels);
 
         // run the rate test one setup is complete
-		std::cout << "Running Soapy process with CaribouLite Config:" << std::endl;
+		std::cout << std::endl << "Running Soapy process with CaribouLite Config:" << std::endl;
         std::cout << "	Stream format: " << format << std::endl;
         std::cout << "	Channel: HiF" << std::endl;
         std::cout << "	Sample size: " << elemSize << " bytes" << std::endl;

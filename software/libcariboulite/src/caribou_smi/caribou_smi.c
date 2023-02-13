@@ -278,14 +278,18 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 		{
 			uint32_t s = __builtin_bswap32(actual_samples[i]);
 
-			meta_offset[i].sync = s & 0x00000001;
-			s >>= 1;
-			cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
-			s >>= 3;
-			cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
+			if (meta_offset) meta_offset[i].sync = s & 0x00000001;
+            
+            if (cmplx_vec)
+            {
+                s >>= 1;
+                cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
+                s >>= 3;
+                cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
 
-			if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
-			if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
+                if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
+                if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
+            }
 		}
         
         // last sample insterpolation (linear for I and Q)
@@ -508,6 +512,8 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
                     caribou_smi_sample_meta* metadata, 
                     size_t length_samples)
 {
+    caribou_smi_sample_complex_int16* sample_offset = buffer;
+    caribou_smi_sample_meta* meta_offset = metadata;
     size_t left_to_read = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;        // in bytes
     size_t read_so_far = 0;                                                     // in samples
     uint32_t to_millisec = (2 * dev->native_batch_len * 1000) / CARIBOU_SMI_SAMPLE_RATE;
@@ -515,8 +521,8 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
     
     while (left_to_read)
     {
-        caribou_smi_sample_complex_int16* sample_offset = buffer + read_so_far;
-        caribou_smi_sample_meta* meta_offset = metadata + read_so_far;
+        if (sample_offset) sample_offset = buffer + read_so_far;
+        if (meta_offset) meta_offset = metadata + read_so_far;
         
         // current_read_len in bytes
         size_t current_read_len = ((left_to_read > dev->native_batch_len) ? dev->native_batch_len : left_to_read);
