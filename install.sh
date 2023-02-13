@@ -15,8 +15,14 @@ git pull
 git submodule init
 git submodule update
 
+## kernel module dev dependencies
+printf "\n[  2  ] ${GREEN}Updating system and installing dependencies...${NC}\n"
+sudo -u root apt-get update
+sudo -u root apt-get install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev avahi-daemon libavahi-client-dev
+sudo -u root depmod -a
+
 # clone SoapySDR dependencies
-printf "\n[  2  ] ${GREEN}Checking Soapy SDR installation ($SOAPY_UTILS_EXE)...${NC}\n"
+printf "\n[  3  ] ${GREEN}Checking Soapy SDR installation ($SOAPY_UTILS_EXE)...${NC}\n"
 
 SOAPY_UTIL_PATH=`which $SOAPY_UTILS_EXE`
 
@@ -30,11 +36,10 @@ else
     read -p ' ' InstallSoapy
     
     if [ "$InstallSoapy" = "Y" ]; then
-        printf "==> ${GREEN}Cloning SoapySDR and SoapyRemote, and compiling...${NC}\n"
+        printf "==> ${GREEN}Cloning SoapySDR, and compiling...${NC}\n"
         rm -R SoapySDR
-        rm -R SoapyRemote
         git clone https://github.com/pothosware/SoapySDR.git
-        git clone https://github.com/pothosware/SoapyRemote.git
+        
         
         # Soapy
         cd SoapySDR
@@ -42,17 +47,29 @@ else
         cmake ../
         make -j4 && sudo -u root make install
         sudo -u root ldconfig
+    fi
+
+    SOAPYMODPATH=`SoapySDRUtil --info | grep "Search path" | cut -d":" -f2 | xargs | cut -d" " -f1`
+    SOAPYMODPATH_PREFIX=`SoapySDRUtil --info | grep "Search path" | cut -d":" -f2 | xargs | cut -d" " -f1 | awk -F '/Soapy' '{print $1}'`
+    sudo -u root mkdir -p $SOAPYMODPATH
+    
+    #cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr ../ && make all install
+    
+    if [ "$InstallSoapy" = "Y" ]; then
+        printf "==> ${GREEN}Cloning SoapyRemote, and compiling...${NC}\n"
+        rm -R SoapyRemote
+        git clone https://github.com/pothosware/SoapyRemote.git
         
         # Soapy Remote (Server)
         cd ../..
         cd SoapyRemote
         mkdir build && cd build
-        cmake ../
+        cmake -DCMAKE_INSTALL_PREFIX:PATH=$SOAPYMODPATH_PREFIX ../
         make -j4 && sudo -u root make install
         sudo -u root ldconfig
     fi
     
-    printf "\n[  3  ] ${GREEN}Checking the installed Soapy utilities...${NC}\n"
+    printf "\n[  4  ] ${GREEN}Checking the installed Soapy utilities...${NC}\n"
     SOAPY_UTIL_PATH=`which $SOAPY_UTILS_EXE`
     if test -f "${SOAPY_UTIL_PATH}"; then
         printf "${CYAN}Found SoapySDRUtil at ${SOAPY_UTIL_PATH}${NC}\n"
@@ -64,12 +81,6 @@ else
     
     cd ..
 fi
-
-## kernel module dev dependencies
-printf "\n[  4  ] ${GREEN}Updating system and installing dependencies...${NC}\n"
-sudo -u root apt-get update
-sudo -u root apt-get install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
-sudo -u root depmod -a
 
 ## Main Software
 printf "\n[  5  ] ${GREEN}Compiling main source...${NC}\n"
@@ -91,7 +102,7 @@ mkdir build
 cd build
 cmake $ROOT_DIR/software/libcariboulite/
 make
-#sudo -u root make install
+sudo -u root make install
 
 # Configuration File
 printf "\n[  6  ] ${GREEN}Environmental Settings...${NC}\n"

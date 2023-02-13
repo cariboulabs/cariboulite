@@ -26,25 +26,25 @@ add_subdirectory(src/production_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 
-# Create the library LibCaribouLite
-add_library(libcariboulite STATIC ${SOURCES_LIB})
-target_link_libraries(libcariboulite    datatypes
-                                        production_utils
-                                        ustimer
-                                        caribou_fpga
-                                        at86rf215
-                                        rffc507x
-                                        caribou_smi
-                                        caribou_prog
-                                        hat
-                                        io_utils
-                                        zf_log
-                                        rt
-                                        m
-                                        pthread
-                                        iir)
+# Create the library cariboulite
+add_library(cariboulite STATIC ${SOURCES_LIB})
+target_link_libraries(cariboulite   datatypes
+                                    production_utils
+                                    ustimer
+                                    caribou_fpga
+                                    at86rf215
+                                    rffc507x
+                                    caribou_smi
+                                    caribou_prog
+                                    hat
+                                    io_utils
+                                    zf_log
+                                    rt
+                                    m
+                                    pthread
+                                    iir)
 
-target_include_directories(libcariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
 # create the Soapy shared object
@@ -64,9 +64,20 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     endif()
     #Thread support enabled (not the same as -lpthread)
     list(APPEND SOAPY_CARIBOULITE_LIBRARIES)
-    #disable warnings for unused parameters
     add_definitions(-Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-psabi)
 endif(CMAKE_COMPILER_IS_GNUCXX)
+
+execute_process (
+    COMMAND bash -c "SoapySDRUtil --info | grep 'Search path' | cut -d':' -f2 | xargs | cut -d' ' -f1 | xargs"
+    OUTPUT_VARIABLE SOAPY_DEST
+)
+string(STRIP ${SOAPY_DEST} SOAPY_DEST)
+
+execute_process (
+    COMMAND bash -c "SoapySDRUtil --info | grep 'Search path' | cut -d':' -f2 | xargs | cut -d' ' -f1 | awk -F '/lib/Soapy' '{print $1}' | xargs"
+    OUTPUT_VARIABLE BIN_DEST
+)
+string(STRIP ${BIN_DEST} BIN_DEST)
 
 SOAPY_SDR_MODULE_UTIL(
     TARGET SoapyCariboulite
@@ -78,7 +89,9 @@ SOAPY_SDR_MODULE_UTIL(
         src/soapy_api/CaribouliteStream.cpp
         src/soapy_api/CaribouliteSession.cpp
         src/soapy_api/CaribouliteSensors.cpp
-    LIBRARIES libcariboulite
+    LIBRARIES cariboulite
+    DESTINATION ${SOAPY_DEST}
+    PREFIX ""
 )
 
 # ----------------------------------
@@ -93,7 +106,7 @@ set(SOURCES_PROD src/cariboulite_production.c)
 add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_test_app ${SOURCES_TEST_MAIN})
-add_executable(cariboulite ${SOURCES_MAIN})
+add_executable(cariboulite_util ${SOURCES_MAIN})
 #add_executable(cariboulite_prod ${SOURCES_PROD})
 #add_custom_command(
 #	TARGET cariboulite_app POST_BUILD
@@ -101,11 +114,11 @@ add_executable(cariboulite ${SOURCES_MAIN})
 #	COMMAND sudo chmod 4775 "./cariboulite_app"
 #	VERBATIM)
 
-target_link_libraries(caribou_programmer libcariboulite)
-target_link_libraries(fpgacomm libcariboulite)
-target_link_libraries(cariboulite_test_app libcariboulite)
-target_link_libraries(cariboulite libcariboulite)
-#target_link_libraries(cariboulite_prod libcariboulite zmq)
+target_link_libraries(caribou_programmer cariboulite)
+target_link_libraries(fpgacomm cariboulite)
+target_link_libraries(cariboulite_test_app cariboulite)
+target_link_libraries(cariboulite_util cariboulite)
+#target_link_libraries(cariboulite_prod cariboulite zmq)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
@@ -113,9 +126,9 @@ set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 # ------------
 # INSTALLATION
 # ------------
-install(TARGETS libcariboulite DESTINATION /usr/local/lib)
-#install(TARGETS cariboulite_test_app DESTINATION /usr/local/lib)
-#install(TARGETS cariboulite DESTINATION /usr/local/lib)
+install(TARGETS cariboulite DESTINATION ${BIN_DEST}/lib/)
+#install(TARGETS cariboulite_test_app DESTINATION ${BIN_DEST}/bin/)
+install(TARGETS cariboulite_util DESTINATION ${BIN_DEST}/bin/)
 
 # SoapySDR installation paths:
 #   /usr/local/lib/SoapySDR/modules0.8/
