@@ -28,18 +28,35 @@ cd ~/projects
 git clone https://github.com/cariboulabs/cariboulite
 cd cariboulite
 ```
-4. Use the following setup command:
+4. Use the following setup command (**note: don't `sudo` it**):
     ```
-    sudo install.sh
+    install.sh
     ```
 
-    The setup script requires internet connection and it follows the following automatic steps:
-    I. System type discovery and dependency check
-    II. Installation of the not-found dependencies
-    III. CaribouLite code compilation and installation
-    IV. EEPROM setup - boot time module's loading and device tree definition.
+The setup script **requires internet connection** and it follows the following automatic steps:
+1. **Dependencies** installation (apt)
+2. **Soapy API tools installation** (SoapySDR and SoapyRemote) - only if they are not currently present in the system. Installation from code.
+3. **Internal dependencies installation**
+   1. Utilities and tools
+   2. IIR DSP library
+   3. SMI stream device module (kernel object) blob generation
+4. **Main software** and SoapyAPI compilation and installation
+5. **Raspberry PI configuration** verification. Note - the installer doesn't not actively change the RPI's configuration to fit to CaribouLite. It just checks the `/boot/config.txt` configuration file and raises warning when problem is detected. Then the user shall need to adjust the parameters accordingly.
 
-Following these steps, the RPI has to be rebooted before starting using it as an SDR.
+Note: the user will be requested to enter his password during the installation process.
+
+## Installation Troubleshooting
+1. **Modules**: Both the `spi` and `arm-i2c` dtoverlays should be disabled to run CaribouLite properly. The `libcariboulite` doen't use them. It uses direct access to `/dev/mem` to expose these peripherals (through the `pigpio` library).
+The interfaces can be disabled (or enabled back whenever needed) by either directly editing the `/dev/config.txt` file or by using the `sudo raspi-config` command. The latter is the preferred choice as it is straight forward, less error prone and it works on all RaspberryPi's OS distributions.
+If the direct editing path has been chosen (`/boot/config.txt`), the following lines
+should be commented out:
+`#dtparam=spi=on`
+`#dtparam=i2c_arm=on`
+
+1. **Kernel headers** - `libcariboulite` loads a custom kernel module (`smi_stream_dev`) during startup. The kernel module sources are location in : **`/software/libcariboulite/caribou_smi/kernel`**. [**TBD**]
+
+2.
+
 
 To compile the API library and SoapySDR API from code please click [here](/software/libcariboulite/README.md)
 
