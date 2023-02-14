@@ -1,3 +1,0 @@
-/home/pi/projects/cariboulite/examples/cpp/build/CMakeFiles/rebuild_cache.dir
-/home/pi/projects/cariboulite/examples/cpp/build/CMakeFiles/edit_cache.dir
-/home/pi/projects/cariboulite/examples/cpp/build/CMakeFiles/caribou_dump1090.dir
