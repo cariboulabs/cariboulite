@@ -94,7 +94,16 @@ cmake ../
 make
 mv $ROOT_DIR/software/utils/build/generate_bin_blob $ROOT_DIR/software/utils/generate_bin_blob
 
-printf "${CYAN}2. SMI kernel module...${NC}\n"
+printf "${CYAN}2. libIIR ${NC}\n"
+cd $ROOT_DIR/software/libcariboulite/src/iir/
+mkdir build
+cd build
+cmake ../
+make
+make install
+sudo ldconfig
+
+printf "${CYAN}3. SMI kernel module...${NC}\n"
 cd $ROOT_DIR/software/libcariboulite/src/caribou_smi/kernel
 mkdir build
 cd build
