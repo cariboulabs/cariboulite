@@ -100,7 +100,7 @@ mkdir build
 cd build
 cmake ../
 make
-make install
+sudo make install
 sudo ldconfig
 
 printf "${CYAN}3. SMI kernel module...${NC}\n"
