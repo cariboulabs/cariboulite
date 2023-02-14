@@ -86,8 +86,10 @@ fi
 printf "\n[  5  ] ${GREEN}Compiling main source...${NC}\n"
 printf "${CYAN}1. External Tools...${NC}\n"
 cd $ROOT_DIR/software/utils
-cmake ./
+mkdir build && cd build
+cmake ../
 make
+mv $ROOT_DIR/software/utils/build/generate_bin_blob $ROOT_DIR/software/utils/generate_bin_blob
 
 printf "${CYAN}2. SMI kernel module...${NC}\n"
 cd $ROOT_DIR/software/libcariboulite/src/caribou_smi/kernel
