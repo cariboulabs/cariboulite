@@ -15,6 +15,7 @@ int at86rf215_close(at86rf215_st* dev);
 void at86rf215_reset(at86rf215_st* dev);
 
 void at86rf215_get_versions(at86rf215_st* dev, uint8_t *pn, uint8_t *vn);
+int at86rf215_print_version(at86rf215_st* dev);
 void at86rf215_set_clock_output(at86rf215_st* dev,
                                 at86rf215_drive_current_en drv_level,
                                 at86rf215_clock_out_freq_en clock_val);

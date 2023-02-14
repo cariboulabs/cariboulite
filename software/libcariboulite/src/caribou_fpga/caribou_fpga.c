@@ -18,6 +18,7 @@
 #define IOC_SYS_CTRL_MANU_ID        2
 #define IOC_SYS_CTRL_SYS_ERR_STAT   3
 #define IOC_SYS_CTRL_SYS_SOFT_RST   4
+#define IOC_SYS_CTRL_DEBUG_MODES    5
 
 #define IOC_IO_CTRL_MODE            1
 #define IOC_IO_CTRL_DIG_PIN         2
@@ -28,6 +29,7 @@
 #define IOC_IO_CTRL_MXR_FM_DATA     7
 
 #define IOC_SMI_CTRL_FIFO_STATUS    1
+#define IOC_SMI_CHANNEL_SELECT      2
 
 //--------------------------------------------------------------
 // Internal Data-Types
@@ -114,10 +116,10 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
     ZF_LOGI("configuring reset and irq pins");
 	// Configure GPIO pins
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
-	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
-
+	io_utils_setup_gpio(dev->soft_reset_pin, io_utils_dir_output, io_utils_pull_up);
+	
 	// set to known state
-	//io_utils_write_gpio(dev->reset_pin, 1);
+	io_utils_write_gpio(dev->soft_reset_pin, 1);
 
     ZF_LOGI("Initializing io_utils_spi");
     io_utils_hard_spi_st hard_dev_fpga = {  .spi_dev_id = dev->spi_dev,
@@ -126,16 +128,95 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
                         						io_utils_spi_chip_type_fpga_comm,
                                                 &hard_dev_fpga);
 
-    if (io_utils_setup_interrupt(dev->irq_pin, caribou_fpga_interrupt_handler, dev) < 0)
+	// Init FPGA programming
+    if (caribou_prog_init(&dev->prog_dev, dev->io_spi) < 0)
     {
-        ZF_LOGE("interrupt registration for irq_pin (%d) failed", dev->irq_pin);
-        io_utils_setup_gpio(dev->reset_pin, io_utils_dir_input, io_utils_pull_up);
-        io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
-        io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
+        ZF_LOGE("ice40 programmer init failed");
         return -1;
     }
+	
     dev->initialized = 1;
     return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_get_status(caribou_fpga_st* dev, caribou_fpga_status_en *stat)
+{
+	caribou_fpga_get_versions (dev, NULL);
+	if (dev->versions.sys_manu_id != CARIBOU_SDR_MANU_CODE)
+	{
+		dev->status = caribou_fpga_status_not_programmed;
+	}
+	else
+	{
+		dev->status = caribou_fpga_status_operational;
+	}
+	if (stat) *stat = dev->status;
+	return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, size_t len, bool force_prog)
+{
+	caribou_fpga_get_status(dev, NULL);
+	if (dev->status == caribou_fpga_status_not_programmed || force_prog)
+	{
+		if (buffer == NULL || len == 0)
+		{
+			ZF_LOGE("buffer should be not NULL and len > 0");
+        	return -1;
+		}
+
+		if (caribou_prog_configure_from_buffer(&dev->prog_dev, buffer, len) < 0)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+
+		caribou_fpga_soft_reset(dev);
+		io_utils_usleep(100000);
+
+		caribou_fpga_get_status(dev, NULL);
+		if (dev->status == caribou_fpga_status_not_programmed)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+	}
+	else
+	{
+		ZF_LOGI("FPGA already operational - not programming (use 'force_prog=true' to force update)");
+	}
+	return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, char *filename, bool force_prog)
+{
+	caribou_fpga_get_status(dev, NULL);
+	if (dev->status == caribou_fpga_status_not_programmed || force_prog)
+	{
+		if (caribou_prog_configure(&dev->prog_dev, filename) < 0)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+		
+		caribou_fpga_soft_reset(dev);
+		io_utils_usleep(100000);
+
+		caribou_fpga_get_status(dev, NULL);
+		if (dev->status == caribou_fpga_status_not_programmed)
+		{
+			ZF_LOGE("Programming failed");
+			return -1;
+		}
+	}
+	else
+	{
+		ZF_LOGI("FPGA already operational - not programming (use 'force_prog=true' to force update)");
+	}
+	return 0;
 }
 
 //--------------------------------------------------------------
@@ -143,26 +224,57 @@ int caribou_fpga_close(caribou_fpga_st* dev)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_close");
     dev->initialized = 0;
-    return io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
+    io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
+	
+	return caribou_prog_release(&dev->prog_dev);
 }
 
 //--------------------------------------------------------------
 int caribou_fpga_soft_reset(caribou_fpga_st* dev)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_soft_reset");
-    caribou_fpga_opcode_st oc =
-    {
-        .rw  = caribou_fpga_rw_write,
-        .mid = caribou_fpga_mid_sys_ctrl,
-        .ioc = IOC_SYS_CTRL_SYS_SOFT_RST
-    };
 
-    uint8_t res = 0;
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &res);
+	io_utils_write_gpio_with_wait(dev->soft_reset_pin, 0, 1000);
+	io_utils_write_gpio_with_wait(dev->soft_reset_pin, 1, 1000);
+	return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_hard_reset(caribou_fpga_st* dev)
+{
+	CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_hard_reset (disposing firmware)");
+	io_utils_write_gpio_with_wait(dev->reset_pin, 0, 1000);
+	io_utils_write_gpio_with_wait(dev->reset_pin, 1, 1000);
+	return 0;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_hard_reset_keep(caribou_fpga_st* dev, bool reset)
+{
+	if (reset)
+	{
+		io_utils_write_gpio_with_wait(dev->reset_pin, 0, 1000);
+	}
+	else
+	{
+		io_utils_write_gpio_with_wait(dev->reset_pin, 1, 1000);
+	}
+	return 0;
 }
 
 //--------------------------------------------------------------
 // System Controller
+void caribou_fpga_print_versions (caribou_fpga_st* dev)
+{
+	printf("FPGA Versions:\n");
+	printf("	System Version: %02X\n", dev->versions.sys_ver);
+	printf("	Manu. ID: %02X\n", dev->versions.sys_manu_id);
+	printf("	Sys. Ctrl Version: %02X\n", dev->versions.sys_ctrl_mod_ver);
+	printf("	IO Ctrl Version: %02X\n", dev->versions.io_ctrl_mod_ver);
+	printf("	SMI Ctrl Version: %02X\n", dev->versions.smi_ctrl_mod_ver);
+}
+
+//--------------------------------------------------------------
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* vers)
 {
     caribou_fpga_opcode_st oc =
@@ -173,29 +285,65 @@ int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* v
 
     uint8_t *poc = (uint8_t*)&oc;
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_versions");
-    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(vers,"caribou_fpga_get_versions","vers");
-
-    memset(vers, 0, sizeof(caribou_fpga_versions_st));
 
     oc.ioc = IOC_SYS_CTRL_SYS_VERSION;
-    caribou_fpga_spi_transfer (dev, poc, &vers->sys_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.sys_ver);
 
     oc.ioc = IOC_SYS_CTRL_MANU_ID;
-    caribou_fpga_spi_transfer (dev, poc, &vers->sys_manu_id);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.sys_manu_id);
 
     oc.ioc = IOC_MOD_VER;
     oc.mid = caribou_fpga_mid_sys_ctrl;
-    caribou_fpga_spi_transfer (dev, poc, &vers->sys_ctrl_mod_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.sys_ctrl_mod_ver);
 
     oc.mid = caribou_fpga_mid_io_ctrl;
-    caribou_fpga_spi_transfer (dev, poc, &vers->io_ctrl_mod_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.io_ctrl_mod_ver);
 
     oc.mid = caribou_fpga_mid_smi_ctrl;
-    caribou_fpga_spi_transfer (dev, poc, &vers->smi_ctrl_mod_ver);
+    caribou_fpga_spi_transfer (dev, poc, &dev->versions.smi_ctrl_mod_ver);
+
+	caribou_fpga_print_versions (dev);
+
+	if (vers)
+	{
+		memcpy (vers, &dev->versions, sizeof(caribou_fpga_versions_st));
+	}
 
     return 0;
 }
 
+
+//--------------------------------------------------------------
+static char caribou_fpga_mode_names[][64] =
+{
+	"Low Power (0)",
+	"RX / TX bypass (1)",
+	"RX lowpass (up-conversion) (2)",
+	"RX hipass (down-conversion) (3)",
+	"TX lowpass (down-conversion) (4)",
+	"RX hipass (up-conversion) (5)",
+};
+
+char* caribou_fpga_get_mode_name (caribou_fpga_io_ctrl_rfm_en mode)
+{
+	if (mode >= caribou_fpga_io_ctrl_rfm_low_power && mode <= caribou_fpga_io_ctrl_rfm_tx_hipass)
+		return caribou_fpga_mode_names[mode];
+	return NULL;
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool dbg_fifo_pull, bool dbg_smi)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_debug_modes");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_DEBUG_MODES
+    };
+    uint8_t mode = ((dbg_fifo_push & 0x1) << 0) | ((dbg_fifo_pull & 0x1) << 1) | ((dbg_smi & 0x1) << 2 );
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &mode);
+}
 //--------------------------------------------------------------
 int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map)
 {
@@ -384,4 +532,21 @@ int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_sm
     };
     memset(status, 0, sizeof(caribou_fpga_smi_fifo_status_st));
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)status);
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_set_smi_channel (caribou_fpga_st* dev, caribou_fpga_smi_channel_en channel)
+{
+    uint8_t val = 0;
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_smi_channel");
+    
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_smi_ctrl,
+        .ioc = IOC_SMI_CHANNEL_SELECT
+    };
+    val = (channel == caribou_fpga_smi_channel_0) ? 0x0 : 0x1;
+   
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &val);
 }

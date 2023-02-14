@@ -1,6 +1,6 @@
 #include <math.h>
 #include "Cariboulite.hpp"
-#include "cariboulite_config/cariboulite_config_default.h"
+#include "cariboulite_config_default.h"
 
 SoapyCaribouliteSession Cariboulite::sess;
 
@@ -14,26 +14,24 @@ Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
 					args.at("label").c_str(),
 					args.at("channel").c_str());
 
-	// Initialize the stream Sample Queues
-	sample_queue_tx = new SoapySDR::Stream();
-	sample_queue_rx = new SoapySDR::Stream();
-
 	if (!args.at("channel").compare ("HiF"))
 	{	
-		//sample_queue_tx->AttachStreamId(0, caribou_smi_stream_type_write, caribou_smi_channel_2400);
-		//sample_queue_rx->AttachStreamId(1, caribou_smi_stream_type_read, caribou_smi_channel_2400);
-		cariboulite_radio_init(&radio, &sess.cariboulite_sys, cariboulite_channel_6g);
+		cariboulite_radio_init(&radio, &sess.sys, cariboulite_channel_6g);
 	}
 	else if (!args.at("channel").compare ("S1G"))
 	{
-		//sample_queue_tx->AttachStreamId(0, caribou_smi_stream_type_write, caribou_smi_channel_900);
-		//sample_queue_rx->AttachStreamId(1, caribou_smi_stream_type_read, caribou_smi_channel_900);
-		cariboulite_radio_init(&radio, &sess.cariboulite_sys, cariboulite_channel_s1g);
+		cariboulite_radio_init(&radio, &sess.sys, cariboulite_channel_s1g);
 	}
 	else
 	{
 		throw std::runtime_error( "Channel type is not specified correctly" );
 	}
+    
+	stream = new SoapySDR::Stream(&radio);
+    if (stream == NULL)
+    {
+        throw std::runtime_error( "Stream allocation failed" );
+    }
 }
 
 //========================================================
@@ -41,8 +39,7 @@ Cariboulite::~Cariboulite()
 {
 	SoapySDR_logf(SOAPY_SDR_INFO, "Desposing radio type '%d'", radio.type);
     cariboulite_radio_dispose(&radio);
-	delete sample_queue_tx;
-	delete sample_queue_rx;
+    if (stream)	delete stream;
 }
 
 /*******************************************************************
@@ -57,14 +54,14 @@ SoapySDR::Kwargs Cariboulite::getHardwareInfo() const
     uint32_t serial_number = 0;
     uint32_t deviceId = 0;
     int count = 0;
-    cariboulite_get_serial_number((cariboulite_st*)&sess.cariboulite_sys, &serial_number, &count) ;
+    cariboulite_get_serial_number((sys_st*)&sess.sys, &serial_number, &count) ;
 
     args["device_id"] = std::to_string(deviceId);
     args["serial_number"] = std::to_string(serial_number);
-    args["hardware_revision"] = sess.cariboulite_sys.board_info.product_version;
+    args["hardware_revision"] = sess.sys.board_info.product_version;
     args["fpga_revision"] = std::to_string(1);
-    args["vendor_name"] = sess.cariboulite_sys.board_info.product_vendor;
-    args["product_name"] = sess.cariboulite_sys.board_info.product_name;
+    args["vendor_name"] = sess.sys.board_info.product_vendor;
+    args["product_name"] = sess.sys.board_info.product_name;
 
     return args;
 }
@@ -254,24 +251,14 @@ void Cariboulite::setSampleRate( const int direction, const size_t channel, cons
 //========================================================
 double Cariboulite::getSampleRate( const int direction, const size_t channel ) const
 {
-    //printf("getSampleRate\n");
-    // A single option for now. then we will add more options
     return 4000000;
 }
 
 //========================================================
 std::vector<double> Cariboulite::listSampleRates( const int direction, const size_t channel ) const
 {
-    //printf("listSampleRates dir: %d, channel: %ld\n", direction, channel);
     std::vector<double> options;
 	options.push_back( 4000000 );
-    /*options.push_back( 2000000 ); // we want currently to allow only 4 MSPS to make the FPGA implementation easier
-    options.push_back( 1333000 );
-    options.push_back( 1000000 );
-    options.push_back( 800000 );
-    options.push_back( 666000 );
-    options.push_back( 500000 );
-    options.push_back( 400000 );*/
 	return(options);
 }
 
@@ -293,12 +280,7 @@ static at86rf215_radio_rx_bw_en convertRxBandwidth(double bw_numeric)
     if (fabs(bw_numeric - (1250000*fact)) < 1) return at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ;
     if (fabs(bw_numeric - (1600000*fact)) < 1) return at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ;
     if (fabs(bw_numeric - (2000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ;
-
-    //if (fabs(bw_numeric - (2500000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFCCKHZ;
-    //if (fabs(bw_numeric - (3000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFDDHZ;
-    //if (fabs(bw_numeric - (4000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFEEKHZ;
-    //if (fabs(bw_numeric - (5000000*fact)) < 1) return at86rf215_radio_rx_bw_BW2000KHZ_IFFFKHZ;
-    
+   
     return at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ;
 }
 
@@ -318,11 +300,6 @@ static double convertRxBandwidth(at86rf215_radio_rx_bw_en bw_en)
     if (at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ == bw_en) return 1250000 * fact;
     if (at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ == bw_en) return 1600000 * fact;
     if (at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ == bw_en) return 2000000 * fact;
-
-    //if (at86rf215_radio_rx_bw_BW2000KHZ_IFCCKHZ == bw_en) return 2500000 * fact;
-    //if (at86rf215_radio_rx_bw_BW2000KHZ_IFDDHZ == bw_en) return 3000000 * fact;
-    //if (at86rf215_radio_rx_bw_BW2000KHZ_IFEEKHZ == bw_en) return 4000000 * fact;
-    //if (at86rf215_radio_rx_bw_BW2000KHZ_IFFFKHZ == bw_en) return 5000000 * fact;
     
     return 2000000 * fact;
 }
@@ -374,12 +351,12 @@ void Cariboulite::setBandwidth( const int direction, const size_t channel, const
 		if (modem_bw < (160000*BW_SHIFT_FACT) )
 		{
 			modem_bw = 160000*BW_SHIFT_FACT;
-			if (bw <= 20000.0f) sample_queue_rx->setDigitalFilter(SoapySDR::Stream::DigitalFilter_20KHz);
-			else if (bw <= 50000.0f) sample_queue_rx->setDigitalFilter(SoapySDR::Stream::DigitalFilter_50KHz);
-			else if (bw <= 100000.0f) sample_queue_rx->setDigitalFilter(SoapySDR::Stream::DigitalFilter_100KHz);
-			else sample_queue_rx->setDigitalFilter(SoapySDR::Stream::DigitalFilter_None);
+			if (bw <= 20000.0f) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_20KHz);
+			else if (bw <= 50000.0f) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_50KHz);
+			else if (bw <= 100000.0f) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_100KHz);
+			else stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_None);
 		}
-		else sample_queue_rx->setDigitalFilter(SoapySDR::Stream::DigitalFilter_None);
+		else stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_None);
 
 		cariboulite_radio_set_rx_bandwidth(&radio, convertRxBandwidth(modem_bw));
     }

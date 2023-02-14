@@ -42,15 +42,62 @@
 #ifndef __KERNEL__
 	#include <stdint.h>
 	#include <stdbool.h>
-	#include "bcm2835_smi.h"
 #else
+	#define BCM2835_SMI_IMPLEMENTATION
 	#include <linux/broadcom/bcm2835_smi.h>
 #endif
 
+#define DEVICE_NAME "smi-stream-dev"
+#define DRIVER_NAME "smi-stream-dev"
+#define DEVICE_MINOR 0
+
+typedef enum
+{
+	smi_stream_dir_smi_to_device = 0,		// device data-bus is highZ (TX)
+	smi_stream_dir_device_to_smi = 1,		// device data-bus is push-pull (RX)
+} smi_stream_direction_en;
+
+typedef enum
+{
+	smi_stream_channel_0 = 0,
+	smi_stream_channel_1 = 1,
+	smi_stream_channel_max,
+} smi_stream_channel_en;
+
+typedef enum
+{
+    smi_stream_idle = 0,
+    smi_stream_rx_channel_0 = 1,
+    smi_stream_rx_channel_1 = 2,
+    smi_stream_tx = 3,
+} smi_stream_state_en;
+
+#ifdef __KERNEL__
+struct bcm2835_smi_instance {
+	struct device *dev;
+	struct smi_settings settings;
+
+	__iomem void *smi_regs_ptr;
+	dma_addr_t smi_regs_busaddr;
+
+	struct dma_chan *dma_chan;
+	struct dma_slave_config dma_config;
+
+	struct bcm2835_smi_bounce_info bounce;
+
+	struct scatterlist buffer_sgl;
+
+	struct clk *clk;
+
+	/* Sometimes we are called into in an atomic context (e.g. by
+	   JFFS2 + MTD) so we can't use a mutex */
+	spinlock_t transaction_lock;
+};
+#endif // __KERNEL__
+
 // Expansion of ioctls
-#define SMI_STREAM_IOC_GET_NATIVE_BUF_SIZE	 _IO(BCM2835_SMI_IOC_MAGIC, (BCM2835_SMI_IOC_MAX+1))
-#define SMI_STREAM_IOC_SET_NON_BLOCK_READ	 _IO(BCM2835_SMI_IOC_MAGIC, (BCM2835_SMI_IOC_MAX+2))
-#define SMI_STREAM_IOC_SET_NON_BLOCK_WRITE	 _IO(BCM2835_SMI_IOC_MAGIC, (BCM2835_SMI_IOC_MAX+3))
-#define SMI_STREAM_IOC_SET_STREAM_STATUS	 _IO(BCM2835_SMI_IOC_MAGIC, (BCM2835_SMI_IOC_MAX+4))
+#define SMI_STREAM_IOC_GET_NATIVE_BUF_SIZE	 	_IO(BCM2835_SMI_IOC_MAGIC,(BCM2835_SMI_IOC_MAX+1))
+#define SMI_STREAM_IOC_SET_STREAM_STATUS	 	_IO(BCM2835_SMI_IOC_MAGIC,(BCM2835_SMI_IOC_MAX+2))
+#define SMI_STREAM_IOC_SET_STREAM_IN_CHANNEL 	_IO(BCM2835_SMI_IOC_MAGIC,(BCM2835_SMI_IOC_MAX+3))
 
 #endif /* _SMI_STREAM_DEV_H_ */

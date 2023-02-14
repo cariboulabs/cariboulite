@@ -269,7 +269,7 @@ double at86rf215_radio_get_frequency( /*IN*/ at86rf215_radio_channel_mode_en mod
     float actual_freq = (nchannel*_fine_freq_pll_src[mode]) / ((float)(1<<16)) + _fine_freq_starts[mode];
 
     *center_freq_25khz_res = (nchannel >> 8) & 0xFFFF;
-    *channel_number = 		 (nchannel >> 0) & 0xFF;
+    *channel_number = (nchannel >> 0) & 0xFF;
     return actual_freq;
 }
 

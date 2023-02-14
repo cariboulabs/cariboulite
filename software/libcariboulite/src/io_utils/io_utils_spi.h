@@ -7,8 +7,10 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include "io_utils.h"
+
 
 #define IO_UTILS_MAX_CHIPS	10
 
@@ -66,6 +68,7 @@ int io_utils_spi_close(io_utils_spi_st* dev);
 int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_mi_mo, int mode,
                             io_utils_spi_chip_type_en chip_type, io_utils_hard_spi_st *hard_dev);
 int io_utils_spi_remove_chip(io_utils_spi_st* dev, int chip_handle);
+int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend);
 int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
 							const unsigned char* tx_buf,
 							unsigned char* rx_buf,

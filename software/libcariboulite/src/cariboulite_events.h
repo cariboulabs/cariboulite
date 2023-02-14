@@ -8,20 +8,9 @@ extern "C" {
 
 #include "caribou_smi/caribou_smi.h"
 
-
-//=================================================================
-void caribou_smi_error_event( void *ctx, caribou_smi_channel_en ch, caribou_smi_error_en err);
-
-//=================================================================
-void caribou_smi_data_event(void *ctx, 
-                            void *service_context,
-                            caribou_smi_stream_type_en type,
-                            caribou_smi_channel_en ch,
-                            size_t num_samples_in_vec,
-							caribou_smi_sample_complex_int16 *cplx_vec,
-							caribou_smi_sample_meta *metadat_vec,
-                            size_t total_length_samples);
-
+void caribou_smi_error_event(caribou_smi_channel_en channel, void* context);					
+void caribou_smi_rx_data_event(caribou_smi_channel_en channel, caribou_smi_sample_complex_int16 *cplx_vec, size_t num_samples_in_vec, void* context);
+size_t caribou_smi_tx_data_event(caribou_smi_channel_en channel, caribou_smi_sample_complex_int16 *cplx_vec, size_t *num_samples_in_vec, void* context);
 
 #ifdef __cplusplus
 }

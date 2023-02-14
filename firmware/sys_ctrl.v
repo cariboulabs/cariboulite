@@ -1,6 +1,6 @@
 module sys_ctrl
     (
-        input               i_reset,
+        input               i_rst_b,
         input               i_sys_clk,        // FPGA Clock
 
         input [4:0]         i_ioc,
@@ -10,8 +10,13 @@ module sys_ctrl
         input               i_fetch_cmd,
         input               i_load_cmd,
 
-        output reg          o_soft_reset,
-        input [7:0]         i_error_list );
+        input [7:0]         i_error_list,
+
+        // controls output
+        output              o_debug_fifo_push,
+        output              o_debug_fifo_pull,
+        output              o_debug_smi_test,
+    );
 
     // MODULE SPECIFIC IOC LIST
     // ------------------------
@@ -20,7 +25,7 @@ module sys_ctrl
         ioc_system_version  = 5'b00001,     // read only
         ioc_manu_id         = 5'b00010,     // read only
         ioc_error_state     = 5'b00011,     // read only
-        ioc_soft_reset      = 5'b00100;     // write only
+        ioc_debug_modes     = 5'b00101;     // write only
 
     // MODULE SPECIFIC PARAMS
     // ----------------------
@@ -33,12 +38,24 @@ module sys_ctrl
     // -----------------------
     reg [3:0] reset_count;
     reg reset_cmd;
+	reg debug_fifo_push;
+	reg debug_fifo_pull;
+	reg debug_smi_test;
+
+	assign o_debug_fifo_push = debug_fifo_push;
+	assign o_debug_fifo_pull = debug_fifo_pull;
+	assign o_debug_smi_test = debug_smi_test;
 
     // MODULE MAIN PROCESS
     // -------------------
-    always @(posedge i_sys_clk)
+    always @(posedge i_sys_clk or negedge i_rst_b)
     begin
-        if (i_cs == 1'b1) begin
+        if (i_rst_b == 1'b0) begin
+            o_data_out <= 8'b00000000;
+            debug_fifo_push <= 1'b0;
+            debug_fifo_pull <= 1'b0;
+            debug_smi_test <= 1'b0;
+        end else if (i_cs == 1'b1) begin
             //=============================================
             // READ OPERATIONS
             //=============================================
@@ -55,31 +72,17 @@ module sys_ctrl
             //=============================================
             else if (i_load_cmd == 1'b1) begin
                 case (i_ioc)
-                    ioc_soft_reset: begin reset_cmd <= 1'b1; end
+					//----------------------------------------------
+					ioc_debug_modes: begin
+						debug_fifo_push <= i_data_in[0];
+						debug_fifo_pull <= i_data_in[1];
+						debug_smi_test <= i_data_in[2];
+					end
                 endcase
             end
         end else begin
             reset_cmd <= 1'b0;
         end
-    end
-
-    // Reset state process
-    always @(posedge i_sys_clk)
-    begin
-        if (reset_cmd) begin
-            reset_count <= 0;
-        end else begin
-            if (reset_count < 4'd15) begin
-                reset_count <= reset_count + 1'b1;
-                o_soft_reset <= 1'b1;
-            end else if (reset_count == 4'd15) begin
-                reset_count <= reset_count;
-                o_soft_reset <= 1'b0;
-            end else begin
-                reset_count <= 0; 
-            end
-        end
-        
     end
 
 endmodule // sys_ctrl

@@ -44,6 +44,7 @@ int io_utils_get_gpio_mode(int gpio, int print);
 void io_utils_set_gpio_mode(int gpio, io_utils_alt_en mode);
 void io_utils_write_gpio(int gpio, int value);
 void io_utils_write_gpio_with_wait(int gpio, int value, int nopcnt);
+int io_utils_wait_gpio_state(int gpio, int state, int cnt);
 int io_utils_read_gpio(int gpio);
 char* io_utils_get_alt_from_mode(io_utils_alt_en mode);
 int io_utils_setup_interrupt( int gpio,

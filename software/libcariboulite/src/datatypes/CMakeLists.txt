@@ -8,7 +8,7 @@ include_directories(/.)
 include_directories(${SUPER_DIR})
 
 #However, the file(GLOB...) allows for wildcard additions:
-set(SOURCES_LIB tsqueue.c tiny_list.c circular_buffer.cpp)
+set(SOURCES_LIB tsqueue.c tiny_list.c circular_buffer.cpp entropy.c)
 #add_compile_options(-Wall -Wextra -pedantic -Werror)
 add_compile_options(-Wall -Wextra -pedantic -Wno-missing-braces)
 

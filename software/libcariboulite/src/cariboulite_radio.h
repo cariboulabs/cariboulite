@@ -5,9 +5,7 @@
 extern "C" {
 #endif
 
-#include "cariboulite_config/cariboulite_config.h"
 #include "at86rf215/at86rf215.h"
-
 
 typedef enum
 {
@@ -21,27 +19,36 @@ typedef enum
     cariboulite_channel_6g = 1,
 } cariboulite_channel_en;
 
+typedef enum
+{
+    cariboulite_ext_ref_off     = 0,
+    cariboulite_ext_ref_26mhz   = 26,
+    cariboulite_ext_ref_32mhz   = 32,
+} cariboulite_ext_ref_freq_en;
+
+// Frequency Ranges
+#define CARIBOULITE_6G_MIN      (1.0e6)
+#define CARIBOULITE_6G_MAX      (6000.0e6)
+#define CARIBOULITE_MIN_LO      (85.0e6)
+#define CARIBOULITE_MAX_LO      (4200.0e6)
+#define CARIBOULITE_2G4_MIN     (2385.0e6)
+#define CARIBOULITE_2G4_MAX     (2495.0e6)
+#define CARIBOULITE_S1G_MIN1    (377.0e6)
+#define CARIBOULITE_S1G_MAX1    (530.0e6)
+#define CARIBOULITE_S1G_MIN2    (779.0e6)
+#define CARIBOULITE_S1G_MAX2    (1020.0e6)
+
+typedef enum
+{
+    conversion_dir_none = 0,
+    conversion_dir_up = 1,
+    conversion_dir_down = 2,
+} cariboulite_conversion_dir_en;
+
+// Radio Struct
 typedef struct
 {
-    cariboulite_channel_en              type;
-    bool                                cw_out;
-    bool                                lo_out;
-    cariboulite_ext_ref_src_en          ext_ref_src;
-    uint32_t                            ext_ref_freq_hz;
-
-    double                              requested_freq;
-    double                              modem_actual_freq;
-    double                              mixer_actual_freq;
-    double                              actual_freq;
-    double                              actual_freq_error;
-
-    bool                                modem_lock;
-    bool                                mixer_lock;    
-} cariboulite_freq_construction_st;
-
-typedef struct
-{
-    cariboulite_st*                     cariboulite_sys;
+    struct sys_st_t*               		sys;
     cariboulite_channel_dir_en          channel_direction;
     cariboulite_channel_en              type;
     bool                                active;
@@ -76,26 +83,20 @@ typedef struct
     double                              actual_rf_frequency;
     double                              requested_rf_frequency;
     double                              rf_frequency_error;
-    //cariboulite_freq_construction_st    freq;
 
     // SMI STREAMS
-    int                                 rx_stream_id;
-    int                                 tx_stream_id;
+    caribou_smi_channel_en              smi_channel_id;
 
     // OTHERS
     uint8_t                             random_value;
     float                               rx_thermal_noise_floor;
-
-    // CALIBRATION
-    int                                 num_of_rx_cal_points;
-    int                                 num_of_tx_cal_points;
-    float                               rx_power_gain_calibration[6001];
-    float                               tx_power_gain_calibration[6001];
 } cariboulite_radio_state_st;
 
-void cariboulite_radio_init(cariboulite_radio_state_st* radio, cariboulite_st *sys, cariboulite_channel_en type);
+// Radio API
+void cariboulite_radio_init(cariboulite_radio_state_st* radio, struct sys_st_t *sys, cariboulite_channel_en type);
 int cariboulite_radio_dispose(cariboulite_radio_state_st* radio);
 int cariboulite_radio_sync_information(cariboulite_radio_state_st* radio);
+int cariboulite_radio_ext_ref (struct sys_st_t *sys, cariboulite_ext_ref_freq_en ref);
 
 int cariboulite_radio_get_mod_state (cariboulite_radio_state_st* radio, at86rf215_radio_state_cmd_en *state);
 
@@ -164,7 +165,8 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 int cariboulite_radio_get_frequency(cariboulite_radio_state_st* radio, 
                                 	double *freq, double *lo, double* i_f);
 
-int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio, 
+int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
+                                            cariboulite_channel_dir_en dir,
                                 			bool active);
 
 int cariboulite_radio_set_cw_outputs(cariboulite_radio_state_st* radio, 
@@ -173,16 +175,16 @@ int cariboulite_radio_set_cw_outputs(cariboulite_radio_state_st* radio,
 int cariboulite_radio_get_cw_outputs(cariboulite_radio_state_st* radio, 
                                			bool *lo_out, bool *cw_out);
 
-int cariboulite_radio_create_smi_stream(cariboulite_radio_state_st* radio, 
-										cariboulite_channel_dir_en dir,
-										void* context);
-                               
-int cariboulite_radio_destroy_smi_stream(cariboulite_radio_state_st* radio, 
-                               			cariboulite_channel_dir_en dir);
+int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
+                            caribou_smi_sample_complex_int16* buffer,
+                            caribou_smi_sample_meta* metadata,
+                            size_t length);
+                            
+int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
+                            caribou_smi_sample_complex_int16* buffer,
+                            size_t length);  
 
-int cariboulite_radio_run_pause_stream(cariboulite_radio_state_st* radio, 
-										cariboulite_channel_dir_en dir,
-										bool run);
+size_t cariboulite_get_native_mtu_size_samples(cariboulite_radio_state_st* radio);
 
 #ifdef __cplusplus
 }

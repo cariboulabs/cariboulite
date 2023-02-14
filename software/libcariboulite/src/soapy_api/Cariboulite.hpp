@@ -17,9 +17,8 @@
 //#define ZF_LOG_LEVEL ZF_LOG_ERROR
 #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 
-#include "CaribouliteSampleQueue.hpp"
+#include "CaribouliteStream.hpp"
 #include "cariboulite_setup.h"
-#include "cariboulite_radios.h"
 #include "cariboulite_radio.h"
 
 
@@ -30,7 +29,7 @@ public:
 	~SoapyCaribouliteSession(void);
 
 public:
-        static cariboulite_st cariboulite_sys;
+        static sys_st sys;
         static std::mutex sessionMutex;
         static size_t sessionCount;
 };
@@ -140,8 +139,7 @@ public:
 
 public:
         cariboulite_radio_state_st radio;
-		SoapySDR::Stream* sample_queue_tx;
-		SoapySDR::Stream* sample_queue_rx;
+		SoapySDR::Stream* stream;
 
         // Static load time initializations
         static SoapyCaribouliteSession sess;
