@@ -1193,6 +1193,7 @@ static void put_src(zf_log_message *const msg, const src_location *const src)
 #define NONE        	"\033[0;37m"
 #define GREEN_DEBUG     "\033[0;32m"
 #define FBLUE_INFO		"\033[0;34m"
+#define FCYAN_INFO		"\033[0;36m"
 #define FYELLOW_WARN	"\033[0;33m"
 #define FRED_ERROR		"\033[0;31m"
 #define FPURPLE_FATAL	"\033[0;35m"
@@ -1202,7 +1203,7 @@ static char* font_colors[] =
 	NONE, 				// 0 level
 	NONE,				// Verbose
 	GREEN_DEBUG,  		// Debug
-	FBLUE_INFO, 		// Info
+	FCYAN_INFO, 		// Info
 	FYELLOW_WARN, 		// Warning
 	FRED_ERROR, 		// Error
 	FPURPLE_FATAL,		// Fatal

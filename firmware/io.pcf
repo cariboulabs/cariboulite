@@ -26,14 +26,15 @@
 
 
 #set_frequency i_glob_clock 125
-set_frequency w_clock_sys 64
+#set_frequency w_clock_sys 64
 #set_frequency smi_ctrl_ins.soe_and_reset 16
 #set_frequency i_smi_swe_srw 16
-#set_frequency lvds_clock_buf 64
-#set_frequency i_sck 10
+set_frequency lvds_clock_buf 64
+#set_frequency i_sck 5
 
 # CLOCK
 set_io i_glob_clock     A29
+set_io i_rst_b          A43
 
 # PMOD
 set_io io_pmod[0]       B24
@@ -80,7 +81,6 @@ set_io o_led1		            A39
 # SMI TO RPI
 set_io o_smi_write_req	    A19
 set_io o_smi_read_req	    B19
-set_io i_smi_a1	            A43
 set_io i_smi_a2		        A48
 set_io i_smi_a3		        A47
 

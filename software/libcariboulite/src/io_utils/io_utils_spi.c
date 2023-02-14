@@ -25,13 +25,25 @@ static char *io_utils_chip_types[] =
 //=====================================================================================
 static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
 {
+	if (handle >= IO_UTILS_MAX_CHIPS)
+	{
+		ZF_LOGE("chip handle illegal %d", handle);
+		return -1;
+	}
+
     io_utils_spi_chip_st* chip = &dev->chips[handle];
+	if (!chip->initialized)
+	{
+		ZF_LOGE("chip handle %d is not initialized", handle);
+		return -1;
+	}
+
     if (dev->current_chip == chip)
     {
         // nothing to setup => return
         return 0;
     }
-
+    
     if (dev->chips[handle].chip_type == io_utils_spi_chip_ice40_prog ||
         dev->chips[handle].chip_type == io_utils_spi_chip_type_rffc ||
         dev->chips[handle].chip_type == io_utils_spi_chip_type_modem_bitbang)
@@ -43,10 +55,11 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
         int miso_pin = chip->miso_mosi_swap?dev->mosi:dev->miso;
         int cs_pin = chip->cs_pin;
         int sck_pin = dev->sck;
-        io_utils_set_gpio_mode(chip->cs_pin, io_utils_alt_gpio_out);
-        io_utils_set_gpio_mode(dev->miso, io_utils_alt_gpio_in);
-        io_utils_set_gpio_mode(dev->mosi, io_utils_alt_gpio_out);
-        io_utils_set_gpio_mode(dev->sck, io_utils_alt_gpio_out);
+        io_utils_set_gpio_mode(cs_pin, io_utils_alt_gpio_out);
+        io_utils_set_gpio_mode(miso_pin, io_utils_alt_gpio_in);
+        io_utils_set_gpio_mode(mosi_pin, io_utils_alt_gpio_out);
+        io_utils_set_gpio_mode(sck_pin, io_utils_alt_gpio_out);
+		dev->current_chip = chip;
         return 0;
     }
 
@@ -74,7 +87,7 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
         io_utils_set_gpio_mode(dev->sck, io_utils_alt_4);
     }
 
-    return 0;
+    return setup_spi_dev;
 }
 
 //=====================================================================================
@@ -217,14 +230,13 @@ static int io_utils_ice40_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_s
     // in this case the chipselect is controlled outside due to
     // ice40 FPGA specifics
 
-	for (int byte_num = 0; byte_num < len; byte_num++)
+	for (unsigned int byte_num = 0; byte_num < len; byte_num++)
 	{
 		uint8_t current_tx_byte = tx[byte_num];
 
 		for (int bit = 0; bit < 8; bit ++)
 		{
-            io_utils_write_gpio_with_wait(data_pin,
-                                            (current_tx_byte&0x80)>>7, nop_cnt);
+            io_utils_write_gpio_with_wait(data_pin, (current_tx_byte&0x80)>>7, nop_cnt);
 
 			current_tx_byte <<= 1;
             io_utils_write_gpio_with_wait(sck_pin, 1, nop_cnt);
@@ -232,7 +244,7 @@ static int io_utils_ice40_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_s
 		}
 	}
 
-    io_utils_write_gpio_with_wait(sck_pin, 0, nop_cnt/2);
+    io_utils_write_gpio_with_wait(sck_pin, 0, nop_cnt / 2);
 
 	return 0;
 }
@@ -249,7 +261,7 @@ static int io_utils_modem_bitbang_transfer_spi(io_utils_spi_st* dev, io_utils_sp
 
     io_utils_write_gpio_with_wait(cs_pin, 0, nop_cnt);
 
-	for (int byte_num = 0; byte_num < len; byte_num++)
+	for (unsigned int byte_num = 0; byte_num < len; byte_num++)
 	{
 		uint8_t current_tx_byte = tx[byte_num];
         uint8_t rx_byte = 0;
@@ -383,7 +395,7 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
     // will never be greater but still it is good to check
     if (dev->num_of_chips >= IO_UTILS_MAX_CHIPS)
     {
-        ZF_LOGE("cannnot add - exceeded max %d", IO_UTILS_MAX_CHIPS);
+        ZF_LOGE("cannot add - exceeded max %d", IO_UTILS_MAX_CHIPS);
         pthread_mutex_unlock(&dev->mtx);
         return -1;
     }
@@ -428,6 +440,33 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
     pthread_mutex_unlock(&dev->mtx);
 
     return new_chip_index; // this is the chip handle for the app
+}
+
+//=====================================================================================
+int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
+{
+	ZF_LOGI("changing an spi device suspension = '%d' state", suspend);
+	if (dev == NULL)
+	{
+		ZF_LOGE("provided SPI struct is NULL");
+		return -1;
+	}
+
+	if (suspend)
+	{
+		io_utils_setup_gpio(dev->miso, io_utils_dir_input, io_utils_pull_off);
+		io_utils_setup_gpio(dev->mosi, io_utils_dir_input, io_utils_pull_off);
+		io_utils_setup_gpio(dev->sck, io_utils_dir_input, io_utils_pull_off);
+	}
+	else
+	{
+		dev->current_chip = NULL;
+		io_utils_set_gpio_mode(dev->miso, io_utils_alt_4);
+		io_utils_set_gpio_mode(dev->mosi, io_utils_alt_4);
+		io_utils_set_gpio_mode(dev->sck, io_utils_alt_4);
+	}
+
+	return 0;
 }
 
 //=====================================================================================
@@ -487,13 +526,16 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
     // lock the resource
     pthread_mutex_lock(&dev->mtx);
 
-    if (io_utils_spi_setup_chip(dev, chip_handle) < 0)
+    int set_up_hard = io_utils_spi_setup_chip(dev, chip_handle);
+    if (set_up_hard < 0)
     {
         ZF_LOGE("chip setup failed %d", chip_handle);
         goto io_utils_spi_transmit_error;
     }
 
     dev->current_chip = &dev->chips[chip_handle];
+    
+    //printf("dev->current_chip->chip_type ====== %d\n", dev->current_chip->chip_type);
 
     switch (dev->current_chip->chip_type)
     {
@@ -501,8 +543,14 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
         case io_utils_spi_chip_type_fpga_comm:
         case io_utils_spi_chip_type_modem:
         {
-            // a regular spi communication through lg_spi / spi_dev
-            ret = spiXfer(dev->current_chip->hard_spi_handle, (unsigned char*)tx_buf, rx_buf, length);
+            //printf("SPI XFER chiptype = %d\n", dev->current_chip->chip_type);
+            // a regular spi communication
+            ret = spiXfer(dev->current_chip->hard_spi_handle, (char*)tx_buf, (char*)rx_buf, length);
+            if (set_up_hard)
+            {
+                // workaround pigpio problem
+                ret = spiXfer(dev->current_chip->hard_spi_handle, (char*)tx_buf, (char*)rx_buf, length);
+            }
             if (ret < 0)
             {
                 ZF_LOGE("spi transfer failed (%d)", ret);

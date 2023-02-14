@@ -14,7 +14,7 @@
 // DEFINITIONS
 
 // STATIC VARIABLES
-static uint32_t *gpio_map;
+//static uint32_t *gpio_map;
 static char *io_utils_gpio_mode_strs[] = {"IN","OUT","ALT5","ALT4","ALT0","ALT1","ALT2","ALT3"};
 
 // STATIC FUNCTIONS
@@ -27,7 +27,7 @@ int io_utils_setup(pigpioSigHandler sigHandler)
    gpioCfgInterfaces(PI_DISABLE_FIFO_IF | PI_DISABLE_SOCK_IF | PI_LOCALHOST_SOCK_IF);
 
    int cfg = gpioCfgGetInternals();
-   cfg |= PI_CFG_NOSIGHANDLER;  // (1<<10)
+   cfg |= PI_CFG_NOSIGHANDLER;
    gpioCfgSetInternals(cfg);
 
    int status = gpioInitialise();
@@ -105,6 +105,20 @@ void io_utils_write_gpio_with_wait(int gpio, int value, int nopcnt)
     {
         __asm("nop");
     }
+}
+
+//=============================================================================================
+int io_utils_wait_gpio_state(int gpio, int state, int cnt)
+{
+   while(io_utils_read_gpio(gpio) == !state && cnt--)
+   {
+      io_utils_usleep(100000);
+   }
+   if (cnt <= 0)
+   {
+      return -1;
+   }
+   return 0;
 }
 
 //=============================================================================================

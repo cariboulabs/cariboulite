@@ -11,17 +11,14 @@
 SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
 {
     int count = 0;
-    cariboulite_board_info_st board_info;
+    hat_board_info_st board_info;
     std::vector<SoapySDR::Kwargs> results;
 
-
-	////////////////////////////////////
 	std::cout << "Printing 'findCariboulite' Request:" << std::endl;
 	for (auto const &pair: args) {
         std::cout << "    {" << pair.first << ": " << pair.second << "}\n";
     }
-	////////////////////////////////////
-    
+
 	// Library Version
     cariboulite_lib_version_st lib_version;
     cariboulite_lib_version(&lib_version);
@@ -30,7 +27,7 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
                 lib_version.major_version, lib_version.minor_version, lib_version.revision);
 
 	// Detect CaribouLite board
-    if ( ( count = cariboulite_config_detect_board(&board_info) ) <= 0)
+    if ( ( count = hat_detect_board(&board_info) ) <= 0)
     {
         SoapySDR_logf(SOAPY_SDR_DEBUG, "No Cariboulite boards found");
         return results;
@@ -41,30 +38,36 @@ SoapySDR::KwargsList findCariboulite(const SoapySDR::Kwargs &args)
     int devId = 0;
     for (int i = 0; i < count; i++) 
     {
-		for (int ch = 0; ch < 2; ch ++)
-		{
-			SoapySDR::Kwargs soapyInfo;
+        // make sure its our board
+        if (!strcmp(board_info.product_name, "CaribouLite RPI Hat") &&
+            (board_info.numeric_product_id == system_type_cariboulite_full ||
+             board_info.numeric_product_id == system_type_cariboulite_ism))
+        {
+            for (int ch = 0; ch < 2; ch ++)
+            {
+                SoapySDR::Kwargs soapyInfo;
 
-			// Construct serial numbers and labels
-			std::stringstream serialstr;
-			std::stringstream label;
-			serialstr << std::hex << ((board_info.numeric_serial_number << 1) | ch);
-			label << (ch?std::string("CaribouLite HiF"):std::string("CaribouLite S1G")) << "[" << serialstr.str() << "]";
+                // Construct serial numbers and labels
+                std::stringstream serialstr;
+                std::stringstream label;
+                serialstr << std::hex << ((board_info.numeric_serial_number << 1) | ch);
+                label << (ch?std::string("CaribouLite HiF"):std::string("CaribouLite S1G")) << "[" << serialstr.str() << "]";
 
-			SoapySDR_logf(SOAPY_SDR_DEBUG, "Serial %s", serialstr.str().c_str());        
+                SoapySDR_logf(SOAPY_SDR_DEBUG, "Serial %s", serialstr.str().c_str());        
 
-			soapyInfo["device_id"] = std::to_string(devId);
-			soapyInfo["label"] = label.str();
-			soapyInfo["serial"] = serialstr.str();
-			soapyInfo["name"] = board_info.product_name;
-			soapyInfo["vendor"] = board_info.product_vendor;
-			soapyInfo["uuid"] = board_info.product_uuid;
-			soapyInfo["version"] = board_info.product_version;
-			soapyInfo["channel"] = ch?"HiF":"S1G";
-			devId++;
+                soapyInfo["device_id"] = std::to_string(devId);
+                soapyInfo["label"] = label.str();
+                soapyInfo["serial"] = serialstr.str();
+                soapyInfo["name"] = board_info.product_name;
+                soapyInfo["vendor"] = board_info.product_vendor;
+                soapyInfo["uuid"] = board_info.product_uuid;
+                soapyInfo["version"] = board_info.product_version;
+                soapyInfo["channel"] = ch?"HiF":"S1G";
+                devId++;
 
-			results.push_back(soapyInfo);
-		}
+                results.push_back(soapyInfo);
+            }
+        }
     }
    
 	// no filterring specified, return all results

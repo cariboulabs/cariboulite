@@ -14,6 +14,11 @@
 #include "cariboulite_events.h"
 #include "cariboulite_fpga_firmware.h"
 
+
+// Global system object for signals
+sys_st* sigsys = NULL;
+
+//=================================================================
 void print_siginfo(siginfo_t *si)
 {
     printf("Signal [%d] caught, with the following information: \n", si->si_signo);
@@ -110,12 +115,8 @@ void print_siginfo(siginfo_t *si)
 
 }
 
-cariboulite_st* sigsys = NULL;
-
 //=======================================================================================
-void cariboulite_sigaction_basehandler (int signo,
-                                        siginfo_t *si,
-                                        void *ucontext)
+void cariboulite_sigaction_basehandler (int signo, siginfo_t *si, void *ucontext)
 {
     int run_first = 0;
     int run_last = 0;
@@ -123,15 +124,14 @@ void cariboulite_sigaction_basehandler (int signo,
 	// store the errno
 	int internal_errno = errno;
 
-
     if (sigsys->signal_cb)
     {
         switch(sigsys->sig_op)
         {
-            case cariboulite_signal_handler_op_last: run_last = 1; break;
-            case cariboulite_signal_handler_op_first: run_first = 1; break;
-            case cariboulite_signal_handler_op_override:
-            default: 
+            case signal_handler_op_last: run_last = 1; break;
+            case signal_handler_op_first: run_first = 1; break;
+            case signal_handler_op_override:
+            default:
                 sigsys->signal_cb(sigsys, sigsys->singal_cb_context, signo, si);
                 return;
         }
@@ -172,19 +172,38 @@ void cariboulite_sigaction_basehandler (int signo,
 	exit(0);
 }
 
+//=================================================
+static int cariboulite_setup_signals(sys_st *sys)
+{
+	cariboulite_setup_signal_handler (sys, NULL, signal_handler_op_last, NULL);
+	int signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGABRT, SIGBUS, SIGFPE, SIGSEGV, SIGTERM};
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sigsys = sys;
+    sa.sa_sigaction = cariboulite_sigaction_basehandler;
+    sa.sa_flags |= SA_RESTART | SA_SIGINFO;
+	
+	int nsigs = sizeof(signals)/sizeof(signals[0]);
+	
+	for (int i = 0; i < nsigs; i++)
+    {
+        if(sigaction(signals[i], &sa, NULL) != 0)
+        {
+            ZF_LOGE("error sigaction() [%d] signal registration", signals[i]);
+            return -cariboulite_signal_registration_failed;
+        }
+    }
+	return 0;
+}
+
 //=======================================================================================
-int cariboulite_setup_io (cariboulite_st* sys)
+int cariboulite_setup_io (sys_st* sys)
 {
     ZF_LOGI("Setting up board I/Os");
     if (io_utils_setup(NULL) < 0)
     {
         ZF_LOGE("Error setting up io_utils");
         return -1;
-    }
-
-    if (sys->reset_fpga_on_startup)
-    {
-        latticeice40_hard_reset(&sys->ice40, 0);
     }
 
     if (io_utils_spi_init(&sys->spi_dev) < 0)
@@ -216,7 +235,7 @@ int cariboulite_setup_io (cariboulite_st* sys)
 }
 
 //=======================================================================================
-int cariboulite_release_io (cariboulite_st* sys)
+int cariboulite_release_io (sys_st* sys)
 {
     ZF_LOGI("Releasing board I/Os - closing SPI");
     io_utils_spi_close(&sys->spi_dev);
@@ -227,87 +246,27 @@ int cariboulite_release_io (cariboulite_st* sys)
 }
 
 //=======================================================================================
-int cariboulite_configure_fpga (cariboulite_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path)
+int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path)
 {
-    int res = 0;
-    int error = 0;
+ 	switch (src)
+	{
+		case cariboulite_firmware_source_file:
+			return caribou_fpga_program_to_fpga_from_file(&sys->fpga, fpga_bin_path, sys->force_fpga_reprogramming);
+		break;
 
-    // Init FPGA programming
-    res = latticeice40_init(&sys->ice40, &sys->spi_dev);
-    if (res < 0)
-    {
-        ZF_LOGE("lattice ice40 init failed");
-        return -1;
-    }
+		case cariboulite_firmware_source_blob:
+			return caribou_fpga_program_to_fpga(&sys->fpga, cariboulite_firmware, sizeof(cariboulite_firmware), sys->force_fpga_reprogramming);
+		break;
 
-    if (src == cariboulite_firmware_source_file)
-    {
-        ZF_LOGI("Configuring the FPGA from '%s'", fpga_bin_path);
-        // push in the firmware / bitstream
-        res = latticeice40_configure(&sys->ice40, fpga_bin_path);
-        if (res < 0)
-        {
-            ZF_LOGE("lattice ice40 configuration failed");
-            // do not exit the function - releasing resources is needed anyway
-            error = 1;
-        }
-    }
-    else if (src == cariboulite_firmware_source_blob)
-    {
-        ZF_LOGI("Configuring the FPGA a internal firmware blob");
-        // push in the firmware / bitstream
-        res = latticeice40_configure_from_buffer(&sys->ice40, cariboulite_firmware, sizeof(cariboulite_firmware));
-        if (res < 0)
-        {
-            ZF_LOGE("lattice ice40 configuration failed");
-            // do not exit the function - releasing resources is needed anyway
-            error = 1;
-        }
-    }
-    else
-    {
-        ZF_LOGE("lattice ice40 configuration source is invalid");
-            // do not exit the function - releasing resources is needed anyway
-            error = 1;
-    }
-
-    // release the programming specific resources
-    res = latticeice40_release(&sys->ice40);
-    if (res < 0)
-    {
-        ZF_LOGE("lattice ice40 release failed");
-        return -1;
-    }
-
-    return -error;
+		default:
+			ZF_LOGE("lattice ice40 configuration source is invalid"); return -1;
+		break;
+	}
+	return 0;
 }
 
 //=======================================================================================
-int cariboulite_setup_ext_ref ( cariboulite_st *sys, cariboulite_ext_ref_freq_en ref)
-{
-    switch(ref)
-    {
-        case cariboulite_ext_ref_26mhz:
-            ZF_LOGD("Setting ext_ref = 26MHz");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_26mhz);
-            rffc507x_setup_reference_freq(&sys->mixer, 26e6);
-            break;
-        case cariboulite_ext_ref_32mhz:
-            ZF_LOGD("Setting ext_ref = 32MHz");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_32mhz);
-            rffc507x_setup_reference_freq(&sys->mixer, 32e6);
-            break;
-        case cariboulite_ext_ref_off:
-            ZF_LOGD("Setting ext_ref = OFF");
-            at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_4ma, at86rf215_clock_out_freq_off);
-        default:
-            return -1;
-        break;
-    }
-}
-
-//=======================================================================================
-int cariboulite_init_submodules (cariboulite_st* sys)
+int cariboulite_init_submodules (sys_st* sys)
 {
     int res = 0;
     ZF_LOGI("initializing submodules");
@@ -315,7 +274,7 @@ int cariboulite_init_submodules (cariboulite_st* sys)
     // SMI Init
     //------------------------------------------------------
     ZF_LOGD("INIT FPGA SMI communication");
-    res = caribou_smi_init(&sys->smi, caribou_smi_error_event, &sys);
+    res = caribou_smi_init(&sys->smi, &sys);
     if (res < 0)
     {
         ZF_LOGE("Error setting up smi submodule");
@@ -373,27 +332,33 @@ int cariboulite_init_submodules (cariboulite_st* sys)
     at86rf215_radio_setup_external_settings(&sys->modem, at86rf215_rf_channel_900mhz, &ext_ctrl);
     at86rf215_radio_setup_external_settings(&sys->modem, at86rf215_rf_channel_2400mhz, &ext_ctrl);
 
-	switch (sys->board_info.sys_type)
+	switch (sys->board_info.numeric_product_id)
 	{
-		case cariboulite_system_type_full:
+		//---------------------------------------------------
+		case system_type_cariboulite_full:
 		ZF_LOGD("This board is a Full version CaribouLite - setting ext_ref: modem, 32MHz");
 			// by default the ext_ref for the mixer - from the modem, 32MHz
 			sys->ext_ref_settings.src = cariboulite_ext_ref_src_modem;
     		sys->ext_ref_settings.freq_hz = 32000000;
-            cariboulite_setup_ext_ref (sys, cariboulite_ext_ref_32mhz);
+            cariboulite_radio_ext_ref (sys, cariboulite_ext_ref_32mhz);
 			break;
-    	case cariboulite_system_type_ism:
+			
+		//---------------------------------------------------
+    	case system_type_cariboulite_ism:
             ZF_LOGD("This board is a ISM version CaribouLite - setting ext_ref: OFF");
 			sys->ext_ref_settings.src = cariboulite_ext_ref_src_na;
     		sys->ext_ref_settings.freq_hz = 0;
-            cariboulite_setup_ext_ref (sys, cariboulite_ext_ref_off);
+            cariboulite_radio_ext_ref (sys, cariboulite_ext_ref_off);
+			break;
+			
+		//---------------------------------------------------
 		default:
 			ZF_LOGE("Unknown board type - we sheuldn't get here");
 			break;
 	}
 
 	// The mixer - only relevant to the full version
-	if (sys->board_info.sys_type == cariboulite_system_type_full)
+	if (sys->board_info.numeric_product_id == system_type_cariboulite_full)
 	{
 		// RFFC5072
 		//------------------------------------------------------
@@ -411,6 +376,17 @@ int cariboulite_init_submodules (cariboulite_st* sys)
 		rffc507x_calibrate(&sys->mixer);
 	}
 
+	// Print the SPI information
+	io_utils_spi_print_setup(&sys->spi_dev);
+	
+	// Initialize the two Radio High-Level devices	
+	cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);
+	cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_6g);
+	cariboulite_radio_activate_channel(&sys->radio_low, cariboulite_channel_dir_rx, false);
+	cariboulite_radio_activate_channel(&sys->radio_high, cariboulite_channel_dir_rx, false);
+	cariboulite_radio_sync_information(&sys->radio_low);
+	cariboulite_radio_sync_information(&sys->radio_high);
+
     ZF_LOGI("Cariboulite submodules successfully initialized");
     return 0;
 
@@ -421,60 +397,16 @@ cariboulite_init_submodules_fail:
 }
 
 //=======================================================================================
-int cariboulite_self_test(cariboulite_st* sys, cariboulite_self_test_result_st* res)
-{
-    memset(res, 0, sizeof(cariboulite_self_test_result_st));
-    int error_occured = 0;
-
-    //------------------------------------------------------
-    ZF_LOGI("Testing modem communication and versions");
-    
-    uint8_t modem_pn = 0, modem_vn = 0;
-    at86rf215_get_versions(&sys->modem, &modem_pn, &modem_vn);
-    if (modem_pn != 0x34)
-    {
-        ZF_LOGE("The assembled modem is not AT86RF215 (product number: 0x%02x)", modem_pn);
-        res->modem_fail = 1;
-        error_occured = 1;
-    }
-
-	//------------------------------------------------------
-	// Mixer only relevant to the full version
-	if (sys->board_info.sys_type == cariboulite_system_type_full)
-	{	
-		ZF_LOGI("Testing mixer communication and versions");
-		rffc507x_device_id_st dev_id;
-		rffc507x_readback_status(&sys->mixer, &dev_id, NULL);
-		if (dev_id.device_id != 0x1140 && dev_id.device_id != 0x11C0)
-		{
-			ZF_LOGE("The assembled mixer is not RFFC5071/2[A]");
-			res->mixer_fail = 1;
-			error_occured = 1;
-		}
-	}
-
-    //------------------------------------------------------
-    ZF_LOGI("Testing smi communication");
-    // TBD
-
-    // check and report problems
-    if (!error_occured)
-    {
-        ZF_LOGI("Self-test process finished successfully!");
-        return 0;
-    }
-    
-    ZF_LOGE("Self-test process finished with errors");
-    return -1;
-}
-
-//=======================================================================================
-int cariboulite_release_submodules(cariboulite_st* sys)
+int cariboulite_release_submodules(sys_st* sys)
 {
     int res = 0;
 
-	if (sys->system_status == cariboulite_sys_status_minimal_full_init)
+	if (sys->system_status == sys_status_full_init)
 	{
+		// Dispose high-level radio devices
+		cariboulite_radio_dispose(&sys->radio_low);
+		cariboulite_radio_dispose(&sys->radio_high);
+		
 		// SMI Module
 		//------------------------------------------------------
 		ZF_LOGD("CLOSE SMI");
@@ -490,14 +422,14 @@ int cariboulite_release_submodules(cariboulite_st* sys)
 
 		//------------------------------------------------------
 		// RFFC5072 only relevant to the full version
-		if (sys->board_info.sys_type == cariboulite_system_type_full)
+		if (sys->board_info.numeric_product_id == system_type_cariboulite_full)
 		{
 			ZF_LOGD("CLOSE MIXER - RFFC5072");
 			rffc507x_release(&sys->mixer);
 		}
 	}
 
-	if  (sys->system_status == cariboulite_sys_status_minimal_init)
+	if  (sys->system_status == sys_status_minimal_init)
 	{
 		// FPGA Module
 		//------------------------------------------------------
@@ -513,105 +445,182 @@ int cariboulite_release_submodules(cariboulite_st* sys)
     return 0;
 }
 
-//=================================================
-static int cariboulite_register_many_signals(int *sig_nos, int nsigs, struct sigaction *sa)
+//=======================================================================================
+int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res)
 {
-    for (int i = 0; i < nsigs; i++)
+    memset(res, 0, sizeof(cariboulite_self_test_result_st));
+    int error_occured = 0;
+
+    //------------------------------------------------------
+    ZF_LOGI("Testing modem communication and versions");
+    
+    uint8_t modem_pn = 0;
+	modem_pn = at86rf215_print_version(&sys->modem);
+    if (modem_pn != 0x34 && modem_pn != 0x35)
     {
-        if(sigaction(sig_nos[i], sa, NULL) != 0) 
-        {
-            ZF_LOGE("error sigaction() [%d] signal registration", sig_nos[i]);
-            return -cariboulite_signal_registration_failed;
-        }
+        ZF_LOGE("The assembled modem is not AT86RF215 / IQ variant (product number: 0x%02x)", modem_pn);
+        res->modem_fail = 1;
+        error_occured = 1;
     }
-    return 0;
+
+	//------------------------------------------------------
+	// Mixer only relevant to the full version
+	if (sys->board_info.numeric_product_id == system_type_cariboulite_full)
+	{	
+		ZF_LOGI("Testing mixer communication and versions");
+		rffc507x_device_id_st dev_id;
+		rffc507x_readback_status(&sys->mixer, &dev_id, NULL);
+		if (dev_id.device_id != 0x1140 && dev_id.device_id != 0x11C0)
+		{
+			ZF_LOGE("The assembled mixer is not RFFC5071/2[A]");
+			res->mixer_fail = 1;
+			error_occured = 1;
+		}
+	}
+
+    //------------------------------------------------------
+    ZF_LOGI("Testing smi communication");
+
+    // check and report problems
+    if (!error_occured)
+    {
+        ZF_LOGI("Self-test process finished successfully!");
+        return 0;
+    }
+
+    ZF_LOGE("Self-test process finished with errors");
+    return -1;
 }
 
 //=================================================
-int cariboulite_init_driver_minimal(cariboulite_st *sys, cariboulite_board_info_st *info)
+int cariboulite_init_system_production(sys_st *sys)
 {
-	//zf_log_set_output_level(ZF_LOG_ERROR);
-    zf_log_set_output_level(ZF_LOG_VERBOSE);
+	zf_log_set_output_level(ZF_LOG_VERBOSE);
 	ZF_LOGI("driver initializing");
 
-	if (sys->system_status != cariboulite_sys_status_unintialized)
+	if (sys->system_status != sys_status_unintialized)
 	{
-		ZF_LOGE("System is already initialized! returnig");
+		ZF_LOGE("System is already initialized! returning");
 		return 0;
 	}
 
     // signals
 	ZF_LOGI("Initializing signals");
-    cariboulite_setup_signal_handler (sys, NULL, cariboulite_signal_handler_op_last, NULL);
-
-    int signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGABRT, SIGBUS, SIGFPE, SIGSEGV, SIGTERM};
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sigsys = sys;
-    sa.sa_sigaction = cariboulite_sigaction_basehandler;
-    sa.sa_flags |= SA_RESTART | SA_SIGINFO;
-    
-	// RPI Internal Configurations
-    if(cariboulite_register_many_signals(signals, sizeof(signals)/sizeof(signals[0]), &sa) != 0) 
+    if(cariboulite_setup_signals(sys) != 0)
     {
         ZF_LOGE("error signal list registration");
         return -cariboulite_signal_registration_failed;
     }
 
-	if (cariboulite_setup_io (sys) != 0)
+    // IO
+	if (cariboulite_setup_io(sys) != 0)
+    {
+        return -cariboulite_io_setup_failed;
+    }
+	
+	// FPGA Init and Programming
+    ZF_LOGD("Initializing FPGA");
+    if (caribou_fpga_init(&sys->fpga, &sys->spi_dev) < 0)
+    {
+        ZF_LOGE("FPGA communication init failed");
+		cariboulite_deinit_system_production(sys);
+		return -1;
+    }
+	
+	// Initialize the two Radio High-Level devices	
+	cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);
+	cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_6g);
+	
+	return 0;
+}
+
+//=================================================
+int cariboulite_deinit_system_production(sys_st *sys)
+{
+	if (sys->sys_type == system_type_cariboulite_full)
+	{
+		ZF_LOGD("CLOSE MIXER - RFFC5072");
+		rffc507x_release(&sys->mixer);
+	}
+		
+	caribou_fpga_close(&sys->fpga);
+	
+    ZF_LOGI("Releasing board I/Os - closing SPI");
+    io_utils_spi_close(&sys->spi_dev);
+
+    ZF_LOGI("Releasing board I/Os - io_utils_cleanup");
+    io_utils_cleanup();
+    return 0;
+}
+
+//=================================================
+int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool production)
+{
+    zf_log_set_output_level(ZF_LOG_VERBOSE);
+	ZF_LOGI("driver initializing");
+
+	if (sys->system_status != sys_status_unintialized)
+	{
+		ZF_LOGE("System is already initialized! returning");
+		return 0;
+	}
+
+    // signals
+	ZF_LOGI("Initializing signals");
+    if(cariboulite_setup_signals(sys) != 0)
+    {
+        ZF_LOGE("error signal list registration");
+        return -cariboulite_signal_registration_failed;
+    }
+
+    // IO
+	if (cariboulite_setup_io(sys) != 0)
     {
         return -cariboulite_io_setup_failed;
     }
 
-	// External Configurations
-	// FPGA Init
-	//------------------------------------------------------
-    if (cariboulite_configure_fpga (sys, cariboulite_firmware_source_blob, NULL/*sys->firmware_path_operational*/) != 0)
-    {
-        cariboulite_release_io (sys);
-        return -cariboulite_fpga_configuration_failed;
-    }
-	
-    ZF_LOGD("INIT FPGA SPI communication");
+	// FPGA Init and Programming
+    ZF_LOGD("Initializing FPGA");
     if (caribou_fpga_init(&sys->fpga, &sys->spi_dev) < 0)
     {
         ZF_LOGE("FPGA communication init failed");
 		cariboulite_release_io (sys);
         return -cariboulite_fpga_configuration_failed;
     }
-	
-    ZF_LOGI("Testing FPGA communication and versions...");
-    caribou_fpga_get_versions (&sys->fpga, &sys->fpga_versions);
-    caribou_fpga_get_errors (&sys->fpga, &sys->fpga_error_status);
-    ZF_LOGI("FPGA Versions: sys: %d, manu.id: %d, sys_ctrl_mod: %d, io_ctrl_mod: %d, smi_ctrl_mot: %d", 
-                sys->fpga_versions.sys_ver, 
-                sys->fpga_versions.sys_manu_id, 
-                sys->fpga_versions.sys_ctrl_mod_ver, 
-                sys->fpga_versions.io_ctrl_mod_ver, 
-                sys->fpga_versions.smi_ctrl_mod_ver);
-    ZF_LOGI("FPGA Errors: %02X", sys->fpga_error_status);
 
-    if (sys->fpga_versions.sys_ver != 0x01 || sys->fpga_versions.sys_manu_id != 0x01)
+	if (sys->reset_fpga_on_startup)
     {
-        ZF_LOGE("FPGA firmware varsion error - sys_ver = %02X, manu_id = %02X", 
-            sys->fpga_versions.sys_ver, sys->fpga_versions.sys_manu_id);
+		caribou_fpga_soft_reset(&sys->fpga);
+    }
+
+	ZF_LOGD("Programming FPGA");
+	if (cariboulite_configure_fpga (sys, cariboulite_firmware_source_blob, NULL/*sys->firmware_path_operational*/) < 0)
+	{
+		ZF_LOGE("FPGA programming failed");
 		caribou_fpga_close(&sys->fpga);
 		cariboulite_release_io (sys);
         return -cariboulite_fpga_configuration_failed;
     }
 
-	// Now read the configuration from the FPGA (resistor set)
-	//caribou_fpga_set_io_ctrl_dig (&sys->fpga, int ldo, int led0, int led1);
+	// Reading the configuration from the FPGA (resistor set)
 	int led0 = 0, led1 = 0, btn = 0, cfg = 0;
 	caribou_fpga_get_io_ctrl_dig (&sys->fpga, &led0, &led1, &btn, &cfg);
-	ZF_LOGD("====> FPGA Digital Values: led0: %d, led1: %d, btn: %d, CFG[0..3]: [%d,%d,%d,%d]",
-		led0, led1, btn, (cfg >> 0) & 0x1, (cfg >> 1) & 0x1, (cfg >> 2) & 0x1, (cfg >> 3) & 0x1);
-	sys->fpga_config_res_state = cfg;
 
-    ZF_LOGI("Detected Board Information:");
+	ZF_LOGD("FPGA Digital Values: led0: %d, led1: %d, btn: %d, CFG[0..3]: [%d,%d,%d,%d]",
+		led0, led1, btn, (cfg >> 0) & 0x1, (cfg >> 1) & 0x1, (cfg >> 2) & 0x1, (cfg >> 3) & 0x1);
+	sys->fpga_config_resistor_state = cfg;
+
+	// if we are in the production phase, don't check hat configurations
+	if (production)
+	{
+		sys->system_status = sys_status_minimal_init;
+		return cariboulite_ok;
+	}
+	
     if (info == NULL)
     {
-        int detected = cariboulite_config_detect_board(&sys->board_info);
+		ZF_LOGI("Detecting Board Information");
+        int detected = cariboulite_detect_board(sys);
         if (!detected)
         {
             ZF_LOGW("The RPI HAT interface didn't detect any connected boards");
@@ -622,28 +631,28 @@ int cariboulite_init_driver_minimal(cariboulite_st *sys, cariboulite_board_info_
     }
     else
     {
-        memcpy(&sys->board_info, info, sizeof(cariboulite_board_info_st));
+        memcpy(&sys->board_info, info, sizeof(hat_board_info_st));
     }
-    cariboulite_config_print_board_info(&sys->board_info);
+    cariboulite_print_board_info(sys, true);
 
-	sys->system_status = cariboulite_sys_status_minimal_init;
+	sys->system_status = sys_status_minimal_init;
 
 	return cariboulite_ok;
 }
 
 
 //=================================================
-int cariboulite_init_driver(cariboulite_st *sys, cariboulite_board_info_st *info)
+int cariboulite_init_driver(sys_st *sys, hat_board_info_st *info)
 {
-	int ret = cariboulite_init_driver_minimal(sys, info);
+	int ret = cariboulite_init_driver_minimal(sys, info, false);
 	if (ret < 0)
 	{
 		return ret;
 	}
 
-	if (sys->system_status == cariboulite_sys_status_minimal_full_init)
+	if (sys->system_status == sys_status_full_init)
 	{
-		ZF_LOGE("System is already fully initialized! returnig");
+		ZF_LOGE("System is already fully initialized!");
 		return 0;
 	}
 
@@ -664,15 +673,15 @@ int cariboulite_init_driver(cariboulite_st *sys, cariboulite_board_info_st *info
         return -cariboulite_self_test_failed;
     }
 
-	sys->system_status = cariboulite_sys_status_minimal_full_init;
+	sys->system_status = sys_status_full_init;
 
     return cariboulite_ok;
 }
 
 //=================================================
-int cariboulite_setup_signal_handler (cariboulite_st *sys, 
-                                        caribou_signal_handler handler, 
-                                        cariboulite_signal_handler_operation_en op,
+int cariboulite_setup_signal_handler (sys_st *sys,
+                                        signal_handler handler,
+                                        signal_handler_operation_en op,
                                         void *context)
 {
     ZF_LOGI("setting up signal handler");
@@ -685,21 +694,22 @@ int cariboulite_setup_signal_handler (cariboulite_st *sys,
 }
 
 //=================================================
-void cariboulite_release_driver(cariboulite_st *sys)
+void cariboulite_release_driver(sys_st *sys)
 {
     ZF_LOGI("driver being released");
-	if (sys->system_status != cariboulite_sys_status_unintialized)
+	if (sys->system_status != sys_status_unintialized)
 	{
+		//caribou_fpga_set_io_ctrl_mode (&sys->fpga, false, ...);
 		cariboulite_release_submodules(sys);
 		cariboulite_release_io (sys);
 
-		sys->system_status = cariboulite_sys_status_unintialized;
+		sys->system_status = sys_status_unintialized;
 	}
     ZF_LOGI("driver released");
 }
 
 //=================================================
-int cariboulite_get_serial_number(cariboulite_st *sys, uint32_t* serial_number, int *count)
+int cariboulite_get_serial_number(sys_st *sys, uint32_t* serial_number, int *count)
 {
     if (serial_number) *serial_number = sys->board_info.numeric_serial_number;
     if (count) *count = 1;
@@ -712,4 +722,48 @@ void cariboulite_lib_version(cariboulite_lib_version_st* v)
     v->major_version = CARIBOULITE_MAJOR_VERSION;
     v->minor_version = CARIBOULITE_MINOR_VERSION;
     v->revision = CARIBOULITE_REVISION;
+}
+
+//===========================================================
+int cariboulite_detect_board(sys_st *sys)
+{
+	if (hat_detect_board(&sys->board_info) == 0)
+	{
+		// the board was not configured as a hat. Lets try and detect it directly
+		// through its EEPROM
+		if (hat_detect_from_eeprom(&sys->board_info) == 0)
+		{
+			return 0;
+		}
+	}
+
+	sys->sys_type = (system_type_en)sys->board_info.numeric_product_id;
+    return 1;
+}
+
+//===========================================================
+void cariboulite_print_board_info(sys_st *sys, bool log)
+{
+	hat_print_board_info(&sys->board_info, log);
+
+	if (log)
+	{
+		switch (sys->sys_type)
+		{
+			case system_type_cariboulite_full: ZF_LOGI("# Board Info - Product Type: CaribouLite FULL"); break;
+			case system_type_cariboulite_ism: ZF_LOGI("# Board Info - Product Type: CaribouLite ISM"); break;
+			case system_type_unknown: 
+			default: ZF_LOGI("# Board Info - Product Type: Unknown"); break;
+		}
+	}
+	else
+	{
+		switch (sys->sys_type)
+		{
+			case system_type_cariboulite_full: printf("	Product Type: CaribouLite FULL"); break;
+			case system_type_cariboulite_ism: printf("	Product Type: CaribouLite ISM"); break;
+			case system_type_unknown: 
+			default: printf("	Product Type: Unknown"); break;
+		}
+	}
 }

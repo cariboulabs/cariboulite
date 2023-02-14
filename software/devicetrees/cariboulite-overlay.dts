@@ -35,11 +35,11 @@
 		__overlay__ {
 			smi_pins: smi_pins {
 				/* Don't configure the top two address bits, as these are already used as ID_SD and ID_SC */
-				brcm,pins = 	  <2 3 4 6 7 8 9 10 11 12 13 14 15 24 25>;
-				brcm,function =   <5 5 5 5 5 5 5  5  5  5  5  5  5  5  5>;
+				brcm,pins = 	  <2 3 6 7 8 9 10 11 12 13 14 15 24 25>;
+				brcm,function =   <5 5 5 5 5 5 5  5  5  5  5  5  5  5>;
 
 				/* /CS, /WE and /OE are pulled high, as they are generally active low signals */
-				brcm,pull = 	  <2 2 2 2 2 0 0  0  0  0  0  0  0  0  0>;
+				brcm,pull = 	  <2 2 2 2 0 0  0  0  0  0  0  0  0  0>;
 			};
 		};
 	};

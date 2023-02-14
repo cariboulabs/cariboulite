@@ -1,32 +1,31 @@
-module io_ctrl
-    (
-        input               i_reset,
-        input               i_sys_clk,        // FPGA Clock
+module io_ctrl(	input               i_rst_b,
+				input               i_sys_clk,        // FPGA Clock
 
-        input [4:0]         i_ioc,
-        input [7:0]         i_data_in,
-        output reg [7:0]    o_data_out,
-        input               i_cs,
-        input               i_fetch_cmd,
-        input               i_load_cmd,
+				input [4:0]         i_ioc,
+				input [7:0]         i_data_in,
+				output reg [7:0]    o_data_out,
+				input               i_cs,
+				input               i_fetch_cmd,
+				input               i_load_cmd,
 
-        // Digital interfaces
-        input               i_button,
-        input [3:0]         i_config,
-        output              o_led0,
-        output              o_led1,
-        output [7:0]        o_pmod,
+				// Digital interfaces
+				input               i_button,
+				input [3:0]         i_config,
+				output              o_led0,
+				output              o_led1,
+				output [7:0]        o_pmod,
 
-        // Analog interfaces
-        output              o_mixer_fm,
-        output              o_rx_h_tx_l,
-        output              o_rx_h_tx_l_b,
-        output              o_tr_vc1,
-        output              o_tr_vc1_b,
-        output              o_tr_vc2,
-        output              o_shdn_tx_lna,
-        output              o_shdn_rx_lna,
-        output              o_mixer_en );
+				// Analog interfaces
+				output              o_mixer_fm,
+				output              o_rx_h_tx_l,
+				output              o_rx_h_tx_l_b,
+				output              o_tr_vc1,
+				output              o_tr_vc1_b,
+				output              o_tr_vc2,
+				output              o_shdn_tx_lna,
+				output              o_shdn_rx_lna,
+				output              o_mixer_en );
+				
 
     //=========================================================================
     // CONSTANT DEFINITIONS
@@ -106,13 +105,13 @@ module io_ctrl
     //=========================================================================
     // BUS COMMUNICATION LOGIC & RF CONTROL
     //=========================================================================
-    always @(posedge i_sys_clk)
+    always @(posedge i_sys_clk or negedge i_rst_b)
     begin
-        if (i_reset) begin
-            debug_mode = debug_mode_none;
-            rf_mode = rf_mode_low_power;
-            led0_state = 1'b0;
-            led1_state = 1'b0;
+        if (i_rst_b == 1'b0) begin
+            debug_mode <= debug_mode_none;
+            rf_mode <= rf_mode_low_power;
+            led0_state <= 1'b0;
+            led1_state <= 1'b0;
         end else begin
             if (i_cs == 1'b1) begin
                 //=============================================
@@ -204,11 +203,14 @@ module io_ctrl
     end
 
 
-    always @(posedge i_sys_clk)
+    always @(posedge i_sys_clk or negedge i_rst_b)
     begin
+    	if (i_rst_b == 1'b0) begin
+            
+        end
         // this is relevant only if the system runs
         // in an operational mode
-        if (debug_mode == debug_mode_none) begin
+        else if (debug_mode == debug_mode_none) begin
             case (rf_mode)
                 //--------------------------------------------------
                 rf_mode_low_power: begin

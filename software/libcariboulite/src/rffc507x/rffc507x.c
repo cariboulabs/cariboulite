@@ -124,9 +124,7 @@ int rffc507x_init(  rffc507x_st* dev,
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 
 	/* set to known state */
-	io_utils_write_gpio(dev->reset_pin, 0);
-	io_utils_usleep(10000);
-	io_utils_write_gpio(dev->reset_pin, 1);
+	rffc507x_reset(dev);
 
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
                         						io_utils_spi_chip_type_rffc, NULL);
@@ -154,14 +152,12 @@ int rffc507x_init(  rffc507x_st* dev,
 	set_RFFC507X_P2CTV(dev, 12);	
 	set_RFFC507X_P1CTV(dev, 12);
 	set_RFFC507X_RGBYP(dev, 1);
-	set_RFFC507X_P2MIXIDD(dev, 2);
-	set_RFFC507X_P1MIXIDD(dev, 2);
-
-	//set_RFFC507X_LFACT(dev, 1);
-
+	set_RFFC507X_P2MIXIDD(dev, 4);
+	set_RFFC507X_P1MIXIDD(dev, 4);
+	
 	// Others
-	set_RFFC507X_LDEN(dev, 7);
-	set_RFFC507X_LDLEV(dev, 7);
+	set_RFFC507X_LDEN(dev, 1);
+	set_RFFC507X_LDLEV(dev, 1);
 
 	set_RFFC507X_BYPAS(dev, 0);
 
@@ -176,6 +172,15 @@ int rffc507x_init(  rffc507x_st* dev,
 	dev->initialized = 1;
 
 	return 0;
+}
+
+//===========================================================================
+void rffc507x_reset(rffc507x_st* dev)
+{
+	io_utils_write_gpio(dev->reset_pin, 0);
+	io_utils_usleep(10000);
+	io_utils_write_gpio(dev->reset_pin, 1);
+	io_utils_usleep(20000);
 }
 
 //===========================================================================
@@ -449,9 +454,9 @@ void rffc507x_calibrate(rffc507x_st* dev)
 	rffc507x_regs_commit(dev);
 	*/
 
-	//set_RFFC507X_P1KV(dev, 0);
-	//set_RFFC507X_P2KV(dev, 0);
-	//rffc507x_regs_commit(dev);
+	set_RFFC507X_P1KV(dev, 0);
+	set_RFFC507X_P2KV(dev, 0);
+	rffc507x_regs_commit(dev);
 }
 
 //===========================================================================

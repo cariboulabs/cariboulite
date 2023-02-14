@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "cariboulite.h"
 #include "cariboulite_setup.h"
-#include "cariboulite_config/cariboulite_config_default.h"
+#include "cariboulite_config_default.h"
 
 CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
 
