@@ -74,7 +74,7 @@ execute_process (
 string(STRIP ${SOAPY_DEST} SOAPY_DEST)
 
 execute_process (
-    COMMAND bash -c "SoapySDRUtil --info | grep 'Search path' | cut -d':' -f2 | xargs | cut -d' ' -f1 | awk -F '/lib/Soapy' '{print $1}' | xargs"
+    COMMAND bash -c "SoapySDRUtil --info | grep 'Search path' | cut -d':' -f2 | xargs | cut -d' ' -f1 | awk -F '/lib/' '{print $1}' | xargs"
     OUTPUT_VARIABLE BIN_DEST
 )
 string(STRIP ${BIN_DEST} BIN_DEST)

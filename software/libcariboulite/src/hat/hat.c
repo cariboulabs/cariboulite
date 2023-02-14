@@ -388,7 +388,7 @@ int hat_fill_in(hat_st *hat)
 
 	// read 128 random bits from /dev/urandom
 	int random_file = open("/dev/urandom", O_RDONLY);
-	ssize_t result = read(random_file, &vinf->serial_1, 16);
+	ssize_t result = read(random_file, (void*)&vinf->serial_1, 16);
 	close(random_file);
 
 	if (result <= 0)

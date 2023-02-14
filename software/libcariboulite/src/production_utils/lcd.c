@@ -19,7 +19,7 @@
 static void* comm_thread(void* arg)
 {
 	lcd_st *dev = (lcd_st*)arg;
-	char buffer [10];
+	//char buffer [10];
 	ZF_LOGI("LCD enterring monitoring thread");
 
 	while (dev->thread_running)

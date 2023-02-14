@@ -251,15 +251,17 @@ int io_utils_execute_command_read(char *cmd, char* res, int res_size)
     {
         while (!feof(p) && (i < res_size) )
         {
-            fread(&res[i++],1,1,p);
+            int ret = fread(&res[i++],1,1,p);
+            if (ret != 1)
+            {
+                printf("io_utils_execute_command_read - fread failed\n");
+                return -1;
+            }
         }
         res[i] = 0;
         //printf("%s",res);
         pclose(p);
         return 0;
     }
-    else
-    {
-        return -1;
-    }
+    return -1;
 }

@@ -92,7 +92,7 @@ int production_rewind(production_sequence_st* prod);
 int production_close(production_sequence_st* prod);
 int production_start_tests(production_sequence_st* prod);
 int production_generate_report(production_sequence_st* prod, char* path, uint32_t serial_number);
-int production_generate_event_file(production_sequence_st* prod, char* path, char* event, char* tester);
+int production_generate_event_file(char* path, char* event, char* tester);
 int production_wait_for_button(production_sequence_st* prod, lcd_button_en but, char* top_line, char* bottom_line);
 int production_wait_input(production_sequence_st* prod, lcd_button_en *but, char* top_line, char* bottom_line);
 void production_git_sync_sequence(production_sequence_st* prod, char* commit_string);

@@ -175,7 +175,7 @@ int io_utils_get_rpi_info(io_utils_sys_info_st *info)
       strcpy(info->revision, revision);
 
       uint64_t rev;
-      sscanf(revision, "%llx", &rev);
+      sscanf(revision, "%lx", &rev);
       rev = rev & 0xefffffff;       // ignore preceeding 1000 for overvolt
 
       if (rev == 0x0002 || rev == 0x0003) {

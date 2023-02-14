@@ -43,7 +43,8 @@ else
         
         # Soapy
         cd SoapySDR
-        mkdir build && cd build
+        mkdir build
+        cd build
         cmake ../
         make -j4 && sudo -u root make install
         sudo -u root ldconfig
@@ -63,7 +64,8 @@ else
         # Soapy Remote (Server)
         cd ../..
         cd SoapyRemote
-        mkdir build && cd build
+        mkdir build
+        cd build
         cmake -DCMAKE_INSTALL_PREFIX:PATH=$SOAPYMODPATH_PREFIX ../
         make -j4 && sudo -u root make install
         sudo -u root ldconfig
@@ -86,7 +88,8 @@ fi
 printf "\n[  5  ] ${GREEN}Compiling main source...${NC}\n"
 printf "${CYAN}1. External Tools...${NC}\n"
 cd $ROOT_DIR/software/utils
-mkdir build && cd build
+mkdir build
+cd build
 cmake ../
 make
 mv $ROOT_DIR/software/utils/build/generate_bin_blob $ROOT_DIR/software/utils/generate_bin_blob

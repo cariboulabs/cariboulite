@@ -179,7 +179,7 @@ static int caribou_prog_configure_finish(caribou_prog_st *dev)
 	int ct = 0;
 	uint8_t byte = 0xFF;
 	uint8_t rxbyte = 0;
-	unsigned char dummybuf[10];
+	unsigned char dummybuf[10] = {0};
 	// Transmit at least 49 clock cycles of clock
 	io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
 								dummybuf,

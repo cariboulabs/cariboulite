@@ -275,7 +275,7 @@ int production_start_tests(production_sequence_st* prod)
 }
 
 //===================================================================
-int production_generate_event_file(production_sequence_st* prod, char* path, char* event, char* tester)
+int production_generate_event_file(char* path, char* event, char* tester)
 {
 	char filename[256] = {0};
 	char date1[128] = {0};
@@ -293,7 +293,7 @@ int production_generate_event_file(production_sequence_st* prod, char* path, cha
 		return -1;
 	}
 	
-	fprintf(fid, event);
+	fprintf(fid, "%s", event);
 	
 	fflush(fid);
 	fclose(fid);
