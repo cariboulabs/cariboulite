@@ -99,15 +99,21 @@ public:
     void setInnerStreamType(cariboulite_channel_dir_en dir);
 	void setDigitalFilter(DigitalFilterType type);
 	int setFormat(const std::string &fmt);
-	
-private:	// Internal data
+	inline int readerThreadRunning() {return reader_thread_running;}
+    void activateStream(int active) {stream_active = active;}
+    
+public:
     cariboulite_radio_state_st *radio;
     cariboulite_channel_dir_en native_dir;
     size_t mtu_size;
+    std::thread *reader_thread;
+    int stream_active;
+    int reader_thread_running;
+	circular_buffer<caribou_smi_sample_complex_int16> *rx_queue;
     
-	circular_buffer<caribou_smi_sample_complex_int16> *queue;
-    
-	caribou_smi_sample_complex_int16 *interm_native_buffer;
+	caribou_smi_sample_complex_int16 *interm_native_buffer1;
+    caribou_smi_sample_complex_int16 *interm_native_buffer2;
+    caribou_smi_sample_meta* interm_native_meta;
 	DigitalFilterType filterType;
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER>* filter_i;
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER>* filter_q;
@@ -122,5 +128,4 @@ private:	// Internal data
 
 public:
 	size_t getMTUSizeElements(void);
-    
 };
