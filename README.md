@@ -47,15 +47,16 @@ Note: the user will be requested to enter his password during the installation p
 
 ## Installation Troubleshooting
 1. **Modules**: Both the `spi` and `arm-i2c` dtoverlays should be disabled to run CaribouLite properly. The `libcariboulite` doen't use them. It uses direct access to `/dev/mem` to expose these peripherals (through the `pigpio` library).
-The interfaces can be disabled (or enabled back whenever needed) by either directly editing the `/dev/config.txt` file or by using the `sudo raspi-config` command. The latter is the preferred choice as it is straight forward, less error prone and it works on all RaspberryPi's OS distributions.
+The interfaces can be disabled (or enabled back whenever needed) by either directly editing the `/dev/config.txt` file or by using the `sudo raspi-config` command. The latter is the preferred choice as it is straight forward, less error prone and it works on all RaspberryPi's OS distributions (including DragonOS).
 If the direct editing path has been chosen (`/boot/config.txt`), the following lines
 should be commented out:
 `#dtparam=spi=on`
 `#dtparam=i2c_arm=on`
 
-1. **Kernel headers** - `libcariboulite` loads a custom kernel module (`smi_stream_dev`) during startup. The kernel module sources are location in : **`/software/libcariboulite/caribou_smi/kernel`**. [**TBD**]
+2. **Kernel headers** - `libcariboulite` loads a custom kernel module (`smi_stream_dev`) during startup. The kernel module sources are location in : **`/software/libcariboulite/caribou_smi/kernel`**. Recompilation of these .ko obejcts is needed whenever software is pulled. This requires currently to have the local host system to have the kernel headers installed. In addition, upgrading the kernel will require recompilation with the updated kernel headers. Once the `smi_stream_dev` is listed inside the main kernel tree, this process will become redundant.
 
-2.
+3. **sudo**ing - Currently hardware is accessed through the PIGPIO library. It should be given a root access to control the low level interfaces through the `/dev/mem` device. The relevant part of the software that is concerned in this matter is the "io_utils" sub-module. Once this module is re-designed to access the hardware through the "gpiomem" and "spidev" modules, this restrictions shall be mitigated (by the definitions of `udev` rules).
+So currently, sudo'ing is needed whenever CaribouLite is accessed (including sudo'ing python...).
 
 
 To compile the API library and SoapySDR API from code please click [here](/software/libcariboulite/README.md)
