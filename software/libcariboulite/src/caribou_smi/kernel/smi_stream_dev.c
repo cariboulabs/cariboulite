@@ -429,11 +429,10 @@ static struct dma_async_tx_descriptor *stream_smi_dma_submit_sgl(struct bcm2835_
 		write_smi_reg(inst, read_smi_reg(inst, SMICS) | SMICS_ACTIVE, SMICS);
 		return NULL;
 	}
-	//printk(KERN_ERR DRIVER_NAME": CB\n");
+
 	desc->callback = callback;
 	desc->callback_param = inst;
 
-	//printk(KERN_ERR DRIVER_NAME": SUBMIT_DESC\n");
 	if (dmaengine_submit(desc) < 0)
 	{
 		return NULL;
@@ -492,17 +491,14 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 		spin_unlock(&inst->transaction_lock);
 		return 0;
 	}
-	//printk(KERN_ERR DRIVER_NAME": ASYNC PENDING\n");
+    
 	dma_async_issue_pending(inst->dma_chan);
-
-	//printk(KERN_ERR DRIVER_NAME": PROGRAMMED READ\n");
 
 	// we have only 8 bit width
 	if (dma_dir == DMA_DEV_TO_MEM)
 	{
 		if (smi_init_programmed_read(inst, DMA_BOUNCE_BUFFER_SIZE) != 0)
 		{
-			//dev_err(inst->dev, "smi_init_programmed_read failed");
 			spin_unlock(&inst->transaction_lock);
 			return 0;
 		}
@@ -511,7 +507,6 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 	{
 		if (smi_init_programmed_write(inst, DMA_BOUNCE_BUFFER_SIZE) != 0)
 		{
-			//dev_err(inst->dev, "smi_init_programmed_write failed");
 			spin_unlock(&inst->transaction_lock);
 			return 0;
 		}
@@ -585,14 +580,29 @@ int reader_thread_stream_function(void *pv)
 		// timeout. This means that we didn't get enough data into the buffer during this period. we shall
 		// "continue" and try again
         start = ktime_get();
-		if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
-		{
-			dev_info(inst->dev, "DMA bounce timed out");
-			spin_lock(&inst->smi_inst->transaction_lock);
-			dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-			spin_unlock(&inst->smi_inst->transaction_lock);
-			continue;
-		}
+        while (1)
+        {
+            // wait for completion, but if not complete (timeout) - nevermind,
+            // try to wait more, unless someone tells us to stop
+            if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
+            {
+                dev_info(inst->dev, "DMA bounce timed out");
+            }
+            else
+            {
+                break;
+            }
+            
+            // after each timeout check if we are still entitled to keep trying
+            // if not, shut down the DMA transaction and continue empty loop
+            if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
+            {
+                spin_lock(&inst->smi_inst->transaction_lock);
+                dmaengine_terminate_sync(inst->smi_inst->dma_chan);
+                spin_unlock(&inst->smi_inst->transaction_lock);
+                break;
+            }
+        }
         t3 = ktime_to_ns(ktime_sub(ktime_get(), start));
         
         //--------------------------------------------------------
