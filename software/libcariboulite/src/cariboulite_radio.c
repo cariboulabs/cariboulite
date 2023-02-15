@@ -27,7 +27,7 @@ void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cari
 	memset (radio, 0, sizeof(cariboulite_radio_state_st));
 
 	radio->sys = sys;
-    radio->active = true;
+    radio->active = false;
     radio->channel_direction = cariboulite_channel_dir_rx;
     radio->type = type;
     radio->cw_output = false;
@@ -43,7 +43,7 @@ void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cari
 //=========================================================================
 int cariboulite_radio_dispose(cariboulite_radio_state_st* radio)
 {
-	radio->active = false;
+	cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
 
     at86rf215_radio_set_state( &radio->sys->modem, 
 								GET_MODEM_CH(radio->type), 
@@ -772,9 +772,6 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
         radio->requested_rf_frequency = f_rf;
         radio->rf_frequency_error = radio->actual_rf_frequency - radio->requested_rf_frequency;
         if (freq) *freq = act_freq;
-
-        // activate the channel according to the new configuration
-        //cariboulite_radio_activate_channel(radio, 1);
     }
 
     if (error >= 0)
@@ -782,8 +779,9 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
         ZF_LOGD("Frequency setting CH: %d, Wanted: %.2f Hz, Set: %.2f Hz (MOD: %.2f, MIX: %.2f)", 
                         radio->type, f_rf, act_freq, modem_act_freq, lo_act_freq);
     }
-
-    return -error;
+    
+    // reactivate the channel if it was active before the frequency change request was issued
+    return cariboulite_radio_activate_channel(radio, radio->channel_direction, radio->active);
 }
 
 //=========================================================================
@@ -801,21 +799,20 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                         bool activate)
 {  
     radio->channel_direction = dir;
+    radio->active = activate;
     
     ZF_LOGD("Activating channel %d, dir = %s, activate = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", activate);
 
     // Deactivation first
     if (activate == false) 
     {
+        int ret = 0;
         caribou_fpga_set_smi_channel (&radio->sys->fpga, (radio->type == cariboulite_channel_s1g) ? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
         caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, (radio->type == cariboulite_channel_s1g) ? 0 : 1, 0);
         
         // if we deactivate, first shut off the smi stream
-        if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle) != 0)
-        {
-            return -1;
-        }
-        usleep(100000);
+        ret = caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
+        usleep(30000);
         
         // then deactivate the modem's stream
         at86rf215_radio_set_state( &radio->sys->modem, 
@@ -825,7 +822,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         
         //caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
         ZF_LOGD("Setup Modem state trx_off");
-        return 0;
+        return ret;
     }
     
     
@@ -851,7 +848,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                 at86rf215_radio_state_cmd_rx);
         radio->state = at86rf215_radio_state_cmd_rx;
         ZF_LOGD("Setup Modem state cmd_rx");
-        usleep(100000);
+        usleep(30000);
         
         // after modem is activated turn on the the smi stream
         smi_stream_state_en smi_state = smi_stream_idle;
@@ -861,7 +858,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             smi_state = smi_stream_rx_channel_1;
         
         caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
-        caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g?0:1, 0);
+        caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? 0 : 1, 0);
         
         // apply the state
         if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_state) != 0)
