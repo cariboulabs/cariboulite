@@ -171,6 +171,7 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const long long timeNs,
                                     const size_t numElems)
 {
+    stream->activateStream(1);
     return cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), true);
 }
 
@@ -191,6 +192,7 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
      */
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
+    stream->activateStream(0);
 	return cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), false);
 }
 

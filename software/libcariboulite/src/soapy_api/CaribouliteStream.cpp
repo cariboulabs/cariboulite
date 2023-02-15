@@ -1,8 +1,45 @@
 #include "Cariboulite.hpp"
 #include <Iir.h>
 #include <byteswap.h>
+#include <chrono>
+
 
 #define NUM_BYTES_PER_CPLX_ELEM         ( sizeof(caribou_smi_sample_complex_int16) )
+#define NUM_NATIVE_MTUS_PER_QUEUE		( 5 )
+
+//=================================================================
+void ReaderThread(SoapySDR::Stream* stream)
+{
+    SoapySDR_logf(SOAPY_SDR_INFO, "Enterring Reader Thread");
+    
+    while (stream->readerThreadRunning())
+    {
+        if (!stream->stream_active)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
+        
+        int ret = cariboulite_radio_read_samples(stream->radio, 
+                                                    stream->interm_native_buffer1, 
+                                                    stream->interm_native_meta, 
+                                                    stream->mtu_size);
+        if (ret < 0)
+        {
+            if (ret == -1)
+            {
+                printf("reader thread failed to read SMI!\n");
+            }
+            // a special case for debug streams which are not
+            // taken care of in the soapy front-end (ret = -2)
+            ret = 0;
+        }
+        
+        stream->rx_queue->put(stream->interm_native_buffer1, ret);
+    }
+    
+    SoapySDR_logf(SOAPY_SDR_INFO, "Leaving Reader Thread");
+}
 
 //=================================================================
 SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
@@ -13,13 +50,19 @@ SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
     SoapySDR_logf(SOAPY_SDR_INFO, "Creating SampleQueue MTU: %d I/Q samples (%d bytes)", 
 				mtu_size, mtu_size * sizeof(caribou_smi_sample_complex_int16));
 
+    rx_queue = new circular_buffer<caribou_smi_sample_complex_int16>(
+                                    mtu_size * NUM_NATIVE_MTUS_PER_QUEUE);
+
 	// create the actual native queue
 	format = CARIBOULITE_FORMAT_INT16;
 
 	// Init the internal IIR filters
     // a buffer for conversion between native and emulated formats
     // the maximal size is the twice the MTU
-    interm_native_buffer = new caribou_smi_sample_complex_int16[2 * mtu_size];
+    interm_native_buffer1 = new caribou_smi_sample_complex_int16[mtu_size];
+    interm_native_buffer2 = new caribou_smi_sample_complex_int16[mtu_size];
+    interm_native_meta = new caribou_smi_sample_meta[2 * mtu_size];
+    
 	filterType = DigitalFilter_None;
 	filter_i = NULL;
 	filter_q = NULL;
@@ -32,6 +75,28 @@ SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
 	filt50_q.setup(4e6, 50e3/2);
 	filt100_q.setup(4e6, 100e3/2);
 	filt2p5M_q.setup(4e6, 2.5e6/2);
+    
+    reader_thread_running = 1;
+    stream_active = 0;
+    reader_thread = new std::thread(ReaderThread, this);
+}
+
+//=================================================================
+SoapySDR::Stream::~Stream()
+{
+    filterType = DigitalFilter_None;
+	filter_i = NULL;
+	filter_q = NULL;
+    
+    stream_active = 0;
+    reader_thread_running = 0;
+    reader_thread->join();
+    delete reader_thread;
+    
+    delete[] interm_native_buffer1;
+    delete[] interm_native_buffer2;
+    delete[] interm_native_meta;
+    delete rx_queue;
 }
 
 //=================================================================
@@ -58,14 +123,7 @@ void SoapySDR::Stream::setDigitalFilter(DigitalFilterType type)
 	filterType = type;
 }
 
-//=================================================================
-SoapySDR::Stream::~Stream()
-{
-    filterType = DigitalFilter_None;
-	filter_i = NULL;
-	filter_q = NULL;	
-    delete[] interm_native_buffer;
-}
+
 
 //=================================================================
 cariboulite_channel_dir_en SoapySDR::Stream::getInnerStreamType(void)
@@ -106,20 +164,8 @@ int SoapySDR::Stream::Write(caribou_smi_sample_complex_int16 *buffer, size_t num
 //=================================================================
 int SoapySDR::Stream::Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us)
 {
-    //printf("Reading %d elements\n", num_samples);
-    int ret = cariboulite_radio_read_samples(radio, buffer, (caribou_smi_sample_meta*)meta, num_samples);
-    if (ret < 0)
-    {
-        if (ret == -1)
-        {
-            printf("reader thread failed to read SMI!\n");
-        }
-        // a special case for debug streams which are not
-        // taken care of in the soapy front-end (ret = -2)
-        ret = 0;
-    }
-    //printf("Read %d elements\n", ret);
-    return ret;
+    if (rx_queue->size() < num_samples) return -1;
+    return rx_queue->get(buffer, num_samples);
 }
 
 //=================================================================
@@ -150,7 +196,7 @@ int SoapySDR::Stream::ReadSamples(sample_complex_float* buffer, size_t num_eleme
     num_elements = num_elements > mtu_size ? mtu_size : num_elements;
 
     // read out the native data type
-    int res = ReadSamples(interm_native_buffer, num_elements, timeout_us);
+    int res = ReadSamples(interm_native_buffer2, num_elements, timeout_us);
     if (res < 0)
     {
         return res;
@@ -160,8 +206,8 @@ int SoapySDR::Stream::ReadSamples(sample_complex_float* buffer, size_t num_eleme
 
     for (int i = 0; i < res; i++)
     {
-        buffer[i].i = (float)(interm_native_buffer[i].i) / max_val;
-        buffer[i].q = (float)(interm_native_buffer[i].q) / max_val;
+        buffer[i].i = (float)(interm_native_buffer2[i].i) / max_val;
+        buffer[i].q = (float)(interm_native_buffer2[i].q) / max_val;
     }
     return res;
 }
@@ -172,7 +218,7 @@ int SoapySDR::Stream::ReadSamples(sample_complex_double* buffer, size_t num_elem
     num_elements = num_elements > mtu_size ? mtu_size : num_elements;
 
     // read out the native data type
-    int res = ReadSamples(interm_native_buffer, num_elements, timeout_us);
+    int res = ReadSamples(interm_native_buffer2, num_elements, timeout_us);
     if (res < 0)
     {
         return res;
@@ -182,8 +228,8 @@ int SoapySDR::Stream::ReadSamples(sample_complex_double* buffer, size_t num_elem
 
     for (int i = 0; i < res; i++)
     {
-        buffer[i].i = (double)(interm_native_buffer[i].i) / max_val;
-        buffer[i].q = (double)(interm_native_buffer[i].q) / max_val;
+        buffer[i].i = (double)(interm_native_buffer2[i].i) / max_val;
+        buffer[i].q = (double)(interm_native_buffer2[i].q) / max_val;
     }
 
     return res;
@@ -195,7 +241,7 @@ int SoapySDR::Stream::ReadSamples(sample_complex_int8* buffer, size_t num_elemen
     num_elements = num_elements > mtu_size ? mtu_size : num_elements;
 
     // read out the native data type
-    int res = ReadSamples(interm_native_buffer, num_elements, timeout_us);
+    int res = ReadSamples(interm_native_buffer2, num_elements, timeout_us);
     if (res < 0)
     {
         return res;
@@ -203,8 +249,8 @@ int SoapySDR::Stream::ReadSamples(sample_complex_int8* buffer, size_t num_elemen
 
     for (int i = 0; i < res; i++)
     {
-        buffer[i].i = (int8_t)((interm_native_buffer[i].i >> 5)&0x00FF);
-        buffer[i].q = (int8_t)((interm_native_buffer[i].q >> 5)&0x00FF);
+        buffer[i].i = (int8_t)((interm_native_buffer2[i].i >> 5)&0x00FF);
+        buffer[i].q = (int8_t)((interm_native_buffer2[i].q >> 5)&0x00FF);
     }
 
     return res;
@@ -213,6 +259,7 @@ int SoapySDR::Stream::ReadSamples(sample_complex_int8* buffer, size_t num_elemen
 //=================================================================
 int SoapySDR::Stream::ReadSamplesGen(void* buffer, size_t num_elements, long timeout_us)
 {
+    //printf("reading ne=%d\n", num_elements);
 	switch (format)
 	{
 		case CARIBOULITE_FORMAT_FLOAT32: return ReadSamples((sample_complex_float*)buffer, num_elements, timeout_us); break;
