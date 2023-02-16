@@ -1,11 +1,12 @@
-#ifndef __SAMPLE_CIRC_BUFFER_H__
-#define __SAMPLE_CIRC_BUFFER_H__
+#ifndef __CIRC_BUFFER_H__
+#define __CIRC_BUFFER_H__
 
 #include <string.h>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-
+#include <chrono>
+#include <atomic>
 
 #define IS_POWER_OF_2(x)  	(!((x) == 0) && !((x) & ((x) - 1)))
 #define MIN(x,y)			((x)>(y)?(y):(x))
@@ -58,18 +59,23 @@ public:
 		return len;
 	}
 
-	size_t get(T *data, size_t length)
+	size_t get(T *data, size_t length, int timeout_us = 100000)
 	{
 		std::unique_lock<std::mutex> lock(mutex_);
 
 		if (block_read_)
-		{	
-      		cond_var_.wait(lock, [&]()
+		{
+            cond_var_.wait_for(lock, std::chrono::microseconds(timeout_us), [&]()
             {
                 // Acquire the lock only if
                 // we got enough items
                 return size() >= length;
             });
+            
+            if (size() < length)
+            {
+                return 0;
+            }
     	}
 
 		size_t len = MIN(length, head_ - tail_);
@@ -156,4 +162,4 @@ private:
 	bool block_read_;
 };
 
-#endif //__SAMPLE_CIRC_BUFFER_H__
+#endif
