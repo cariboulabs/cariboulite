@@ -89,6 +89,7 @@ module smi_ctrl (	input               i_rst_b,
     reg r_channel;
     assign o_channel = r_channel;
     reg [7:0] r_smi_test_count;
+    reg [31:0] r_fifo_pulled_data;
 
     wire soe_and_reset;
     assign soe_and_reset = i_rst_b & i_smi_soe_se;
@@ -98,8 +99,10 @@ module smi_ctrl (	input               i_rst_b,
         if (i_rst_b == 1'b0) begin
             int_cnt <= 5'd31;
             r_smi_test_count <= 8'h56;
+            r_fifo_pulled_data <= 32'h00000000;
         end else begin
-            w_fifo_pull_trigger <= (int_cnt == 5'd7) && !i_smi_test;
+            // trigger the fifo pulling on the second byte
+            w_fifo_pull_trigger <= (int_cnt == 5'd23) && !i_smi_test;
 
             if ( i_smi_test ) begin
                 if (r_smi_test_count == 0) begin
@@ -110,7 +113,12 @@ module smi_ctrl (	input               i_rst_b,
                 end
             end else begin
                 int_cnt <= int_cnt - 8;
-                o_smi_data_out <= i_fifo_pulled_data[int_cnt:int_cnt-7];
+                o_smi_data_out <= r_fifo_pulled_data[int_cnt:int_cnt-7];
+                
+                // update the internal register as soon as we reach the fourth byte
+                if (int_cnt == 5'd7) begin
+                    r_fifo_pulled_data <= i_fifo_pulled_data;
+                end
             end
 
         end
