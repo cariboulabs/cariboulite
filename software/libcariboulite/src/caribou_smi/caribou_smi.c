@@ -192,7 +192,7 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
         
     if (dev->debug_mode == caribou_smi_none)
     {
-        for (offs = 0; offs<(len-4); offs++)
+        for (offs = 0; offs<(len-CARIBOU_SMI_BYTES_PER_SAMPLE); offs++)
         {
             uint32_t s = __builtin_bswap32(*((uint32_t*)(&buffer[offs])));
             
@@ -206,7 +206,7 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
     }
     else if (dev->debug_mode == caribou_smi_push || dev->debug_mode == caribou_smi_pull)
     {
-        for (offs = 0; offs<(len-4); offs++)
+        for (offs = 0; offs<(len-CARIBOU_SMI_BYTES_PER_SAMPLE); offs++)
         {
             uint32_t s = /*__builtin_bswap32*/(*((uint32_t*)(&buffer[offs])));
             //printf("%d => %08X, %08X\n", offs, s, caribou_smi_count_bit(s^CARIBOU_SMI_DEBUG_WORD));
@@ -238,8 +238,8 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
                                 caribou_smi_sample_meta* meta_offset)
 {
     int offs = 0;
-	size_t actual_length = data_length;
-    int size_shortening_samples = 0;
+	size_t actual_length = data_length;                 // in bytes
+    int size_shortening_samples = 0;                    // in samples
 	uint32_t *actual_samples = (uint32_t*)(data);
     
 	caribou_smi_sample_complex_int16* cmplx_vec = samples_out;
@@ -255,8 +255,8 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
     // this may be accompanied by a few samples losses (sphoradic OS
     // scheduling) thus trying to stitch buffers one to another may
     // be not effective. The single sample is interpolated
-    size_shortening_samples = (offs > 0) ? (offs / 4 + 1) : 0;
-    actual_length -= size_shortening_samples * 4;
+    size_shortening_samples = (offs > 0) ? (offs / CARIBOU_SMI_BYTES_PER_SAMPLE + 1) : 0;
+    actual_length -= size_shortening_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;
     actual_samples = (uint32_t*)(data + offs);
         
     // analyze the data
@@ -274,7 +274,7 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 		//	[31:30]	[	29:17	] 	[ 16  ] 	[ 15:14 ] 	[	13:1	] 	[ 	0	]
 		//	[ '10']	[ I sample	]	[ '0' ] 	[  '01'	]	[  Q sample	]	[  'S'	]
 		
-		for (i = 0; i < actual_length / 4; i++)
+		for (i = 0; i < actual_length / CARIBOU_SMI_BYTES_PER_SAMPLE; i++)
 		{
 			uint32_t s = __builtin_bswap32(actual_samples[i]);
 
@@ -292,11 +292,14 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
             }
 		}
         
-        // last sample insterpolation (linear for I and Q)
+        // last sample insterpolation (linear for I and Q or preserve)
         if (size_shortening_samples > 0)
         {
-            cmplx_vec[i].i = 2*cmplx_vec[i-1].i - cmplx_vec[i-2].i;
-            cmplx_vec[i].q = 2*cmplx_vec[i-1].q - cmplx_vec[i-2].q;
+            //cmplx_vec[i].i = 2*cmplx_vec[i-1].i - cmplx_vec[i-2].i;
+            //cmplx_vec[i].q = 2*cmplx_vec[i-1].q - cmplx_vec[i-2].q;
+            
+            cmplx_vec[i].i = 110*cmplx_vec[i-1].i/100 - cmplx_vec[i-2].i/10;
+            cmplx_vec[i].q = 110*cmplx_vec[i-1].q/100 - cmplx_vec[i-2].q/10;
         }
 	}
     
@@ -410,7 +413,13 @@ static int caribou_smi_timeout_read(caribou_smi_st* dev,
 		return 0;
 	}
 
-	return read(dev->filedesc, buffer, len);
+	int ret = read(dev->filedesc, buffer, len);
+    
+    /*if (ret > 16)
+    {
+        smi_utils_dump_hex(buffer, 16);
+    }*/
+    return ret;
 }
 
 //=========================================================================
@@ -539,7 +548,6 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
         else
         {
             int data_affset = caribou_smi_rx_data_analyze(dev, dev->read_temp_buffer, ret, sample_offset, meta_offset);
-            
             if (data_affset < 0)
             {
                 return -1;

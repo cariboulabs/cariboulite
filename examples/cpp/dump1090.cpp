@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <iostream>
 #include <iomanip>
+#include <chrono>
 #include <csignal>
 #include <chrono>
 #include <thread>
@@ -76,7 +77,7 @@ void runSoapyProcess(	SoapySDR::Device *device,
     std::cout << "Starting stream loop, press Ctrl+C to exit..." << std::endl;
     device->activateStream(stream);
     signal(SIGINT, sigIntHandler);
-
+    
 	// Main Processing Loop
     while (not loopDone)
     {
@@ -85,8 +86,9 @@ void runSoapyProcess(	SoapySDR::Device *device,
         int ret = device->readStream(stream, (void* const*)&buff, numElems, flags, timeUS);
 		if (ret < 0)
         {
-            std::cerr << "Unexpected stream error " << ret << std::endl;
-            break;
+            //std::cerr << "Unexpected stream error " << ret << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
         }
 
 		switch (ret)

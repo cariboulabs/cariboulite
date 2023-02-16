@@ -259,7 +259,7 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 	smics_temp = read_smi_reg(smi_inst, SMICS) & ~(SMICS_ENABLE | SMICS_WRITE);
 	write_smi_reg(smi_inst, smics_temp, SMICS);
 
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 5000, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 10000U, success);
 	if (!success)
 	{
 		return -1;
@@ -275,10 +275,10 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 
 	/* Just to be certain: */
 	mb();
-	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(smi_inst), 5000, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(smi_inst), 20000U, success);
 	if (!success)
 	{
-		return -1;
+		return -2;
 	}
 	//set_address_direction(smi_stream_dir_device_to_smi);
 	write_smi_reg(smi_inst, smics_temp, SMICS);
@@ -297,7 +297,7 @@ static int smi_init_programmed_write(struct bcm2835_smi_instance *smi_inst, int 
 	smics_temp = read_smi_reg(smi_inst, SMICS) & ~SMICS_ENABLE;
 	write_smi_reg(smi_inst, smics_temp, SMICS);
 
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 5000, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 20000U, success);
 	if (!success)
 	{
 		return -1;
@@ -465,17 +465,13 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 		return 0;
 	}*/
 
-	//printk(KERN_ERR DRIVER_NAME": SEMA-INIT\n");
 	sema_init(&inst->bounce.callback_sem, 0);
-
-	//printk(KERN_ERR DRIVER_NAME": BOUNCE\n");
 
 	if (bounce)
 	{
 		*bounce = &(inst->bounce);
 	}
 
-	//printk(KERN_ERR DRIVER_NAME": SGL\n");
 	sgl = &(inst->bounce.sgl[buff_num]);
 	if (sgl == NULL)
 	{
@@ -483,8 +479,7 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 		spin_unlock(&inst->transaction_lock);
 		return 0;
 	}
-	
-	//printk(KERN_ERR DRIVER_NAME": SUBMIT SGL\n");
+
 	if (!stream_smi_dma_submit_sgl(inst, sgl, 1, dma_dir, stream_smi_dma_callback_user_copy)) 
 	{
 		dev_err(inst->dev, "sgl submit failed");
@@ -497,17 +492,21 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 	// we have only 8 bit width
 	if (dma_dir == DMA_DEV_TO_MEM)
 	{
-		if (smi_init_programmed_read(inst, DMA_BOUNCE_BUFFER_SIZE) != 0)
+        int ret = smi_init_programmed_read(inst, DMA_BOUNCE_BUFFER_SIZE);
+		if (ret != 0)
 		{
 			spin_unlock(&inst->transaction_lock);
+            //dev_err(inst->dev, "smi_init_programmed_read returned %d", ret);
 			return 0;
 		}
 	}
 	else 
 	{
-		if (smi_init_programmed_write(inst, DMA_BOUNCE_BUFFER_SIZE) != 0)
+        int ret = smi_init_programmed_write(inst, DMA_BOUNCE_BUFFER_SIZE);
+		if (ret != 0)
 		{
 			spin_unlock(&inst->transaction_lock);
+            //dev_err(inst->dev, "smi_init_programmed_write returned %d", ret);
 			return 0;
 		}
 	}
@@ -548,7 +547,8 @@ int reader_thread_stream_function(void *pv)
 		count = stream_smi_user_dma(inst->smi_inst, DMA_DEV_TO_MEM, &bounce, current_dma_buffer);
 		if (count != DMA_BOUNCE_BUFFER_SIZE || bounce == NULL)
 		{
-			//dev_err(inst->dev, "reader_thread return illegal count = %d", count);
+			dev_err(inst->dev, "reader_thread return illegal count = %d", count);
+            //current_dma_buffer = 1-current_dma_buffer;
 			continue;
 		}
         
@@ -590,6 +590,9 @@ int reader_thread_stream_function(void *pv)
             }
             else
             {
+                //--------------------------------------------------------
+                // Switch the buffers
+                current_dma_buffer = 1-current_dma_buffer;
                 break;
             }
             
@@ -604,10 +607,6 @@ int reader_thread_stream_function(void *pv)
             }
         }
         t3 = ktime_to_ns(ktime_sub(ktime_get(), start));
-        
-        //--------------------------------------------------------
-        // Switch the buffers
-        current_dma_buffer = 1-current_dma_buffer;
         
         //dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld %d", (long long)t1, (long long)t2, (long long)t3, current_dma_buffer);
 	}

@@ -172,7 +172,9 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const size_t numElems)
 {
     stream->activateStream(1);
-    return cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), true);
+    int ret = cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    return ret;
 }
 
 //========================================================

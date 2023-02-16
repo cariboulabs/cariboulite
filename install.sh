@@ -8,6 +8,8 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 ERROR="0"
 
+[ $(id -u) = 0 ] && echo "Please do not run this script as root" && exit 100
+
 # update the git repo on develop_R1 branch to include sub-modules
 printf "\n[  1  ] ${GREEN}CaribouLite Git Repo${NC}\n"
 #git checkout develop_R1
