@@ -43,7 +43,6 @@
 
 #define LO_MAX 5400
 #define LO_MAX_HZ (LO_MAX*1e6)
-#define FREQ_ONE_MHZ (1000*1000)
 
 //===========================================================================
 // Default register values
@@ -93,7 +92,8 @@ static inline void rffc507x_reg_commit(rffc507x_st* dev, uint8_t r)
 int rffc507x_regs_commit(rffc507x_st* dev)
 {
 	int r;
-	for (r = 0; r < RFFC507X_NUM_REGS; r++) {
+	for (r = 0; r < RFFC507X_NUM_REGS; r++) 
+    {
 		if ((dev->rffc507x_regs_dirty >> r) & 0x1)
 		{
 			rffc507x_reg_commit(dev, r);
@@ -120,10 +120,10 @@ int rffc507x_init(  rffc507x_st* dev,
 
 	dev->io_spi = io_spi;
 
-	/* Configure GPIO pins. */
+	// Configure GPIO pins
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 
-	/* set to known state */
+	// set to known state
 	rffc507x_reset(dev);
 
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
@@ -143,17 +143,19 @@ int rffc507x_init(  rffc507x_st* dev,
 								// interface
 	
 	set_RFFC507X_ENBL(dev, 0);	// The device is disabled
+    
+    // For the RFFC5072 mixer 2 and register bank PLL2 are normally used
 	set_RFFC507X_MODE(dev, 1);
 
 	// put zeros in freq contol registers
-	set_RFFC507X_P2VCOSEL(dev, 0);
-	set_RFFC507X_CTMAX(dev, 127);
-	set_RFFC507X_CTMIN(dev, 0);
-	set_RFFC507X_P2CTV(dev, 12);	
-	set_RFFC507X_P1CTV(dev, 12);
+	//set_RFFC507X_P2VCOSEL(dev, 0);
+	//set_RFFC507X_CTMAX(dev, 127);
+	//set_RFFC507X_CTMIN(dev, 0);
+	//set_RFFC507X_P2CTV(dev, 12);	
+	//set_RFFC507X_P1CTV(dev, 12);
 	set_RFFC507X_RGBYP(dev, 1);
-	set_RFFC507X_P2MIXIDD(dev, 4);
-	set_RFFC507X_P1MIXIDD(dev, 4);
+	//set_RFFC507X_P2MIXIDD(dev, 4);
+	//set_RFFC507X_P1MIXIDD(dev, 4);
 	
 	// Others
 	set_RFFC507X_LDEN(dev, 1);

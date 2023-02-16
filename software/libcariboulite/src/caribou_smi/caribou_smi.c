@@ -233,6 +233,7 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
 
 //=========================================================================
 static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
+                                caribou_smi_channel_en channel,
                                 uint8_t* data, size_t data_length, 
                                 caribou_smi_sample_complex_int16* samples_out, 
                                 caribou_smi_sample_meta* meta_offset)
@@ -289,6 +290,13 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 
                 if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
                 if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
+                
+                // reverse phase in the high channel
+                if (channel == caribou_smi_channel_2400)
+                {
+                    cmplx_vec[i].i = cmplx_vec[i].q;
+                    cmplx_vec[i].q = cmplx_vec[i].i;
+                }
             }
 		}
         
@@ -547,7 +555,7 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
         }
         else
         {
-            int data_affset = caribou_smi_rx_data_analyze(dev, dev->read_temp_buffer, ret, sample_offset, meta_offset);
+            int data_affset = caribou_smi_rx_data_analyze(dev, channel, dev->read_temp_buffer, ret, sample_offset, meta_offset);
             if (data_affset < 0)
             {
                 return -1;
