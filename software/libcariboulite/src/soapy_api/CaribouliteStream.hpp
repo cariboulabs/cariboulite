@@ -80,7 +80,6 @@ public:
 		DigitalFilter_50KHz,
 		DigitalFilter_100KHz,
 		DigitalFilter_200KHz,
-		DigitalFilter_2500KHz,
 	};
 
 public:
@@ -123,8 +122,6 @@ public:
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER> filt50_q;
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER> filt100_i;
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER> filt100_q;
-	Iir::Butterworth::LowPass<DIG_FILT_ORDER> filt2p5M_i;
-	Iir::Butterworth::LowPass<DIG_FILT_ORDER> filt2p5M_q;
 
 public:
 	size_t getMTUSizeElements(void);
