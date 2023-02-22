@@ -36,8 +36,6 @@ module sys_ctrl
 
     // MODULE INTERNAL SIGNALS
     // -----------------------
-    reg [3:0] reset_count;
-    reg reset_cmd;
 	reg debug_fifo_push;
 	reg debug_fifo_pull;
 	reg debug_smi_test;
@@ -80,8 +78,6 @@ module sys_ctrl
 					end
                 endcase
             end
-        end else begin
-            reset_cmd <= 1'b0;
         end
     end
 
