@@ -22,15 +22,15 @@
 # specifying clock constraints without needing the Python API.
 
 
-# For the iCE40 UltraPlus (iCE40LP1K-QN84) Breakout Board
+# For the iCE40 (iCE40LP1K-QN84)
 
 
-#set_frequency i_glob_clock 125
-#set_frequency w_clock_sys 64
-#set_frequency smi_ctrl_ins.soe_and_reset 16
-#set_frequency i_smi_swe_srw 16
-set_frequency lvds_clock_buf 64
-#set_frequency i_sck 5
+#set_frequency i_glob_clock 			125
+#set_frequency w_clock_sys 			64
+#set_frequency smi_ctrl_ins.soe_and_reset 	16
+#set_frequency i_smi_swe_srw 			16
+set_frequency lvds_clock_buf 			64
+#set_frequency i_sck 				5
 
 # CLOCK
 set_io i_glob_clock     A29

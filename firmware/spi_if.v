@@ -1,20 +1,22 @@
 `include "spi_slave.v"
 
-module spi_if (	input               i_rst_b,          // FPGA Reset
-				input               i_sys_clk,        // FPGA Clock
+module spi_if
+    (
+        input               i_rst_b,          // FPGA Reset
+        input               i_sys_clk,        // FPGA Clock
 
-				output reg [4:0]    o_ioc,
-				output reg [7:0]    o_data_in,          // data that was received over SPI
-				input [7:0]         i_data_out,         // data to be sent over the SPI
-				output reg [3:0]    o_cs,
-				output reg          o_fetch_cmd,
-				output reg          o_load_cmd,
+        output reg [4:0]    o_ioc,
+        output reg [7:0]    o_data_in,          // data that was received over SPI
+        input [7:0]         i_data_out,         // data to be sent over the SPI
+        output reg [3:0]    o_cs,
+        output reg          o_fetch_cmd,
+        output reg          o_load_cmd,
 
-				// SPI Interface
-				input               i_spi_sck,
-				output              o_spi_miso,
-				input               i_spi_mosi,
-				input               i_spi_cs_b );
+        // SPI Interface
+        input               i_spi_sck,
+        output              o_spi_miso,
+        input               i_spi_mosi,
+        input               i_spi_cs_b );
 
 	localparam
 		state_idle   = 3'b000,
