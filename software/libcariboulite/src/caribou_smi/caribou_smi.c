@@ -268,6 +268,8 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 	else
 	{
         unsigned int i = 0;
+        typeof(samples_out->i) temp;
+        
         // Print buffer
         //smi_utils_dump_bin(buffer, 16);
         
@@ -294,8 +296,9 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
                 // reverse phase in the high channel
                 if (channel == caribou_smi_channel_2400)
                 {
+                    temp           = cmplx_vec[i].i;
                     cmplx_vec[i].i = cmplx_vec[i].q;
-                    cmplx_vec[i].q = cmplx_vec[i].i;
+                    cmplx_vec[i].q = temp;
                 }
             }
 		}
