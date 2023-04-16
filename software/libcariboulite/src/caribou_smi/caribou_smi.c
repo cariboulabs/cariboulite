@@ -461,7 +461,7 @@ int caribou_smi_init(caribou_smi_st* dev,
     int fd = open(smi_file, O_RDWR);
     if (fd < 0)
     {
-        ZF_LOGE("couldn't open smi driver file '%s'", smi_file);
+        ZF_LOGE("couldn't open smi driver file '%s' (%s)", smi_file, strerror(errno));
         return -1;
     }
     dev->filedesc = fd;
