@@ -250,20 +250,17 @@ static inline int smi_enabled(struct bcm2835_smi_instance *inst)
 }*/
 
 /***************************************************************************/
-static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int num_transfers)
+static void smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int num_transfers)
 {
 	int smics_temp;
-	int success = 0;
 
 	/* Disable the peripheral: */
 	smics_temp = read_smi_reg(smi_inst, SMICS) & ~(SMICS_ENABLE | SMICS_WRITE);
 	write_smi_reg(smi_inst, smics_temp, SMICS);
 
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 10000U, success);
-	if (!success)
-	{
-		return -1;
-	}
+	// wait for the ENABLE to go low
+	while (read_smi_reg(smi_inst, SMICS) & SMICS_ENABLE)
+		;
 
 	/* Program the transfer count: */
 	write_smi_reg(smi_inst, num_transfers, SMIL);
@@ -271,48 +268,47 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 	/* re-enable and start: */
 	smics_temp |= SMICS_ENABLE;
 	write_smi_reg(smi_inst, smics_temp, SMICS);
+
 	smics_temp |= SMICS_CLEAR;
 
-	/* Just to be certain: */
-	mb();
-	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(smi_inst), 20000U, success);
-	if (!success)
-	{
-		return -2;
-	}
-	//set_address_direction(smi_stream_dir_device_to_smi);
+	/* IO barrier - to be sure that the last request have
+	   been dispatched in the correct order
+	*/
+	smp_mb();
+	// busy wait as long as the transaction is active (taking place)
+	while (read_smi_reg(smi_inst, SMICS) & SMICS_ACTIVE) 
+		;
+
+	// Clear the FIFO (reset it to zero contents)
 	write_smi_reg(smi_inst, smics_temp, SMICS);
+
+	// Start the transaction
 	smics_temp |= SMICS_START;
 	write_smi_reg(smi_inst, smics_temp, SMICS);
-	return 0;
 }
 
 /***************************************************************************/
-static int smi_init_programmed_write(struct bcm2835_smi_instance *smi_inst, int num_transfers)
+static void smi_init_programmed_write(struct bcm2835_smi_instance *smi_inst, int num_transfers)
 {
 	int smics_temp;
-	int success = 0;
    
 	/* Disable the peripheral: */
 	smics_temp = read_smi_reg(smi_inst, SMICS) & ~SMICS_ENABLE;
 	write_smi_reg(smi_inst, smics_temp, SMICS);
 
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 20000U, success);
-	if (!success)
-	{
-		return -1;
-	}
+	// Wait as long as the SMI is still enabled
+	while (read_smi_reg(smi_inst, SMICS) & SMICS_ENABLE)
+		;
 
 	/* Program the transfer count: */
 	write_smi_reg(smi_inst, num_transfers, SMIL);
 
 	/* setup, re-enable and start: */
-	//set_address_direction(smi_stream_dir_smi_to_device);
 	smics_temp |= SMICS_WRITE | SMICS_ENABLE;
 	write_smi_reg(smi_inst, smics_temp, SMICS);
+
 	smics_temp |= SMICS_START;
 	write_smi_reg(smi_inst, smics_temp, SMICS);
-	return 0;
 }
 
 
@@ -492,23 +488,11 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 	// we have only 8 bit width
 	if (dma_dir == DMA_DEV_TO_MEM)
 	{
-        int ret = smi_init_programmed_read(inst, DMA_BOUNCE_BUFFER_SIZE);
-		if (ret != 0)
-		{
-			spin_unlock(&inst->transaction_lock);
-            //dev_err(inst->dev, "smi_init_programmed_read returned %d", ret);
-			return 0;
-		}
+        smi_init_programmed_read(inst, DMA_BOUNCE_BUFFER_SIZE);
 	}
 	else 
 	{
-        int ret = smi_init_programmed_write(inst, DMA_BOUNCE_BUFFER_SIZE);
-		if (ret != 0)
-		{
-			spin_unlock(&inst->transaction_lock);
-            //dev_err(inst->dev, "smi_init_programmed_write returned %d", ret);
-			return 0;
-		}
+        smi_init_programmed_write(inst, DMA_BOUNCE_BUFFER_SIZE);
 	}
 	
 	//printk(KERN_ERR DRIVER_NAME": SPIN-UNLOCK\n");
