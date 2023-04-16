@@ -249,6 +249,7 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
     offs = caribou_smi_find_buffer_offset(dev, data, data_length);
     if (offs < 0)
     {
+        ZF_LOGW("SMI analyze: can't locate buffer offset");
         return -1;
     }
 
