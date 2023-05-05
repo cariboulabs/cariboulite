@@ -1198,7 +1198,7 @@ static void put_src(zf_log_message *const msg, const src_location *const src)
 #define FRED_ERROR		"\033[0;31m"
 #define FPURPLE_FATAL	"\033[0;35m"
 
-static char* font_colors[] = 
+static char* font_colors[] =
 {
 	NONE, 				// 0 level
 	NONE,				// Verbose
@@ -1262,6 +1262,7 @@ static void output_mem(const zf_log_spec *log, zf_log_message *const msg,
 			*hex++ = ' ';
 		}
 		msg->p = ascii;
+		put_color(msg, 0);
 		log->output->callback(msg, log->output->arg);
 	}
 }
@@ -1329,7 +1330,7 @@ static void _zf_log_write_imp(
 	if (0 != mem && ZF_LOG_PUT_MSG & mask)
 	{
 		output_mem(log, &msg, mem);
-	}	
+	}
 }
 
 
