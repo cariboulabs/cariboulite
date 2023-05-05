@@ -24,7 +24,7 @@ add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
 add_subdirectory(src/hat EXCLUDE_FROM_ALL)
 add_subdirectory(src/production_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
-add_subdirectory(src/iir EXCLUDE_FROM_ALL)
+add_subdirectory(src/iir)
 
 # Create the library cariboulite
 add_library(cariboulite STATIC ${SOURCES_LIB})
