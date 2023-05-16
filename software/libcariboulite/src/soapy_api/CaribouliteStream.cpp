@@ -119,7 +119,7 @@ SoapySDR::Stream::~Stream()
 //=================================================================
 size_t SoapySDR::Stream::getMTUSizeElements(void)
 {
-    return cariboulite_get_native_mtu_size_samples(radio);
+    return cariboulite_radio_get_native_mtu_size_samples(radio);
 }
 
 //=================================================================

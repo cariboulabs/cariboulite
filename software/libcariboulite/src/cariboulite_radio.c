@@ -22,7 +22,7 @@
 #define GET_SMI_CH(rad_ch)		((rad_ch)==cariboulite_channel_s1g ? caribou_smi_channel_900 : caribou_smi_channel_2400)
 
 //=========================================================================
-void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cariboulite_channel_en type)
+int cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cariboulite_channel_en type)
 {
 	memset (radio, 0, sizeof(cariboulite_radio_state_st));
 
@@ -35,9 +35,14 @@ void cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cari
     radio->smi_channel_id = GET_SMI_CH(type);
     
     // activation of the channel
-    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true);
+    if (cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true) != 0)
+	{
+		return -1;
+	}
+	
     usleep(10000);
-    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
+    
+	return cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
 }
 
 //=========================================================================
@@ -990,7 +995,7 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
 }
 
 //=========================================================================
-size_t cariboulite_get_native_mtu_size_samples(cariboulite_radio_state_st* radio)
+size_t cariboulite_radio_get_native_mtu_size_samples(cariboulite_radio_state_st* radio)
 {
     return caribou_smi_get_native_batch_samples(&radio->sys->smi);
 }
