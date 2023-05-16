@@ -420,7 +420,7 @@ static void modem_rx_iq(sys_st *sys)
     bool pull_debug = false;
     bool lfsr_debug = false;
 	double current_freq_lo = 900e6;
-	double current_freq_hi = 900e6;
+	double current_freq_hi = 2400e6;
     
     iq_test_reader_st ctrl = {0};
 	
