@@ -37,7 +37,7 @@ Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
 //========================================================
 Cariboulite::~Cariboulite()
 {
-	SoapySDR_logf(SOAPY_SDR_INFO, "Desposing radio type '%d'", radio.type);
+	SoapySDR_logf(SOAPY_SDR_INFO, "Disposing radio type '%d'", radio.type);
     cariboulite_radio_dispose(&radio);
     if (stream)	delete stream;
 }
@@ -234,31 +234,71 @@ bool Cariboulite::getGainMode( const int direction, const size_t channel ) const
  ******************************************************************/
 void Cariboulite::setSampleRate( const int direction, const size_t channel, const double rate )
 {
+    at86rf215_radio_sample_rate_en fs = at86rf215_radio_rx_sample_rate_4000khz;
     at86rf215_radio_f_cut_en rx_cuttof = radio.rx_fcut;
     at86rf215_radio_f_cut_en tx_cuttof = radio.tx_fcut;
+
+    if (fabs(rate - (400000)) < 1) fs = at86rf215_radio_rx_sample_rate_400khz;
+    if (fabs(rate - (500000)) < 1) fs = at86rf215_radio_rx_sample_rate_500khz;
+    if (fabs(rate - (666000)) < 1) fs = at86rf215_radio_rx_sample_rate_666khz;
+    if (fabs(rate - (800000)) < 1) fs = at86rf215_radio_rx_sample_rate_800khz;
+    if (fabs(rate - (1000000)) < 1) fs = at86rf215_radio_rx_sample_rate_1000khz;
+    if (fabs(rate - (1333000)) < 1) fs = at86rf215_radio_rx_sample_rate_1333khz;
+    if (fabs(rate - (2000000)) < 1) fs = at86rf215_radio_rx_sample_rate_2000khz;
+    if (fabs(rate - (4000000)) < 1) fs = at86rf215_radio_rx_sample_rate_4000khz;
 
     //printf("setSampleRate dir: %d, channel: %ld, rate: %.2f\n", direction, channel, rate);
     if (direction == SOAPY_SDR_RX)
     {
-        cariboulite_radio_set_rx_samp_cutoff(&radio, at86rf215_radio_rx_sample_rate_4000khz, rx_cuttof);
+        cariboulite_radio_set_rx_samp_cutoff((cariboulite_radio_state_st*)&radio, fs, rx_cuttof);
     }
     else if (direction == SOAPY_SDR_TX)
     {
-        cariboulite_radio_set_tx_samp_cutoff(&radio, at86rf215_radio_rx_sample_rate_4000khz, tx_cuttof);
+        cariboulite_radio_set_tx_samp_cutoff((cariboulite_radio_state_st*)&radio, fs, tx_cuttof);
     }
 }
 
 //========================================================
 double Cariboulite::getSampleRate( const int direction, const size_t channel ) const
 {
+    at86rf215_radio_sample_rate_en fs = at86rf215_radio_rx_sample_rate_4000khz;
+    
+    if (direction == SOAPY_SDR_RX)
+    {
+        cariboulite_radio_get_rx_samp_cutoff((cariboulite_radio_state_st*)&radio, &fs, NULL);
+    }
+    else if (direction == SOAPY_SDR_TX)
+    {
+        cariboulite_radio_get_tx_samp_cutoff((cariboulite_radio_state_st*)&radio, &fs, NULL);
+    }
+    
+    switch(fs)
+    {
+        case at86rf215_radio_rx_sample_rate_4000khz: return 4000000;
+        case at86rf215_radio_rx_sample_rate_2000khz: return 2000000;
+        case at86rf215_radio_rx_sample_rate_1333khz: return 1333000;
+        case at86rf215_radio_rx_sample_rate_1000khz: return 1000000;
+        case at86rf215_radio_rx_sample_rate_800khz: return 800000;
+        case at86rf215_radio_rx_sample_rate_666khz: return 666000;
+        case at86rf215_radio_rx_sample_rate_500khz: return 500000;
+        case at86rf215_radio_rx_sample_rate_400khz: return 400000;
+    }
     return 4000000;
 }
 
 //========================================================
 std::vector<double> Cariboulite::listSampleRates( const int direction, const size_t channel ) const
 {
+    //printf("listSampleRates dir: %d, channel: %ld\n", direction, channel);
     std::vector<double> options;
 	options.push_back( 4000000 );
+    options.push_back( 2000000 );
+    options.push_back( 1333000 );
+    options.push_back( 1000000 );
+    options.push_back( 800000 );
+    options.push_back( 666000 );
+    options.push_back( 500000 );
+    options.push_back( 400000 );
 	return(options);
 }
 
