@@ -1,3 +1,11 @@
+/**
+ * @file cariboulite_radio.h
+ * @author David Michaeli
+ * @date March 2023
+ * @brief System level radio API
+ *
+ * Radio device implementation exposing TxRx API
+ */
 #ifndef __CARIBOULABS_RADIO_H__
 #define __CARIBOULABS_RADIO_H__
 
@@ -7,6 +15,10 @@ extern "C" {
 
 #include "at86rf215/at86rf215.h"
 
+
+/**
+ * @brief Radio channel direction
+ */
 typedef enum
 {
     cariboulite_channel_dir_rx = 0,
