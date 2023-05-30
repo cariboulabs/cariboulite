@@ -15,6 +15,7 @@ module smi_ctrl
     output              o_rx_fifo_pull,
     input [31:0]        i_rx_fifo_pulled_data,
     input               i_rx_fifo_empty,
+    
     output              o_tx_fifo_push,
     output reg [31:0]   o_tx_fifo_pushed_data,
     input               i_tx_fifo_full,

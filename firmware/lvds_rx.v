@@ -72,7 +72,7 @@ module lvds_rx (
           if (r_phase_count == 3'b000) begin
             o_fifo_push <= ~i_fifo_full;
             r_state_if  <= state_idle;
-            o_fifo_data <= {o_fifo_data[29:0], i_ddr_data[1], r_sync_input};
+            o_fifo_data <= {o_fifo_data[29:0], i_ddr_data[1], 1'b0};
           end else begin
             o_fifo_push   <= 1'b0;
             r_phase_count <= r_phase_count - 1;

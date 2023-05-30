@@ -245,6 +245,9 @@ module top (
   );  // the 180 deg data output
 
 
+  // TODO!!!: w_lvds_rx_24_d1's route reports long routing. We need to put a register between it and the 
+  // Consumer: lvds_rx_24_inst
+
   // Differential 0.9GHz I/Q DDR signal
   SB_IO #(
       .PIN_TYPE   (6'b000000),        // Input only, DDR mode (sample on both pos edge and
@@ -296,9 +299,6 @@ module top (
   wire w_lvds_rx_24_d0;  // 0 degree
   wire w_lvds_rx_24_d1;  // 180 degree
 
-  wire w_lvds_tx_d0;  // 0 degree
-  wire w_lvds_tx_d1;  // 180 degree
-
   // RX FIFO Internals
   wire w_rx_09_fifo_write_clk;
   wire w_rx_09_fifo_push;
@@ -348,7 +348,10 @@ module top (
   wire channel;
 
 
-  complex_fifo rx_fifo (
+  complex_fifo  #(
+      .ADDR_WIDTH(10),  // 1024 samples
+      .DATA_WIDTH(16),  // 2x16 for I and Q 
+  ) rx_fifo (
       .wr_rst_b_i(i_rst_b),
       .wr_clk_i(w_rx_fifo_write_clk),
       .wr_en_i(w_rx_fifo_push),
@@ -359,10 +362,43 @@ module top (
       .rd_data_o(w_rx_fifo_pulled_data),
       .full_o(w_rx_fifo_full),
       .empty_o(w_rx_fifo_empty),
-      .debug_pull(w_debug_fifo_pull),
-      .debug_push(w_debug_fifo_push)
+      .debug_pull(1'b0/*w_debug_fifo_pull*/),
+      .debug_push(1'b0/*w_debug_fifo_push*/)
   );
-  complex_fifo tx_fifo (
+  
+  //=========================================================================
+  // LVDS TX SIGNAL TO MODEM
+  //=========================================================================
+  wire w_lvds_tx_d0;  // 0 degree
+  wire w_lvds_tx_d1;  // 180 degree
+  
+  
+  lvds_tx lvds_tx_inst (
+      .i_rst_b(i_rst_b),
+      .i_ddr_clk(lvds_clock_buf),
+      .o_ddr_data({w_lvds_tx_d0, w_lvds_tx_d1}),
+      .i_fifo_empty(w_tx_fifo_empty),
+      .o_fifo_read_clk(w_tx_fifo_read_clk),
+      .o_fifo_pull(w_tx_fifo_pull),
+      .i_fifo_data(w_tx_fifo_pulled_data),
+      .i_tx_state(~i_smi_a2),
+      .i_sync_input(1'b0),
+      .o_debug_state()
+  );
+  
+  wire w_tx_fifo_full;
+  wire w_tx_fifo_empty;
+  wire w_tx_fifo_read_clk;
+  wire w_tx_fifo_push;
+  wire w_tx_fifo_clock;
+  wire [31:0] w_tx_fifo_data;
+  wire w_tx_fifo_pull;
+  wire [31:0] w_tx_fifo_pulled_data;
+  
+  complex_fifo #(
+      .ADDR_WIDTH(10),  // 1024 samples
+      .DATA_WIDTH(16),  // 2x16 for I and Q 
+  ) tx_fifo (
       // smi clock is writing
       .wr_rst_b_i(i_rst_b),
       .wr_clk_i(w_tx_fifo_clock),
@@ -395,6 +431,7 @@ module top (
       .o_rx_fifo_pull(w_rx_fifo_pull),
       .i_rx_fifo_pulled_data(w_rx_fifo_pulled_data),
       .i_rx_fifo_empty(w_rx_fifo_empty),
+      
       // FIFO TX
       .o_tx_fifo_push(w_tx_fifo_push),
       .o_tx_fifo_pushed_data(w_tx_fifo_data),
@@ -408,7 +445,8 @@ module top (
       .o_smi_read_req(w_smi_read_req),
       .o_smi_write_req(w_smi_write_req),
       .o_channel(channel),
-      .i_smi_test(w_debug_smi_test),
+      .i_smi_test(1'b0/*w_debug_smi_test*/),
+      .o_cond_tx(),
       .o_address_error()
   );
 
