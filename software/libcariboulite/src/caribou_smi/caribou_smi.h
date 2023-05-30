@@ -90,6 +90,8 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
 
 size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev);
 
+void caribou_smi_setup_ios(caribou_smi_st* dev);
+
 #ifdef __cplusplus
 }
 #endif
