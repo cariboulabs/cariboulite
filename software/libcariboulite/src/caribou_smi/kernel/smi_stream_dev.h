@@ -69,7 +69,7 @@ typedef enum
     smi_stream_idle = 0,
     smi_stream_rx_channel_0 = 1,
     smi_stream_rx_channel_1 = 2,
-    smi_stream_tx = 3,
+    smi_stream_tx_channel = 3,
 } smi_stream_state_en;
 
 #ifdef __KERNEL__
