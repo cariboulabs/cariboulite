@@ -464,7 +464,7 @@ static int caribou_smi_timeout_read(caribou_smi_st* dev,
 }
 
 //=========================================================================
-void caribou_smi_setup_ios(hermon_smi_st* dev)
+void caribou_smi_setup_ios(caribou_smi_st* dev)
 {
 	// setup the addresses
     io_utils_set_gpio_mode(2, io_utils_alt_1);  // addr
