@@ -365,7 +365,7 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
     return offs;
 }
 
-/=========================================================================
+//=========================================================================
 static int caribou_smi_poll(caribou_smi_st* dev, uint32_t timeout_num_millisec, smi_stream_direction_en dir)
 {
     int ret = 0;
