@@ -79,18 +79,13 @@ int caribou_smi_check_modules(bool reload)
 {
 	int ret = 0;
 	int bcm_smi_dev_loaded = caribou_smi_check_modules_loaded("bcm2835_smi_dev");
-	int bcm_smi_loaded = caribou_smi_check_modules_loaded("bcm2835_smi");
 	int smi_stream_dev_loaded = caribou_smi_check_modules_loaded("smi_stream_dev");
+	int bcm_smi_loaded = caribou_smi_check_modules_loaded("bcm2835_smi");
 
 	if (bcm_smi_loaded != 1)
 	{
 		ZF_LOGE("SMI base driver not loaded - check device tree");
 		return -1;
-	}
-	
-	if (bcm_smi_dev_loaded == 1)
-	{
-		ret = caribou_smi_remove_module("bcm2835_smi_dev");
 	}
 
 	if (smi_stream_dev_loaded == 1 && reload)
@@ -99,6 +94,12 @@ int caribou_smi_check_modules(bool reload)
 		ret = caribou_smi_remove_module("smi_stream_dev");
 		smi_stream_dev_loaded = 0;
 	}
+		
+	if (bcm_smi_dev_loaded == 1)
+	{
+		ret = caribou_smi_remove_module("bcm2835_smi_dev");
+	}
+
 
 	if (ret != 0)
 	{

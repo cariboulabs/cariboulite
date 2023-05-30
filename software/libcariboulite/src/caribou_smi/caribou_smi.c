@@ -56,7 +56,7 @@ static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_setti
     printf("    dma enable: %c, passthru enable: %c\n", settings->dma_enable ? 'Y':'N', settings->dma_passthrough_enable ? 'Y':'N');
     printf("    dma threshold read: %d, write: %d\n", settings->dma_read_thresh, settings->dma_write_thresh);
     printf("    dma panic threshold read: %d, write: %d\n", settings->dma_panic_read_thresh, settings->dma_panic_write_thresh);
-    printf("    native kernel chunk size: %ld bytes", dev->native_batch_len);
+    printf("    native kernel chunk size: %ld bytes\n", dev->native_batch_len);
 }
 
 //=========================================================================
@@ -88,20 +88,53 @@ static int caribou_smi_get_smi_settings(caribou_smi_st *dev, struct smi_settings
 //=========================================================================
 static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings, bool print)
 {
-    settings->read_setup_time = 0;
-    settings->read_strobe_time = 2;
+    settings->read_setup_time = 1;
+    settings->read_strobe_time = 4;
     settings->read_hold_time = 0;
     settings->read_pace_time = 0;
 
     settings->write_setup_time = 1;
     settings->write_strobe_time = 4;
-    settings->write_hold_time = 1;
+    settings->write_hold_time = 0;
     settings->write_pace_time = 0;
 
+	// 8 bit on each transmission (4 TRX per sample)
     settings->data_width = SMI_WIDTH_8BIT;
+	
+	// Enable DMA
     settings->dma_enable = 1;
+	
+	// Whether or not to pack multiple SMI transfers into a single 32 bit FIFO word
     settings->pack_data = 1;
+	
+	// External DREQs enabled
     settings->dma_passthrough_enable = 1;
+	
+    // RX DREQ Threshold Level. 
+    // A RX DREQ will be generated when the RX FIFO exceeds this threshold level. 
+    // This will instruct an external AXI RX DMA to read the RX FIFO. 
+    // If the DMA is set to perform burst reads, the threshold must ensure that there is 
+    // sufficient data in the FIFO to satisfy the burst
+    // Instruction: Lower is faster response
+    settings->dma_read_thresh = 1;
+    
+    // TX DREQ Threshold Level. 
+    // A TX DREQ will be generated when the TX FIFO drops below this threshold level. 
+    // This will instruct an external AXI TX DMA to write more data to the TX FIFO.
+    // Instruction: Higher is faster response
+    settings->dma_write_thresh = 254;
+    
+    // RX Panic Threshold level.
+    // A RX Panic will be generated when the RX FIFO exceeds this threshold level. 
+    // This will instruct the AXI RX DMA to increase the priority of its bus requests.
+    // Instruction: Lower is more aggressive
+    settings->dma_panic_read_thresh = 16;
+    
+    // TX Panic threshold level.
+    // A TX Panic will be generated when the TX FIFO drops below this threshold level. 
+    // This will instruct the AXI TX DMA to increase the priority of its bus requests.
+    // Instruction: Higher is more aggresive
+    settings->dma_panic_write_thresh = 224;
 
     if (print)
     {
@@ -170,7 +203,7 @@ static void caribou_smi_print_debug_stats(caribou_smi_st* dev, uint8_t *buffer, 
     count ++;
     if (count % 10 == 0)
     {
-        printf("SMI DBG: ErrAccumCnt: %d, LastErrCnt: %d, ErrorRate: %.4g, bitrate: %.2f Mbps",
+        printf("SMI DBG: ErrAccumCnt: %d, LastErrCnt: %d, ErrorRate: %.4g, bitrate: %.2f Mbps\n",
                 dev->debug_data.error_accum_counter,
                 dev->debug_data.cur_err_cnt,
                 dev->debug_data.error_rate,
@@ -192,12 +225,16 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
 
     if (dev->debug_mode == caribou_smi_none)
     {
-        for (offs = 0; offs<(len-CARIBOU_SMI_BYTES_PER_SAMPLE); offs++)
+        for (offs = 0; offs<(len-(CARIBOU_SMI_BYTES_PER_SAMPLE*3)); offs++)
         {
-            uint32_t s = __builtin_bswap32(*((uint32_t*)(&buffer[offs])));
-
+            uint32_t s1 = *((uint32_t*)(&buffer[offs]));
+            uint32_t s2 = *((uint32_t*)(&buffer[offs+4]));
+            uint32_t s3 = *((uint32_t*)(&buffer[offs+8]));
+			
             //printf("%d => %08X\n", offs, s);
-            if ((s & 0xC001C000) == 0x80004000)
+            if ((s1 & 0xC001C000) == 0x80004000 &&
+                (s2 & 0xC001C000) == 0x80004000 &&
+                (s3 & 0xC001C000) == 0x80004000)
             {
                 found = true;
                 break;
@@ -210,7 +247,7 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
         {
             uint32_t s = /*__builtin_bswap32*/(*((uint32_t*)(&buffer[offs])));
             //printf("%d => %08X, %08X\n", offs, s, caribou_smi_count_bit(s^CARIBOU_SMI_DEBUG_WORD));
-            if (smi_utils_count_bit(s^CARIBOU_SMI_DEBUG_WORD) < 10)
+            if (smi_utils_count_bit(s^CARIBOU_SMI_DEBUG_WORD) < 4)
             {
                 found = true;
                 break;
@@ -249,7 +286,6 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
     offs = caribou_smi_find_buffer_offset(dev, data, data_length);
     if (offs < 0)
     {
-        ZF_LOGW("SMI analyze: can't locate buffer offset");
         return -1;
     }
 
@@ -280,13 +316,18 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
         {   /* S1G */
             for (i = 0; i < actual_length / CARIBOU_SMI_BYTES_PER_SAMPLE; i++)
             {
-                uint32_t s = __builtin_bswap32(actual_samples[i]);
+                uint32_t s = /*__builtin_bswap32*/(actual_samples[i]);
 
                 if (meta_offset) meta_offset[i].sync = s & 0x00000001;
                 if (cmplx_vec)
-                {   /* extraction and sign extension */
-                    cmplx_vec[i].q = (int16_t)((s <<  2) & -8)/8;   /* Q' = Q */
-                    cmplx_vec[i].i = (int16_t)((s >> 14) & -8)/8;   /* I' = I */
+                {
+                    s >>= 1;
+	                cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
+	                s >>= 3;
+	                cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
+					
+					if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
+                	if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
                 }
             }
         }
@@ -294,18 +335,23 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
         {   /* HiF */
             for (i = 0; i < actual_length / CARIBOU_SMI_BYTES_PER_SAMPLE; i++)
             {
-                uint32_t s = __builtin_bswap32(actual_samples[i]);
+                uint32_t s = /*__builtin_bswap32*/(actual_samples[i]);
 
                 if (meta_offset) meta_offset[i].sync = s & 0x00000001;
                 if (cmplx_vec)
-                {   /* swapped extraction and sign extension */
-                    cmplx_vec[i].i = (int16_t)((s <<  2) & -8)/8;   /* I' = Q */
-                    cmplx_vec[i].q = (int16_t)((s >> 14) & -8)/8;   /* Q' = I */
+                {   
+				 	s >>= 1;
+	                cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
+	                s >>= 3;
+	                cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
+					
+					if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
+                	if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;
                 }
             }
         }
 
-        // last sample insterpolation (linear for I and Q or preserve)
+        // last sample interpolation (linear for I and Q or preserve)
         if (size_shortening_samples > 0)
         {
             //cmplx_vec[i].i = 2*cmplx_vec[i-1].i - cmplx_vec[i-2].i;
@@ -436,6 +482,24 @@ static int caribou_smi_timeout_read(caribou_smi_st* dev,
 }
 
 //=========================================================================
+void caribou_smi_setup_ios(hermon_smi_st* dev)
+{
+	// setup the addresses
+    io_utils_set_gpio_mode(2, io_utils_alt_1);  // addr
+    io_utils_set_gpio_mode(3, io_utils_alt_1);  // addr
+	
+	// Setup the bus I/Os
+	// --------------------------------------------
+	for (int i = 6; i <= 15; i++)
+	{
+		io_utils_set_gpio_mode(i, io_utils_alt_1);  // 8xData + SWE + SOE
+	}
+	
+	io_utils_set_gpio_mode(24, io_utils_alt_1); // rwreq
+	io_utils_set_gpio_mode(25, io_utils_alt_1); // rwreq
+}
+
+//=========================================================================
 int caribou_smi_init(caribou_smi_st* dev,
                     void* context)
 {
@@ -469,14 +533,7 @@ int caribou_smi_init(caribou_smi_st* dev,
 
     // Setup the bus I/Os
     // --------------------------------------------
-    for (int i = 6; i <= 15; i++)
-    {
-        io_utils_set_gpio_mode(i, io_utils_alt_1);  // 8xData + SWE + SOE
-    }
-    io_utils_set_gpio_mode(2, io_utils_alt_1);  // addr
-    io_utils_set_gpio_mode(3, io_utils_alt_1);  // addr
-    io_utils_set_gpio_mode(24, io_utils_alt_1); // rwreq
-    io_utils_set_gpio_mode(25, io_utils_alt_1); // rwreq
+    caribou_smi_setup_ios(dev);
 
     // Retrieve the current settings and modify
     // --------------------------------------------
@@ -530,11 +587,11 @@ void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en m
 
 //=========================================================================
 int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
-                    caribou_smi_sample_complex_int16* buffer,
+                    caribou_smi_sample_complex_int16* samples,
                     caribou_smi_sample_meta* metadata,
                     size_t length_samples)
 {
-    caribou_smi_sample_complex_int16* sample_offset = buffer;
+    caribou_smi_sample_complex_int16* sample_offset = samples;
     caribou_smi_sample_meta* meta_offset = metadata;
     size_t left_to_read = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;        // in bytes
     size_t read_so_far = 0;                                                     // in samples
@@ -543,7 +600,7 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
 
     while (left_to_read)
     {
-        if (sample_offset) sample_offset = buffer + read_so_far;
+        if (sample_offset) sample_offset = samples + read_so_far;
         if (meta_offset) meta_offset = metadata + read_so_far;
 
         // current_read_len in bytes
@@ -580,9 +637,36 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
     return read_so_far;
 }
 
+#define SMI_TX_SAMPLE_SOF               (1<<2)
+#define SMI_TX_SAMPLE_MODEM_TX_CTRL     (1<<1)
+#define SMI_TX_SAMPLE_COND_TX_CTRL      (1<<0)
+//=========================================================================
+static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t data_length, caribou_smi_sample_complex_int16* sample_offset)
+{
+    caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
+    uint32_t *samples = (uint32_t*)(data);
+	
+    for (unsigned int i = 0; i < (data_length / HERMON_SMI_BYTES_PER_SAMPLE); i++)
+    {                    
+        int32_t ii = cmplx_vec[i].i;
+        int32_t qq = cmplx_vec[i].q;
+		
+        uint32_t s = SMI_TX_SAMPLE_SOF | SMI_TX_SAMPLE_MODEM_TX_CTRL | SMI_TX_SAMPLE_COND_TX_CTRL; s <<= 5;
+        s |= (ii >> 8) & 0x1F; s <<= 8;
+        s |= (ii >> 1) & 0x7F; s <<= 2;
+        s |= (ii & 0x1); s <<= 6;
+        s |= (qq >> 7) & 0x3F; s <<= 8;
+        s |= (qq & 0x7F);
+		
+		//if (i < 2) printf("0x%08X\n", s);
+		
+        samples[i] = __builtin_bswap32(s);
+    }
+}
+
 //=========================================================================
 int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
-                        caribou_smi_sample_complex_int16* buffer, size_t length_samples)
+                        caribou_smi_sample_complex_int16* samples, size_t length_samples)
 {
     size_t left_to_write = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;   // in bytes
     size_t written_so_far = 0;                                      // in samples
@@ -594,14 +678,20 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
     // apply the state
     if (caribou_smi_set_driver_streaming_state(dev, state) != 0)
     {
+		printf("caribou_smi_set_driver_streaming_state -> Failed\n");
         return -1;
     }
 
     while (left_to_write)
     {
         // prepare the buffer
-        caribou_smi_sample_complex_int16* sample_offset = buffer + written_so_far;
+        caribou_smi_sample_complex_int16* sample_offset = samples + written_so_far;
         size_t current_write_len = (left_to_write > dev->native_batch_len) ? dev->native_batch_len : left_to_write;
+		
+        // make sure the written bytes length is a whole sample multiplication
+        // if the number of remaining bytes is smaller than sample size -> finish;
+        current_write_len &= 0xFFFFFFFC;
+        if (!current_write_len) break;
 
         caribou_smi_generate_data(dev, dev->write_temp_buffer, current_write_len, sample_offset);
 
@@ -617,8 +707,6 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
     }
 
     return written_so_far;
-
-    return 0;
 }
 
 //=========================================================================

@@ -32,7 +32,7 @@ typedef struct
     struct timeval last_time;
 } caribou_smi_debug_data_st;
 
-#define CARIBOU_SMI_DEBUG_WORD 	        (0x01EFCDAB)
+#define CARIBOU_SMI_DEBUG_WORD 	        (0xABCDEF01)
 #define CARIBOU_SMI_BYTES_PER_SAMPLE    (4)
 #define CARIBOU_SMI_SAMPLE_RATE         (4000000)
 
