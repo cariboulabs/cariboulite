@@ -9,6 +9,8 @@
 #include <signal.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
+#include <dirent.h>
 
 #include "cariboulite_setup.h"
 #include "cariboulite_events.h"
@@ -248,21 +250,25 @@ int cariboulite_release_io (sys_st* sys)
 //=======================================================================================
 int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path)
 {
+    int ret = 0;
  	switch (src)
 	{
 		case cariboulite_firmware_source_file:
-			return caribou_fpga_program_to_fpga_from_file(&sys->fpga, fpga_bin_path, sys->force_fpga_reprogramming);
+			ret = caribou_fpga_program_to_fpga_from_file(&sys->fpga, fpga_bin_path, sys->force_fpga_reprogramming);
 		break;
 
 		case cariboulite_firmware_source_blob:
-			return caribou_fpga_program_to_fpga(&sys->fpga, cariboulite_firmware, sizeof(cariboulite_firmware), sys->force_fpga_reprogramming);
+			ret = caribou_fpga_program_to_fpga(&sys->fpga, cariboulite_firmware, sizeof(cariboulite_firmware), sys->force_fpga_reprogramming);
 		break;
 
 		default:
-			ZF_LOGE("lattice ice40 configuration source is invalid"); return -1;
+			ZF_LOGE("lattice ice40 configuration source is invalid");
+			ret = -1;
 		break;
 	}
-	return 0;
+
+	caribou_smi_setup_ios(&sys->smi);
+	return ret;
 }
 
 //=======================================================================================
