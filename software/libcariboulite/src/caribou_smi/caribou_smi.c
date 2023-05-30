@@ -365,25 +365,7 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
     return offs;
 }
 
-//=========================================================================
-static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t data_length, caribou_smi_sample_complex_int16* sample_offset)
-{
-    caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;
-    uint32_t *samples = (uint32_t*)(data);
-
-    for (unsigned int i = 0; i < data_length / 4; i++)
-    {
-        uint32_t s = (((uint32_t)(cmplx_vec[i].i & 0x1FFF)) << 17) |
-                     (((uint32_t)(cmplx_vec[i].q & 0x1FFF)) << 1) |
-                     ((uint32_t)(0x80004000));
-
-        s = __builtin_bswap32(s);
-
-        samples[i] = s;
-    }
-}
-
-//=========================================================================
+/=========================================================================
 static int caribou_smi_poll(caribou_smi_st* dev, uint32_t timeout_num_millisec, smi_stream_direction_en dir)
 {
     int ret = 0;
@@ -646,7 +628,7 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
     caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
     uint32_t *samples = (uint32_t*)(data);
 	
-    for (unsigned int i = 0; i < (data_length / HERMON_SMI_BYTES_PER_SAMPLE); i++)
+    for (unsigned int i = 0; i < (data_length / CARIBOU_SMI_BYTES_PER_SAMPLE); i++)
     {                    
         int32_t ii = cmplx_vec[i].i;
         int32_t qq = cmplx_vec[i].q;
