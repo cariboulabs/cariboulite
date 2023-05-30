@@ -2,23 +2,23 @@ module complex_fifo #(
 	parameter ADDR_WIDTH = 10,
 	parameter DATA_WIDTH = 16 
 )
-					(
-						input wire 			            wr_rst_b_i,
-						input wire 			            wr_clk_i,
-						input wire 			            wr_en_i,
-						input wire [2*DATA_WIDTH-1:0]	wr_data_i,
+(
+	input wire 			            wr_rst_b_i,
+	input wire 			            wr_clk_i,
+	input wire 			            wr_en_i,
+	input wire [2*DATA_WIDTH-1:0]	wr_data_i,
 
-						input wire 			            rd_rst_b_i,
-						input wire 			            rd_clk_i,
-						input wire 			            rd_en_i,
-						output reg [2*DATA_WIDTH-1:0]	rd_data_o,
+	input wire 			            rd_rst_b_i,
+	input wire 			            rd_clk_i,
+	input wire 			            rd_en_i,
+	output reg [2*DATA_WIDTH-1:0]	rd_data_o,
 
-						output reg 						full_o,
-						output reg 						empty_o,
+	output reg 						full_o,
+	output reg 						empty_o,
 
-						input wire						debug_pull,
-						input wire						debug_push,
-					);
+	input wire						debug_pull,
+	input wire						debug_push,
+);
 
 	reg [ADDR_WIDTH-1:0]	wr_addr;
 	reg [ADDR_WIDTH-1:0]	wr_addr_gray;
@@ -32,11 +32,10 @@ module complex_fifo #(
 	reg [2*DATA_WIDTH-1:0] 	debug_buffer;
 
 	function [ADDR_WIDTH-1:0] gray_conv;
-	input [ADDR_WIDTH-1:0] in;
-	begin
-		gray_conv = {in[ADDR_WIDTH-1],
-				 in[ADDR_WIDTH-2:0] ^ in[ADDR_WIDTH-1:1]};
-	end
+		input [ADDR_WIDTH-1:0] in;
+		begin
+			gray_conv = {in[ADDR_WIDTH-1], in[ADDR_WIDTH-2:0] ^ in[ADDR_WIDTH-1:1]};
+		end
 	endfunction
 
 	always @(posedge wr_clk_i) begin
@@ -55,13 +54,15 @@ module complex_fifo #(
 		rd_addr_gray_wr_r <= rd_addr_gray_wr;
 	end
 
-	always @(posedge wr_clk_i)
-		if (wr_rst_b_i == 1'b0)
+	always @(posedge wr_clk_i) begin
+		if (wr_rst_b_i == 1'b0) begin
 			full_o <= 0;
-		else if (wr_en_i)
+		end else if (wr_en_i) begin
 			full_o <= gray_conv(wr_addr + 2) == rd_addr_gray_wr_r;
-		else
+		end else begin
 			full_o <= full_o & (gray_conv(wr_addr + 1'b1) == rd_addr_gray_wr_r);
+		end
+	end
 
 	always @(posedge rd_clk_i) begin
 		if (rd_rst_b_i == 1'b0) begin
@@ -80,15 +81,15 @@ module complex_fifo #(
 		wr_addr_gray_rd_r <= wr_addr_gray_rd;
 	end
 
-	always @(posedge rd_clk_i)
-		if (rd_rst_b_i == 1'b0)
+	always @(posedge rd_clk_i) begin
+		if (rd_rst_b_i == 1'b0) begin
 			empty_o <= 1'b1;
-		else if (rd_en_i)
+		end else if (rd_en_i) begin
 			empty_o <= gray_conv(rd_addr + 1) == wr_addr_gray_rd_r;
-		else
+		end else begin
 			empty_o <= empty_o & (gray_conv(rd_addr) == wr_addr_gray_rd_r);
-
-	//reg [DATA_WIDTH-1:0] mem[(1<<ADDR_WIDTH)-1:0];
+		end
+	end
 
 	always @(posedge rd_clk_i) begin
 		if (rd_en_i) begin

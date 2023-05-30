@@ -25,49 +25,49 @@
 # For the iCE40 (iCE40LP1K-QN84)
 
 
-#set_frequency i_glob_clock 			125
-#set_frequency w_clock_sys 			64
+#set_frequency i_glob_clock 			    125
+#set_frequency w_clock_sys 			        64
 #set_frequency smi_ctrl_ins.soe_and_reset 	16
-#set_frequency i_smi_swe_srw 			16
-set_frequency lvds_clock_buf 			64
-#set_frequency i_sck 				5
+#set_frequency i_smi_swe_srw 			    16
+set_frequency lvds_clock_buf 			    64
+#set_frequency i_sck 				        5
 
 # CLOCK
-set_io i_glob_clock     A29
-set_io i_rst_b          A43
+set_io i_glob_clock             A29
+set_io i_rst_b                  A43
 
 # PMOD
-set_io io_pmod[0]       B24
-set_io io_pmod[1]       A31
-set_io io_pmod[2]       B23
-set_io io_pmod[3]       B21
-set_io io_pmod[4]       A25
-set_io io_pmod[5]       A26
-set_io io_pmod[6]       A27
-set_io io_pmod[7]       B20
+set_io io_pmod[0]               B24
+set_io io_pmod[1]               A31
+set_io io_pmod[2]               B23
+set_io io_pmod[3]               B21
+set_io io_pmod[4]               A25
+set_io io_pmod[5]               A26
+set_io io_pmod[6]               A27
+set_io io_pmod[7]               B20
 
 # MIXER
-set_io o_mixer_fm       A32
-set_io o_mixer_en       B22
+set_io o_mixer_fm               A32
+set_io o_mixer_en               B22
 
 # RF FRONT-END PATH
-set_io o_rx_h_tx_l      A33
-set_io o_rx_h_tx_l_b    A35
-set_io o_tr_vc1         A34
-set_io o_tr_vc1_b       B27
-set_io o_tr_vc2         B26
-set_io o_shdn_rx_lna	A46
-set_io o_shdn_tx_lna	B36
+set_io o_rx_h_tx_l              A33
+set_io o_rx_h_tx_l_b            A35
+set_io o_tr_vc1                 A34
+set_io o_tr_vc1_b               B27
+set_io o_tr_vc2                 B26
+set_io o_shdn_rx_lna	        A46
+set_io o_shdn_tx_lna	        B36
 
 # LVDS TO MODEM
-set_io o_iq_tx_p		B4
-set_io o_iq_tx_n		A5
-set_io o_iq_tx_clk_p	A10
-set_io o_iq_tx_clk_n	B8
+set_io o_iq_tx_p		        B4
+set_io o_iq_tx_n		        A5
+set_io o_iq_tx_clk_p	        A10
+set_io o_iq_tx_clk_n	        B8
 
-set_io i_iq_rx_09_p		A4      # Paired with i_iq_rx_09_n	@ B3 - positive logic
-set_io i_iq_rx_24_n		A2      # Paired with i_iq_rx_24_p	@ B1 - negative logic - needs to be negated
-set_io i_iq_rx_clk_p	A3      # Paired with i_iq_rx_clk_n	@ B2 - positive logic
+set_io i_iq_rx_09_p		        A4      # Paired with i_iq_rx_09_n	@ B3 - positive logic
+set_io i_iq_rx_24_n		        A2      # Paired with i_iq_rx_24_p	@ B1 - negative logic - needs to be negated
+set_io i_iq_rx_clk_p	        A3      # Paired with i_iq_rx_clk_n	@ B2 - positive logic
 
 # DIGITAL I/F
 set_io -pullup yes i_config[0]	B29
@@ -79,25 +79,25 @@ set_io o_led0		            A38
 set_io o_led1		            A39
 
 # SMI TO RPI
-set_io o_smi_write_req	    A19
-set_io o_smi_read_req	    B19
-set_io i_smi_a2		        A48
-set_io i_smi_a3		        A47
+set_io o_smi_write_req	        A19
+set_io o_smi_read_req	        B19
+set_io i_smi_a2		            A48
+set_io i_smi_a3		            A47
 
-set_io i_smi_soe_se		    B15
-set_io i_smi_swe_srw	    B13
-set_io io_smi_data[0]	    A16
-set_io io_smi_data[1]	    B11
-set_io io_smi_data[2]	    B10
-set_io io_smi_data[3]	    B12
-set_io io_smi_data[4]	    B14
-set_io io_smi_data[5]	    A20
-set_io io_smi_data[6]	    A13
-set_io io_smi_data[7]	    A14
+set_io i_smi_soe_se		        B15
+set_io i_smi_swe_srw	        B13
+set_io io_smi_data[0]	        A16
+set_io io_smi_data[1]	        B11
+set_io io_smi_data[2]	        B10
+set_io io_smi_data[3]	        B12
+set_io io_smi_data[4]	        B14
+set_io io_smi_data[5]	        A20
+set_io io_smi_data[6]	        A13
+set_io io_smi_data[7]	        A14
 
 # SPI
-set_io i_mosi		    A22
-set_io i_sck		    A23
-set_io i_ss		        B18
-set_io o_miso		    B17
+set_io i_mosi		            A22
+set_io i_sck		            A23
+set_io i_ss		                B18
+set_io o_miso		            B17
 

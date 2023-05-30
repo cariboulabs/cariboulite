@@ -1,6 +1,6 @@
 module io_ctrl
-    (
-        input               i_rst_b,
+(
+    input               i_rst_b,
 	input               i_sys_clk,        // FPGA Clock
 
 	input [4:0]         i_ioc,
