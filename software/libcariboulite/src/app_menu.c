@@ -187,7 +187,11 @@ static void fpga_smi_fifo(sys_st *sys)
     uint8_t *val = (uint8_t *)&status;
 	caribou_fpga_get_smi_ctrl_fifo_status (&sys->fpga, &status);
 	
-	printf("	FPGA SMI info (%02X): RX_FIFO_EMPTY: %d, CHANNEL: %d\n", *val, status.rx_fifo_empty, status.smi_channel);
+	printf("    FPGA SMI info (%02X):\n", *val);
+    printf("        RX FIFO EMPTY: %d\n", status.rx_fifo_empty);
+    printf("        TX FIFO FULL: %d\n", status.tx_fifo_full);
+    printf("        RX CHANNEL: %d\n", status.smi_channel);
+    printf("        RX SMI TEST: %d\n", status.i_smi_test);
 }
 
 //=================================================

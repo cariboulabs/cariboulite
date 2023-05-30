@@ -506,6 +506,14 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
                             caribou_smi_sample_complex_int16* buffer,
                             size_t length);  
 
+/**
+ * @brief Get Native Chunk (MTU)
+ *
+ * Gets the SMI IO native chunk size (MTU) in units of samples (4 bytes each)
+ *
+ * @param radio a pre-allocated radio state structure
+ * @return the number of samples in an native sized chunk
+ */
 size_t cariboulite_radio_get_native_mtu_size_samples(cariboulite_radio_state_st* radio);
 
 #ifdef __cplusplus

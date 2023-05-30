@@ -83,8 +83,10 @@ typedef struct
 typedef struct
 {
     uint8_t rx_fifo_empty : 1;       // LSB
+    uint8_t tx_fifo_full : 1;
     uint8_t smi_channel: 1;
-    uint8_t reserved : 6;            // MSB
+    uint8_t i_smi_test : 1;
+    uint8_t reserved : 4;            // MSB
 } caribou_fpga_smi_fifo_status_st;
 
 /**
