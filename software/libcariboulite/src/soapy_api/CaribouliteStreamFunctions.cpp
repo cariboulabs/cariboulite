@@ -144,7 +144,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
      */
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    return cariboulite_get_native_mtu_size_samples((cariboulite_radio_state_st*)&radio);
+    return cariboulite_radio_get_native_mtu_size_samples((cariboulite_radio_state_st*)&radio);
 }
 
 

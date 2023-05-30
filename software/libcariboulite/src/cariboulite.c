@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
     else state.radio = &cariboulite_sys.radio_high;
     
     // Allocate rx buffer and metadata
-    state.native_read_len = cariboulite_get_native_mtu_size_samples(state.radio);
+    state.native_read_len = cariboulite_radio_get_native_mtu_size_samples(state.radio);
     state.buffer = malloc(sizeof(caribou_smi_sample_complex_int16)*state.native_read_len);
     if (state.buffer == NULL)
     {
