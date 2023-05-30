@@ -35,7 +35,7 @@ typedef struct
     double frequency;
     double gain;
     double ppm_error;
-    int samples_to_read;
+    size_t samples_to_read;
     int force_fpga_prog;
     int write_metadata;
     
