@@ -655,7 +655,7 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
     uint32_t to_millisec = (2 * length_samples * 1000) / CARIBOU_SMI_SAMPLE_RATE;
     if (to_millisec < 2) to_millisec = 2;
 
-    smi_stream_state_en state = smi_stream_tx;
+    smi_stream_state_en state = smi_stream_tx_channel;
 
     // apply the state
     if (caribou_smi_set_driver_streaming_state(dev, state) != 0)
