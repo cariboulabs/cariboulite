@@ -12,6 +12,7 @@
 #include "zf_log/zf_log.h"
 #include "io_utils_spi.h"
 #include "io_utils.h"
+#include "spidev/spi.h"
 
 static char *io_utils_chip_types[] =
         {
@@ -307,7 +308,7 @@ int io_utils_spi_init(io_utils_spi_st* dev)
     // initialize the hard handles
     for (int i = 0; i < IO_UTILS_MAX_CHIPS; i++)
     {
-        dev->chips[i].hard_spi_handle = -1;
+        dev->chips[i].is_hard_spi = 0;
         dev->chips[i].initialized = 0;
     }
 
@@ -361,12 +362,9 @@ int io_utils_spi_close(io_utils_spi_st* dev)
     // now terminate all used spi channels
     for (int i = 0; i < dev->num_of_chips; i++)
     {
-        if (dev->chips[i].hard_spi_handle >=0)
+        if (dev->chips[i].is_hard_spi)
         {
-            if (spiClose(dev->chips[i].hard_spi_handle) < 0)
-            {
-                ZF_LOGE("pigpio says %d is a BAD HANDLE", dev->chips[i].hard_spi_handle);
-            }
+            spi_free(&dev->chips[i].hard_dev.spidev);
         }
         dev->chips[i].initialized = 0;
     }
@@ -415,25 +413,33 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
     dev->chips[new_chip_index].cs_pin = cs_pin;
     dev->chips[new_chip_index].miso_mosi_swap = swap_mi_mo;
     dev->chips[new_chip_index].chip_type = chip_type;
+    dev->chips[new_chip_index].is_hard_spi = 0;
 
     // now lets check if we need a hard spi handle (not a bitbanged configuration)
     if (chip_type == io_utils_spi_chip_type_fpga_comm ||
         chip_type == io_utils_spi_chip_type_modem)
     {
         memcpy (&dev->chips[new_chip_index].hard_dev, hard_dev, sizeof(io_utils_hard_spi_st));
-        unsigned int spiFlags = ((dev->chips[new_chip_index].hard_dev.spi_dev_id&0x1)<<8);
-
-        res = spiOpen(dev->chips[new_chip_index].hard_dev.spi_dev_channel, speed, spiFlags);
+        char spi_device_file[32];
+        sprintf(spi_device_file, "/dev/spidev%d.%d", hard_dev->spi_dev_id, hard_dev->spi_dev_channel);
+        
+        res = spi_init(&dev->chips[new_chip_index].hard_dev.spidev,
+             spi_device_file,       // filename like "/dev/spidev0.0"
+             mode,                  // SPI_* (look "linux/spi/spidev.h")
+             0,                     // bits per word (usually 8)
+             speed);                // max speed [Hz]
         if (res < 0)
         {
-            ZF_LOGE("spiOpen function failed with code %d", res);
+            ZF_LOGE("spi_init function failed with code %d, (%s)", res, spi_get_code_desc(res));
             pthread_mutex_unlock(&dev->mtx);
             return -1;
         }
+        
+        dev->chips[new_chip_index].is_hard_spi = 1;
     }
 
-    dev->chips[new_chip_index].hard_spi_handle = res;
     dev->chips[new_chip_index].initialized = 1;
+    
     // finally increase the number of chips
     dev->num_of_chips += 1;
 
@@ -492,11 +498,7 @@ int io_utils_spi_remove_chip(io_utils_spi_st* dev, int chip_handle)
     if (dev->chips[chip_handle].chip_type == io_utils_spi_chip_type_fpga_comm ||
         dev->chips[chip_handle].chip_type == io_utils_spi_chip_type_modem)
     {
-        if (spiClose(dev->chips[chip_handle].hard_spi_handle) < 0)
-        {
-            ZF_LOGE("the specified hard_handle - %d - is not valid", dev->chips[chip_handle].hard_spi_handle);
-            // no return as we anyway are going to return
-        }
+        spi_free(&dev->chips[chip_handle].hard_dev.spidev);
     }
     dev->chips[chip_handle].initialized = 0;
     dev->num_of_chips -= 1;
@@ -544,13 +546,9 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
         case io_utils_spi_chip_type_modem:
         {
             //printf("SPI XFER chiptype = %d\n", dev->current_chip->chip_type);
+            
             // a regular spi communication
-            ret = spiXfer(dev->current_chip->hard_spi_handle, (char*)tx_buf, (char*)rx_buf, length);
-            if (set_up_hard)
-            {
-                // workaround pigpio problem
-                ret = spiXfer(dev->current_chip->hard_spi_handle, (char*)tx_buf, (char*)rx_buf, length);
-            }
+            ret = spi_exchange(&dev->current_chip->hard_dev.spidev, (char*)rx_buf, (char*)tx_buf, length);
             if (ret < 0)
             {
                 ZF_LOGE("spi transfer failed (%d)", ret);
@@ -645,8 +643,8 @@ void io_utils_spi_print_setup(io_utils_spi_st* dev)
         printf("        MISO / MOSI swap: %d\n", dev->chips[i].miso_mosi_swap);
         printf("        Chip type: %s (%d)\n", io_utils_chip_types[dev->chips[i].chip_type],
                                                             dev->chips[i].chip_type);
-        printf("        Hard spi handle: %d\n", dev->chips[i].hard_spi_handle);
-        if (dev->chips[i].hard_spi_handle>=0)
+        printf("        Is hard SPI: %d\n", dev->chips[i].is_hard_spi);
+        if (dev->chips[i].is_hard_spi)
         {
             printf("            Hard spi id: %d\n", dev->chips[i].hard_dev.spi_dev_id);
             printf("            Hard spi channel: %d\n", dev->chips[i].hard_dev.spi_dev_channel);

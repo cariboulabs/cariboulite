@@ -9,7 +9,9 @@ include_directories(${SUPER_DIR})
 
 #However, the file(GLOB...) allows for wildcard additions:
 set(SOURCES_LIB io_utils.c io_utils_spi.c io_utils_sys_info.c io_utils_fs.c io_utils_i2c.c)
-set(SOURCES_PIG_LIB pigpio/pigpio.c pigpio/command.c)
+#set(SOURCES_PIG_LIB pigpio/pigpio.c pigpio/command.c)
+set(SOURCES_RPI_LIB rpi/rpi.c)
+set(SOURCES_SPIDEV_LIB spidev/spi.c)
 set(EXTERN_LIBS ${SUPER_DIR}/zf_log/build/libzf_log.a)
 #add_compile_options(-Wall -Wextra -pedantic -Werror)
 #add_compile_options(-Wall -Wextra)
@@ -20,7 +22,8 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
 #Generate the static library from the sources
-add_library(io_utils STATIC ${SOURCES_LIB} ${SOURCES_PIG_LIB})
+#add_library(io_utils STATIC ${SOURCES_LIB} ${SOURCES_PIG_LIB})
+add_library(io_utils STATIC ${SOURCES_LIB} ${SOURCES_RPI_LIB} ${SOURCES_SPIDEV_LIB})
 target_include_directories(io_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(io_utils PRIVATE pthread)
 

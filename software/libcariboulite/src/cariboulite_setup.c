@@ -202,7 +202,7 @@ static int cariboulite_setup_signals(sys_st *sys)
 int cariboulite_setup_io (sys_st* sys)
 {
     ZF_LOGI("Setting up board I/Os");
-    if (io_utils_setup(NULL) < 0)
+    if (io_utils_setup() < 0)
     {
         ZF_LOGE("Error setting up io_utils");
         return -1;

@@ -38,25 +38,40 @@ int main(int argc, char *argv[])
     io_utils_sys_info_st info = {0};
     io_utils_get_rpi_info(&info);
 
-    //printf("----------------------------------------------------\n");
-    //printf("RPI information\n");
-    //io_utils_print_rpi_info(&info);
+    printf("----------------------------------------------------\n");
+    printf("RPI information\n");
+    io_utils_print_rpi_info(&info);
 
     printf("----------------------------------------------------\n");
     printf("GPIO Init\n");
-    io_utils_setup(NULL);
+    io_utils_setup();
     // Reset the FPGA
     //io_utils_set_gpio_mode(FPGA_RESET, io_utils_alt_gpio_out);
     //io_utils_set_gpio_mode(ICE40_CS, io_utils_alt_gpio_out);
     //io_utils_write_gpio(FPGA_RESET, 0);
     //io_utils_write_gpio(ICE40_CS, 0);
+    
+    // setup the addresses
+    io_utils_set_gpio_mode(2, io_utils_alt_1);  // addr
+    io_utils_set_gpio_mode(3, io_utils_alt_1);  // addr
+	
+	// Setup the bus I/Os
+	// --------------------------------------------
+	for (int i = 6; i <= 15; i++)
+	{
+		io_utils_set_gpio_mode(i, io_utils_alt_1);  // 8xData + SWE + SOE
+	}
+	
+	io_utils_set_gpio_mode(24, io_utils_alt_1); // rwreq
+	io_utils_set_gpio_mode(25, io_utils_alt_1); // rwreq
+
 
     for (int i = 0; i < 28; i ++)
     {
         io_utils_get_gpio_mode(i, 1);
     }
 
-    printf("----------------------------------------------------\n");
+    /*printf("----------------------------------------------------\n");
     printf("SPI Init\n");
     io_utils_spi_init(&spi_dev);
 
@@ -94,29 +109,29 @@ int main(int argc, char *argv[])
             //printf("FPGA: Sent %02X, %02X, Received: %02X, %02X\n", *(tx_buf+i), *(tx_buf+i+1), rx_buf[0], rx_buf[1]);
         }
 
-        /*for (int i = 0; i < 10; i++)
-        {
-            io_utils_spi_transmit(&spi_dev, hspi_mixer, tx_buf+i, rx_buf, 3, io_utils_spi_write);
-            io_utils_spi_transmit(&spi_dev, hspi_mixer, tx_buf+i, rx_buf, 3, io_utils_spi_read);
-            //printf("MIXER: Sent %02X, %02X, %02X, Received: %02X, %02X\n",
-            //                *(tx_buf+i), *(tx_buf+i+1), *(tx_buf+i+2), rx_buf[0], rx_buf[1]);
-        }*/
-    /*
-        for (int i = 0; i < 10; i++)
-        {
-            io_utils_spi_transmit(&spi_dev, hspi_modem, tx_buf+i, rx_buf, 2, io_utils_spi_read_write);
-            //printf("FPGA: Sent %02X, %02X, Received: %02X, %02X\n", *(tx_buf+i), *(tx_buf+i+1), rx_buf[0], rx_buf[1]);
-        }*/
+        //for (int i = 0; i < 10; i++)
+        //{
+        //    io_utils_spi_transmit(&spi_dev, hspi_mixer, tx_buf+i, rx_buf, 3, io_utils_spi_write);
+        //    io_utils_spi_transmit(&spi_dev, hspi_mixer, tx_buf+i, rx_buf, 3, io_utils_spi_read);
+        //    //printf("MIXER: Sent %02X, %02X, %02X, Received: %02X, %02X\n",
+        //    //                *(tx_buf+i), *(tx_buf+i+1), *(tx_buf+i+2), rx_buf[0], rx_buf[1]);
+        //}
+
+        //for (int i = 0; i < 10; i++)
+        //{
+        //    io_utils_spi_transmit(&spi_dev, hspi_modem, tx_buf+i, rx_buf, 2, io_utils_spi_read_write);
+        //    //printf("FPGA: Sent %02X, %02X, Received: %02X, %02X\n", *(tx_buf+i), *(tx_buf+i+1), rx_buf[0], rx_buf[1]);
+        //}
     }
 
-    /*for (int i = 0; i < 10; i++)
-    {
-        io_utils_spi_transmit(&spi_dev, hspi_mixer, tx_buf+i, rx_buf, 3, io_utils_spi_read);
-        printf("MIXER: Requested Reg %02X, Received: %02X, %02X\n",
-                        *(tx_buf+i), rx_buf[0], rx_buf[1]);
-    }*/
+    //for (int i = 0; i < 10; i++)
+    //{
+    //    io_utils_spi_transmit(&spi_dev, hspi_mixer, tx_buf+i, rx_buf, 3, io_utils_spi_read);
+    //    printf("MIXER: Requested Reg %02X, Received: %02X, %02X\n",
+    //                    *(tx_buf+i), rx_buf[0], rx_buf[1]);
+    //}
 
-    io_utils_spi_close(&spi_dev);
+    io_utils_spi_close(&spi_dev);*/
     io_utils_cleanup();
 }
 

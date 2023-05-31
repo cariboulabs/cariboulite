@@ -10,6 +10,7 @@
 
 #define FPGA_RESET 26
 #define ICE40_CS 18
+#define MIXER_RESET 5
 #define CARIBOULITE_SPI_DEV 1
 #define CARIBOULITE_MODEM_SPI_CHANNEL 1
 
@@ -204,7 +205,7 @@ int test_at86rf215_continues_iq_loopback (at86rf215_st* dev, at86rf215_rf_channe
 // -----------------------------------------------------------------------------------------
 // TEST SELECTION
 // -----------------------------------------------------------------------------------------
-#define NO_FPGA_MODE        0
+#define NO_FPGA_MODE        1
 #define TEST_VERSIONS       1
 #define TEST_FREQ_SWEEP     0
 #define TEST_IQ_RX_WIND     1
@@ -221,7 +222,7 @@ int main ()
     at86rf215_irq_st irq = {0};
 
     // Init GPIOs and set FPGA on reset
-	io_utils_setup(NULL);
+	io_utils_setup();
 
     #if NO_FPGA_MODE
     // When the FPGA wakes up non-programmed, it starts interogating
@@ -234,6 +235,9 @@ int main ()
         io_utils_set_gpio_mode(ICE40_CS, io_utils_alt_gpio_out);
         io_utils_write_gpio(FPGA_RESET, 0);
         io_utils_write_gpio(ICE40_CS, 0);
+        
+        io_utils_set_gpio_mode(MIXER_RESET, io_utils_alt_gpio_out);
+        io_utils_write_gpio(MIXER_RESET, 0);
     #endif
 
     // Init spi
@@ -241,6 +245,8 @@ int main ()
 
     at86rf215_reset(&dev);
 	at86rf215_init(&dev, &io_spi_dev);
+    
+    io_utils_spi_print_setup(&io_spi_dev);
 
     test_at86rf215_read_all_regs_check(&dev);
 

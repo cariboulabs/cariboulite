@@ -244,7 +244,6 @@ module top (
       .D_IN_1(w_lvds_rx_24_d1)
   );  // the 180 deg data output
 
-
   // TODO!!!: w_lvds_rx_24_d1's route reports long routing. We need to put a register between it and the 
   // Consumer: lvds_rx_24_inst
 
@@ -288,6 +287,8 @@ module top (
       .D_OUT_1(w_lvds_tx_d0)
   );
 
+  // Logic on a clock signal is very bad - try to use a dedicated
+  // SB_IO
   assign o_iq_tx_clk_p = lvds_clock_buf;
   assign o_iq_tx_clk_n = ~lvds_clock_buf;
 

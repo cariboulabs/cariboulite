@@ -7344,6 +7344,7 @@ static int initGrabLockFile(void)
    if (fd != -1)
    {
       lockResult = flock(fd, LOCK_EX|LOCK_NB);
+      SOFT_ERROR(PI_INIT_FAILED, "flock failed");
 
       if(lockResult == 0)
       {

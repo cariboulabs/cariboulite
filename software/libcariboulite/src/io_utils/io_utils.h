@@ -9,7 +9,8 @@ extern "C" {
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "pigpio/pigpio.h"
+#include "rpi/rpi.h"
+//#include "pigpio/pigpio.h"
 
 typedef enum
 {
@@ -36,8 +37,8 @@ typedef enum
     io_utils_alt_5 = 2,
 } io_utils_alt_en;
 
-int io_utils_setup(pigpioSigHandler sigHandler);
-void io_utils_cleanup();
+int io_utils_setup(void);
+void io_utils_cleanup(void);
 void io_utils_set_pullupdn(int gpio, io_utils_pull_en pud);
 void io_utils_setup_gpio(int gpio, io_utils_dir_en direction, io_utils_pull_en pud);
 int io_utils_get_gpio_mode(int gpio, int print);
@@ -47,9 +48,13 @@ void io_utils_write_gpio_with_wait(int gpio, int value, int nopcnt);
 int io_utils_wait_gpio_state(int gpio, int state, int cnt);
 int io_utils_read_gpio(int gpio);
 char* io_utils_get_alt_from_mode(io_utils_alt_en mode);
+
+// for compliance
+typedef void (*gpioAlertFuncEx_t)  (int gpio, int level, uint32_t tick, void *userdata);
 int io_utils_setup_interrupt( int gpio,
                               gpioAlertFuncEx_t cb,
                               void* context);
+
 void io_utils_usleep(int usec);
 
 #ifdef __cplusplus

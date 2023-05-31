@@ -10,6 +10,7 @@ extern "C" {
 #include <stdbool.h>
 #include <pthread.h>
 #include "io_utils.h"
+#include "spidev/spi.h"
 
 
 #define IO_UTILS_MAX_CHIPS	10
@@ -34,6 +35,7 @@ typedef struct
 {
 	int spi_dev_id;			// either spidev0 or spidev1
 	int spi_dev_channel;	// the channel number (2 cs for spidev0, 3 cs of spidev1)
+    spi_t spidev;
 } io_utils_hard_spi_st;
 
 typedef struct
@@ -46,7 +48,7 @@ typedef struct
 
 	int initialized;
 	io_utils_spi_chip_type_en chip_type;
-	int hard_spi_handle;
+	int is_hard_spi;
 } io_utils_spi_chip_st;
 
 typedef struct
