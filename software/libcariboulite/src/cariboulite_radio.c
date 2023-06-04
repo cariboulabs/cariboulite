@@ -847,6 +847,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             cariboulite_radio_activate_channel(radio, radio->channel_direction, false);
             return -1;
         }
+        usleep(10000);
     }
 
 	//===========================================================
@@ -856,6 +857,25 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // RX on both channels looks the same
     if (radio->channel_direction == cariboulite_channel_dir_rx)
     {
+        at86rf215_iq_interface_config_st modem_iq_config = {
+            .loopback_enable = 0,
+            .drv_strength = at86rf215_iq_drive_current_4ma,
+            .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
+            .tx_control_with_iq_if = false,
+            .radio09_mode = at86rf215_iq_if_mode,
+            .radio24_mode = at86rf215_iq_if_mode,
+            .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
+        };
+        at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);	
+        
+        
+        at86rf215_radio_set_state( &radio->sys->modem, 
+                                GET_MODEM_CH(radio->type),
+                                at86rf215_radio_state_cmd_rx);
+        radio->state = at86rf215_radio_state_cmd_rx;
+        ZF_LOGD("Setup Modem state cmd_rx");
+        usleep(10000);
+        
         // after modem is activated turn on the the smi stream
         smi_stream_state_en smi_state = smi_stream_idle;
         if (radio->smi_channel_id == caribou_smi_channel_900)
@@ -872,12 +892,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             ZF_LOGD("Failed to configure modem with cmd_rx");
             return -1;
         }
-		at86rf215_radio_set_state( &radio->sys->modem, 
-                                GET_MODEM_CH(radio->type),
-                                at86rf215_radio_state_cmd_rx);
-        radio->state = at86rf215_radio_state_cmd_rx;
-        ZF_LOGD("Setup Modem state cmd_rx");
-        //usleep(30000);
+		
     }
     
 	//===========================================================

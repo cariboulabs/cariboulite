@@ -97,11 +97,13 @@ make
 sudo make install
 sudo ldconfig
 
-printf "${CYAN}3. SMI kernel module...${NC}\n"
-cd $ROOT_DIR/software/libcariboulite/src/caribou_smi/kernel
-mkdir -p build && cd build
-cmake ../
-make
+printf "${CYAN}3. SMI kernel module & udev...${NC}\n"
+cd $ROOT_DIR/driver
+./install.sh
+cd ..
+cd udev
+./install.sh
+cd ..
 
 printf "${CYAN}4. Main software...${NC}\n"
 cd $ROOT_DIR
@@ -145,9 +147,18 @@ else
     ERROR="1"
 fi
 
-## UDEV rules
-# Still the /dev/mem problem. Un-restricting the CONFIG_STRICT_DEVMEM kernel config option doesn't
-# help. Neither adding "pi" to the kmem, dialout and mem groups. pigpiod may be the last resort.
+
+printf "${GREEN}4. SPI1-3CS Configuration...  "
+DtparamSPI=`cat /boot/config.txt | grep "dtoverlay=spi1-3cs" | xargs | cut -d\= -f1`
+if [ "$DtparamSPI" = "dtoverlay" ]; then
+    printf "${CYAN}OK :)${NC}\n"
+else
+    printf "${RED}Warning${NC}\n"
+    printf "${RED}To communicate with CaribouLite Modem, FPGA, etc, SPI1 (AUX) with 3CS needs to be to be enabled${NC}\n"
+    printf "${RED}Please add the following to the '/boot/config.txt' file: 'dtoverlay=spi1-3cs'${NC}\n"
+    ERROR="1"
+fi
+
 
 if [ "$ERROR" = "1" ]; then
     printf "\n[  7  ] ${RED}Installation errors occured.${NC}\n\n\n"

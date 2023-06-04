@@ -1,5 +1,4 @@
 # SMI Devices
-KERNEL=="smi", SUBSYSTEM=="bcm2835-smi-dev", MODE="0666"
 KERNEL=="smi", SUBSYSTEM=="smi-stream-dev", MODE="0666"
 
 # Other RPI Devices

@@ -88,13 +88,13 @@ static int caribou_smi_get_smi_settings(caribou_smi_st *dev, struct smi_settings
 //=========================================================================
 static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings, bool print)
 {
-    settings->read_setup_time = 1;
-    settings->read_strobe_time = 4;
+    settings->read_setup_time = 0;
+    settings->read_strobe_time = 5;
     settings->read_hold_time = 0;
     settings->read_pace_time = 0;
 
-    settings->write_setup_time = 1;
-    settings->write_strobe_time = 4;
+    settings->write_setup_time = 0;
+    settings->write_strobe_time = 5;
     settings->write_hold_time = 0;
     settings->write_pace_time = 0;
 
@@ -225,16 +225,18 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
 
     if (dev->debug_mode == caribou_smi_none)
     {
-        for (offs = 0; offs<(len-(CARIBOU_SMI_BYTES_PER_SAMPLE*3)); offs++)
+        for (offs = 0; offs<(len-(CARIBOU_SMI_BYTES_PER_SAMPLE*4)); offs++)
         {
             uint32_t s1 = *((uint32_t*)(&buffer[offs]));
             uint32_t s2 = *((uint32_t*)(&buffer[offs+4]));
             uint32_t s3 = *((uint32_t*)(&buffer[offs+8]));
+            uint32_t s4 = *((uint32_t*)(&buffer[offs+12]));
 			
             //printf("%d => %08X\n", offs, s);
             if ((s1 & 0xC001C000) == 0x80004000 &&
                 (s2 & 0xC001C000) == 0x80004000 &&
-                (s3 & 0xC001C000) == 0x80004000)
+                (s3 & 0xC001C000) == 0x80004000 &&
+                (s4 & 0xC001C000) == 0x80004000)
             {
                 found = true;
                 break;
@@ -284,6 +286,7 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 
     // find the offset and adjust
     offs = caribou_smi_find_buffer_offset(dev, data, data_length);
+    //printf("OFFSET = %d\n", offs);
     if (offs < 0)
     {
         return -1;
@@ -497,11 +500,11 @@ int caribou_smi_init(caribou_smi_st* dev,
 
     // checking the loaded modules
     // --------------------------------------------
-    if (caribou_smi_check_modules(true) < 0)
+    /*if (caribou_smi_check_modules(true) < 0)
     {
         ZF_LOGE("Problem reloading SMI kernel modules");
         return -1;
-    }
+    }*/
 
     // open the smi device file
     // --------------------------------------------

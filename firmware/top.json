@@ -1,5 +1,5 @@
 {
-  "creator": "Yosys 0.26+1 (git sha1 b1a011138, gcc 10.2.1-6 -fPIC -Os)",
+  "creator": "Yosys 0.29+42 (git sha1 43b807fe6, gcc 10.2.1-6 -fPIC -Os)",
   "modules": {
     "ICESTORM_LC": {
       "attributes": {
@@ -6754,7 +6754,7 @@
             "DST_WIDTH": "00000000000000000000000000010000",
             "EDGE_EN": "1",
             "EDGE_POL": "1",
-            "FULL": "0",
+            "FULL": "1",
             "SRC_DST_PEN": "0",
             "SRC_DST_POL": "0",
             "SRC_WIDTH": "00000000000000000000000000000001",
@@ -7320,7 +7320,7 @@
             "DST_WIDTH": "00000000000000000000000000010000",
             "EDGE_EN": "1",
             "EDGE_POL": "1",
-            "FULL": "0",
+            "FULL": "1",
             "SRC_DST_PEN": "0",
             "SRC_DST_POL": "0",
             "SRC_WIDTH": "00000000000000000000000000000001",
@@ -7956,7 +7956,7 @@
             "DST_WIDTH": "00000000000000000000000000010000",
             "EDGE_EN": "1",
             "EDGE_POL": "1",
-            "FULL": "0",
+            "FULL": "1",
             "SRC_DST_PEN": "0",
             "SRC_DST_POL": "0",
             "SRC_WIDTH": "00000000000000000000000000000001",
@@ -8557,7 +8557,7 @@
             "DST_WIDTH": "00000000000000000000000000010000",
             "EDGE_EN": "1",
             "EDGE_POL": "1",
-            "FULL": "0",
+            "FULL": "1",
             "SRC_DST_PEN": "0",
             "SRC_DST_POL": "0",
             "SRC_WIDTH": "00000000000000000000000000000001",
