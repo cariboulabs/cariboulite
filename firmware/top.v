@@ -138,11 +138,9 @@ module top (
       .i_cs(w_cs[0]),
       .i_fetch_cmd(w_fetch),
       .i_load_cmd(w_load),
-
-      .i_error_list(8'b00000000),
-      .o_debug_fifo_push(w_debug_fifo_push),
-      .o_debug_fifo_pull(w_debug_fifo_pull),
-      .o_debug_smi_test(w_debug_smi_test),
+      .o_debug_fifo_push(),
+      .o_debug_fifo_pull(),
+      .o_debug_smi_test(),
   );
 
   wire w_debug_fifo_push;
@@ -163,12 +161,12 @@ module top (
       // Digital interfaces
       .i_button(i_button),
       .i_config(i_config),
-      .o_led0  (o_led0),
-      .o_led1  (o_led1),
+      .o_led0  (/*o_led0*/),
+      .o_led1  (/*o_led1*/),
       .o_pmod  (),
 
       // Analog interfaces
-      .o_mixer_fm(o_mixer_fm),
+      .o_mixer_fm(/*o_mixer_fm*/),
       .o_rx_h_tx_l(o_rx_h_tx_l),
       .o_rx_h_tx_l_b(o_rx_h_tx_l_b),
       .o_tr_vc1(o_tr_vc1),
@@ -176,8 +174,11 @@ module top (
       .o_tr_vc2(o_tr_vc2),
       .o_shdn_tx_lna(o_shdn_tx_lna),
       .o_shdn_rx_lna(o_shdn_rx_lna),
-      .o_mixer_en(o_mixer_en)
+      .o_mixer_en(/*o_mixer_en*/)
   );
+
+  assign o_led0 = i_smi_a2;
+  assign o_led1 = i_smi_a3;
 
   //=========================================================================
   // CONBINATORIAL ASSIGNMENTS
@@ -244,9 +245,6 @@ module top (
       .D_IN_1(w_lvds_rx_24_d1)
   );  // the 180 deg data output
 
-  // TODO!!!: w_lvds_rx_24_d1's route reports long routing. We need to put a register between it and the 
-  // Consumer: lvds_rx_24_inst
-
   // Differential 0.9GHz I/Q DDR signal
   SB_IO #(
       .PIN_TYPE   (6'b000000),        // Input only, DDR mode (sample on both pos edge and
@@ -287,6 +285,22 @@ module top (
       .D_OUT_1(w_lvds_tx_d0)
   );
 
+  /*SB_IO #(
+      .PIN_TYPE(6'b0111_01),
+  ) tx_clk_neg (
+      .PACKAGE_PIN(o_iq_tx_clk_n),
+      .OUTPUT_CLK(lvds_clock_buf),
+      .D_OUT_0(lvds_clock_buf),
+  );
+
+  SB_IO #(
+      .PIN_TYPE(6'b0101_01),
+  ) tx_clk_pos (
+      .PACKAGE_PIN(o_iq_tx_clk_p),
+      .OUTPUT_CLK(lvds_clock_buf),
+      .D_OUT_0(lvds_clock_buf),
+  );*/
+
   // Logic on a clock signal is very bad - try to use a dedicated
   // SB_IO
   assign o_iq_tx_clk_p = lvds_clock_buf;
@@ -310,7 +324,7 @@ module top (
   wire [31:0] w_rx_24_fifo_data;
 
   lvds_rx lvds_rx_09_inst (
-      .i_rst_b  (i_rst_b),
+      .i_rst_b  (1'b1/*i_rst_b*/),
       .i_ddr_clk(lvds_clock_buf),
 
       .i_ddr_data({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
@@ -325,10 +339,10 @@ module top (
   );
 
   lvds_rx lvds_rx_24_inst (
-      .i_rst_b  (i_rst_b),
+      .i_rst_b  (1'b1/*i_rst_b*/),
       .i_ddr_clk(lvds_clock_buf),
 
-      .i_ddr_data({w_lvds_rx_24_d0, w_lvds_rx_24_d1}),
+      .i_ddr_data({!w_lvds_rx_24_d0, !w_lvds_rx_24_d1}),
 
       .i_fifo_full(w_rx_fifo_full),
       .o_fifo_write_clk(w_rx_24_fifo_write_clk),
@@ -339,7 +353,7 @@ module top (
       .o_debug_state()
   );
 
-  wire w_rx_fifo_write_clk = (channel == 1'b0) ? w_rx_09_fifo_write_clk : w_rx_24_fifo_write_clk;
+  wire w_rx_fifo_write_clk = lvds_clock_buf; //(channel == 1'b0) ? w_rx_09_fifo_write_clk : w_rx_24_fifo_write_clk;
   wire w_rx_fifo_push = (channel == 1'b0) ? w_rx_09_fifo_push : w_rx_24_fifo_push;
   wire [31:0] w_rx_fifo_data = (channel == 1'b0) ? w_rx_09_fifo_data : w_rx_24_fifo_data;
   wire w_rx_fifo_pull;
@@ -348,16 +362,17 @@ module top (
   wire w_rx_fifo_empty;
   wire channel;
 
+  assign channel = i_smi_a3;
 
   complex_fifo  #(
       .ADDR_WIDTH(10),  // 1024 samples
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) rx_fifo (
-      .wr_rst_b_i(i_rst_b),
+      .wr_rst_b_i(1'b1/*i_rst_b*/),
       .wr_clk_i(w_rx_fifo_write_clk),
       .wr_en_i(w_rx_fifo_push),
       .wr_data_i(w_rx_fifo_data),
-      .rd_rst_b_i(i_rst_b),
+      .rd_rst_b_i(1'b1/*i_rst_b*/),
       .rd_clk_i(w_clock_sys),
       .rd_en_i(w_rx_fifo_pull),
       .rd_data_o(w_rx_fifo_pulled_data),
@@ -373,9 +388,8 @@ module top (
   wire w_lvds_tx_d0;  // 0 degree
   wire w_lvds_tx_d1;  // 180 degree
   
-  
   lvds_tx lvds_tx_inst (
-      .i_rst_b(i_rst_b),
+      .i_rst_b(1'b1/*i_rst_b*/),
       .i_ddr_clk(lvds_clock_buf),
       .o_ddr_data({w_lvds_tx_d0, w_lvds_tx_d1}),
       .i_fifo_empty(w_tx_fifo_empty),
@@ -401,13 +415,13 @@ module top (
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) tx_fifo (
       // smi clock is writing
-      .wr_rst_b_i(i_rst_b),
+      .wr_rst_b_i(1'b1/*i_rst_b*/),
       .wr_clk_i(w_tx_fifo_clock),
       .wr_en_i(w_tx_fifo_push),
       .wr_data_i(w_tx_fifo_data),
 	  
       // lvds clock is pulling (reading)
-      .rd_rst_b_i(i_rst_b),
+      .rd_rst_b_i(1'b1/*i_rst_b*/),
       .rd_clk_i(w_tx_fifo_read_clk),
       .rd_en_i(w_tx_fifo_pull),
       .rd_data_o(w_tx_fifo_pulled_data),
@@ -445,7 +459,7 @@ module top (
       .i_smi_data_in(w_smi_data_input),
       .o_smi_read_req(w_smi_read_req),
       .o_smi_write_req(w_smi_write_req),
-      .o_channel(channel),
+      .o_channel(/*channel*/),
       .i_smi_test(1'b0/*w_debug_smi_test*/),
       .o_cond_tx(),
       .o_address_error()

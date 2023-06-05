@@ -1,5 +1,8 @@
 #! /bin/bash
 
+## --------------------------------------------------------------------
+## Variables
+## --------------------------------------------------------------------
 ROOT_DIR=`pwd`
 SOAPY_UTILS_EXE=SoapySDRUtil
 RED='\033[0;31m'
@@ -10,21 +13,26 @@ ERROR="0"
 
 [ $(id -u) = 0 ] && echo "Please do not run this script as root" && exit 100
 
-# update the git repo on develop_R1 branch to include sub-modules
+## --------------------------------------------------------------------
+## update the git repo on develop_R1 branch to include sub-modules
+## --------------------------------------------------------------------
 printf "\n[  1  ] ${GREEN}CaribouLite Git Repo${NC}\n"
-#git checkout develop_R1
 git pull
 git submodule init
 git submodule update
 
+## --------------------------------------------------------------------
 ## kernel module dev dependencies
+## --------------------------------------------------------------------
 printf "\n[  2  ] ${GREEN}Updating system and installing dependencies...${NC}\n"
 sudo apt-get update
 sudo apt-get -y install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
 sudo apt-get -y install swig avahi-daemon libavahi-client-dev python3-distutils libpython3-dev
 sudo depmod -a
 
-# clone SoapySDR dependencies
+## --------------------------------------------------------------------
+## clone SoapySDR dependencies
+## --------------------------------------------------------------------
 printf "\n[  3  ] ${GREEN}Checking Soapy SDR installation ($SOAPY_UTILS_EXE)...${NC}\n"
 
 SOAPY_UTIL_PATH=`which $SOAPY_UTILS_EXE`
@@ -80,7 +88,9 @@ else
     fi
 fi
 
+## --------------------------------------------------------------------
 ## Main Software
+## --------------------------------------------------------------------
 printf "\n[  5  ] ${GREEN}Compiling main source...${NC}\n"
 printf "${CYAN}1. External Tools...${NC}\n"
 cd $ROOT_DIR/software/utils
@@ -101,9 +111,6 @@ printf "${CYAN}3. SMI kernel module & udev...${NC}\n"
 cd $ROOT_DIR/driver
 ./install.sh
 cd ..
-cd udev
-./install.sh
-cd ..
 
 printf "${CYAN}4. Main software...${NC}\n"
 cd $ROOT_DIR
@@ -112,7 +119,9 @@ cmake $ROOT_DIR/software/libcariboulite/
 make
 sudo make install
 
-# Configuration File
+## --------------------------------------------------------------------
+## Configuration File - RPI /boot/config.txt
+## --------------------------------------------------------------------
 printf "\n[  6  ] ${GREEN}Environmental Settings...${NC}\n"
 printf "${GREEN}1. SPI configuration...  "
 DtparamSPI=`cat /boot/config.txt | grep "dtparam=spi" | xargs | cut -d\= -f1`

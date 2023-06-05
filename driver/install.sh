@@ -8,7 +8,8 @@ NC='\033[0m' # No Color
 ERROR="0"
 
 BUILD_DIR="build"
-
+BLOB_CREATOR_DIR="../software/utils/"
+USERSPACE_SMI_DIR="../software/libcariboulite/src/caribou_smi/kernel"
 
 [ $(id -u) = 0 ] && printf "${RED}Please do not run this script as root${NC}\n" && exit 100
 
@@ -29,9 +30,15 @@ install() {
     fi
     
     # enter build dir and build the ko file
-    cd "$BUILD_DIR"
+    cd "${ROOT_DIR}/$BUILD_DIR"
     cmake ../
     make
+    cd ${ROOT_DIR}
+    
+    # copy the outputs to internal software
+    ${BLOB_CREATOR_DIR}generate_bin_blob ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko smi_stream_dev ${USERSPACE_SMI_DIR}/smi_stream_dev_gen.h
+    cp ${ROOT_DIR}/bcm2835_smi.h ${USERSPACE_SMI_DIR}
+    cp ${ROOT_DIR}/smi_stream_dev.h ${USERSPACE_SMI_DIR}
     
     # find the location to install
     output_dir=$(find "/lib/modules" -type f -name "bcm2835_smi_dev*" -exec dirname {} \;)
@@ -45,8 +52,8 @@ install() {
     fi
     
     printf "\n[  3  ] ${GREEN}Installing into '${output_dir}'${NC}\n"
-    xz -z smi_stream_dev.ko -c > smi_stream_dev.ko.xz
-    sudo cp smi_stream_dev.ko.xz ${output_dir}/
+    xz -z ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko -c > ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz
+    sudo cp ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz ${output_dir}/
     
     printf "\n[  4  ] ${GREEN}Updating 'depmod'${NC}\n"
     sudo depmod -a
@@ -58,6 +65,11 @@ install() {
     printf "\n[  6  ] ${GREEN}Adding systemd configuration${NC}\n"
     echo "# load SMI stream driver on startup" | sudo tee "/etc/modules-load.d/smi_stream_mod.conf" > /dev/null
     echo "smi_stream_dev" | sudo tee -a "/etc/modules-load.d/smi_stream_mod.conf" > /dev/null
+    
+    printf "\n[  7  ] ${GREEN}Adding UDEV rules${NC}\n"
+    cd ${ROOT_DIR}/udev
+    sudo ./install.sh install
+    cd ${ROOT_DIR}
     
     printf "${GREEN}Installation completed.${NC}\n"
 }
@@ -89,6 +101,9 @@ uninstall() {
     if [ -f "/etc/modules-load.d/smi_stream_mod.conf" ]; then
         sudo rm "/etc/modules-load.d/smi_stream_mod.conf"
     fi
+    
+    printf "\n[  5  ] ${GREEN}Removing UDEV rules${NC}\n"
+    sudo udev/install.sh uninstall
     
     printf "${GREEN}Uninstallation completed.${NC}\n"
 }

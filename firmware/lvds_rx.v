@@ -5,7 +5,7 @@ module lvds_rx (
 
     input             i_fifo_full,
     output            o_fifo_write_clk,
-    output            o_fifo_push,
+    output reg        o_fifo_push,
     output reg [31:0] o_fifo_data,
     input             i_sync_input,
     output     [ 1:0] o_debug_state
@@ -21,7 +21,6 @@ module lvds_rx (
   reg [1:0] r_state_if;
   reg [2:0] r_phase_count;
   reg r_sync_input;
-
 
   // Initial conditions
   initial begin
@@ -45,25 +44,23 @@ module lvds_rx (
         state_idle: begin
           if (i_ddr_data == modem_i_sync) begin
             r_state_if   <= state_i_phase;
-            o_fifo_data  <= {30'b000000000000000000000000000000, i_ddr_data};
+            o_fifo_data[1:0]  <= 2'b10;
             r_sync_input <= i_sync_input;  // mark the sync input for this sample
           end
-          r_phase_count <= 3'b111;
+          r_phase_count <= 3'b110;
           o_fifo_push   <= 1'b0;
         end
 
         state_i_phase: begin
-          if (r_phase_count == 3'b000) begin
+          if (r_phase_count == 3'b111) begin
             if (i_ddr_data == modem_q_sync) begin
-              r_phase_count <= 3'b110;
               r_state_if <= state_q_phase;
             end else begin
               r_state_if <= state_idle;
             end
-          end else begin
-            r_phase_count <= r_phase_count - 1;
-          end
-
+          end 
+          
+          r_phase_count <= r_phase_count - 1;
           o_fifo_push <= 1'b0;
           o_fifo_data <= {o_fifo_data[29:0], i_ddr_data};
         end
@@ -72,13 +69,12 @@ module lvds_rx (
           if (r_phase_count == 3'b000) begin
             o_fifo_push <= ~i_fifo_full;
             r_state_if  <= state_idle;
-            o_fifo_data <= {o_fifo_data[29:0], i_ddr_data[1], 1'b0};
           end else begin
             o_fifo_push   <= 1'b0;
-            r_phase_count <= r_phase_count - 1;
-            o_fifo_data   <= {o_fifo_data[29:0], i_ddr_data};
           end
 
+          o_fifo_data   <= {o_fifo_data[29:0], i_ddr_data};
+          r_phase_count <= r_phase_count - 1;
         end
       endcase
     end

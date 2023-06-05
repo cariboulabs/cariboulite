@@ -20,8 +20,8 @@ uninstall() {
 
 
 ## FLOW
-printf "${GREEN}CaribouLite UDEV Rules (un)installation${NC}\n"
-printf "${GREEN}=======================================${NC}\n\n"
+printf "CaribouLite UDEV Rules (un)installation\n"
+printf "=======================================\n\n"
 
 if [ "$1" == "install" ]; then
     install
@@ -32,6 +32,6 @@ elif [ "$1" == "uninstall" ]; then
     
     exit 0
 else
-    printf "${CYAN}Usage: $0 [install|uninstall]${NC}\n"
+    printf "Usage: $0 [install|uninstall]\n"
     exit 1
 fi
