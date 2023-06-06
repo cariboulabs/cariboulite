@@ -67,6 +67,8 @@ typedef struct
     
     uint8_t *read_temp_buffer;
     uint8_t *write_temp_buffer;
+    
+    bool invert_iq;
 
 	// debugging
 	caribou_smi_debug_mode_en debug_mode;
@@ -77,6 +79,8 @@ int caribou_smi_init(caribou_smi_st* dev,
 					void* context);
 int caribou_smi_close (caribou_smi_st* dev);
 int caribou_smi_check_modules(bool reload);
+
+void caribou_smi_invert_iq(caribou_smi_st* dev, bool invert);
 
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en mode);
 int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state);

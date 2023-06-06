@@ -72,11 +72,13 @@ int cariboulite_radio_ext_ref ( sys_st *sys, cariboulite_ext_ref_freq_en ref)
             ZF_LOGD("Setting ext_ref = 26MHz");
             at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_26mhz);
             rffc507x_setup_reference_freq(&sys->mixer, 26e6);
+            rffc507x_calibrate(&sys->mixer);
             break;
         case cariboulite_ext_ref_32mhz:
             ZF_LOGD("Setting ext_ref = 32MHz");
             at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_32mhz);
             rffc507x_setup_reference_freq(&sys->mixer, 32e6);
+            rffc507x_calibrate(&sys->mixer);
             break;
         case cariboulite_ext_ref_off:
             ZF_LOGD("Setting ext_ref = OFF");
@@ -678,12 +680,13 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 																at86rf215_rf_channel_2400mhz, 
 																modem_freq);
             
-            // setup mixer LO according to the actual modem frequency
-			lo_act_freq = rffc507x_set_frequency(&radio->sys->mixer, modem_act_freq + f_rf);
-			act_freq = lo_act_freq - modem_act_freq;
+            // setup mixer LO according to the actual modem frequency          
+			lo_act_freq = rffc507x_set_frequency(&radio->sys->mixer, modem_act_freq - f_rf);
+			act_freq = modem_act_freq - lo_act_freq;
 
             // setup fpga RFFE <= upconvert (tx / rx)
             conversion_direction = conversion_dir_up;
+            caribou_smi_invert_iq(&radio->sys->smi, true);
         }
         //-------------------------------------
         else if ( f_rf >= CARIBOULITE_2G4_MIN && 
@@ -698,6 +701,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
             lo_act_freq = 0;
             act_freq = modem_act_freq;
             conversion_direction = conversion_dir_none;
+            caribou_smi_invert_iq(&radio->sys->smi, true);
         }
         //-------------------------------------
         else if ( f_rf >= (CARIBOULITE_2G4_MAX) && 
@@ -715,6 +719,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 
             // setup fpga RFFE <= downconvert (tx / rx)
             conversion_direction = conversion_dir_down;
+            caribou_smi_invert_iq(&radio->sys->smi, true);
         }
         //-------------------------------------
         else

@@ -551,6 +551,7 @@ int caribou_smi_init(caribou_smi_st* dev,
     memset(&dev->debug_data, 0, sizeof(caribou_smi_debug_data_st));
 
     dev->debug_mode = caribou_smi_none;
+    dev->invert_iq = false;
     dev->initialized = 1;
 
     return 0;
@@ -571,6 +572,12 @@ int caribou_smi_close (caribou_smi_st* dev)
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en mode)
 {
     dev->debug_mode = mode;
+}
+
+//=========================================================================
+void caribou_smi_invert_iq(caribou_smi_st* dev, bool invert)
+{
+    dev->invert_iq = invert;
 }
 
 //=========================================================================
