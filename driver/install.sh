@@ -15,6 +15,10 @@ USERSPACE_SMI_DIR="../software/libcariboulite/src/caribou_smi/kernel"
 
 ## FUNCTIONS
 install() {
+    local mtu_mult=${1:-6}
+    local dir_offs=${2:-2}
+    local ch_offs=${3:-3}
+  
     printf "${GREEN}Installation started...${NC}\n"
     printf "\n[  1  ] ${GREEN}Updating kernel headers and needed software${NC}\n"
     sudo apt-get update
@@ -66,7 +70,11 @@ install() {
     echo "# load SMI stream driver on startup" | sudo tee "/etc/modules-load.d/smi_stream_mod.conf" > /dev/null
     echo "smi_stream_dev" | sudo tee -a "/etc/modules-load.d/smi_stream_mod.conf" > /dev/null
     
-    printf "\n[  7  ] ${GREEN}Adding UDEV rules${NC}\n"
+    printf "\n[  7  ] ${GREEN}Adding modprobe configuration ${mtu_mult}, ${dir_offs}, ${ch_offs}${NC}\n"
+    echo "# SMI STREAM DEV specific options" | sudo tee "/etc/modprobe.d/smi_stream_mod_cariboulite.conf" > /dev/null
+    echo "options smi_stream_dev fifo_mtu_multiplier=${mtu_mult} addr_dir_offset=${dir_offs} addr_ch_offset=${ch_offs}" | sudo tee -a "/etc/modprobe.d/smi_stream_mod_cariboulite.conf" > /dev/null
+    
+    printf "\n[  8  ] ${GREEN}Adding UDEV rules${NC}\n"
     cd ${ROOT_DIR}/udev
     sudo ./install.sh install
     cd ${ROOT_DIR}
@@ -102,7 +110,12 @@ uninstall() {
         sudo rm "/etc/modules-load.d/smi_stream_mod.conf"
     fi
     
-    printf "\n[  5  ] ${GREEN}Removing UDEV rules${NC}\n"
+    printf "\n[  5  ] ${GREEN}Removing modprobe parameters${NC}\n"
+    if [ -f "/etc/modprobe.d/smi_stream_mod_cariboulite.conf" ]; then
+        sudo rm "/etc/modprobe.d/smi_stream_mod_cariboulite.conf"
+    fi
+    
+    printf "\n[  6  ] ${GREEN}Removing UDEV rules${NC}\n"
     sudo udev/install.sh uninstall
     
     printf "${GREEN}Uninstallation completed.${NC}\n"
@@ -113,7 +126,7 @@ printf "${GREEN}CaribouLite Device Driver Install / Uninstall${NC}\n"
 printf "${GREEN}=============================================${NC}\n\n"
 
 if [ "$1" == "install" ]; then
-    install
+    install "$2" "$3" "$4"
     
     exit 0
 elif [ "$1" == "uninstall" ]; then
@@ -121,7 +134,7 @@ elif [ "$1" == "uninstall" ]; then
     
     exit 0
 else
-    printf "${CYAN}Usage: $0 [install|uninstall]${NC}\n"
+    printf "${CYAN}Usage: $0 [install|uninstall] <mtu_mult dir_offs ch_offs>${NC}\n"
     exit 1
 fi
 

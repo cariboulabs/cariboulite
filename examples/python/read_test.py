@@ -10,7 +10,7 @@ from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_TX, SOAPY_SDR_CS16
 	Build a dictionaly of parameters
 """
 def MakeParameters():
-	params = {	"DriverName": "HermonSDR",
+	params = {	"DriverName": "CaribouLite",
 				"RxChannel": 0,
 				"NumOfComplexSample": 4*16384,
 				"RxFrequencyHz": 915e6,

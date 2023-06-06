@@ -54,12 +54,24 @@
 #include <linux/kfifo.h>
 #include <linux/wait.h>
 #include <linux/poll.h>
+#include <linux/init.h>
 
 #include "smi_stream_dev.h"
 
-#define FIFO_SIZE_MULTIPLIER 	(6)
-#define ADDR_DIR_OFFSET			(2)			// GPIO3_SA2 (fpga i_smi_a[1]) - Tx SMI (0) / Rx SMI (1) select
-#define ADDR_CH_OFFSET			(3)			// GPIO2_SA3 (fpga i_smi_a[2]) - RX09 / RX24 channel select
+
+// MODULE SPECIFIC PARAMETERS
+// the modules.d line is as follows: "options smi_stream_dev fifo_mtu_multiplier=6 addr_dir_offset=2 addr_ch_offset=3"
+static int              fifo_mtu_multiplier = 6;// How many MTUs to allocate for kfifo's
+static int              addr_dir_offset = 2;    // GPIO_SA[4:0] offset of the channel direction
+static int              addr_ch_offset = 3;     // GPIO_SA[4:0] offset of the channel select
+
+module_param(fifo_mtu_multiplier, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+module_param(addr_dir_offset, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+module_param(addr_ch_offset, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+
+MODULE_PARM_DESC(fifo_mtu_multiplier, "the number of MTUs (N*MTU_SIZE) to allocate for kfifo's (default 6) valid: [3..19]");
+MODULE_PARM_DESC(addr_dir_offset, "GPIO_SA[4:0] offset of the channel direction (default cariboulite 2), valid: [0..4] or (-1) if unused");
+MODULE_PARM_DESC(addr_ch_offset, "GPIO_SA[4:0] offset of the channel select (default cariboulite 3), valid: [0..4] or (-1) if unused");
 
 struct bcm2835_smi_dev_instance 
 {
@@ -80,6 +92,16 @@ struct bcm2835_smi_dev_instance
 	bool readable;
 	bool writeable;
 };
+
+
+// Prototypes
+ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
+								enum dma_transfer_direction dma_dir,
+								struct bcm2835_smi_bounce_info **bounce, 
+                                int buff_num);
+int reader_thread_stream_function(void *pv);
+int writer_thread_stream_function(void *pv);
+
 
 static struct bcm2835_smi_dev_instance *inst = NULL;
 
@@ -127,8 +149,8 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
     
     if (inst == NULL) return;
     
-	inst->cur_address &= ~(1<<ADDR_DIR_OFFSET);
-	inst->cur_address |= t<<ADDR_DIR_OFFSET;
+	inst->cur_address &= ~(1<<addr_dir_offset);
+	inst->cur_address |= t<<addr_dir_offset;
 	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 }*/
 
@@ -139,8 +161,8 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
     
     if (inst == NULL) return;
     
-	inst->cur_address &= ~(1<<ADDR_CH_OFFSET);
-	inst->cur_address |= t<<ADDR_CH_OFFSET;
+	inst->cur_address &= ~(1<<addr_ch_offset);
+	inst->cur_address |= t<<addr_ch_offset;
 	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
 }*/
 
@@ -149,7 +171,7 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 {
     if (inst == NULL) return smi_stream_channel_0;
     
-	return (smi_stream_channel_en)((inst->cur_address >> ADDR_CH_OFFSET) & 0x1);
+	return (smi_stream_channel_en)((inst->cur_address >> addr_ch_offset) & 0x1);
 }*/
 
 /***************************************************************************/
@@ -170,15 +192,15 @@ static void set_state(smi_stream_state_en state)
     
     if (state == smi_stream_rx_channel_0)
     {
-        inst->cur_address = (smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET) | (smi_stream_channel_0<<ADDR_CH_OFFSET);
+        inst->cur_address = (smi_stream_dir_device_to_smi<<addr_dir_offset) | (smi_stream_channel_0<<addr_ch_offset);
     }
     else if (state == smi_stream_rx_channel_1)
     {
-        inst->cur_address = (smi_stream_dir_device_to_smi<<ADDR_DIR_OFFSET) | (smi_stream_channel_1<<ADDR_CH_OFFSET);
+        inst->cur_address = (smi_stream_dir_device_to_smi<<addr_dir_offset) | (smi_stream_channel_1<<addr_ch_offset);
     }
     else if (state == smi_stream_tx_channel)
     { 
-        inst->cur_address = smi_stream_dir_smi_to_device<<ADDR_DIR_OFFSET;
+        inst->cur_address = smi_stream_dir_smi_to_device<<addr_dir_offset;
     }
     else
     {
@@ -734,7 +756,7 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 	// create the data fifo ( N x dma_bounce size )
 	// we want this fifo to be deep enough to allow the application react without
 	// loosing stream elements
-	ret = kfifo_alloc(&inst->rx_fifo, FIFO_SIZE_MULTIPLIER * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
+	ret = kfifo_alloc(&inst->rx_fifo, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
 	if (ret)
 	{
 		printk(KERN_ERR DRIVER_NAME": error rx kfifo_alloc\n");
@@ -742,7 +764,7 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 	}
 	
 	// and the writer
-	ret = kfifo_alloc(&inst->tx_fifo, FIFO_SIZE_MULTIPLIER * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
+	ret = kfifo_alloc(&inst->tx_fifo, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
 	if (ret)
 	{
 		printk(KERN_ERR DRIVER_NAME": error tx kfifo_alloc\n");
@@ -775,6 +797,7 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 		printk(KERN_ERR DRIVER_NAME": writer_thread creation failed - kthread\n");
 		ret = PTR_ERR(inst->writer_thread);
 		inst->writer_thread = NULL;
+        inst->reader_thread = NULL;
 		kfifo_free(&inst->rx_fifo);
 		kfifo_free(&inst->tx_fifo);
 		return ret;
@@ -806,8 +829,11 @@ static int smi_stream_release(struct inode *inode, struct file *file)
 	if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
 	if (inst->writer_thread != NULL) kthread_stop(inst->writer_thread);
 	
-	kfifo_free(&inst->rx_fifo);
-	kfifo_free(&inst->tx_fifo);
+	if (kfifo_initialized(&inst->rx_fifo)) kfifo_free(&inst->rx_fifo);
+	if (kfifo_initialized(&inst->tx_fifo)) kfifo_free(&inst->tx_fifo);
+    
+    inst->reader_thread = NULL;
+    inst->writer_thread = NULL;
 
 	return 0;
 }
@@ -817,8 +843,8 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 {
 	int ret = 0;
 	unsigned int copied;
-	int num_bytes = 0;
-	size_t count_actual = count;
+	size_t num_bytes = 0;
+	unsigned int count_actual = count;
 	
 	if (kfifo_is_empty(&inst->rx_fifo))
 	{
@@ -834,16 +860,16 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 	ret = kfifo_to_user(&inst->rx_fifo, buf, count_actual, &copied);
 	mutex_unlock(&inst->read_lock);
 
-	return ret ? ret : copied;
+	return ret ? ret : (ssize_t)copied;
 }
 
 /***************************************************************************/
 static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr, size_t count, loff_t *offs)
 {
 	int ret = 0;
-	int num_bytes_available = 0;
-	int num_to_push = 0;
-	int actual_copied = 0;
+	unsigned int num_bytes_available = 0;
+	unsigned int num_to_push = 0;
+	unsigned int actual_copied = 0;
 	
 	if (mutex_lock_interruptible(&inst->write_lock))
 	{
@@ -863,7 +889,7 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
 
 	mutex_unlock(&inst->write_lock);
 
-	return ret ? ret : actual_copied;
+	return ret ? ret : (ssize_t)actual_copied;
 }
 
 /***************************************************************************/
@@ -966,7 +992,35 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *smi_node;
 
-	printk(KERN_INFO DRIVER_NAME": smi_stream_dev_probe\n");
+	printk(KERN_INFO DRIVER_NAME": smi_stream_dev_probe (fifo_mtu_multiplier=%d, addr_dir_offset=%d, addr_ch_offset=%d)\n",
+                                    fifo_mtu_multiplier,
+                                    addr_dir_offset,
+                                    addr_ch_offset);
+    
+    // Check parameters
+    if (fifo_mtu_multiplier > 20 || fifo_mtu_multiplier < 2)
+    {
+        dev_err(dev, "Parameter error: 2<fifo_mtu_multiplier<20");
+		return -EINVAL;
+    }
+    
+    if (addr_dir_offset > 4 || addr_dir_offset < -1)
+    {
+        dev_err(dev, "Parameter error: 0<=addr_dir_offset<=4 or (-1 - unused)");
+		return -EINVAL;
+    }
+    
+    if (addr_ch_offset > 4 || addr_ch_offset < -1)
+    {
+        dev_err(dev, "Parameter error: 0<=addr_ch_offset<=4 or (-1 - unused)");
+		return -EINVAL;
+    }
+    
+    if (addr_dir_offset == addr_ch_offset && addr_dir_offset != -1)
+    {
+        dev_err(dev, "Parameter error: addr_ch_offset should be different than addr_dir_offset");
+		return -EINVAL;
+    }
 
 	if (!dev->of_node) 
 	{

@@ -109,7 +109,13 @@ sudo ldconfig
 
 printf "${CYAN}3. SMI kernel module & udev...${NC}\n"
 cd $ROOT_DIR/driver
-./install.sh
+kernel_memory=$(grep "MemAvailable:" /proc/meminfo | awk '{print $2}')
+kernel_memory_mb=$((kernel_memory / 1024))
+if (( kernel_memory_mb > 512 )); then
+  ./install.sh install 6 2 3
+else
+  ./install.sh install 3 2 3
+fi
 cd ..
 
 printf "${CYAN}4. Main software...${NC}\n"

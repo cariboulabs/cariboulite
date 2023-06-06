@@ -286,7 +286,10 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
 
     // find the offset and adjust
     offs = caribou_smi_find_buffer_offset(dev, data, data_length);
-    //printf("OFFSET = %d\n", offs);
+    if (offs > 0)
+    {
+        //printf("OFFSET = %d\n", offs);
+    }
     if (offs < 0)
     {
         return -1;

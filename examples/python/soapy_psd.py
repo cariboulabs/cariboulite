@@ -41,7 +41,7 @@ rx_buff = np.empty(2 * N, np.int16)  # Create memory buffer for data stream
 freq = 915e6
 
 #  Initialize Soapy
-sdr = SoapySDR.Device(dict(driver="HermonSDR"))
+sdr = SoapySDR.Device(dict(driver="CaribouLite"))
 rx_stream = setup_receiver(sdr, rx_chan, freq)
 sdr.activateStream(rx_stream)
 
