@@ -114,7 +114,7 @@ kernel_memory_mb=$((kernel_memory / 1024))
 if (( kernel_memory_mb > 512 )); then
   ./install.sh install 6 2 3
 else
-  ./install.sh install 3 2 3
+  ./install.sh install 2 2 3
 fi
 cd ..
 

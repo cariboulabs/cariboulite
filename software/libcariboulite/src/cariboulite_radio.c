@@ -72,13 +72,11 @@ int cariboulite_radio_ext_ref ( sys_st *sys, cariboulite_ext_ref_freq_en ref)
             ZF_LOGD("Setting ext_ref = 26MHz");
             at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_26mhz);
             rffc507x_setup_reference_freq(&sys->mixer, 26e6);
-            rffc507x_calibrate(&sys->mixer);
             break;
         case cariboulite_ext_ref_32mhz:
             ZF_LOGD("Setting ext_ref = 32MHz");
             at86rf215_set_clock_output(&sys->modem, at86rf215_drive_current_8ma, at86rf215_clock_out_freq_32mhz);
             rffc507x_setup_reference_freq(&sys->mixer, 32e6);
-            rffc507x_calibrate(&sys->mixer);
             break;
         case cariboulite_ext_ref_off:
             ZF_LOGD("Setting ext_ref = OFF");
@@ -668,6 +666,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
         if (f_rf_mod_26 > 13e6) f_rf_mod_26 = 26e6 - f_rf_mod_26;
         ext_ref_choice = f_rf_mod_32 > f_rf_mod_26 ? cariboulite_ext_ref_32mhz : cariboulite_ext_ref_26mhz;
         cariboulite_radio_ext_ref (radio->sys, ext_ref_choice);
+        rffc507x_calibrate(&radio->sys->mixer);
 
         // Decide the conversion direction and IF/RF/LO
         //-------------------------------------

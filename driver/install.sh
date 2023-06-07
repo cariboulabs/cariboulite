@@ -18,12 +18,12 @@ install() {
     local mtu_mult=${1:-6}
     local dir_offs=${2:-2}
     local ch_offs=${3:-3}
-  
+
     printf "${GREEN}Installation started...${NC}\n"
     printf "\n[  1  ] ${GREEN}Updating kernel headers and needed software${NC}\n"
     sudo apt-get update
     sudo apt-get -y install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git
-    
+
     printf "\n[  2  ] ${GREEN}Compiling module${NC}\n"
     if [ -d "$BUILD_DIR" ]; then
         echo "Subdirectory '$BUILD_DIR' exists. Deleting its contents..."
@@ -32,21 +32,21 @@ install() {
         echo "Subdirectory '$BUILD_DIR' does not exist. Creating it..."
         mkdir "$BUILD_DIR"
     fi
-    
+
     # enter build dir and build the ko file
     cd "${ROOT_DIR}/$BUILD_DIR"
     cmake ../
     make
     cd ${ROOT_DIR}
-    
+
     # copy the outputs to internal software
     ${BLOB_CREATOR_DIR}generate_bin_blob ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko smi_stream_dev ${USERSPACE_SMI_DIR}/smi_stream_dev_gen.h
     cp ${ROOT_DIR}/bcm2835_smi.h ${USERSPACE_SMI_DIR}
     cp ${ROOT_DIR}/smi_stream_dev.h ${USERSPACE_SMI_DIR}
-    
+
     # find the location to install
     output_dir=$(find "/lib/modules" -type f -name "bcm2835_smi_dev*" -exec dirname {} \;)
-    
+
     # Check if the output is empty
     if [ -z "$output_dir" ]; then
         printf "${RED}Error: module 'bcm2835_smi_dev' couldn't be found.${NC}\n"
@@ -54,26 +54,26 @@ install() {
         # suspicious - why doen't it exist? check of the base module bcm2835_smi exists
         exit 100
     fi
-    
+
     printf "\n[  3  ] ${GREEN}Installing into '${output_dir}'${NC}\n"
     xz -z ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko -c > ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz
     sudo cp ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz ${output_dir}/
-    
+
     printf "\n[  4  ] ${GREEN}Updating 'depmod'${NC}\n"
     sudo depmod -a
-    
+
     printf "\n[  5  ] ${GREEN}Blacklisting original bcm2835_smi_dev module${NC}\n"
     echo "# blacklist the broadcom default smi module to replace with smi_stream_dev" | sudo tee "/etc/modprobe.d/blacklist-bcm_smi.conf" > /dev/null
     echo "blacklist bcm2835_smi_dev" | sudo tee -a "/etc/modprobe.d/blacklist-bcm_smi.conf" > /dev/null
-    
+
     printf "\n[  6  ] ${GREEN}Adding systemd configuration${NC}\n"
     echo "# load SMI stream driver on startup" | sudo tee "/etc/modules-load.d/smi_stream_mod.conf" > /dev/null
     echo "smi_stream_dev" | sudo tee -a "/etc/modules-load.d/smi_stream_mod.conf" > /dev/null
-    
+
     printf "\n[  7  ] ${GREEN}Adding modprobe configuration ${mtu_mult}, ${dir_offs}, ${ch_offs}${NC}\n"
     echo "# SMI STREAM DEV specific options" | sudo tee "/etc/modprobe.d/smi_stream_mod_cariboulite.conf" > /dev/null
     echo "options smi_stream_dev fifo_mtu_multiplier=${mtu_mult} addr_dir_offset=${dir_offs} addr_ch_offset=${ch_offs}" | sudo tee -a "/etc/modprobe.d/smi_stream_mod_cariboulite.conf" > /dev/null
-    
+
     printf "\n[  8  ] ${GREEN}Adding UDEV rules${NC}\n"
     cd ${ROOT_DIR}/udev
     sudo ./install.sh install
