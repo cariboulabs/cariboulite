@@ -421,6 +421,76 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 		
 		break;
 	}
+        //-------------------------------
+	case SMI_STREAM_IOC_SET_FIFO_MULT:
+	{
+        int temp = (int)arg;
+        if (temp > 20 || temp < 2)
+        {
+            dev_err(inst->dev, "Parameter error: 2<fifo_mtu_multiplier<20, got %d", temp);
+            return -EINVAL;
+        }
+        dev_info(inst->dev, "Setting FIFO size multiplier to %d", temp);
+        fifo_mtu_multiplier = temp;
+		break;
+	}
+    //-------------------------------
+	case SMI_STREAM_IOC_SET_ADDR_DIR_OFFSET:
+	{
+        int temp = (int)arg;
+        if (temp > 4 || temp < -1)
+        {
+            dev_err(inst->dev, "Parameter error: 0<=addr_dir_offset<=4 or (-1 - unused), got %d", temp);
+            return -EINVAL;
+        }
+        dev_info(inst->dev, "Setting address direction indication offset to %d", temp);
+        addr_dir_offset = temp;
+		break;
+	}
+    //-------------------------------
+	case SMI_STREAM_IOC_SET_ADDR_CH_OFFSET:
+	{
+        int temp = (int)arg;
+        if (temp > 4 || temp < -1)
+        {
+            dev_err(inst->dev, "Parameter error: 0<=addr_ch_offset<=4 or (-1 - unused), got %d", temp);
+            return -EINVAL;
+        }
+        dev_info(inst->dev, "Setting address channel indication offset to %d", temp);
+        addr_ch_offset = temp;
+		break;
+	}
+    
+    //-------------------------------
+	case SMI_STREAM_IOC_GET_FIFO_MULT:
+	{
+		dev_dbg(inst->dev, "Reading FIFO size multiplier of %d", fifo_mtu_multiplier);
+		if (copy_to_user((void *)arg, &fifo_mtu_multiplier, sizeof(fifo_mtu_multiplier)))
+		{
+			dev_err(inst->dev, "fifo_mtu_multiplier copy failed.");
+		}
+		break;
+	}
+    //-------------------------------
+	case SMI_STREAM_IOC_GET_ADDR_DIR_OFFSET:
+	{
+        dev_dbg(inst->dev, "Reading address direction indication offset of %d", addr_dir_offset);
+		if (copy_to_user((void *)arg, &addr_dir_offset, sizeof(addr_dir_offset)))
+		{
+			dev_err(inst->dev, "addr_dir_offset copy failed.");
+		}
+		break;
+	}
+    //-------------------------------
+	case SMI_STREAM_IOC_GET_ADDR_CH_OFFSET:
+	{
+        dev_dbg(inst->dev, "Reading address channel indication offset of %d", addr_ch_offset);
+		if (copy_to_user((void *)arg, &addr_ch_offset, sizeof(addr_ch_offset)))
+		{
+			dev_err(inst->dev, "addr_ch_offset copy failed.");
+		}
+		break;
+	}
     //-------------------------------
 	default:
 		dev_err(inst->dev, "invalid ioctl cmd: %d", cmd);
