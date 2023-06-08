@@ -146,6 +146,23 @@ static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings 
         ZF_LOGE("failed writing ioctl to the smi fd (settings)");
         return -1;
     }
+    
+    // set the address line parameters
+    int address_dir_offset = 1;
+    if (ioctl(dev->filedesc, SMI_STREAM_IOC_SET_ADDR_DIR_OFFSET, address_dir_offset) != 0)
+    {
+        ZF_LOGE("failed writing ioctl to the smi fd (address_dir_offset)");
+        return -1;
+    }
+    
+    // set the address line parameters
+    int address_channel_offset = 0;
+    if (ioctl(dev->filedesc, SMI_STREAM_IOC_SET_ADDR_CH_OFFSET, address_channel_offset) != 0)
+    {
+        ZF_LOGE("failed writing ioctl to the smi fd (address_channel_offset)");
+        return -1;
+    }
+    
     return 0;
 }
 
