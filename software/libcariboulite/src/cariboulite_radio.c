@@ -908,7 +908,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             .loopback_enable = 0,
             .drv_strength = at86rf215_iq_drive_current_4ma,
             .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
-            .tx_control_with_iq_if = true,
+            .tx_control_with_iq_if = !radio->cw_output,
             .radio09_mode = at86rf215_iq_if_mode,
             .radio24_mode = at86rf215_iq_if_mode,
             .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
@@ -964,15 +964,6 @@ int cariboulite_radio_set_cw_outputs(cariboulite_radio_state_st* radio, bool lo_
         radio->lo_output = false;
     }
     radio->cw_output = cw_out;
-
-    if (cw_out)
-    {
-        radio->channel_direction = cariboulite_channel_dir_tx;
-    }
-    else
-    {
-        radio->channel_direction = cariboulite_channel_dir_rx;
-    }
 
     return 0;
 }

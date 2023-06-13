@@ -28,6 +28,20 @@ printf "\n[  2  ] ${GREEN}Updating system and installing dependencies...${NC}\n"
 sudo apt-get update
 sudo apt-get -y install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
 sudo apt-get -y install swig avahi-daemon libavahi-client-dev python3-distutils libpython3-dev
+
+# In ubuntu we need to grant access to gpiomem
+if grep -iq "NAME=\"Ubuntu\"" /etc/os-release; then
+	sudo apt-get install rpi.gpio-common
+	echo "Adding user `whoami` to dialout, root groups"
+	
+	if [[ "`groups ``whoami`" == *`whoami`* ]]; then
+	   echo "`   User already in the group`" 
+	else
+	   sudo usermod -aG dialout, root "${USER}"
+	fi
+	
+fi
+
 sudo depmod -a
 
 ## --------------------------------------------------------------------
@@ -111,9 +125,12 @@ printf "${CYAN}3. SMI kernel module & udev...${NC}\n"
 cd $ROOT_DIR/driver
 kernel_memory=$(grep "MemAvailable:" /proc/meminfo | awk '{print $2}')
 kernel_memory_mb=$((kernel_memory / 1024))
+printf "${CYAN}   Detected memory ${kernel_memory_mb} MB...${NC}\n"
 if (( kernel_memory_mb > 512 )); then
+  printf "${CYAN}   Installing with Fifo size multiplier of 6xMTU...${NC}\n"
   ./install.sh install 6 2 3
 else
+  printf "${CYAN}   Installing with Fifo size multiplier of 2xMTU...${NC}\n"
   ./install.sh install 2 2 3
 fi
 cd ..
