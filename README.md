@@ -3,14 +3,14 @@ CaribouLite is an affordable, educational, open-source SDR evaluation platform a
 
 <table>
   <tr>
-    <td><img src="hardware/rev2/pictures/oshwa.png" alt="Open source hardware association certificate"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/oshwa.png" alt="Open source hardware association certificate"></td>
     <td>This project has been certified by OSHWA</td>
   </tr>
 </table>
 
 <table>
   <tr>
-    <td><img src="hardware/rev2/pictures/DSC_1151.jpg" alt="CaribouLite R2" height="200"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/DSC_1151.jpg" alt="CaribouLite R2" height="200"></td>
   </tr>
   <tr>
     <td>CaribouLite R2.5 SDR mounted on a RPI-Zero</td>
@@ -72,7 +72,7 @@ More information on this interface can be found [here (HW side)](docs/smi/README
 
 <table>
   <tr>
-    <td><img src="hardware/rev2/pictures/DSC_1102.jpg" alt="Top View"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/DSC_1102.jpg" alt="Top View"></td>
   </tr>
   <tr>
     <td>Cariboulite /w RPI Zero, two channels occupied</td>
@@ -85,8 +85,8 @@ The board first prototyping (**Red**) revision ([REV1](hardware/rev1)) has been 
 
 <table>
   <tr>
-    <td><img src="hardware/rev1/DSC_1044.jpg" alt="CaribouLite R1" width="500"></td>
-    <td><img src="hardware/rev2/pictures/Rev2.5/front_rfi.png" alt="CaribouLite Connectors" width="500"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev1/DSC_1044.jpg" alt="CaribouLite R1" width="500"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/Rev2.5/front_rfi.png" alt="CaribouLite Connectors" width="500"></td>
   </tr>
   <tr>
     <td>CaribouLite Rev1 - the prototype version</td>
@@ -106,10 +106,10 @@ In summary, in CaribouLite-Rev2.5 PCB design has been thoroughly re-thought to m
 
 <table>
   <tr>
-    <td><img src="hardware/rev2/pictures/DSC_1127.jpg" alt="Top View"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/DSC_1127.jpg" alt="Top View"></td>
   </tr>
   <tr>
-    <td><img src="hardware/rev2/pictures/DSC_1132.jpg" alt="Top View"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/DSC_1132.jpg" alt="Top View"></td>
   </tr>
   <tr>
     <td>Top and Bottom views of CaribouLite <b>Rev2.4</b> (pre-production)</td>
@@ -118,12 +118,12 @@ In summary, in CaribouLite-Rev2.5 PCB design has been thoroughly re-thought to m
 
 <table>
   <tr>
-    <td><img src="hardware/rev2/pictures/Rev2.5/front_exposed.png" alt="Top View"></td>
-    <td><img src="hardware/rev2/pictures/Rev2.5/front_rfi.png" alt="Top View"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/Rev2.5/front_exposed.png" alt="Top View"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/Rev2.5/front_rfi.png" alt="Top View"></td>
   </tr>
   <tr>
-    <td><img src="hardware/rev2/pictures/Rev2.5/back_exposed.png" alt="Top View"></td>
-  <td><img src="hardware/rev2/pictures/Rev2.5/back_rfi.png" alt="Top View"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/Rev2.5/back_exposed.png" alt="Top View"></td>
+  <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev2/pictures/Rev2.5/back_rfi.png" alt="Top View"></td>
   </tr>
   <tr>
     <td>Top and Bottom views of CaribouLite <b>Rev2.5</b></td>
@@ -139,7 +139,7 @@ In summary, in CaribouLite-Rev2.5 PCB design has been thoroughly re-thought to m
 
 <table>
   <tr>
-    <td><img src="hardware/rev1/frequencies.png" alt="spectra"></td>
+    <td><img src="https://github.com/cariboulabs/cariboulite_hw/blob/main/hardware/rev1/frequencies.png" alt="spectra"></td>
   </tr>
   <tr>
     <td style="text-align:center">Applicable spectra, S1G - sub-1GHz, WB - Wide tuning channel</td>
