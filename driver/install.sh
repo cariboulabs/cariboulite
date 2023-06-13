@@ -57,7 +57,7 @@ install() {
 
     printf "\n[  3  ] ${GREEN}Installing into '${output_dir}'${NC}\n"
     xz -z ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko -c > ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz
-    sudo cp ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz ${output_dir}/
+    sudo cp -r ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz ${output_dir}/
 
     printf "\n[  4  ] ${GREEN}Updating 'depmod'${NC}\n"
     sudo depmod -a

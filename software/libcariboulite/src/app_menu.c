@@ -357,6 +357,8 @@ static void print_iq(char* prefix, caribou_smi_sample_complex_int16* buffer, siz
 {
     int i;
     
+    if (num_samples == 0) return;
+    
     for (i = 0; i < num_head_tail; i++)
     {
         printf("[%d, %d] ", buffer[i].i, buffer[i].q);

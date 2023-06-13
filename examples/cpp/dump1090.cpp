@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 
         // set the sample rate, frequency, ...
         device->setSampleRate(SOAPY_SDR_RX, 0, 4e6);
- 		device->setBandwidth(SOAPY_SDR_RX, 0, 100e5);
+ 		device->setBandwidth(SOAPY_SDR_RX, 0, 200e5);
 		device->setGainMode(SOAPY_SDR_RX, 0, false);
 		device->setGain(SOAPY_SDR_RX, 0, 50);
 		device->setFrequency(SOAPY_SDR_RX, 0, 1090e6);
