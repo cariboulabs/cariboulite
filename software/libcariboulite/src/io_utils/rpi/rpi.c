@@ -448,19 +448,23 @@ uint32_t clearBit(volatile uint32_t* reg, uint8_t position)
 uint8_t isBitSet(volatile uint32_t* reg, uint8_t position)
 {
 	uint32_t mask = 1 << position;
+	__sync_synchronize();
 	return *reg & mask ? 1 : 0;
 }
 
 /* Read content of a peripheral register */
 uint32_t pr_read(volatile uint32_t* reg)
 {
+	__sync_synchronize();
 	return *reg;
 }
 
 /* Write a value to a peripheral register  */
 uint32_t pr_write(volatile uint32_t* reg,  uint32_t value)
 {
+	__sync_synchronize();
 	*reg = value;
+	__sync_synchronize();
 	return *reg;
 }
 
@@ -488,7 +492,7 @@ void set_gpio(uint8_t pin, uint8_t fsel){
 	/* get base address (GPFSEL0 to GPFSEL5) using *(GPFSEL0 + (pin/10))
 	 * get mask using (alt << ((pin)%10)*3)
 	 */
-
+	 __sync_synchronize();
 	 volatile uint32_t *gpsel = (uint32_t *)(GPIO_GPFSEL0 + (pin/10));  	// get the GPFSEL0 pointer (GPFSEL0 ~ GPFSEL5) based on the pin number selected
 	 uint32_t mask = ~ (7 <<  (pin % 10)*3); 				// mask to reset fsel to 0 first
 	 *gpsel &= mask;   					     		// reset gpsel value to 0
@@ -506,6 +510,7 @@ uint8_t get_gpio(uint8_t pin)
      uint32_t cur_val = *gpsel;
      
      cur_val >>= (pin % 10)*3;
+     __sync_synchronize();
      return cur_val & 0x7;
 }
 
@@ -626,6 +631,7 @@ void gpio_pulse(uint8_t pin, int td){
  * 1 (ON  state)
  */
 uint8_t gpio_read(uint8_t pin) {
+	__sync_synchronize();
 	return isBitSet(GPIO_GPLEV0, pin);
 }
 

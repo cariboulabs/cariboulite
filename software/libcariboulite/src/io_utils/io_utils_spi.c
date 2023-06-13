@@ -60,7 +60,7 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
         io_utils_set_gpio_mode(miso_pin, io_utils_alt_gpio_in);
         io_utils_set_gpio_mode(mosi_pin, io_utils_alt_gpio_out);
         io_utils_set_gpio_mode(sck_pin, io_utils_alt_gpio_out);
-		dev->current_chip = chip;
+        dev->current_chip = chip;
         return 0;
     }
 
@@ -86,6 +86,7 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
         io_utils_set_gpio_mode(dev->miso, io_utils_alt_4);
         io_utils_set_gpio_mode(dev->mosi, io_utils_alt_4);
         io_utils_set_gpio_mode(dev->sck, io_utils_alt_4);
+        io_utils_usleep(100);
     }
 
     return setup_spi_dev;
@@ -95,7 +96,7 @@ static int io_utils_spi_setup_chip(io_utils_spi_st* dev, int handle)
 static int io_utils_spi_write_rffc507x(io_utils_spi_st* dev, io_utils_spi_chip_st* chip, uint8_t reg, uint16_t val)
 {
     int bits = 25;
-    int nop_cnt = 50;
+    int nop_cnt = 200;
 	int msb = 1 << (bits - 1);
     uint32_t data = reg;
 	data = ((data & 0x7f) << 16) | val;
@@ -149,7 +150,7 @@ static int io_utils_spi_write_rffc507x(io_utils_spi_st* dev, io_utils_spi_chip_s
 static int io_utils_spi_read_rffc507x(io_utils_spi_st* dev, io_utils_spi_chip_st* chip, uint8_t reg)
 {
 	int bits = 9;
-    int nop_cnt = 50;
+    int nop_cnt = 200;
 	int msb = 1 << (bits -1);
 	uint32_t data = 0x80 | (reg & 0x7f);
 
@@ -224,7 +225,7 @@ static int io_utils_spi_read_rffc507x(io_utils_spi_st* dev, io_utils_spi_chip_st
 static int io_utils_ice40_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_st* chip,
                                         const uint8_t *tx, unsigned int len)
 {
-    int nop_cnt = 300;
+    int nop_cnt = 400;
     int data_pin = chip->miso_mosi_swap?dev->miso:dev->mosi;
     int sck_pin = dev->sck;
 
@@ -254,7 +255,7 @@ static int io_utils_ice40_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_s
 static int io_utils_modem_bitbang_transfer_spi(io_utils_spi_st* dev, io_utils_spi_chip_st* chip,
                                                 const uint8_t *tx, uint8_t *rx, unsigned int len)
 {
-    int nop_cnt = 120;
+    int nop_cnt = 200;
     int cs_pin = chip->cs_pin;
     int mosi_pin = chip->miso_mosi_swap?dev->miso:dev->mosi;
     int miso_pin = chip->miso_mosi_swap?dev->mosi:dev->miso;
