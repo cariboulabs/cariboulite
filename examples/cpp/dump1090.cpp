@@ -20,6 +20,12 @@
 #include "modes.h"
 
 
+typedef struct
+{
+    int16_t i;
+    int16_t q;
+} complex_sample_16_t;
+
 //=================================================================================
 static void printBanner(void)
 {
@@ -45,18 +51,17 @@ void onModeSMessage(mode_s_t *self, struct mode_s_msg *mm)
 
 //=================================================================================
 // Turn I/Q samples pointed by `data` into the magnitude vector pointed by `mag`
-void MagnitudeVectorDownSample(short *data, uint16_t *mag, uint32_t size)
+void CalculateMagnitudeVector(complex_sample_16_t *data, uint16_t *mag, uint32_t num_samples)
 {
 	uint32_t k;
 	float i, q;
 	int t = 0;
-	for (k=0; k<size; k+=2, t++)
+	for (k=0; k<num_samples; k+=1)
 	{
-		float i = (float)data[k];
-		float q = (float)data[k+1];
+		float i = (float)data[k].i;
+		float q = (float)data[k].q;
 
-		if (t & 0x1)
-		mag[t >> 1]=(uint16_t)sqrt(i*i + q*q);
+		mag[k]=(uint16_t)sqrtf(i*i + q*q);
 	}
 }
 
@@ -67,7 +72,7 @@ void runSoapyProcess(	SoapySDR::Device *device,
 {
     // allocate buffers for the stream read/write
     const size_t numElems = device->getStreamMTU(stream);
-	int16_t* buff = (int16_t*)malloc(2*sizeof(int16_t)*numElems);	// complex 16 bit samples
+    complex_sample_16_t* samples = (complex_sample_16_t*)malloc(sizeof(complex_sample_16_t)*numElems);
 	uint16_t* mag = (uint16_t*)malloc(sizeof(uint16_t)*numElems);
 
 	// MODE-S
@@ -83,39 +88,35 @@ void runSoapyProcess(	SoapySDR::Device *device,
     {
         long long timeUS = numElems;
 		int flags = 0;
-        int ret = device->readStream(stream, (void* const*)&buff, numElems, flags, timeUS);
-		if (ret < 0)
+        int numSamplesRead = device->readStream(stream, (void* const*)&samples, numElems, flags, timeUS);
+		if (numSamplesRead < 0)
         {
-            //std::cerr << "Unexpected stream error " << ret << std::endl;
+            //std::cerr << "Unexpected stream error " << numSamplesRead << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
         }
 
-		switch (ret)
+		switch (numSamplesRead)
 		{
-			case SOAPY_SDR_TIMEOUT: continue;
+			case SOAPY_SDR_TIMEOUT:
 			case SOAPY_SDR_OVERFLOW: 
-					//overflows++;
-            		continue;
 			case SOAPY_SDR_UNDERFLOW:
-					//underflows++;
-            		continue;
+            	continue;
 			default:
-					break;
+				break;
 		}
 
-		// All is good - proceed to DSP
-        // compute the magnitude of the signal
-		MagnitudeVectorDownSample(buff, mag, ret);
+		// Proceed to DSP - compute the magnitude of the signal
+		CalculateMagnitudeVector(samples, mag, numSamplesRead);
 
 		// detect Mode S messages in the signal and call on_msg with each message
-		mode_s_detect(&state, mag, ret/2, onModeSMessage);
+		mode_s_detect(&state, mag, numSamplesRead, onModeSMessage);
 
     }
     device->deactivateStream(stream);
 
 	// free memory
-	free(buff);
+	free(samples);
 	free(mag);
 }
 
@@ -138,7 +139,7 @@ int main(int argc, char *argv[])
         device = SoapySDR::Device::make(argStr);
 
         // set the sample rate, frequency, ...
-        device->setSampleRate(SOAPY_SDR_RX, 0, 4e6);
+        device->setSampleRate(SOAPY_SDR_RX, 0, 2e6);    // needs to be sampled at 2MSPS
  		device->setBandwidth(SOAPY_SDR_RX, 0, 200e5);
 		device->setGainMode(SOAPY_SDR_RX, 0, false);
 		device->setGain(SOAPY_SDR_RX, 0, 50);
