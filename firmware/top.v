@@ -149,6 +149,7 @@ module top (
   wire w_debug_fifo_pull;
   wire w_debug_smi_test;
   wire w_debug_lb_tx;
+  wire [3:0] tx_sample_gap;
 
   // IO CTRL
   io_ctrl io_ctrl_ins (
@@ -179,9 +180,6 @@ module top (
       .o_shdn_rx_lna(o_shdn_rx_lna),
       .o_mixer_en(/*o_mixer_en*/)
   );
-
-  assign o_led0 = i_smi_a2;
-  assign o_led1 = i_smi_a3;
 
   //=========================================================================
   // CONBINATORIAL ASSIGNMENTS
@@ -273,8 +271,8 @@ module top (
   ) iq_tx_p (
       .PACKAGE_PIN(o_iq_tx_p),
       .OUTPUT_CLK(lvds_clock_buf),
-      .D_OUT_0(~w_lvds_tx_d1),
-      .D_OUT_1(~w_lvds_tx_d0)
+      .D_OUT_0(~w_lvds_tx_d0),
+      .D_OUT_1(~w_lvds_tx_d1)
   );
 
   // Inverting, N-side of pair 
@@ -284,8 +282,8 @@ module top (
   ) iq_tx_n (
       .PACKAGE_PIN(o_iq_tx_n),
       .OUTPUT_CLK(lvds_clock_buf),
-      .D_OUT_0(w_lvds_tx_d1),
-      .D_OUT_1(w_lvds_tx_d0)
+      .D_OUT_0(w_lvds_tx_d0),
+      .D_OUT_1(w_lvds_tx_d1)
   );
 
 
@@ -312,11 +310,9 @@ module top (
   wire [31:0] w_rx_24_fifo_data;
 
   lvds_rx lvds_rx_09_inst (
-      .i_rst_b  (1'b1/*i_rst_b*/),
+      .i_rst_b  (i_rst_b),
       .i_ddr_clk(lvds_clock_buf),
-
       .i_ddr_data({w_lvds_rx_09_d0, w_lvds_rx_09_d1}),
-
       .i_fifo_full(w_rx_fifo_full),
       .o_fifo_write_clk(w_rx_09_fifo_write_clk),
       .o_fifo_push(w_rx_09_fifo_push),
@@ -327,7 +323,7 @@ module top (
   );
 
   lvds_rx lvds_rx_24_inst (
-      .i_rst_b  (1'b1/*i_rst_b*/),
+      .i_rst_b  (i_rst_b),
       .i_ddr_clk(lvds_clock_buf),
 
       .i_ddr_data({!w_lvds_rx_24_d0, !w_lvds_rx_24_d1}),
@@ -356,11 +352,11 @@ module top (
       .ADDR_WIDTH(10),  // 1024 samples
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) rx_fifo (
-      .wr_rst_b_i(1'b1/*i_rst_b*/),
+      .wr_rst_b_i(i_rst_b),
       .wr_clk_i(w_rx_fifo_write_clk),
       .wr_en_i(w_rx_fifo_push),
       .wr_data_i(w_rx_fifo_data),
-      .rd_rst_b_i(1'b1/*i_rst_b*/),
+      .rd_rst_b_i(i_rst_b),
       .rd_clk_i(w_clock_sys),
       .rd_en_i(w_rx_fifo_pull),
       .rd_data_o(w_rx_fifo_pulled_data),
@@ -387,6 +383,7 @@ module top (
       .i_sample_gap(tx_sample_gap),
       .i_tx_state(~w_smi_data_direction),
       .i_sync_input(1'b0),
+      .i_debug_lb(w_debug_lb_tx), 
       .o_tx_state_bit(),
       .o_sync_state_bit(),
   );
@@ -399,20 +396,19 @@ module top (
   wire [31:0] w_tx_fifo_data;
   wire w_tx_fifo_pull;
   wire [31:0] w_tx_fifo_pulled_data;
-  wire [3:0] tx_sample_gap;
   
   complex_fifo #(
       .ADDR_WIDTH(10),  // 1024 samples
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) tx_fifo (
       // smi clock is writing
-      .wr_rst_b_i(1'b1/*i_rst_b*/),
+      .wr_rst_b_i(i_rst_b),
       .wr_clk_i(w_tx_fifo_clock),
       .wr_en_i(w_tx_fifo_push),
       .wr_data_i(w_tx_fifo_data),
 	  
       // lvds clock is pulling (reading)
-      .rd_rst_b_i(1'b1/*i_rst_b*/),
+      .rd_rst_b_i(i_rst_b),
       .rd_clk_i(w_tx_fifo_read_clk),
       .rd_en_i(w_tx_fifo_pull),
       .rd_data_o(w_tx_fifo_pulled_data),
@@ -450,7 +446,7 @@ module top (
       .o_smi_read_req(w_smi_read_req),
       .o_smi_write_req(w_smi_write_req),
       .o_channel(/*channel*/),
-      .o_dir (w_smi_data_direction),
+      .o_dir (/*w_smi_data_direction*/),
       .i_smi_test(1'b0/*w_debug_smi_test*/),
       .o_cond_tx(),
       .o_address_error()
@@ -547,5 +543,7 @@ module top (
   assign o_smi_read_req  = (w_smi_data_direction) ? w_smi_read_req : w_smi_write_req;
   assign o_smi_write_req = 1'bZ;
 
+  assign o_led0 = w_smi_data_direction;
+  assign o_led1 = channel;
 
 endmodule  // top

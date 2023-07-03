@@ -82,6 +82,8 @@ typedef struct
     at86rf215_radio_tx_cut_off_en       tx_bw;
     at86rf215_radio_f_cut_en            tx_fcut;
     at86rf215_radio_sample_rate_en      tx_fs;
+    
+    bool                                tx_loopback_anabled;
 
     // at86rf215_radio_energy_detection_st rx_energy_detection;
     float                               rx_energy_detection_value;

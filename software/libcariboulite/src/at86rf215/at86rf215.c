@@ -119,7 +119,7 @@ int median(int a[], int n)
 }
 
 //===================================================================
-int at86rf215_calibrate_device(at86rf215_st* dev, at86rf215_rf_channel_en ch, int* i, int* q)
+int at86rf215_calibrate_device(at86rf215_st* dev, at86rf215_rf_channel_en ch, int* i_val, int* q_val)
 {
     int cal_i[NUM_CAL_STEPS] = {0};
     int cal_q[NUM_CAL_STEPS] = {0};

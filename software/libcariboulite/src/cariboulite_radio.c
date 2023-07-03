@@ -369,6 +369,7 @@ int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
                                    at86rf215_radio_sample_rate_en tx_sample_rate,
                                    at86rf215_radio_f_cut_en tx_cutoff)
 {
+    uint8_t sample_gap = 0;
     at86rf215_radio_tx_ctrl_st cfg = 
     {
         .pa_ramping_time = at86rf215_radio_tx_pa_ramp_16usec,
@@ -428,7 +429,7 @@ int cariboulite_radio_get_tx_samp_cutoff(cariboulite_radio_state_st* radio,
         default: sample_gap = 0; break;
     }
     
-    hermon_fpga_set_sys_ctrl_tx_sample_gap (&radio->sys->fpga, sample_gap);
+    caribou_fpga_set_sys_ctrl_tx_sample_gap (&radio->sys->fpga, sample_gap);
     
     return 0;
 }
@@ -901,10 +902,11 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     {
 		// after modem is activated turn on the the smi stream
         smi_stream_state_en smi_state = smi_stream_idle;
-        if (radio->smi_channel_id == hermon_smi_channel_900)
+        if (radio->smi_channel_id == caribou_smi_channel_900)
             smi_state = smi_stream_rx_channel_0;
-        else if (radio->smi_channel_id == hermon_smi_channel_2400)
+        else if (radio->smi_channel_id == caribou_smi_channel_2400)
             smi_state = smi_stream_rx_channel_1;
+        
         at86rf215_iq_interface_config_st modem_iq_config = {
             .loopback_enable = radio->tx_loopback_anabled,
             .drv_strength = at86rf215_iq_drive_current_4ma,
@@ -993,14 +995,15 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                     at86rf215_radio_state_cmd_tx_prep);
             radio->state = at86rf215_radio_state_cmd_tx_prep;
             
-            at86rf215_radio_get_tx_iq_calibration(&radio->sys->modem, GET_MODEM_CH,
+            at86rf215_radio_get_tx_iq_calibration(&radio->sys->modem, 
+                                                GET_MODEM_CH(radio->type),
                                                 &cal_i, &cal_q);
                                                 
             //printf(">>>>> CAL_I = %d, CAL_Q = %d\n", cal_i, cal_q);
             
             // apply the state
-            hermon_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
-            hermon_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
+            caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
+            caribou_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
         }
     }
 

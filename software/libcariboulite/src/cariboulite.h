@@ -101,7 +101,7 @@ typedef struct sys_st_t
     signal_handler_operation_en sig_op;
 
     // Management
-    cariboulite_fpga_versions_st fpga_versions;
+    caribou_fpga_versions_st fpga_versions;
     uint8_t fpga_error_status;
 	int fpga_config_res_state;
 	// Initialization

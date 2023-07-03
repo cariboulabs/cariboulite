@@ -83,6 +83,13 @@ public:
                         int &flags,
                         long long &timeNs,
                         const long timeoutUs = 100000);
+                        
+        int writeStream(SoapySDR::Stream *stream,
+                        void * const *buffs,
+                        const size_t numElems,
+                        int &flags,
+                        long long &timeNs,
+                        const long timeoutUs);
 
         /*******************************************************************
          * Antenna API

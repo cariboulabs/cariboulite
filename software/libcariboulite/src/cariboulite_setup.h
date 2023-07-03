@@ -275,7 +275,7 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res);
  * @param res test-result
  * @return 0 (sucess), -1 (fail)
  */
-cariboulite_radio_state_st* cariboulite_get_radio_handle(sys_st* sys);
+cariboulite_radio_state_st* cariboulite_get_radio_handle(sys_st* sys, cariboulite_channel_en type);
 #ifdef __cplusplus
 }
 #endif

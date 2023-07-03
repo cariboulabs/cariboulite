@@ -810,7 +810,8 @@ void cariboulite_print_board_info(sys_st *sys, bool log)
 }
 
 //===========================================================
-cariboulite_radio_state_st* cariboulite_get_radio_handle(sys_st* sys)
+cariboulite_radio_state_st* cariboulite_get_radio_handle(sys_st* sys, cariboulite_channel_en type)
 {
-    return &sys->radio;
+    if (type == cariboulite_channel_s1g) return &sys->radio_low;
+    else return &sys->radio_high;
 }

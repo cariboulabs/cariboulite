@@ -93,6 +93,12 @@ public:
 	int ReadSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us);
 	int ReadSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
 	int ReadSamplesGen(void* buffer, size_t num_elements, long timeout_us);
+    
+    int WriteSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us);
+	int WriteSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us);
+	int WriteSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us);
+	int WriteSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
+	int WriteSamplesGen(void* buffer, size_t num_elements, long timeout_us);
 
 	cariboulite_channel_dir_en getInnerStreamType(void);
     void setInnerStreamType(cariboulite_channel_dir_en dir);
