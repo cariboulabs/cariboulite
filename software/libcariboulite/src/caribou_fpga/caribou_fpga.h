@@ -151,6 +151,8 @@ int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map);
 char* caribou_fpga_get_mode_name (caribou_fpga_io_ctrl_rfm_en mode);
 int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool dbg_fifo_pull, bool dbg_smi);
 
+int caribou_fpga_set_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t gap);
+int caribou_fpga_get_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t *gap);
 // I/O Controller
 int caribou_fpga_set_io_ctrl_mode (caribou_fpga_st* dev, uint8_t debug_mode, caribou_fpga_io_ctrl_rfm_en rfm);
 int caribou_fpga_get_io_ctrl_mode (caribou_fpga_st* dev, uint8_t *debug_mode, caribou_fpga_io_ctrl_rfm_en *rfm);
@@ -170,6 +172,7 @@ int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin
 // SMI Controller
 int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_smi_fifo_status_st *status);
 int caribou_fpga_set_smi_channel (caribou_fpga_st* dev, caribou_fpga_smi_channel_en channel);
+int caribou_fpga_set_smi_ctrl_data_direction (caribou_fpga_st* dev, uint8_t dir);
 
 #ifdef __cplusplus
 }

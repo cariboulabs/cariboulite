@@ -157,7 +157,7 @@ int hat_init(hat_st *ee);
 int hat_close(hat_st *ee);
 int hat_fill_in(hat_st *ee);
 int hat_print(hat_st *ee);
-int hat_generate_write_config(hat_st *ee);
+int hat_generate_write_config(hat_st *ee, bool overwrite);
 
 // HAT functions after configuration is written and system is 
 // restarted. In this stage the sysfs shall contain the hat definitions

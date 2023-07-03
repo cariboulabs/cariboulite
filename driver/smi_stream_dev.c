@@ -80,6 +80,7 @@ struct bcm2835_smi_dev_instance
 
 	// address related
 	unsigned int cur_address;
+    int address_changed;
 	
 	struct task_struct *reader_thread;
 	struct task_struct *writer_thread;
@@ -209,6 +210,7 @@ static void set_state(smi_stream_state_en state)
     if (inst->state != state)
     {
         dev_info(inst->dev, "Set STREAMING_STATUS = %d, cur_addr = %d", state, inst->cur_address);
+        inst->address_changed = 1;
     }
     
     inst->state = state;
@@ -643,7 +645,11 @@ int reader_thread_stream_function(void *pv)
         
         start = ktime_get();
         // sync smi address
+        if (inst->address_changed) 
+        {
         bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
+            inst->address_changed = 0;
+        }
 		
         //--------------------------------------------------------
 		// try setup a new DMA transfer into dma bounce buffer
@@ -744,7 +750,11 @@ int writer_thread_stream_function(void *pv)
 		}
         
         // sync smi address
+        if (inst->address_changed) 
+        {
         bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
+            inst->address_changed = 0;
+        }
 		
 		// check if the tx fifo contains enough data
 		if (mutex_lock_interruptible(&inst->write_lock))
@@ -762,7 +772,7 @@ int writer_thread_stream_function(void *pv)
 			{
 				return -EINTR;
 			}
-			num_copied = kfifo_out(&inst->tx_fifo, bounce->buffer[0], DMA_BOUNCE_BUFFER_SIZE);
+			num_copied = kfifo_out(&inst->tx_fifo, bounce->buffer[current_dma_buffer], DMA_BOUNCE_BUFFER_SIZE);
 			mutex_unlock(&inst->write_lock);
 			
 			// for the polling mechanism
@@ -877,6 +887,7 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 	wake_up_process(inst->reader_thread); 
 	wake_up_process(inst->writer_thread); 
 	
+    inst->address_changed = 0;
 	return 0;
 }
 
@@ -904,6 +915,7 @@ static int smi_stream_release(struct inode *inode, struct file *file)
     
     inst->reader_thread = NULL;
     inst->writer_thread = NULL;
+    inst->address_changed = 0;
 
 	return 0;
 }

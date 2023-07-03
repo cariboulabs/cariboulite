@@ -19,6 +19,7 @@
 #define IOC_SYS_CTRL_SYS_ERR_STAT   3
 #define IOC_SYS_CTRL_SYS_SOFT_RST   4
 #define IOC_SYS_CTRL_DEBUG_MODES    5
+#define IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP  6
 
 #define IOC_IO_CTRL_MODE            1
 #define IOC_IO_CTRL_DIG_PIN         2
@@ -30,6 +31,7 @@
 
 #define IOC_SMI_CTRL_FIFO_STATUS    1
 #define IOC_SMI_CHANNEL_SELECT      2
+#define IOC_SMI_CTRL_DIR_SELECT         3
 
 //--------------------------------------------------------------
 // Internal Data-Types
@@ -361,6 +363,35 @@ int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map)
 }
 
 //--------------------------------------------------------------
+int caribou_fpga_set_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t gap)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_sys_ctrl_tx_sample_gap");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP,
+    };
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &gap);
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_get_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t *gap)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_sys_ctrl_tx_sample_gap");
+
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_read,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP
+    };
+
+    *gap = 0;
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), gap);
+}
+
+
 // I/O Controller
 int caribou_fpga_set_io_ctrl_mode (caribou_fpga_st* dev, uint8_t debug_mode, caribou_fpga_io_ctrl_rfm_en rfm)
 {
@@ -549,4 +580,17 @@ int caribou_fpga_set_smi_channel (caribou_fpga_st* dev, caribou_fpga_smi_channel
     val = (channel == caribou_fpga_smi_channel_0) ? 0x0 : 0x1;
    
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &val);
+}
+
+//--------------------------------------------------------------
+int caribou_fpga_set_smi_ctrl_data_direction (caribou_fpga_st* dev, uint8_t dir)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_smi_ctrl_data_direction");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_smi_ctrl,
+        .ioc = IOC_SMI_CTRL_DIR_SELECT
+    };
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)&dir);
 }

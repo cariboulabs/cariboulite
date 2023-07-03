@@ -163,7 +163,7 @@ void at86rf215_radio_set_state(at86rf215_st* dev, at86rf215_rf_channel_en ch, at
             at86rf215_write_byte(dev, reg_address, cmd & 0x7);
         }
     }
-    if (cmd == at86rf215_radio_state_cmd_tx_prep)
+    if (cmd == at86rf215_radio_state_cmd_tx_prep || cmd == at86rf215_radio_state_cmd_tx || cmd == at86rf215_radio_state_cmd_rx)
     {
         //if (ch == at86rf215_rf_channel_900mhz) event_node_wait_ready(&dev->events.lo_trx_ready_event);
         //else if (ch == at86rf215_rf_channel_2400mhz) event_node_wait_ready(&dev->events.hi_trx_ready_event);

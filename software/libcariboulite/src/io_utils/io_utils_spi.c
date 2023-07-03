@@ -320,7 +320,7 @@ int io_utils_spi_init(io_utils_spi_st* dev)
         return -1;
     }
 
-    ZF_LOGI("configuring gpio setups");
+    ZF_LOGD("configuring gpio setups");
 
     io_utils_set_gpio_mode(dev->miso, io_utils_alt_4);
     io_utils_set_gpio_mode(dev->mosi, io_utils_alt_4);
@@ -452,7 +452,7 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
 //=====================================================================================
 int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
 {
-	ZF_LOGI("changing an spi device suspension = '%d' state", suspend);
+	ZF_LOGD("changing an spi device suspension = '%d' state", suspend);
 	if (dev == NULL)
 	{
 		ZF_LOGE("provided SPI struct is NULL");
@@ -479,7 +479,7 @@ int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
 //=====================================================================================
 int io_utils_spi_remove_chip(io_utils_spi_st* dev, int chip_handle)
 {
-    ZF_LOGI("removing an spi device with handle %d", chip_handle);
+    ZF_LOGD("removing an spi device with handle %d", chip_handle);
 
     pthread_mutex_lock(&dev->mtx);
     if (dev->num_of_chips <= 0)
@@ -621,7 +621,7 @@ void io_utils_spi_print_setup(io_utils_spi_st* dev)
 {
     if (dev == NULL || !dev->initialized)
     {
-        ZF_LOGI("uninitialized device");
+        ZF_LOGD("uninitialized device");
         return;
     }
 

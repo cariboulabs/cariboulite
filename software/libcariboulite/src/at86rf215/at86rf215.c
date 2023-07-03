@@ -90,7 +90,7 @@ int at86rf215_read_byte(at86rf215_st* dev, uint16_t addr)
 }
 
 //===================================================================
-#define NUM_CAL_STEPS 7
+#define NUM_CAL_STEPS 5
 void swap(int *p,int *q) 
 {
    int t;  
@@ -126,21 +126,35 @@ int at86rf215_calibrate_device(at86rf215_st* dev, at86rf215_rf_channel_en ch, in
     bool override_flag = dev->override_cal;
     dev->override_cal = false;
     
+    ZF_LOGD("Calibration of modem channel %d...", ch);
     for (int i = 0; i < NUM_CAL_STEPS; i ++)
     {
         at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_trx_off);
+        io_utils_usleep(10000);
         at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_tx_prep);
 
-        io_utils_usleep(10000);
+        io_utils_usleep(80000);
 
         at86rf215_radio_get_tx_iq_calibration(dev, ch, &cal_i[i], &cal_q[i]);
-        ZF_LOGD("Calibration of modem: I=%d, Q=%d", cal_i[i], cal_q[i]);
+        //printf("[%d,%d], ", cal_i[i], cal_q[i]);
     }
 
     // medians
     int cal_i_med = median(cal_i, NUM_CAL_STEPS);
     int cal_q_med = median(cal_q, NUM_CAL_STEPS);
-    ZF_LOGI("Calibration Results of the modem: I=%d, Q=%d", cal_i_med, cal_q_med);
+    ZF_LOGD("Calibration Results of the modem: I=%d, Q=%d", cal_i_med, cal_q_med);
+    if (i_val) *i_val = cal_i_med;
+    if (q_val) *q_val = cal_q_med;
+    if (ch == at86rf215_rf_channel_900mhz)
+    {
+        dev->cal.low_ch_i = cal_i_med;
+        dev->cal.low_ch_q = cal_q_med;
+    }
+    if (ch == at86rf215_rf_channel_2400mhz)
+    {
+        dev->cal.hi_ch_i = cal_i_med;
+        dev->cal.hi_ch_q = cal_q_med;
+    }
     dev->override_cal = override_flag;
     return 0;
 }
@@ -157,7 +171,7 @@ int at86rf215_init(at86rf215_st* dev,
 
 	dev->io_spi = io_spi;
 
-    ZF_LOGI("configuring reset and irq pins");
+    ZF_LOGD("configuring reset and irq pins");
 	// Configure GPIO pins
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_off);
 	io_utils_setup_gpio(dev->irq_pin, io_utils_dir_input, io_utils_pull_up);
@@ -165,7 +179,7 @@ int at86rf215_init(at86rf215_st* dev,
 	// set to known state
 	io_utils_write_gpio(dev->reset_pin, 1);
 
-    ZF_LOGI("Adding chip definition to io_utils_spi");
+    ZF_LOGD("Adding chip definition to io_utils_spi");
     io_utils_hard_spi_st hard_dev_modem = { .spi_dev_id = dev->spi_dev, .spi_dev_channel = dev->spi_channel, };
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 2000000, 0, 0,
                         						io_utils_spi_chip_type_modem,
@@ -194,11 +208,12 @@ int at86rf215_init(at86rf215_st* dev,
 	// Get chip type
 	uint8_t pn = 0, vn = 0;
 	at86rf215_get_versions(dev, &pn, &vn);
-	ZF_LOGI("Modem identity: Version: %02X, Product: %02X", vn, pn);
+	ZF_LOGD("Modem identity: Version: %02X, Product: %02X", vn, pn);
 
     // calibrate TXPREP
     at86rf215_calibrate_device(dev, at86rf215_rf_channel_900mhz, &dev->cal.low_ch_i, &dev->cal.low_ch_q);
     at86rf215_calibrate_device(dev, at86rf215_rf_channel_2400mhz, &dev->cal.hi_ch_i, &dev->cal.hi_ch_q);
+    dev->override_cal = true;
     dev->initialized = 1;
 
     return 0;
@@ -233,7 +248,7 @@ int at86rf215_close(at86rf215_st* dev)
 	// Release the SPI device
     io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
 
-	ZF_LOGI("device release completed");
+	ZF_LOGD("device release completed");
     return 0;
 }
 
@@ -268,15 +283,15 @@ int at86rf215_print_version(at86rf215_st* dev)
     
 	if (pn == at86rf215_pn_at86rf215)               // 0x34
     {
-        printf("	MODEM Version: AT86RF215 (with basebands), version: %02x", vn);
+        ZF_LOGI("MODEM Version: AT86RF215 (with basebands), version: %02x", vn);
     }
     else if (pn == at86rf215_pn_at86rf215iq)        // 0x35
     {
-        printf("	MODEM Version: AT86RF215IQ (without basebands), version: %02x", vn);
+        ZF_LOGI("MODEM Version: AT86RF215IQ (without basebands), version: %02x", vn);
     }
     else
     {
-        printf("	MODEM Version: not AT86RF215 IQ capable modem (product number: 0x%02x, versions %02x)", pn, vn);
+        ZF_LOGI("MODEM Version: not AT86RF215 IQ capable modem (product number: 0x%02x, versions %02x)", pn, vn);
     }
 	return pn;
 }

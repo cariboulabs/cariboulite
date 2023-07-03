@@ -235,3 +235,40 @@ int Cariboulite::readStream(
 
     return stream->ReadSamplesGen((void*)buffs[0], numElems, timeoutUs);
 }
+
+//========================================================
+/*!
+     * Write elements to a stream for transmission.
+     * This is a multi-channel call, and buffs should be an array of void *,
+     * where each pointer will be filled with data from a different channel.
+     *
+     * **Client code compatibility:**
+     * Client code relies on writeStream() for proper back-pressure
+     * he writeStream() implementation must enforce the timeout such that the 
+     * call blocks until space becomes available or timeout expiration.
+     *
+     * \param stream the opaque pointer to a stream handle
+     * \param buffs an array of void* buffers num chans in size
+     * \param numElems the number of elements in each buffer 
+     *                  (number of samples - for us its 4 bytes per sample)
+     * \param flags optional flag indicators about the result
+     * \param timeNs the buffer's timestamp in nanoseconds
+     * \param timeoutUs the timeout in microseconds
+     * \return the number of elements written per buffer or error
+     */
+int Cariboulite::writeStream(
+            SoapySDR::Stream *stream,
+            void * const *buffs,
+            const size_t numElems,
+            int &flags,
+            long long &timeNs,
+            const long timeoutUs)
+{
+	// Verify that it is an TX stream
+    if (stream->getInnerStreamType() != cariboulite_channel_dir_tx)
+    {
+        return SOAPY_SDR_NOT_SUPPORTED;
+    }
+
+    return stream->WriteSamplesGen((void*)buffs[0], numElems, timeoutUs);
+}

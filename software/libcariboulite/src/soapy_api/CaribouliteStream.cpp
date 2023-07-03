@@ -15,7 +15,7 @@
 void ReaderThread(SoapySDR::Stream* stream)
 {
 #if USE_ASYNC
-    SoapySDR_logf(SOAPY_SDR_INFO, "Enterring Reader Thread");
+    SoapySDR_logf(SOAPY_SDR_INFO, "Entering Reader Thread");
     
     while (stream->readerThreadRunning())
     {
@@ -177,6 +177,84 @@ int SoapySDR::Stream::Write(caribou_smi_sample_complex_int16 *buffer, size_t num
 	return cariboulite_radio_write_samples(radio, buffer, num_samples);
 }
 
+//=================================================================
+int SoapySDR::Stream::WriteSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us)
+{
+    int ret = cariboulite_radio_write_samples(radio, buffer, num_elements);
+    if (ret < 0)
+    {
+        if (ret == -1)
+        {
+            printf("Failed to write\n");
+        }
+        // a special case for debug streams which are not
+        // taken care of in the soapy front-end (ret = -2)
+        ret = 0;
+    }
+    return ret;
+}
+
+//=================================================================
+int SoapySDR::Stream::WriteSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us)
+{
+    num_elements = num_elements > mtu_size ? mtu_size : num_elements;
+    float max_val = 4096.0;
+
+    for (size_t i = 0; i < num_elements; i++)
+    {
+        interm_native_buffer2[i].i = (int16_t)(buffer[i].i * max_val);
+        interm_native_buffer2[i].q = (int16_t)(buffer[i].q * max_val);
+
+    }
+
+    return WriteSamples(interm_native_buffer2, num_elements, timeout_us);
+}
+
+//=================================================================
+int SoapySDR::Stream::WriteSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us)
+{
+    num_elements = num_elements > mtu_size ? mtu_size : num_elements;
+    double max_val = 4096.0;
+
+    for (size_t i = 0; i < num_elements; i++)
+    {
+        interm_native_buffer2[i].i = (int16_t)(buffer[i].i * max_val);
+        interm_native_buffer2[i].q = (int16_t)(buffer[i].q * max_val);
+
+    }
+
+    return WriteSamples(interm_native_buffer2, num_elements, timeout_us);
+}
+
+
+//=================================================================
+int SoapySDR::Stream::WriteSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us)
+{
+    num_elements = num_elements > mtu_size ? mtu_size : num_elements;
+
+    for (size_t i = 0; i < num_elements; i++)
+    {
+        interm_native_buffer2[i].i = ((int16_t)(buffer[i].i)) << 5;
+        interm_native_buffer2[i].q = ((int16_t)(buffer[i].q)) << 5;
+
+    }
+
+    return WriteSamples(interm_native_buffer2, num_elements, timeout_us);
+}
+
+//=================================================================
+int SoapySDR::Stream::WriteSamplesGen(void* buffer, size_t num_elements, long timeout_us)
+{
+	switch (format)
+	{
+		case CARIBOULITE_FORMAT_FLOAT32: return WriteSamples((sample_complex_float*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_INT16: return WriteSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_INT8: return WriteSamples((sample_complex_int8*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_FLOAT64: return WriteSamples((sample_complex_double*)buffer, num_elements, timeout_us); break;
+		default: return WriteSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+	}
+	return 0;
+}
 //=================================================================
 int SoapySDR::Stream::Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us)
 {

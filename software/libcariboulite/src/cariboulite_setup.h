@@ -46,6 +46,23 @@ typedef struct
     int revision;
 } cariboulite_lib_version_st;
 
+/**
+ * @brief Log Level
+ */
+typedef enum
+{
+    cariboulite_log_level_verbose,   /**< Full */
+    cariboulite_log_level_info,      /**< partial - no debug */
+    cariboulite_log_level_none,      /**< none - errors only*/
+} cariboulite_log_level_en;
+
+/**
+ * @brief FPGA programming source definition
+ *
+ * While programming the FPGA, using "cariboulite_configure_fpga", it
+ * expects to receive the FGPA binary file to program either as a
+ * binary file full path or by a memory allocated buffer blob.
+ */
 typedef enum
 {
     cariboulite_firmware_source_file = 0,
@@ -92,6 +109,14 @@ int cariboulite_detect_board(sys_st *sys);
  *            it as a stdout (printf) output.
  */
 void cariboulite_print_board_info(sys_st *sys, bool log);
+
+
+/**
+ * @brief Setting global logging level
+ *
+ * options: cariboulite_log_level_verbose, cariboulite_log_level_info, cariboulite_log_level_none
+ */
+void cariboulite_set_log_level(cariboulite_log_level_en lvl);
 
 /**
  * @brief Fully initialize the system
@@ -238,6 +263,19 @@ int cariboulite_release_submodules(sys_st* sys);
  */
 int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res);
                                     
+/**
+ * @brief Getting the used radio handle
+ *
+ * After initializing the drivers, a radio device is created and stored in
+ * the device driver main struct. To manipulate the radio features, this radio
+ * handle (pointer) needs to be obtained by the user. This handle is normally
+ * passed to the radio manipulation functions in "cariboulite_radio.h"
+ *
+ * @param sys a pre-allocated device handle structure
+ * @param res test-result
+ * @return 0 (sucess), -1 (fail)
+ */
+cariboulite_radio_state_st* cariboulite_get_radio_handle(sys_st* sys);
 #ifdef __cplusplus
 }
 #endif

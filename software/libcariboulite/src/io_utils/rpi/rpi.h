@@ -75,6 +75,8 @@ void gpio_reset_event(uint8_t pin);
 
 void gpio_enable_pud(uint8_t pin, uint8_t value);
 
+void get_pads(uint8_t group, uint8_t *slew_fast, uint8_t *hyst_enabled, uint8_t *drive_strength);
+void set_pads(uint8_t group, uint8_t slew_fast, uint8_t hyst_enabled, uint8_t drive_strength);
 /**
  *  PWM
  */

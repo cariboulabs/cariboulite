@@ -385,6 +385,22 @@ int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
     radio->tx_fcut = tx_cutoff;
     radio->tx_fs = tx_sample_rate;
     
+    
+    // setup the new sample rate in the FPGA
+    switch (tx_sample_rate)
+    {
+        case at86rf215_radio_rx_sample_rate_4000khz: sample_gap = 0; break;
+        case at86rf215_radio_rx_sample_rate_2000khz: sample_gap = 1; break;
+        case at86rf215_radio_rx_sample_rate_1333khz: sample_gap = 2; break;
+        case at86rf215_radio_rx_sample_rate_1000khz: sample_gap = 3; break;
+        case at86rf215_radio_rx_sample_rate_800khz: sample_gap = 4; break;
+        case at86rf215_radio_rx_sample_rate_666khz: sample_gap = 5; break;
+        case at86rf215_radio_rx_sample_rate_500khz: sample_gap = 7; break;
+        case at86rf215_radio_rx_sample_rate_400khz: sample_gap = 9; break;
+        default: sample_gap = 0; break;
+    }
+    
+    caribou_fpga_set_sys_ctrl_tx_sample_gap (&radio->sys->fpga, sample_gap);
     return 0;
 }
 
@@ -393,9 +409,27 @@ int cariboulite_radio_get_tx_samp_cutoff(cariboulite_radio_state_st* radio,
                                    at86rf215_radio_sample_rate_en *tx_sample_rate,
                                    at86rf215_radio_f_cut_en *tx_cutoff)
 {
+    uint8_t sample_gap = 0;
     cariboulite_radio_get_tx_power(radio, NULL);
     if (tx_sample_rate) *tx_sample_rate = radio->tx_fs;
     if (tx_cutoff) *tx_cutoff = radio->tx_fcut;
+    
+    // make sure that the sample rate matched the fpga gap   
+    switch (radio->tx_fs)
+    {
+        case at86rf215_radio_rx_sample_rate_4000khz: sample_gap = 0; break;
+        case at86rf215_radio_rx_sample_rate_2000khz: sample_gap = 1; break;
+        case at86rf215_radio_rx_sample_rate_1333khz: sample_gap = 2; break;
+        case at86rf215_radio_rx_sample_rate_1000khz: sample_gap = 3; break;
+        case at86rf215_radio_rx_sample_rate_800khz: sample_gap = 4; break;
+        case at86rf215_radio_rx_sample_rate_666khz: sample_gap = 5; break;
+        case at86rf215_radio_rx_sample_rate_500khz: sample_gap = 7; break;
+        case at86rf215_radio_rx_sample_rate_400khz: sample_gap = 9; break;
+        default: sample_gap = 0; break;
+    }
+    
+    hermon_fpga_set_sys_ctrl_tx_sample_gap (&radio->sys->fpga, sample_gap);
+    
     return 0;
 }
 
@@ -809,6 +843,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     radio->channel_direction = dir;
     radio->active = activate;
     
+	int cal_i, cal_q;
     ZF_LOGD("Activating channel %d, dir = %s, activate = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", activate);
 
     // Deactivation first
@@ -848,7 +883,10 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             ZF_LOGE("PLL didn't lock");
 
             // deactivate the channel if this happens
-            cariboulite_radio_activate_channel(radio, radio->channel_direction, false);
+            at86rf215_radio_set_state( &radio->sys->modem,
+                                    GET_MODEM_CH(radio->type), 
+                                    at86rf215_radio_state_cmd_trx_off);
+            radio->state = at86rf215_radio_state_cmd_trx_off;   
             return -1;
         }
         usleep(10000);
@@ -861,8 +899,14 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // RX on both channels looks the same
     if (radio->channel_direction == cariboulite_channel_dir_rx)
     {
+		// after modem is activated turn on the the smi stream
+        smi_stream_state_en smi_state = smi_stream_idle;
+        if (radio->smi_channel_id == hermon_smi_channel_900)
+            smi_state = smi_stream_rx_channel_0;
+        else if (radio->smi_channel_id == hermon_smi_channel_2400)
+            smi_state = smi_stream_rx_channel_1;
         at86rf215_iq_interface_config_st modem_iq_config = {
-            .loopback_enable = 0,
+            .loopback_enable = radio->tx_loopback_anabled,
             .drv_strength = at86rf215_iq_drive_current_4ma,
             .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
             .tx_control_with_iq_if = false,
@@ -872,22 +916,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         };
         at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);	
         
-        
-        at86rf215_radio_set_state( &radio->sys->modem, 
-                                GET_MODEM_CH(radio->type),
-                                at86rf215_radio_state_cmd_rx);
-        radio->state = at86rf215_radio_state_cmd_rx;
-        ZF_LOGD("Setup Modem state cmd_rx");
-        usleep(10000);
-        
-        // after modem is activated turn on the the smi stream
-        smi_stream_state_en smi_state = smi_stream_idle;
-        if (radio->smi_channel_id == caribou_smi_channel_900)
-            smi_state = smi_stream_rx_channel_0;
-        else if (radio->smi_channel_id == caribou_smi_channel_2400)
-            smi_state = smi_stream_rx_channel_1;
-        
-        caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
+		caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
         caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? 0 : 1, 0);
         
         // apply the state
@@ -896,7 +925,13 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             ZF_LOGD("Failed to configure modem with cmd_rx");
             return -1;
         }
-		
+        
+        at86rf215_radio_set_state( &radio->sys->modem, 
+                                GET_MODEM_CH(radio->type),
+                                at86rf215_radio_state_cmd_rx);
+        radio->state = at86rf215_radio_state_cmd_rx;
+        ZF_LOGD("Setup Modem state cmd_rx");
+        usleep(10000);
     }
     
 	//===========================================================
@@ -904,8 +939,12 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 	//===========================================================
     else if (radio->channel_direction == cariboulite_channel_dir_tx)
     {
+		at86rf215_radio_set_state(&radio->sys->modem,
+                                    GET_MODEM_CH(radio->type),
+                                    at86rf215_radio_state_cmd_trx_off);
+            radio->state = at86rf215_radio_state_cmd_trx_off;
 		at86rf215_iq_interface_config_st modem_iq_config = {
-            .loopback_enable = 0,
+            .loopback_enable = radio->tx_loopback_anabled,
             .drv_strength = at86rf215_iq_drive_current_4ma,
             .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
             .tx_control_with_iq_if = !radio->cw_output,
@@ -925,7 +964,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             rffc507x_output_lo(&radio->sys->mixer, 1);
         }
         // otherwise we need the modem
-        else
+        else if (radio->cw_output)
         {
 			if (radio->sys->board_info.numeric_product_id == system_type_cariboulite_full)
             {
@@ -946,6 +985,22 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                         GET_MODEM_CH(radio->type),
                                         at86rf215_radio_state_cmd_tx);
             radio->state = at86rf215_radio_state_cmd_tx;
+        }
+		else
+        {
+            at86rf215_radio_set_state(&radio->sys->modem,
+                                    GET_MODEM_CH(radio->type),
+                                    at86rf215_radio_state_cmd_tx_prep);
+            radio->state = at86rf215_radio_state_cmd_tx_prep;
+            
+            at86rf215_radio_get_tx_iq_calibration(&radio->sys->modem, GET_MODEM_CH,
+                                                &cal_i, &cal_q);
+                                                
+            //printf(">>>>> CAL_I = %d, CAL_Q = %d\n", cal_i, cal_q);
+            
+            // apply the state
+            hermon_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
+            hermon_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
         }
     }
 

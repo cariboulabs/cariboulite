@@ -95,17 +95,17 @@ static uint16_t getcrc(char* data, unsigned int size)
 //===========================================================
 static void hat_print_header(struct header_t *header)
 {
-	ZF_LOGI("# Header: signature=0x%08x", header->signature);
-	ZF_LOGI("# Header: format version=0x%02x", header->ver);
-	ZF_LOGI("# Header: reserved=%u", header->res);
-	ZF_LOGI("# Header: numatoms=%u", header->numatoms);
-	ZF_LOGI("# Header: eeplen=%u", header->eeplen);
+	ZF_LOGD("# Header: signature=0x%08x", header->signature);
+	ZF_LOGD("# Header: format version=0x%02x", header->ver);
+	ZF_LOGD("# Header: reserved=%u", header->res);
+	ZF_LOGD("# Header: numatoms=%u", header->numatoms);
+	ZF_LOGD("# Header: eeplen=%u", header->eeplen);
 }
 
 //===========================================================
 static void hat_print_vendor(struct vendor_info_t * vinf)
 {
-	ZF_LOGI("Vendor info: product_uuid %08x-%04x-%04x-%04x-%04x%08x",
+	ZF_LOGD("Vendor info: product_uuid %08x-%04x-%04x-%04x-%04x%08x",
 							vinf->serial_4,
 							vinf->serial_3>>16,
 							vinf->serial_3 & 0xffff,
@@ -113,24 +113,24 @@ static void hat_print_vendor(struct vendor_info_t * vinf)
 							vinf->serial_2 & 0xffff,
 							vinf->serial_1);
 
-	ZF_LOGI("Vendor info: raw serial numbers %08x %08x %08x %08x",
+	ZF_LOGD("Vendor info: raw serial numbers %08x %08x %08x %08x",
 							vinf->serial_4,
 							vinf->serial_3,
 							vinf->serial_2,
 							vinf->serial_1);
-	ZF_LOGI("Vendor info: product_id 0x%04x", vinf->pid);
-	ZF_LOGI("Vendor info: product_ver 0x%04x", vinf->pver);
-	ZF_LOGI("Vendor info: vendor \"%s\"   # length=%u", vinf->vstr, vinf->vslen);
-	ZF_LOGI("Vendor info: product \"%s\"   # length=%u", vinf->pstr, vinf->pslen);
+	ZF_LOGD("Vendor info: product_id 0x%04x", vinf->pid);
+	ZF_LOGD("Vendor info: product_ver 0x%04x", vinf->pver);
+	ZF_LOGD("Vendor info: vendor \"%s\"   # length=%u", vinf->vstr, vinf->vslen);
+	ZF_LOGD("Vendor info: product \"%s\"   # length=%u", vinf->pstr, vinf->pslen);
 }
 
 //===========================================================
 static void hat_print_gpio(struct gpio_map_t *gpiomap)
 {
-	ZF_LOGI("GPIO map info: gpio_drive %d", gpiomap->flags & 15); //1111
-	ZF_LOGI("GPIO map info: gpio_slew %d", (gpiomap->flags & 48)>>4); //110000
-	ZF_LOGI("GPIO map info: gpio_hysteresis %d", (gpiomap->flags & 192)>>6); //11000000
-	ZF_LOGI("GPIO map info: back_power %d", gpiomap->power);
+	ZF_LOGD("GPIO map info: gpio_drive %d", gpiomap->flags & 15); //1111
+	ZF_LOGD("GPIO map info: gpio_slew %d", (gpiomap->flags & 48)>>4); //110000
+	ZF_LOGD("GPIO map info: gpio_hysteresis %d", (gpiomap->flags & 192)>>6); //11000000
+	ZF_LOGD("GPIO map info: back_power %d", gpiomap->power);
 
 	for (int j = 0; j<28; j++)
 	{
@@ -169,7 +169,7 @@ static void hat_print_gpio(struct gpio_map_t *gpiomap)
 						break;
 			}
 
-			ZF_LOGI("# GPIO map info: setgpio  %d  %s  %s", j, func_str, pull_str);
+			ZF_LOGD("# GPIO map info: setgpio  %d  %s  %s", j, func_str, pull_str);
 		}
 	}
 }
@@ -177,7 +177,7 @@ static void hat_print_gpio(struct gpio_map_t *gpiomap)
 //===========================================================
 static void hat_print_dt_data(struct dt_data_t *data)
 {
-	ZF_LOGI("# Device Tree info: length = %d", data->dt_data_size);
+	ZF_LOGD("# Device Tree info: length = %d", data->dt_data_size);
 }
 
 
@@ -286,7 +286,7 @@ static int hat_contents_parse(hat_st *hat)
 		return 0;
 	}
 
-	ZF_LOGI("Reading eeprom configuration (%d bytes)...", hat->read_buffer_size);
+	ZF_LOGD("Reading eeprom configuration (%d bytes)...", hat->read_buffer_size);
 	if (eeprom_read(&hat->dev, hat->read_buffer, hat->read_buffer_size) < 0)
 	{
 		ZF_LOGE("Reading from eeprom failed");
@@ -496,7 +496,7 @@ int hat_fill_in(hat_st *hat)
 //===========================================================
 int hat_init(hat_st *hat)
 {
-	ZF_LOGI("Initializing eeprom driver");
+	ZF_LOGD("Initializing eeprom driver");
 	if (eeprom_init_device(&hat->dev) != 0)
 	{
 		ZF_LOGE("Initializing hat driver failed");
@@ -541,7 +541,7 @@ int hat_init(hat_st *hat)
 //===========================================================
 int hat_close(hat_st *hat)
 {
-	ZF_LOGI("closing hat driver");
+	ZF_LOGD("closing hat driver");
 	if (!hat->initialized)
 	{
 		ZF_LOGE("hat is not initialized");
@@ -557,15 +557,15 @@ int hat_close(hat_st *hat)
 }
 
 //===========================================================
-int hat_generate_write_config(hat_st *hat)
+int hat_generate_write_config(hat_st *hat, bool overwrite)
 {
-	if (!hat->eeprom_initialized)
+	if (!hat->eeprom_initialized || overwrite)
 	{
-		ZF_LOGI("Filling in HAT information");
+		ZF_LOGD("Filling in HAT information");
 		hat_fill_in(hat);
-		ZF_LOGI("Writing into HAT");
+		ZF_LOGD("Writing into HAT");
 		eeprom_write(&hat->dev, hat->write_buffer, hat->write_buffer_used_size);
-		ZF_LOGI("Writing into HAT - Done");
+		ZF_LOGD("Writing into HAT - Done");
 	}
 	else
 	{
@@ -669,6 +669,7 @@ int hat_detect_from_eeprom(hat_board_info_st *info)
 	
 	if (!hat.eeprom_initialized)
 	{
+        hat_close(&hat);
 		return 0;
 	}
 	
@@ -692,6 +693,7 @@ int hat_detect_from_eeprom(hat_board_info_st *info)
 	
 	serial_from_uuid(info->product_uuid, &info->numeric_serial_number);
 	
+    hat_close(&hat);
 	return 1;
 }
 
@@ -700,12 +702,12 @@ void hat_print_board_info(hat_board_info_st *info, bool log)
 {
 	if (log)
 	{
-		ZF_LOGI("# Board Info - Category name: %s", info->category_name);
-		ZF_LOGI("# Board Info - Product name: %s", info->product_name);
-		ZF_LOGI("# Board Info - Product ID: %s, Numeric: %d", info->product_id, info->numeric_product_id);
-		ZF_LOGI("# Board Info - Product Version: %s, Numeric: %d", info->product_version, info->numeric_version);
-		ZF_LOGI("# Board Info - Product UUID: %s, Numeric serial: 0x%08X", info->product_uuid, info->numeric_serial_number);
-		ZF_LOGI("# Board Info - Vendor: %s", info->product_vendor);
+		ZF_LOGD("# Board Info - Category name: %s", info->category_name);
+		ZF_LOGD("# Board Info - Product name: %s", info->product_name);
+		ZF_LOGD("# Board Info - Product ID: %s, Numeric: %d", info->product_id, info->numeric_product_id);
+		ZF_LOGD("# Board Info - Product Version: %s, Numeric: %d", info->product_version, info->numeric_version);
+		ZF_LOGD("# Board Info - Product UUID: %s, Numeric serial: 0x%08X", info->product_uuid, info->numeric_serial_number);
+		ZF_LOGD("# Board Info - Vendor: %s", info->product_vendor);
 	}
 	else
 	{

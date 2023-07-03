@@ -60,7 +60,7 @@
 #define	BLOCK_SIZE	(4*1024)
 
 /* Size of base_add[] and *base_pointer[] arrays */
-#define BASE_INDEX	6 // from the current total of 11 base addresses
+#define BASE_INDEX	7 // from the current total of 11 base addresses
 
 /* System timer registers */
 #define ST_PERI_BASE	base_pointer[0]	 // ST_BASE 
@@ -142,6 +142,10 @@
 #define I2C_DIV		(I2C_PERI_BASE + 0x14/4) 
 #define I2C_DEL		(I2C_PERI_BASE + 0x18/4) 
 #define I2C_CLKT	(I2C_PERI_BASE + 0x1C/4) 
+#define GPIO_PADS_BASE	base_pointer[6]	// GPIO_PADS
+#define GPIO_0_27		(GPIO_PADS_BASE + 0x2c/4)
+#define GPIO_28_45		(GPIO_PADS_BASE + 0x30/4)  
+#define GPIO_46_53	    (GPIO_PADS_BASE + 0x34/4)  
 
 /* Size of info[] array */
 #define INFO_SIZE 100
@@ -269,6 +273,7 @@ void set_peri_base_address(uint8_t pwm_option, uint8_t spi_option, uint8_t i2c_o
 		base_add[5] = BSC1_BASE;
 	}
 	  
+    base_add[6] = GPIO_PADS;
   	fclose(fp);
 }
 
@@ -512,6 +517,54 @@ uint8_t get_gpio(uint8_t pin)
      cur_val >>= (pin % 10)*3;
      __sync_synchronize();
      return cur_val & 0x7;
+}
+
+/*
+ get pad information of a group
+*/
+void get_pads(uint8_t group, uint8_t *slew_fast, uint8_t *hyst_enabled, uint8_t *drive_strength)
+{
+    volatile uint32_t *pval = NULL;
+    uint32_t _slew_fast;
+    uint32_t _hyst_enabled;
+    uint32_t _drive_strength;
+    switch(group)
+    {
+        case 0: pval = (uint32_t *)GPIO_0_27; break;
+        case 1: pval = (uint32_t *)GPIO_28_45; break;
+        case 2: pval = (uint32_t *)GPIO_46_53; break;
+        default: break;
+    }
+
+    //__sync_synchronize();
+    uint32_t cur_val = *pval;
+    _slew_fast = (cur_val>>4)&0x1;
+    _hyst_enabled = (cur_val>>3)&0x1;;
+    _drive_strength = (((cur_val>>0)&0x7) + 1) * 2;
+    if (slew_fast) *slew_fast = _slew_fast;
+    if (hyst_enabled) *hyst_enabled = _hyst_enabled;
+    if (drive_strength) *drive_strength = _drive_strength;
+    printf("DBG_ST: %02X, SLEW FAST: %d, HYST EN: %d, DRIVE: %d ma\n", cur_val>>24, _slew_fast, _hyst_enabled, _drive_strength);
+}
+/*
+ set pad information of a group
+*/
+void set_pads(uint8_t group, uint8_t slew_fast, uint8_t hyst_enabled, uint8_t drive_strength)
+{
+    volatile uint32_t *pval = NULL;
+    uint32_t _drive_strength = drive_strength / 2 - 1;
+    switch(group)
+    {
+        case 0: pval = (uint32_t *)GPIO_0_27; break;
+        case 1: pval = (uint32_t *)GPIO_28_45; break;
+        case 2: pval = (uint32_t *)GPIO_46_53; break;
+        default: break;
+    }
+    uint32_t cur_val = (((_drive_strength&0x7)<<0) |
+                        ((hyst_enabled&0x1)<<3) |
+                        ((slew_fast&0x1)<<4) |
+                        (0x5A000000));
+    *pval = cur_val;
 }
 
 /*

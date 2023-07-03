@@ -384,7 +384,6 @@ int cariboulite_radio_get_energy_det(cariboulite_radio_state_st* radio, float *e
  */
 int cariboulite_radio_get_rand_val(cariboulite_radio_state_st* radio, uint8_t *rnd);
 
-bool cariboulite_radio_wait_mixer_lock(cariboulite_radio_state_st* radio, int retries);
 /**
  * @brief Wait for all PLLs to lock
  *
@@ -397,6 +396,8 @@ bool cariboulite_radio_wait_mixer_lock(cariboulite_radio_state_st* radio, int re
  * @return "0" = didn't lock during the period or "1" - locked successfully
  */
 bool cariboulite_radio_wait_modem_lock(cariboulite_radio_state_st* radio, int retries);
+bool cariboulite_radio_wait_mixer_lock(cariboulite_radio_state_st* radio, int retries);
+
 /**
  * @brief Set modem frequency
  *

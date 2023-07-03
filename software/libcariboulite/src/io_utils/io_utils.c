@@ -22,7 +22,7 @@ static char *io_utils_gpio_mode_strs[] = {"IN","OUT","ALT5","ALT4","ALT0","ALT1"
 //=============================================================================================
 int io_utils_setup()
 {
-    ZF_LOGI("initializing rpi");
+    ZF_LOGD("initializing rpi");
 
     rpi_init(0);
 
