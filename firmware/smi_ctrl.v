@@ -2,7 +2,6 @@ module smi_ctrl
 (
     input               i_rst_b,
     input               i_sys_clk,        // FPGA Clock
-    input 				i_fast_clk,
 
     input [4:0]         i_ioc,
     input [7:0]         i_data_in,
@@ -30,6 +29,7 @@ module smi_ctrl
     output              o_smi_write_req,
     input               i_smi_test,
     output              o_channel,
+        output              o_dir,
 
     // TX CONDITIONAL
     output reg          o_cond_tx,
@@ -43,7 +43,8 @@ module smi_ctrl
     localparam
         ioc_module_version  = 5'b00000,     // read only
         ioc_fifo_status     = 5'b00001,     // read-only
-        ioc_channel_select  = 5'b00010;
+        ioc_channel_select  = 5'b00010,
+        ioc_dir_select      = 5'b00011;
 
     // ---------------------------------
     // MODULE SPECIFIC PARAMS
@@ -55,10 +56,13 @@ module smi_ctrl
     // MODULE CONTROL
     // ---------------------------------------
     assign o_channel = r_channel;
+    assign o_dir = r_dir;
     always @(posedge i_sys_clk or negedge i_rst_b)
     begin
         if (i_rst_b == 1'b0) begin
             o_address_error <= 1'b0;
+            r_dir <= 1'b0;
+            r_channel <= 1'b0;
         end else begin
             if (i_cs == 1'b1) begin
                 //=============================================
@@ -75,7 +79,8 @@ module smi_ctrl
                             o_data_out[1] <= i_tx_fifo_full;
                             o_data_out[2] <= r_channel;
                             o_data_out[3] <= i_smi_test;
-                            o_data_out[7:4] <= 4'b0000;
+                            o_data_out[4] <= r_dir;
+                            o_data_out[7:4] <= 3'b000;
                         end
                     endcase
                 end
@@ -87,6 +92,10 @@ module smi_ctrl
                         //----------------------------------------------
                         ioc_channel_select: begin
                             r_channel <= i_data_in[0];
+                        end
+                        //----------------------------------------------
+                        ioc_dir_select: begin
+                            r_dir <= i_data_in[0];
                         end
                     endcase
                 end
@@ -104,6 +113,7 @@ module smi_ctrl
     reg r_fifo_pull_1;
     wire w_fifo_pull_trigger;
     reg r_channel;
+    reg r_dir;
     reg [31:0] r_fifo_pulled_data;
 
     wire soe_and_reset;
@@ -169,6 +179,8 @@ module smi_ctrl
     reg r_fifo_push;
     reg r_fifo_push_1;
     wire w_fifo_push_trigger;
+    wire swe_and_reset;
+    
     assign o_smi_write_req = !i_tx_fifo_full;
     assign o_tx_fifo_push = !r_fifo_push_1 && r_fifo_push && !i_tx_fifo_full;
     assign swe_and_reset = i_rst_b & i_smi_swe_srw;
@@ -235,6 +247,7 @@ module smi_ctrl
                 begin
                     if (i_smi_data_in[7] == 1'b0) begin
                         o_tx_fifo_pushed_data <= {r_fifo_pushed_data[31:8], i_smi_data_in[6:0], 1'b0};
+                        //o_tx_fifo_pushed_data <= {i_smi_data_in[6:0], 1'b0, r_fifo_pushed_data[15:8], r_fifo_pushed_data[23:16], r_fifo_pushed_data[31:24]};
                         //o_tx_fifo_pushed_data <= {2'b10, cnt, 1'b1, 2'b01, 13'h3F, 1'b0};
                         //o_tx_fifo_pushed_data <= {cnt, cnt, 6'b111111};
                         //cnt <= cnt + 1024;

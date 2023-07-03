@@ -14,6 +14,8 @@ module sys_ctrl
         output              o_debug_fifo_push,
         output              o_debug_fifo_pull,
         output              o_debug_smi_test,
+        output              o_debug_loopback_tx,
+        output [3:0]        o_tx_sample_gap,
     );
 
     // MODULE SPECIFIC IOC LIST
@@ -23,7 +25,8 @@ module sys_ctrl
         ioc_system_version  = 5'b00001,     // read only
         ioc_manu_id         = 5'b00010,     // read only
         ioc_error_state     = 5'b00011,     // read only
-        ioc_debug_modes     = 5'b00101;     // write only
+        ioc_debug_modes     = 5'b00101,     // write only
+        ioc_tx_sample_gap   = 5'b00110;     // read / write
 
     // MODULE SPECIFIC PARAMS
     // ----------------------
@@ -37,6 +40,8 @@ module sys_ctrl
 	reg debug_fifo_push;
 	reg debug_fifo_pull;
 	reg debug_smi_test;
+    	reg debug_loopback_tx;
+    	reg [3:0] tx_sample_gap;
 
 	assign o_debug_fifo_push = debug_fifo_push;
 	assign o_debug_fifo_pull = debug_fifo_pull;
@@ -51,6 +56,8 @@ module sys_ctrl
             debug_fifo_push <= 1'b0;
             debug_fifo_pull <= 1'b0;
             debug_smi_test <= 1'b0;
+            debug_loopback_tx <= 1'b0;
+            tx_sample_gap <= 4'd0;
         end else if (i_cs == 1'b1) begin
             //=============================================
             // READ OPERATIONS
@@ -60,6 +67,11 @@ module sys_ctrl
                     ioc_module_version: o_data_out <= module_version;
                     ioc_system_version: o_data_out <= system_version;
                     ioc_manu_id: o_data_out <= manu_id;
+                    //----------------------------------------------
+                    ioc_tx_sample_gap: begin
+                        o_data_out[3:0] <= tx_sample_gap;
+                        o_data_out[7:4] <= 4'd0;
+                    end
                 endcase
             end
             //=============================================
@@ -72,7 +84,12 @@ module sys_ctrl
 						debug_fifo_push <= i_data_in[0];
 						debug_fifo_pull <= i_data_in[1];
 						debug_smi_test <= i_data_in[2];
+                        debug_loopback_tx <= i_data_in[3];
 					end
+                    //----------------------------------------------
+                    ioc_tx_sample_gap: begin
+                        tx_sample_gap <= i_data_in[3:0];
+                    end
                 endcase
             end
         end
