@@ -148,12 +148,15 @@ int rffc507x_init(  rffc507x_st* dev,
 	set_RFFC507X_MODE(dev, 1);
 
 	// put zeros in freq contol registers
+    set_RFFC507X_P2N(dev, 0);
+	set_RFFC507X_P2LODIV(dev, 0);
+	set_RFFC507X_P2PRESC(dev, 0);
 	set_RFFC507X_P2VCOSEL(dev, 0);
-	set_RFFC507X_CTMIN(dev, 0);
+    
+	/*set_RFFC507X_CTMIN(dev, 0);
     set_RFFC507X_CTMAX(dev, 127);
     set_RFFC507X_P2CTV(dev, 12);
-    set_RFFC507X_RGBYP(dev, 1);
-    set_RFFC507X_FULLD(dev, 0);
+    set_RFFC507X_FULLD(dev, 0);*/
 	set_RFFC507X_P2MIXIDD(dev, 4);
 	
 	// Others
@@ -272,8 +275,8 @@ void rffc507x_calculate_freq_params(double ref_freq_hz, uint8_t lodiv, double fv
 
 	double temp_p1nmsb = ( (double)(1<<16) ) * ( n_div - (double)(*n) );
 	*p1nmsb = (uint16_t)(temp_p1nmsb) & 0xFFFF;
-	*p1nlsb = (uint8_t)( round(( temp_p1nmsb- *p1nmsb ) * ((double)(1<<8)))) & 0xFF;
-	//*p1nlsb = (uint8_t)( (( temp_p1nmsb- *p1nmsb ) * ((double)(1<<8)))) & 0xFF;
+	*p1nlsb = (uint8_t)( round(( temp_p1nmsb - *p1nmsb ) * ((double)(1<<8)))) & 0xFF;
+	//*p1nlsb = (uint8_t)( (( temp_p1nmsb - *p1nmsb ) * ((double)(1<<8)))) & 0xFF;
 
 	uint32_t n_div24_bit = (uint32_t)(round(n_div * (1<<24))) & 0xFFFFFFFF;
 	//uint32_t n_div24_bit = (uint32_t)((n_div * (1<<24))) & 0xFFFFFFFF;
@@ -333,14 +336,13 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 	set_RFFC507X_P2N(dev, n);
 	set_RFFC507X_P2PRESC(dev, fbkdiv >> 1);
 	//set_RFFC507X_P2VCOSEL(dev, 0);
-    set_RFFC507X_AUTO(dev, 1);
+    //set_RFFC507X_AUTO(dev, 1);
 	set_RFFC507X_P2NMSB(dev, p1nmsb);
 	set_RFFC507X_P2NLSB(dev, p1nlsb);
 
 	rffc507x_regs_commit(dev);
-	rffc507x_enable(dev);
 
-	if (fbkdiv == 4)
+	/*if (fbkdiv == 4)
 	{
 		// For optimum VCO phase noise the prescaler divider should be set to divide by 2. If the VCO frequency is 
 		// greater than 3.2GHz, it is necessary to set the ratio to 4 to allow the CT_cal algorithm to work. 
@@ -361,7 +363,9 @@ double rffc507x_set_frequency(rffc507x_st* dev, double lo_hz)
 		set_RFFC507X_P2NMSB(dev, p1nmsb);
 		set_RFFC507X_P2NLSB(dev, p1nlsb);
 		rffc507x_regs_commit(dev);
-	}
+	}*/
+    
+    rffc507x_enable(dev);
 
 	return tune_freq_hz;
 }
@@ -472,4 +476,5 @@ void rffc507x_relock(rffc507x_st* dev)
 void rffc507x_output_lo(rffc507x_st* dev, int state)
 {
 	set_RFFC507X_BYPAS(dev, state);
+    rffc507x_regs_commit(dev);
 }

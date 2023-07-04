@@ -15,7 +15,7 @@ typedef enum
 	app_selection_fpga_smi_fifo,
 	app_selection_modem_tx_cw,
 	app_selection_modem_rx_iq,
-	
+	app_selection_synthesizer,
 	app_selection_quit = 99,
 } app_selection_en;
 
@@ -38,6 +38,7 @@ static void fpga_rf_control(sys_st *sys);
 static void fpga_smi_fifo(sys_st *sys);
 static void modem_tx_cw(sys_st *sys);
 static void modem_rx_iq(sys_st *sys);
+static void synthesizer(sys_st *sys);
 
 //=================================================
 app_menu_item_st handles[] =
@@ -52,6 +53,7 @@ app_menu_item_st handles[] =
 	{app_selection_fpga_smi_fifo, fpga_smi_fifo, "FPGA SMI fifo status",},
 	{app_selection_modem_tx_cw, modem_tx_cw, "Modem transmit CW signal",},
 	{app_selection_modem_rx_iq, modem_rx_iq, "Modem receive I/Q stream",},
+    {app_selection_synthesizer, synthesizer, "Synthesizer 85-4200 MHz",},
 };
 #define NUM_HANDLES 	(int)(sizeof(handles)/sizeof(app_menu_item_st))
 
@@ -247,6 +249,10 @@ static void modem_tx_cw(sys_st *sys)
 		printf("	[4] Power out @ High Channel [%.2f dBm]\n", current_power_hi);
 		printf("	[5] On/off CW output @ Low Channel [Currently %s]\n", state_lo?"ON":"OFF");
 		printf("	[6] On/off CW output @ High Channel [Currently %s]\n", state_hi?"ON":"OFF");
+        printf("	[7] Low Channel decrease frequency (5MHz)\n");
+        printf("	[8] Low Channel increase frequency (5MHz)\n");
+        printf("	[9] Hi Channel decrease frequency (5MHz)\n");
+        printf("	[10] Hi Channel increase frequency (5MHz)\n");
 		printf("	[99] Return to Main Menu\n");
 		printf("	Choice: ");
 		if (scanf("%d", &choice) != 1) continue;
@@ -259,11 +265,12 @@ static void modem_tx_cw(sys_st *sys)
 				printf("	Enter frequency @ Low Channel [Hz]:   ");
 				if (scanf("%lf", &current_freq_lo) != 1) continue;
 
+                cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, false);
 				cariboulite_radio_set_frequency(radio_low, true, &current_freq_lo);
 				cariboulite_radio_set_tx_power(radio_low, current_power_lo);
-				if (state_lo == false)
+				if (state_lo)
 				{
-					cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, false);
+					cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, true);
 				}
 				current_freq_lo = radio_low->actual_rf_frequency;
 			}
@@ -275,11 +282,13 @@ static void modem_tx_cw(sys_st *sys)
 				printf("	Enter frequency @ High Channel [Hz]:   ");
 				if (scanf("%lf", &current_freq_hi) != 1) continue;
 
+                cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, false);
 				cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
-				cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
-				if (state_hi == false)
+				cariboulite_radio_set_tx_power(radio_hi, current_power_hi);               
+                
+				if (state_hi)
 				{
-					cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, false);
+					cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, true);
 				}
 				current_freq_hi = radio_hi->actual_rf_frequency;
 			}
@@ -311,11 +320,9 @@ static void modem_tx_cw(sys_st *sys)
 			case 5:
 			{
 				state_lo = !state_lo;
+                if (state_lo == 1) cariboulite_radio_set_tx_power(radio_low, current_power_lo);
                 cariboulite_radio_set_cw_outputs(radio_low, false, state_lo);
 				cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, state_lo);
-                
-				//printf("	Power output was %s\n\n", state_lo?"ENABLED":"DISABLED");
-				if (state_lo == 1) cariboulite_radio_set_tx_power(radio_low, current_power_lo);
 			}
 			break;
 			
@@ -323,13 +330,74 @@ static void modem_tx_cw(sys_st *sys)
 			case 6: 
 			{
 				state_hi = !state_hi;
+                if (state_hi == 1) cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
                 cariboulite_radio_set_cw_outputs(radio_hi, false, state_hi);
-				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, state_hi);
-				//printf("	Power output was %s\n\n", state_hi?"ENABLED":"DISABLED");
-				if (state_hi == 1) cariboulite_radio_set_tx_power(radio_hi, current_power_hi);
+				cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, state_hi);				
 			}
 			break;
 			
+            //---------------------------------------------------------
+			case 7: 
+			{
+				current_freq_lo -= 5e6;
+                cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, false);
+				cariboulite_radio_set_frequency(radio_low, true, &current_freq_lo);
+				cariboulite_radio_set_tx_power(radio_low, current_power_lo);
+				if (state_lo)
+				{
+					cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, true);
+				}
+				//current_freq_lo = radio_low->actual_rf_frequency;
+			}
+			break;
+            
+            //---------------------------------------------------------
+			case 8: 
+			{
+				current_freq_lo += 5e6;
+                cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, false);
+				cariboulite_radio_set_frequency(radio_low, true, &current_freq_lo);
+				cariboulite_radio_set_tx_power(radio_low, current_power_lo);
+				if (state_lo)
+				{
+					cariboulite_radio_activate_channel(radio_low, cariboulite_channel_dir_tx, true);
+				}
+				//current_freq_lo = radio_low->actual_rf_frequency;
+			}
+			break;
+            
+            //---------------------------------------------------------
+			case 9: 
+			{
+				current_freq_hi -= 5e6;
+                cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, false);
+				cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
+				cariboulite_radio_set_tx_power(radio_hi, current_power_hi);               
+                
+				if (state_hi)
+				{
+					cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, true);
+				}
+				//current_freq_hi = radio_hi->actual_rf_frequency;
+			}
+			break;
+            
+            //---------------------------------------------------------
+			case 10: 
+			{
+				current_freq_hi += 5e6;
+                cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, false);
+				cariboulite_radio_set_frequency(radio_hi, true, &current_freq_hi);
+				cariboulite_radio_set_tx_power(radio_hi, current_power_hi);               
+                
+				if (state_hi)
+				{
+					cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, true);
+				}
+				//current_freq_hi = radio_hi->actual_rf_frequency;
+			}
+			break;
+            
 			//---------------------------------------------------------
 			case 99: 
 			{
@@ -581,6 +649,83 @@ static void modem_rx_iq(sys_st *sys)
 		}
 	}
 }
+
+//=================================================
+static void synthesizer(sys_st *sys)
+{
+    int choice = 0;
+    cariboulite_radio_state_st *radio_hi = &sys->radio_high;
+    double current_freq = 100000000.0;
+    bool active = false;
+    bool lock = false;
+    
+    //cariboulite_radio_set_cw_outputs(radio_hi, false, false);
+    //cariboulite_radio_activate_channel(radio_hi, cariboulite_channel_dir_tx, false);
+    caribou_fpga_set_io_ctrl_mode (&radio_hi->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
+    cariboulite_radio_ext_ref (radio_hi->sys, cariboulite_ext_ref_32mhz);
+    rffc507x_set_frequency(&radio_hi->sys->mixer, current_freq);
+    lock = cariboulite_radio_wait_mixer_lock(radio_hi, 10);
+    rffc507x_calibrate(&radio_hi->sys->mixer);
+    
+    while (1)
+	{
+		printf("	Parameters:\n");
+		printf("	[1] Set Frequency (%.5f MHz, LOCKED=%d)\n", current_freq / 1e6, lock);
+        printf("	[2] Activate [%s]\n", active?"Active":"Not Active");
+		printf("	[99] Return to main menu\n");
+	
+		printf("	Choice: ");
+		if (scanf("%d", &choice) != 1) continue;
+		
+		switch (choice)
+		{
+			//--------------------------------------------
+			case 1:
+			{   
+                printf("	Enter frequency [Hz]:   ");
+				if (scanf("%lf", &current_freq) != 1) continue;
+                
+                if (current_freq < 2400e6) caribou_fpga_set_io_ctrl_mode (&radio_hi->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
+                else caribou_fpga_set_io_ctrl_mode (&radio_hi->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_hipass);
+                
+                double act_freq = rffc507x_set_frequency(&radio_hi->sys->mixer, current_freq);
+                lock = cariboulite_radio_wait_mixer_lock(radio_hi, 10);
+                
+				if (active)
+				{
+					rffc507x_output_lo(&radio_hi->sys->mixer, active);
+				}
+				current_freq = act_freq;
+			}
+			break;
+            
+            //--------------------------------------------
+			case 2:
+			{   
+                active = !active;
+                rffc507x_output_lo(&radio_hi->sys->mixer, active);
+			}
+			break;
+            
+            //--------------------------------------------
+			case 99:
+                active = false;
+                
+                rffc507x_output_lo(&radio_hi->sys->mixer, false);
+                cariboulite_radio_set_cw_outputs(radio_hi, false, false);
+                caribou_fpga_set_io_ctrl_mode (&radio_hi->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_bypass);
+				return;
+            
+            //--------------------------------------------
+			default:
+			{
+			}
+			break;
+        }
+    }
+    
+}
+
 
 //=================================================
 int app_menu(sys_st* sys)

@@ -385,7 +385,7 @@ int cariboulite_init_submodules (sys_st* sys)
 	}
 
 	// Print the SPI information
-	io_utils_spi_print_setup(&sys->spi_dev);
+	//io_utils_spi_print_setup(&sys->spi_dev);
 	
 	// Initialize the two Radio High-Level devices	
 	cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);
