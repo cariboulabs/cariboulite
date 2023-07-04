@@ -280,7 +280,7 @@ int cariboulite_radio_set_tx_power(cariboulite_radio_state_st* radio, int tx_pow
 	else if (radio->type == cariboulite_channel_6g)
 	{
 		if (tx_power_dbm < -12) tx_power_dbm = -12;
-		if (tx_power_dbm > 9) tx_power_dbm = 9;
+		if (tx_power_dbm > 12) tx_power_dbm = 12;
 
 		x = tx_power_dbm;
 		tx_power_ctrl_model = roundf(0.000710f*x*x*x*x + 0.010521f*x*x*x + 0.015169f*x*x + 0.914333f*x + 12.254084f);
@@ -727,9 +727,12 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 																modem_freq);
             
             // setup mixer LO according to the actual modem frequency          
-			lo_act_freq = rffc507x_set_frequency(&radio->sys->mixer, modem_act_freq - f_rf);
-			act_freq = modem_act_freq - lo_act_freq;
-
+			//lo_act_freq = rffc507x_set_frequency(&radio->sys->mixer, modem_act_freq - f_rf);
+			//act_freq = modem_act_freq - lo_act_freq;
+            
+            lo_act_freq = rffc507x_set_frequency(&radio->sys->mixer, modem_act_freq + f_rf);
+            act_freq = lo_act_freq - modem_act_freq;
+            
             // setup fpga RFFE <= upconvert (tx / rx)
             conversion_direction = conversion_dir_up;
             caribou_smi_invert_iq(&radio->sys->smi, true);
