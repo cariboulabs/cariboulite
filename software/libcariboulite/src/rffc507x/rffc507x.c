@@ -112,11 +112,11 @@ int rffc507x_init(  rffc507x_st* dev,
 		ZF_LOGE("input dev is NULL");
 		return -1;
 	}
-	ZF_LOGI("Initializing RFFC507x driver");
+	ZF_LOGD("Initializing RFFC507x driver");
 	memcpy(dev->rffc507x_regs, rffc507x_regs_default, sizeof(dev->rffc507x_regs));
 	dev->rffc507x_regs_dirty = 0x7fffffff;
 
-	ZF_LOGI("Setting up device GPIOs");
+	ZF_LOGD("Setting up device GPIOs");
 
 	dev->io_spi = io_spi;
 
@@ -129,7 +129,7 @@ int rffc507x_init(  rffc507x_st* dev,
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 5000000, 0, 0,
                         						io_utils_spi_chip_type_rffc, NULL);
 
-	ZF_LOGI("Received spi handle %d", dev->io_spi_handle);
+	ZF_LOGD("Received spi handle %d", dev->io_spi_handle);
 
 	rffc507x_device_id_st did = {0};
 	rffc507x_device_status_st stat = {0};
@@ -209,7 +209,7 @@ int rffc507x_release(rffc507x_st* dev)
 	// Release the SPI device
 	io_utils_spi_remove_chip(dev->io_spi, dev->io_spi_handle);
 
-	ZF_LOGI("Device release completed");
+	ZF_LOGD("Device release completed");
 
 	return 0;
 }
@@ -414,7 +414,7 @@ void rffc507x_print_dev_id(rffc507x_device_id_st* dev_id)
 {
 	if (!dev_id) return;
 	uint16_t *temp = (uint16_t*)dev_id;
-	ZF_LOGI("RFFC507X DEVID: 0x%04X ID: 0x%04X, Rev: %d (%s)", *temp, 
+	ZF_LOGD("RFFC507X DEVID: 0x%04X ID: 0x%04X, Rev: %d (%s)", *temp, 
 										dev_id->device_id, dev_id->device_rev, 
 										dev_id->device_rev==1?"RFFC507x":"RFFC507xA");
 }

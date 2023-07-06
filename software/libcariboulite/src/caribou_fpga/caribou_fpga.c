@@ -115,7 +115,7 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
 
     dev->io_spi = io_spi;
 
-    ZF_LOGI("configuring reset and irq pins");
+    ZF_LOGD("configuring reset and irq pins");
 	// Configure GPIO pins
 	io_utils_setup_gpio(dev->reset_pin, io_utils_dir_output, io_utils_pull_up);
 	io_utils_setup_gpio(dev->soft_reset_pin, io_utils_dir_output, io_utils_pull_up);
@@ -123,7 +123,7 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
 	// set to known state
 	io_utils_write_gpio(dev->soft_reset_pin, 1);
 
-    ZF_LOGI("Initializing io_utils_spi");
+    ZF_LOGD("Initializing io_utils_spi");
     io_utils_hard_spi_st hard_dev_fpga = {  .spi_dev_id = dev->spi_dev,
                                             .spi_dev_channel = dev->spi_channel, };
 	dev->io_spi_handle = io_utils_spi_add_chip(dev->io_spi, dev->cs_pin, 1000000, 0, 0,
@@ -304,7 +304,7 @@ int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st* v
     oc.mid = caribou_fpga_mid_smi_ctrl;
     caribou_fpga_spi_transfer (dev, poc, &dev->versions.smi_ctrl_mod_ver);
 
-	caribou_fpga_print_versions (dev);
+	//caribou_fpga_print_versions (dev);
 
 	if (vers)
 	{

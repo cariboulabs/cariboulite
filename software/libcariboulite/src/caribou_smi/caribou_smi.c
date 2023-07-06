@@ -513,7 +513,7 @@ int caribou_smi_init(caribou_smi_st* dev,
     dev->read_temp_buffer = NULL;
     dev->write_temp_buffer = NULL;
 
-    ZF_LOGI("initializing caribou_smi");
+    ZF_LOGD("initializing caribou_smi");
 
     // start from a defined state
     memset(dev, 0, sizeof(caribou_smi_st));
@@ -548,7 +548,7 @@ int caribou_smi_init(caribou_smi_st* dev,
         return -1;
     }
 
-    if (caribou_smi_setup_settings(dev, &settings, true) != 0)
+    if (caribou_smi_setup_settings(dev, &settings, false) != 0)
     {
         caribou_smi_close (dev);
         return -1;

@@ -77,25 +77,25 @@ Type Cariboulite::readSensor(const int direction, const size_t channel, const st
         if (key == "RSSI")
         {
             float rssi = 0.0f;
-            cariboulite_radio_get_rssi((cariboulite_radio_state_st*)&radio, &rssi);
+            cariboulite_radio_get_rssi((cariboulite_radio_state_st*)radio, &rssi);
             return rssi;
         }
         if (key == "ENERGY")
         {
             float energy = 0.0f;
-            cariboulite_radio_get_energy_det((cariboulite_radio_state_st*)&radio, &energy);
+            cariboulite_radio_get_energy_det((cariboulite_radio_state_st*)radio, &energy);
             return energy;
         }
     }
 
     if (key == "PLL_LOCK_MODEM")
     {
-        return radio.modem_pll_locked;
+        return radio->modem_pll_locked;
     }
 
     if (channel == cariboulite_channel_6g && key == "PLL_LOCK_MIXER")
     {
-        return radio.lo_pll_locked;
+        return radio->lo_pll_locked;
     }
     return 0;
 }

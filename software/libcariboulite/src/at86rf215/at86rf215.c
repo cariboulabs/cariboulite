@@ -130,10 +130,10 @@ int at86rf215_calibrate_device(at86rf215_st* dev, at86rf215_rf_channel_en ch, in
     for (int i = 0; i < NUM_CAL_STEPS; i ++)
     {
         at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_trx_off);
-        io_utils_usleep(10000);
+        io_utils_usleep(2000);
         at86rf215_radio_set_state(dev, ch, at86rf215_radio_state_cmd_tx_prep);
 
-        io_utils_usleep(80000);
+        io_utils_usleep(10000);
 
         at86rf215_radio_get_tx_iq_calibration(dev, ch, &cal_i[i], &cal_q[i]);
         //printf("[%d,%d], ", cal_i[i], cal_q[i]);
@@ -283,15 +283,15 @@ int at86rf215_print_version(at86rf215_st* dev)
     
 	if (pn == at86rf215_pn_at86rf215)               // 0x34
     {
-        ZF_LOGI("MODEM Version: AT86RF215 (with basebands), version: %02x", vn);
+        ZF_LOGD("MODEM Version: AT86RF215 (with basebands), version: %02x", vn);
     }
     else if (pn == at86rf215_pn_at86rf215iq)        // 0x35
     {
-        ZF_LOGI("MODEM Version: AT86RF215IQ (without basebands), version: %02x", vn);
+        ZF_LOGD("MODEM Version: AT86RF215IQ (without basebands), version: %02x", vn);
     }
     else
     {
-        ZF_LOGI("MODEM Version: not AT86RF215 IQ capable modem (product number: 0x%02x, versions %02x)", pn, vn);
+        ZF_LOGW("MODEM Version: not AT86RF215 IQ capable modem (product number: 0x%02x, versions %02x)", pn, vn);
     }
 	return pn;
 }

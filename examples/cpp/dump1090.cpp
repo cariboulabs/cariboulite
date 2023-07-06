@@ -123,7 +123,6 @@ void runSoapyProcess(	SoapySDR::Device *device, SoapySDR::Stream *stream, const 
  **********************************************************************/
 int main(int argc, char *argv[])
 {
-    SoapySDR::ModuleManager mm(false);
     SoapySDR::Device *device(nullptr);
     std::vector<size_t> channels;
     std::string argStr = "driver=Cariboulite,channel=HiF";

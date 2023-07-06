@@ -89,7 +89,7 @@ int spi_init(spi_t *self,
     return SPI_ERR_SET_SPEED;
   }
 
-  printf("open device='%s' mode=%d bits=%d lsb=%d max_speed=%d [Hz]", device, (int)self->mode, (int)self->bits, (int)self->lsb, (int)self->speed);
+  //printf("open device='%s' mode=%d bits=%d lsb=%d max_speed=%d [Hz]", device, (int)self->mode, (int)self->bits, (int)self->lsb, (int)self->speed);
 
   return SPI_ERR_NONE;
 }

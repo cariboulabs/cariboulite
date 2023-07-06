@@ -81,10 +81,10 @@ int caribou_prog_init(caribou_prog_st *dev, io_utils_spi_st* io_spi)
 	// check if the FPGA is already configures
 	if (caribou_prog_check_if_programmed(dev) == 1)
 	{
-		ZF_LOGI("FPGA is already configured and running");
+		ZF_LOGD("FPGA is already configured and running");
 	}
 
-	ZF_LOGI("device init completed");
+	ZF_LOGD("device init completed");
 
 	return 0;
 }
@@ -145,7 +145,7 @@ static int caribou_prog_configure_prepare(caribou_prog_st *dev)
 	io_utils_usleep(200);
 
 	// Wait for DONE low
-	ZF_LOGI("RESET low, Waiting for CDONE low");
+	ZF_LOGD("RESET low, Waiting for CDONE low");
 	ct = LATTICE_ICE40_TO_COUNT;
 
 	while(io_utils_read_gpio(dev->cdone_pin)==1 && ct--)
@@ -189,7 +189,7 @@ static int caribou_prog_configure_finish(caribou_prog_st *dev)
 
 
 	/* send dummy data while waiting for DONE */
- 	ZF_LOGI("sending dummy clocks, waiting for CDONE to rise (or fail)");
+ 	ZF_LOGD("sending dummy clocks, waiting for CDONE to rise (or fail)");
 
 	ct = LATTICE_ICE40_TO_COUNT;
 	while(caribou_prog_check_if_programmed(dev)==0 && ct--)
@@ -200,11 +200,11 @@ static int caribou_prog_configure_finish(caribou_prog_st *dev)
 
 	if(ct)
 	{
-	 	ZF_LOGI("%d dummy clocks sent", (LATTICE_ICE40_TO_COUNT-ct)*8);
+	 	ZF_LOGD("%d dummy clocks sent", (LATTICE_ICE40_TO_COUNT-ct)*8);
     }
 	else
 	{
-		ZF_LOGI("timeout waiting for CDONE");
+		ZF_LOGW("timeout waiting for CDONE");
 	}
 
 	/* return status */
@@ -278,7 +278,7 @@ int caribou_prog_configure_from_buffer(	caribou_prog_st *dev,
 		printf("[%2d%%]\r", progress); fflush(stdout);
 	}
 	io_utils_write_gpio_with_wait(dev->cs_pin, 1, 200);
-	ZF_LOGI("bitstream sent %d bytes", ct);
+	ZF_LOGD("bitstream sent %d bytes", ct);
 
 	// CONFIGURATION EPILOGUE
 	// ----------------------

@@ -471,7 +471,7 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res)
     int error_occured = 0;
 
     //------------------------------------------------------
-    ZF_LOGI("Testing modem communication and versions");
+    ZF_LOGD("Testing modem communication and versions");
     
     uint8_t modem_pn = 0;
 	modem_pn = at86rf215_print_version(&sys->modem);
@@ -486,7 +486,7 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res)
 	// Mixer only relevant to the full version
 	if (sys->board_info.numeric_product_id == system_type_cariboulite_full)
 	{	
-		ZF_LOGI("Testing mixer communication and versions");
+		ZF_LOGD("Testing mixer communication and versions");
 		rffc507x_device_id_st dev_id;
 		rffc507x_readback_status(&sys->mixer, &dev_id, NULL);
 		if (dev_id.device_id != 0x1140 && dev_id.device_id != 0x11C0)
@@ -497,13 +497,10 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res)
 		}
 	}
 
-    //------------------------------------------------------
-    ZF_LOGI("Testing smi communication");
-
     // check and report problems
     if (!error_occured)
     {
-        ZF_LOGI("Self-test process finished successfully!");
+        ZF_LOGD("Self-test process finished successfully!");
         return 0;
     }
 

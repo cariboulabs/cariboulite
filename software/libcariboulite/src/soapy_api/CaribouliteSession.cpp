@@ -45,6 +45,7 @@ SoapyCaribouliteSession::SoapyCaribouliteSession(void)
         memcpy(&sys, &temp, sizeof(sys_st));
 
 		sys.force_fpga_reprogramming = false;
+        cariboulite_set_log_level(cariboulite_log_level_info);
         int ret = cariboulite_init_driver(&sys, NULL);
         if (ret != 0)
         {

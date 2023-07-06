@@ -50,7 +50,7 @@ public:
          * Identification API
          ******************************************************************/
         std::string getDriverKey(void) const { return "Cariboulite"; }
-        std::string getHardwareKey(void) const { return "Cariboulite Rev2"; }
+        std::string getHardwareKey(void) const;
         SoapySDR::Kwargs getHardwareInfo(void) const;
 
         /*******************************************************************
@@ -145,7 +145,7 @@ public:
         Type readSensor(const int direction, const size_t channel, const std::string &key) const;
 
 public:
-        cariboulite_radio_state_st radio;
+        cariboulite_radio_state_st *radio;
 		SoapySDR::Stream* stream;
 
         // Static load time initializations

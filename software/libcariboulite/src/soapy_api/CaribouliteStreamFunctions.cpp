@@ -116,8 +116,8 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
 
     stream->setInnerStreamType(direction == SOAPY_SDR_TX ? cariboulite_channel_dir_tx : cariboulite_channel_dir_rx);
     
-	cariboulite_radio_set_cw_outputs(&radio, false, false);
-    cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), false);
+	cariboulite_radio_set_cw_outputs(radio, false, false);
+    cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false);
     return stream;
 }
 
@@ -129,7 +129,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
      */
 void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
-    cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), false);
+    cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false);
 }
 
 //========================================================
@@ -144,7 +144,7 @@ void Cariboulite::closeStream(SoapySDR::Stream *stream)
      */
 size_t Cariboulite::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    return cariboulite_radio_get_native_mtu_size_samples((cariboulite_radio_state_st*)&radio);
+    return cariboulite_radio_get_native_mtu_size_samples((cariboulite_radio_state_st*)radio);
 }
 
 
@@ -172,7 +172,7 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const size_t numElems)
 {
     stream->activateStream(1);
-    int ret = cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), true);
+    int ret = cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), true);
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     return ret;
 }
@@ -195,7 +195,7 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
     stream->activateStream(0);
-	return cariboulite_radio_activate_channel(&radio, stream->getInnerStreamType(), false);
+	return cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false);
 }
 
 //========================================================
