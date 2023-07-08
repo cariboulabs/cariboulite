@@ -16,11 +16,11 @@ Cariboulite::Cariboulite(const SoapySDR::Kwargs &args)
 
 	if (!args.at("channel").compare ("HiF"))
 	{	
-        radio = &sess.sys.radio_low;
+        radio = &sess.sys.radio_high;
 	}
 	else if (!args.at("channel").compare ("S1G"))
 	{
-        radio = &sess.sys.radio_high;
+        radio = &sess.sys.radio_low;
 	}
 	else
 	{
