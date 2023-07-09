@@ -855,27 +855,24 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                         cariboulite_channel_dir_en dir,
                                         bool activate)
 {  
+    int ret = 0;
     radio->channel_direction = dir;
     radio->active = activate;
     
 	int cal_i, cal_q;
     ZF_LOGD("Activating channel %d, dir = %s, activate = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", activate);
 
+    // then deactivate the modem's stream
+    cariboulite_radio_set_modem_state(radio, at86rf215_radio_state_cmd_trx_off);
+
+    // if we deactivate, first shut off the smi stream
+    ret = caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
+   
     // DEACTIVATION
     if (activate == false) 
     {
-        int ret = 0;
-        caribou_fpga_set_smi_channel (&radio->sys->fpga, (radio->type == cariboulite_channel_s1g) ? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
-        
-        // if we deactivate, first shut off the smi stream
-        ret = caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
-        usleep(30000);
-        
-        // then deactivate the modem's stream
-        cariboulite_radio_set_modem_state(radio, at86rf215_radio_state_cmd_trx_off);
         return ret;
     }
-    
     
     // ACTIVATION STEPS
     if (radio->state != at86rf215_radio_state_cmd_tx_prep)
@@ -895,7 +892,6 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             cariboulite_radio_set_modem_state(radio, at86rf215_radio_state_cmd_trx_off);
             return -1;
         }
-        usleep(10000);
     }
 
 	//===========================================================
@@ -904,7 +900,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // Activate the channel according to the configurations
     // RX on both channels looks the same
     if (radio->channel_direction == cariboulite_channel_dir_rx)
-    {
+    {        
 		// after modem is activated turn on the the smi stream
         smi_stream_state_en smi_state = smi_stream_idle;
         if (radio->smi_channel_id == caribou_smi_channel_900)
@@ -926,15 +922,16 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 		caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
         caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? 0 : 1, 0);
         
+        //usleep(5000);
+        cariboulite_radio_set_modem_state(radio, at86rf215_radio_state_cmd_rx);
+        usleep(20000);
+        
         // apply the state
         if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_state) != 0)
         {
             ZF_LOGD("Failed to configure modem with cmd_rx");
             return -1;
         }
-        
-        cariboulite_radio_set_modem_state(radio, at86rf215_radio_state_cmd_rx);
-        usleep(10000);
     }
     
 	//===========================================================

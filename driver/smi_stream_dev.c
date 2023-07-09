@@ -284,7 +284,7 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 	write_smi_reg(smi_inst, smics_temp, SMICS);
 
 	// wait for the ENABLE to go low
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 100000U, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 1000000U, success);
 	if (!success)
 	{
 		return -1;
@@ -304,7 +304,7 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 	*/
 	mb();
 	// busy wait as long as the transaction is active (taking place)
-	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(smi_inst), 100000U, success);
+	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(smi_inst), 1000000U, success);
 	if (!success)
 	{
 		return -2;
