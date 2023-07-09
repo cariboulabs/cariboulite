@@ -17,6 +17,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 ########################################################################
 # Build utility executable
 ########################################################################
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
+
 add_executable(caribou_dump1090
     dump1090.cpp
 	modes.c

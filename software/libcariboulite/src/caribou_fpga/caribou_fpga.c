@@ -144,22 +144,35 @@ int caribou_fpga_init(caribou_fpga_st* dev, io_utils_spi_st* io_spi)
 //--------------------------------------------------------------
 int caribou_fpga_get_status(caribou_fpga_st* dev, caribou_fpga_status_en *stat)
 {
-	caribou_fpga_get_versions (dev, NULL);
-	if (dev->versions.sys_manu_id != CARIBOU_SDR_MANU_CODE)
-	{
-		dev->status = caribou_fpga_status_not_programmed;
-	}
-	else
-	{
-		dev->status = caribou_fpga_status_operational;
-	}
-	if (stat) *stat = dev->status;
+    int retries = 3;
+    int inner_stat = caribou_fpga_status_not_programmed;
+    
+    while (retries-- && inner_stat != caribou_fpga_status_operational)
+    {
+        caribou_fpga_get_versions (dev, NULL);
+    
+        if (dev->versions.sys_manu_id != CARIBOU_SDR_MANU_CODE)
+        {
+            inner_stat = caribou_fpga_status_not_programmed;
+            //caribou_fpga_print_versions (dev);
+            caribou_fpga_soft_reset(dev);
+            io_utils_usleep(20000);
+        }
+        else
+        {
+            inner_stat = caribou_fpga_status_operational;
+        }
+    }
+    dev->status = inner_stat;
+    if (stat) *stat = dev->status;
+    
 	return 0;
 }
 
 //--------------------------------------------------------------
 int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, size_t len, bool force_prog)
 {
+    int prog_retries = 3;
 	caribou_fpga_get_status(dev, NULL);
 	if (dev->status == caribou_fpga_status_not_programmed || force_prog)
 	{
@@ -169,12 +182,19 @@ int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, si
         	return -1;
 		}
 
-		if (caribou_prog_configure_from_buffer(&dev->prog_dev, buffer, len) < 0)
-		{
-			ZF_LOGE("Programming failed");
-			return -1;
-		}
-
+        while (prog_retries--)
+        {
+            if (caribou_prog_configure_from_buffer(&dev->prog_dev, buffer, len) == 0)
+            {
+                break;
+            }
+        }
+        if (prog_retries == 0)
+        {
+            ZF_LOGE("Programming failed");
+            return -1;
+        }            
+        
 		caribou_fpga_soft_reset(dev);
 		io_utils_usleep(100000);
 
@@ -237,7 +257,10 @@ int caribou_fpga_soft_reset(caribou_fpga_st* dev)
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_soft_reset");
 
 	io_utils_write_gpio_with_wait(dev->soft_reset_pin, 0, 1000);
+    io_utils_usleep(1000);
 	io_utils_write_gpio_with_wait(dev->soft_reset_pin, 1, 1000);
+    io_utils_usleep(20000);
+    
 	return 0;
 }
 

@@ -902,6 +902,8 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 			}
 		}
 
+
+        
 		// If the previous attempt with this message failed, retry using
 		// magnitude correction.
 		if (use_correction) 
@@ -913,7 +915,8 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 			}
 			// TODO ... apply other kind of corrections.
 		}
-
+        
+        
 		// Decode all the next 112 bits, regardless of the actual message size.
 		// We'll check the actual message type later.
 		errors = 0;
@@ -951,6 +954,7 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 			}
 		}
 
+        
 		// Restore the original message if we used magnitude correction.
 		if (use_correction)
 		{
@@ -970,7 +974,7 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 			bits[i+6]<<1 | 
 			bits[i+7];
 		}
-
+        
 		int msgtype = msg[0]>>3;
 		int msglen = mode_s_msg_len_by_type(msgtype)/8;
 
@@ -984,6 +988,8 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 		}
 		delta /= msglen*4;
 
+        
+
 		// Filter for an average delta of three is small enough to let almost
 		// every kind of message to pass, but high enough to filter some random
 		// noise.
@@ -992,7 +998,9 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 			use_correction = 0;
 			continue;
 		}
-
+        
+        
+        
 		// If we reached this point, and error is zero, we are very likely with
 		// a Mode S message in our hands, but it may still be broken and CRC
 		// may not be correct. This is handled by the next layer.
@@ -1018,6 +1026,8 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 				cb(self, &mm);
 			}
 		}
+        
+        
 
 		// Retry with phase correction if possible.
 		if (!good_message && !use_correction) 
@@ -1029,5 +1039,6 @@ void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callba
 		{
 			use_correction = 0;
 		}
+        
 	}
 }

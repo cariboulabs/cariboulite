@@ -71,7 +71,7 @@ int caribou_prog_init(caribou_prog_st *dev, io_utils_spi_st* io_spi)
 
 	dev->io_spi_handle = io_utils_spi_add_chip(	dev->io_spi, 
 												dev->cs_pin, 
-												5000000, 
+												2000000, 
 												0, 
 												0,
 												io_utils_spi_chip_ice40_prog, NULL);
@@ -192,7 +192,8 @@ static int caribou_prog_configure_finish(caribou_prog_st *dev)
  	ZF_LOGD("sending dummy clocks, waiting for CDONE to rise (or fail)");
 
 	ct = LATTICE_ICE40_TO_COUNT;
-	while(caribou_prog_check_if_programmed(dev)==0 && ct--)
+    int count = 0;
+	while((caribou_prog_check_if_programmed(dev)==0 && ct--) || count++ < 4)
 	{
 		io_utils_spi_transmit(dev->io_spi, dev->io_spi_handle,
 								&byte, &rxbyte, 1, io_utils_spi_write);

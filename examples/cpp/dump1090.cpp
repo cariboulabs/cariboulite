@@ -70,8 +70,8 @@ void runSoapyProcess(	SoapySDR::Device *device, SoapySDR::Stream *stream, const 
 {
     // allocate buffers for the stream read/write
     const size_t numElems = device->getStreamMTU(stream);
-    complex_sample_16_t* samples = (complex_sample_16_t*)malloc(sizeof(complex_sample_16_t)*numElems);
-    uint16_t* mag = (uint16_t*)malloc(sizeof(uint16_t)*numElems);
+    complex_sample_16_t* samples = (complex_sample_16_t*)malloc(sizeof(complex_sample_16_t)*numElems*2);
+    uint16_t* mag = (uint16_t*)malloc(sizeof(uint16_t)*numElems*2);
 
     // MODE-S
     mode_s_t state;
@@ -84,7 +84,7 @@ void runSoapyProcess(	SoapySDR::Device *device, SoapySDR::Stream *stream, const 
     // Main Processing Loop
     while (not loopDone)
     {
-        long long timeUS = numElems;
+        long long timeUS = 2000000;
         int flags = 0;
         int numSamplesRead = device->readStream(stream, (void* const*)&samples, numElems, flags, timeUS);
         if (numSamplesRead < 0)
@@ -123,6 +123,7 @@ void runSoapyProcess(	SoapySDR::Device *device, SoapySDR::Stream *stream, const 
  **********************************************************************/
 int main(int argc, char *argv[])
 {
+    SoapySDR::ModuleManager mm(false);
     SoapySDR::Device *device(nullptr);
     std::vector<size_t> channels;
     std::string argStr = "driver=Cariboulite,channel=HiF";

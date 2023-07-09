@@ -424,7 +424,7 @@ void rffc507x_print_stat(rffc507x_device_status_st* stat)
 {
 	if (!stat) return;
 	uint16_t *temp = (uint16_t*)stat;
-	ZF_LOGI("RFFC507X STAT: 0x%04X PLL_LOCK: %d, CT_CAL: %d, KV_CAL: %d, CT_CAL_FAIL: %d",
+	ZF_LOGD("RFFC507X STAT: 0x%04X PLL_LOCK: %d, CT_CAL: %d, KV_CAL: %d, CT_CAL_FAIL: %d",
 			*temp,
 			stat->pll_lock, stat->coarse_tune_cal_value, 
 			stat->kv_cal_value, stat->coarse_tune_cal_fail);
