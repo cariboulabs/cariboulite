@@ -26,7 +26,9 @@ git submodule update
 ## --------------------------------------------------------------------
 printf "\n[  2  ] ${GREEN}Updating system and installing dependencies...${NC}\n"
 sudo apt-get update
-sudo apt-get -y install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
+sudo apt-get -y install raspberrypi-kernel-headers # raspbian
+sudo apt-get -y install linux-headers-raspi # ubuntu
+sudo apt-get -y install module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
 sudo apt-get -y install swig avahi-daemon libavahi-client-dev python3-distutils libpython3-dev
 
 # In ubuntu we need to grant access to gpiomem
