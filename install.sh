@@ -26,7 +26,9 @@ git submodule update
 ## --------------------------------------------------------------------
 printf "\n[  2  ] ${GREEN}Updating system and installing dependencies...${NC}\n"
 sudo apt-get update
-sudo apt-get -y install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
+sudo apt-get -y install raspberrypi-kernel-headers # raspbian
+sudo apt-get -y install linux-headers-raspi # ubuntu
+sudo apt-get -y install module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
 sudo apt-get -y install swig avahi-daemon libavahi-client-dev python3-distutils libpython3-dev
 
 # In ubuntu we need to grant access to gpiomem
@@ -152,7 +154,7 @@ fi
 
 printf "\n[  6  ] ${GREEN}Environmental Settings...${NC}\n"
 printf "${GREEN}1. SPI configuration...  "
-DtparamSPI=`cat ${CONFIG_TXT_PATH} | grep "dtparam=spi" | xargs | cut -d\= -f1`
+DtparamSPI=`grep "dtparam=spi" "${CONFIG_TXT_PATH}" | xargs | cut -d\= -f1`
 if [ "$DtparamSPI" = "dtparam" ]; then
     printf "${RED}Warning${NC}\n"
     printf "${RED}RespberryPi configuration file at ${CONFIG_TXT_PATH} contains SPI configuration${NC}\n"
@@ -163,7 +165,7 @@ else
 fi
 
 printf "${GREEN}2. ARM I2C Configuration...  "
-DtparamSPI=`cat ${CONFIG_TXT_PATH} | grep "dtparam=i2c_arm" | xargs | cut -d\= -f1`
+DtparamSPI=`grep "dtparam=i2c_arm" "${CONFIG_TXT_PATH}" | xargs | cut -d\= -f1`
 if [ "$DtparamSPI" = "dtparam" ]; then
     printf "${RED}Warning${NC}\n"
     printf "${RED}RespberryPi configuration file at ${CONFIG_TXT_PATH} contains ARM-I2C configuration${NC}\n"
@@ -174,7 +176,7 @@ else
 fi
 
 printf "${GREEN}3. I2C-VC Configuration...  "
-DtparamSPI=`cat ${CONFIG_TXT_PATH} | grep "dtparam=i2c_vc" | xargs | cut -d\= -f1`
+DtparamSPI=`grep "dtparam=i2c_vc" "${CONFIG_TXT_PATH}" | xargs | cut -d\= -f1`
 if [ "$DtparamSPI" = "dtparam" ]; then
     printf "${CYAN}OK :)${NC}\n"
 else
@@ -186,7 +188,7 @@ fi
 
 
 printf "${GREEN}4. SPI1-3CS Configuration...  "
-DtparamSPI=`cat ${CONFIG_TXT_PATH} | grep "dtoverlay=spi1-3cs" | xargs | cut -d\= -f1`
+DtparamSPI=`grep "dtoverlay=spi1-3cs" "${CONFIG_TXT_PATH}" | xargs | cut -d\= -f1`
 if [ "$DtparamSPI" = "dtoverlay" ]; then
     printf "${CYAN}OK :)${NC}\n"
 else
