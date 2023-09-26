@@ -36,14 +36,11 @@ int cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, carib
     radio->smi_channel_id = GET_SMI_CH(type);
     
     // activation of the channel
-    if (cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true) != 0)
-	{
-		return -1;
-	}
-	
-    usleep(10000);
+    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true);
+    usleep(1000);
+	cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
     
-	return cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
+    return 0;
 }
 
 //=========================================================================
@@ -245,6 +242,22 @@ int cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* radio,
     at86rf215_radio_set_rx_bandwidth_sampling(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->rx_fs = rx_sample_rate;
     radio->rx_fcut = rx_cutoff;
+    
+    // setup the smi sample rate for timeout
+    uint32_t sample_rate = 4000000;
+    switch(rx_sample_rate)
+    {
+        at86rf215_radio_rx_sample_rate_4000khz: sample_rate = 4000000; break;
+        at86rf215_radio_rx_sample_rate_2000khz: sample_rate = 2000000; break;
+        at86rf215_radio_rx_sample_rate_1333khz: sample_rate = 1333000; break;
+        at86rf215_radio_rx_sample_rate_1000khz: sample_rate = 1000000; break;
+        at86rf215_radio_rx_sample_rate_800khz: sample_rate = 800000; break;
+        at86rf215_radio_rx_sample_rate_666khz: sample_rate = 666000; break;
+        at86rf215_radio_rx_sample_rate_500khz: sample_rate = 500000; break;
+        at86rf215_radio_rx_sample_rate_400khz: sample_rate = 400000; break;
+    }
+    
+    caribou_smi_set_sample_rate(&radio->sys->smi, sample_rate);
     return 0;
 }
 
@@ -864,13 +877,12 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 
     // then deactivate the modem's stream
     cariboulite_radio_set_modem_state(radio, at86rf215_radio_state_cmd_trx_off);
-
-    // if we deactivate, first shut off the smi stream
-    ret = caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
    
     // DEACTIVATION
-    if (activate == false) 
+    if (!activate) 
     {
+        // if we deactivate, first shut off the smi stream
+        ret = caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
         return ret;
     }
     
@@ -901,7 +913,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // RX on both channels looks the same
     if (radio->channel_direction == cariboulite_channel_dir_rx)
     {        
-		// after modem is activated turn on the the smi stream
+        // Setup the IQ stream properties
         smi_stream_state_en smi_state = smi_stream_idle;
         if (radio->smi_channel_id == caribou_smi_channel_900)
             smi_state = smi_stream_rx_channel_0;
@@ -918,15 +930,15 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
         };
         at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);	
-        
+                
+        // configure FPGA with the correct rx channel
 		caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
-        caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? 0 : 1, 0);
+        //caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? 0 : 1, 0);
         
-        //usleep(5000);
+        // turn on the modem RX
         cariboulite_radio_set_modem_state(radio, at86rf215_radio_state_cmd_rx);
-        usleep(20000);
         
-        // apply the state
+        // turn on the SMI stream
         if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_state) != 0)
         {
             ZF_LOGD("Failed to configure modem with cmd_rx");

@@ -92,6 +92,10 @@ struct bcm2835_smi_dev_instance
 	wait_queue_head_t poll_event;
 	bool readable;
 	bool writeable;
+    bool reader_thread_running;
+    bool writer_thread_running;
+    bool reader_waiting_sema;
+    bool writer_waiting_sema;
 };
 
 
@@ -211,6 +215,12 @@ static void set_state(smi_stream_state_en state)
     {
         dev_info(inst->dev, "Set STREAMING_STATUS = %d, cur_addr = %d", state, inst->cur_address);
         inst->address_changed = 1;
+        
+        // abort the current timed out waiting on the current channel
+        if (inst->smi_inst != NULL && inst->reader_waiting_sema)
+        {
+            up(&inst->smi_inst->bounce.callback_sem);
+        }
     }
     
     inst->state = state;
@@ -629,17 +639,14 @@ int reader_thread_stream_function(void *pv)
     s64 t1, t2, t3;
 
 	dev_info(inst->dev, "Enterred reader thread");
+    inst->reader_thread_running = true;
 
 	while(!kthread_should_stop())
 	{       
 		// check if the streaming state is on, if not, sleep and check again
 		if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
 		{
-            //mutex_lock(&inst->read_lock);
-            //kfifo_reset(&inst->rx_fifo);
-            //mutex_unlock(&inst->read_lock);
-			
-			msleep(5);
+			msleep(1);
 			continue;
 		}
         
@@ -647,7 +654,7 @@ int reader_thread_stream_function(void *pv)
         // sync smi address
         if (inst->address_changed) 
         {
-        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
+            bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
             inst->address_changed = 0;
         }
 		
@@ -657,7 +664,7 @@ int reader_thread_stream_function(void *pv)
 		count = stream_smi_user_dma(inst->smi_inst, DMA_DEV_TO_MEM, &bounce, current_dma_buffer);
 		if (count != DMA_BOUNCE_BUFFER_SIZE || bounce == NULL)
 		{
-			dev_err(inst->dev, "stream_smi_user_dma returned illegal count = %d", count);
+			dev_err(inst->dev, "stream_smi_user_dma returned illegal count = %d, buff_num = %d", count, current_dma_buffer);
             spin_lock(&inst->smi_inst->transaction_lock);
             dmaengine_terminate_sync(inst->smi_inst->dma_chan);
             spin_unlock(&inst->smi_inst->transaction_lock);
@@ -692,41 +699,31 @@ int reader_thread_stream_function(void *pv)
 		// timeout. This means that we didn't get enough data into the buffer during this period. we shall
 		// "continue" and try again
         start = ktime_get();
-        while (1)
+        // wait for completion
+        inst->reader_waiting_sema = true;
+        if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
         {
-            // wait for completion, but if not complete (timeout) - nevermind,
-            // try to wait more, unless someone tells us to stop
-            if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
-            {
-                dev_info(inst->dev, "Reader DMA bounce timed out");
-                spin_lock(&inst->smi_inst->transaction_lock);
-                dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-                spin_unlock(&inst->smi_inst->transaction_lock);
-            }
-            else
-            {
-                //--------------------------------------------------------
-                // Switch the buffers
-                current_dma_buffer = 1-current_dma_buffer;
-                break;
-            }
-            
-            // after each timeout check if we are still entitled to keep trying
-            // if not, shut down the DMA transaction and continue empty loop
-            if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
-            {
-                spin_lock(&inst->smi_inst->transaction_lock);
-                dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-                spin_unlock(&inst->smi_inst->transaction_lock);
-                break;
-            }
+            dev_info(inst->dev, "Reader DMA bounce timed out");
+            spin_lock(&inst->smi_inst->transaction_lock);
+            dmaengine_terminate_sync(inst->smi_inst->dma_chan);
+            spin_unlock(&inst->smi_inst->transaction_lock);
         }
+        else
+        {
+            //--------------------------------------------------------
+            // Switch the buffers
+            current_dma_buffer = 1-current_dma_buffer;
+        }
+        inst->reader_waiting_sema = false;
+
         t3 = ktime_to_ns(ktime_sub(ktime_get(), start));
         
         //dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld %d", (long long)t1, (long long)t2, (long long)t3, current_dma_buffer);
 	}
 
 	dev_info(inst->dev, "Left reader thread");
+    inst->reader_thread_running = false;
+    inst->reader_waiting_sema = false;
 	return 0; 
 }
 
@@ -739,6 +736,7 @@ int writer_thread_stream_function(void *pv)
 	int num_bytes = 0;
 	int num_copied = 0;
 	dev_info(inst->dev, "Enterred writer thread");
+    inst->writer_thread_running = true;
 
 	while(!kthread_should_stop())
 	{        
@@ -752,7 +750,7 @@ int writer_thread_stream_function(void *pv)
         // sync smi address
         if (inst->address_changed) 
         {
-        bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
+            bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
             inst->address_changed = 0;
         }
 		
@@ -794,6 +792,7 @@ int writer_thread_stream_function(void *pv)
 			}
 				
 			// Wait for current chunk to complete
+            inst->writer_waiting_sema = true;
 			if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
 			{
 				dev_err(inst->dev, "Writer DMA bounce timed out");
@@ -801,6 +800,7 @@ int writer_thread_stream_function(void *pv)
                 dmaengine_terminate_sync(inst->smi_inst->dma_chan);
                 spin_unlock(&inst->smi_inst->transaction_lock);
 			}
+            inst->writer_waiting_sema = false;
 		}
         else
         {
@@ -811,6 +811,8 @@ int writer_thread_stream_function(void *pv)
 	}
     
     dev_info(inst->dev, "Left writer thread");
+    inst->writer_thread_running = false;
+    inst->writer_waiting_sema = false;
 	
 	return 0;
 }
@@ -1191,6 +1193,10 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 	init_waitqueue_head(&inst->poll_event);
 	inst->readable = false;
 	inst->writeable = false;
+    inst->reader_thread_running = false;
+    inst->writer_thread_running = false;
+    inst->reader_waiting_sema = false;
+    inst->writer_waiting_sema = false;
 	mutex_init(&inst->read_lock);
 	mutex_init(&inst->write_lock);
 

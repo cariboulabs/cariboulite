@@ -63,6 +63,7 @@ typedef struct
     int initialized;
     int filedesc;
 	size_t native_batch_len;
+    uint32_t sample_rate;
     smi_stream_state_en state;
     
     uint8_t *read_temp_buffer;
@@ -95,6 +96,7 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
 size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev);
 
 void caribou_smi_setup_ios(caribou_smi_st* dev);
+void caribou_smi_set_sample_rate(caribou_smi_st* dev, uint32_t sample_rate);
 
 #ifdef __cplusplus
 }

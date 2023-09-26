@@ -184,26 +184,25 @@ int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, si
 
         while (prog_retries--)
         {
-            if (caribou_prog_configure_from_buffer(&dev->prog_dev, buffer, len) == 0)
+            if (caribou_prog_configure_from_buffer(&dev->prog_dev, buffer, len) != 0)
+            {
+                continue;
+            }
+        
+            //caribou_fpga_soft_reset(dev);
+            io_utils_usleep(100000);
+
+            caribou_fpga_get_status(dev, NULL);
+            if (dev->status == caribou_fpga_status_operational)
             {
                 break;
-            }
+            }  
         }
         if (prog_retries == 0)
         {
             ZF_LOGE("Programming failed");
             return -1;
         }            
-        
-		caribou_fpga_soft_reset(dev);
-		io_utils_usleep(100000);
-
-		caribou_fpga_get_status(dev, NULL);
-		if (dev->status == caribou_fpga_status_not_programmed)
-		{
-			ZF_LOGE("Programming failed");
-			return -1;
-		}
 	}
 	else
 	{

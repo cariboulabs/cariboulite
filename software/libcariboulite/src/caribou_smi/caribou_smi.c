@@ -569,6 +569,7 @@ int caribou_smi_init(caribou_smi_st* dev,
 
     dev->debug_mode = caribou_smi_none;
     dev->invert_iq = false;
+    dev->sample_rate = CARIBOU_SMI_SAMPLE_RATE;
     dev->initialized = 1;
 
     return 0;
@@ -586,6 +587,23 @@ int caribou_smi_close (caribou_smi_st* dev)
 }
 
 //=========================================================================
+void caribou_smi_set_sample_rate(caribou_smi_st* dev, uint32_t sample_rate)
+{
+    if (sample_rate < 100000)
+    {
+        dev->sample_rate = 100000;
+    }
+    else if (sample_rate > CARIBOU_SMI_SAMPLE_RATE)
+    {
+        dev->sample_rate = CARIBOU_SMI_SAMPLE_RATE;
+    }
+    else
+    {
+        dev->sample_rate = sample_rate;
+    }
+}
+
+//=========================================================================
 void caribou_smi_set_debug_mode(caribou_smi_st* dev, caribou_smi_debug_mode_en mode)
 {
     dev->debug_mode = mode;
@@ -598,6 +616,14 @@ void caribou_smi_invert_iq(caribou_smi_st* dev, bool invert)
 }
 
 //=========================================================================
+static int caribou_smi_calc_read_timeout(uint32_t sample_rate, size_t len)
+{
+    uint32_t to_millisec = (2 * len * 1000) / sample_rate;
+    if (to_millisec < 1) to_millisec = 1;
+    return to_millisec;
+}
+
+//=========================================================================
 int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
                     caribou_smi_sample_complex_int16* samples,
                     caribou_smi_sample_meta* metadata,
@@ -607,9 +633,8 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
     caribou_smi_sample_meta* meta_offset = metadata;
     size_t left_to_read = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;        // in bytes
     size_t read_so_far = 0;                                                     // in samples
-    uint32_t to_millisec = (2 * dev->native_batch_len * 1000) / CARIBOU_SMI_SAMPLE_RATE;
-    if (to_millisec < 2) to_millisec = 2;
-
+    uint32_t to_millisec = caribou_smi_calc_read_timeout(dev->sample_rate, dev->native_batch_len);
+  
     while (left_to_read)
     {
         if (sample_offset) sample_offset = samples + read_so_far;
@@ -617,6 +642,8 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
 
         // current_read_len in bytes
         size_t current_read_len = ((left_to_read > dev->native_batch_len) ? dev->native_batch_len : left_to_read);
+        
+        to_millisec = caribou_smi_calc_read_timeout(dev->sample_rate, current_read_len);
         int ret = caribou_smi_timeout_read(dev, dev->read_temp_buffer, current_read_len, to_millisec);
         if (ret < 0)
         {
