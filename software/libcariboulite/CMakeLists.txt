@@ -1,16 +1,19 @@
 cmake_minimum_required(VERSION 3.15)
-project(cariboulite)
+project(cariboulite 
+        VERSION 1.2.0 
+        DESCRIPTION "CaribouLite RpiSDR C API")
+        
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Bring the headers
-include_directories(./ ./include)
+include_directories(./src)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 # ------------------------------------
 # MAIN - Source files for main library
 # ------------------------------------
-set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radio.c)
+set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radio.c src/cariboulite.c)
 
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
@@ -24,10 +27,10 @@ add_subdirectory(src/rffc507x EXCLUDE_FROM_ALL)
 add_subdirectory(src/hat EXCLUDE_FROM_ALL)
 add_subdirectory(src/production_utils EXCLUDE_FROM_ALL)
 add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
-add_subdirectory(src/iir)
+add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 
 # Create the library cariboulite
-add_library(cariboulite STATIC ${SOURCES_LIB})
+add_library(cariboulite OBJECT ${SOURCES_LIB})
 target_link_libraries(cariboulite   datatypes
                                     production_utils
                                     ustimer
@@ -43,6 +46,13 @@ target_link_libraries(cariboulite   datatypes
                                     m
                                     pthread
                                     iir)
+                                    
+set_target_properties(cariboulite PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h")
+set_property(TARGET cariboulite PROPERTY POSITION_INDEPENDENT_CODE 1)
+add_library(cariboulite_shared SHARED $<TARGET_OBJECTS:cariboulite>)
+add_library(cariboulite_static STATIC $<TARGET_OBJECTS:cariboulite>)
+set_target_properties(cariboulite_shared PROPERTIES OUTPUT_NAME cariboulite)
+set_target_properties(cariboulite_static PROPERTIES OUTPUT_NAME cariboulite)
 
 target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
@@ -100,25 +110,18 @@ SOAPY_SDR_MODULE_UTIL(
 set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
 set(SOURCES_TEST_MAIN src/cariboulite_test_app.c src/app_menu.c)
-set(SOURCES_MAIN src/cariboulite.c)
+set(SOURCES_MAIN src/cariboulite_util.c)
 set(SOURCES_PROD src/cariboulite_production.c)
 
 add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_test_app ${SOURCES_TEST_MAIN})
 add_executable(cariboulite_util ${SOURCES_MAIN})
-#add_executable(cariboulite_prod ${SOURCES_PROD})
-#add_custom_command(
-#	TARGET cariboulite_app POST_BUILD
-#	COMMAND sudo chown root:root "./cariboulite_app"
-#	COMMAND sudo chmod 4775 "./cariboulite_app"
-#	VERBATIM)
 
 target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
 target_link_libraries(cariboulite_test_app cariboulite)
 target_link_libraries(cariboulite_util cariboulite)
-#target_link_libraries(cariboulite_prod cariboulite zmq)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
@@ -126,6 +129,20 @@ set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 # ------------
 # INSTALLATION
 # ------------
-install(TARGETS cariboulite DESTINATION ${BIN_DEST}/lib/)
+
+install(TARGETS cariboulite_static 
+        LIBRARY DESTINATION ${BIN_DEST}/lib/)
+        
+install(TARGETS cariboulite_shared
+        LIBRARY DESTINATION ${BIN_DEST}/lib/
+        PUBLIC_HEADER DESTINATION ${BIN_DEST}/include/)
+
+# generate pc file for pkg-config
+set(PC_FILE cariboulite)
+configure_file(libcariboulite.pc.in
+               libcariboulite.pc @ONLY)        
+install(FILES ${CMAKE_BINARY_DIR}/libcariboulite.pc 
+        DESTINATION ${BIN_DEST}/lib/pkgconfig/)
+        
 #install(TARGETS cariboulite_test_app DESTINATION ${BIN_DEST}/bin/)
 install(TARGETS cariboulite_util DESTINATION ${BIN_DEST}/bin/)

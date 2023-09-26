@@ -46,10 +46,6 @@ extern "C" {
                     {                                                   \
                         .initialized = 0,                               \
                     },                                                  \
-                    .timer =                                            \
-                    {                                                   \
-                        .initialized = 0,                               \
-                    },                                                  \
                     .fpga =                                             \
                     {                                                   \
                         .reset_pin = CARIBOULITE_FPGA_CRESET,           \
@@ -85,6 +81,10 @@ extern "C" {
                     .reset_fpga_on_startup = 1,                         \
 					.system_status = sys_status_unintialized,			\
                 }
+
+
+#define CARIBOULITE_CONFIG_STATIC_DEFAULT(a)                            \
+            static CARIBOULITE_CONFIG_DEFAULT(a)
 
 #ifdef __cplusplus
 }

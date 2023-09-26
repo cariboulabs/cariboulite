@@ -8,6 +8,12 @@ extern "C" {
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <signal.h>
+#include <time.h>
+
 
 #include "kernel/bcm2835_smi.h"
 #include "kernel/smi_stream_dev.h"

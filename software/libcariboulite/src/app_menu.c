@@ -127,10 +127,10 @@ static void fpga_control_io(sys_st *sys)
 		printf("\n	FPGA Digital I/O state:\n");
 		printf("		LED0 = %d, LED1 = %d, BTN = %d, CFG = (%d, %d, %d, %d)\n",
 					led0, led1, btn,
-					(cfg >> 3) & 0x1 == 1,
-					(cfg >> 2) & 0x1 == 1,
-					(cfg >> 1) & 0x1 == 1,
-					(cfg >> 0) & 0x1 == 1);
+					(cfg >> 3) & (0x1 == 1),
+					(cfg >> 2) & (0x1 == 1),
+					(cfg >> 1) & (0x1 == 1),
+					(cfg >> 0) & (0x1 == 1));
 
 		printf("	[1] Toggle LED0\n	[2] Toggle LED1\n	[99] Return to Menu\n	Choice:");
 		if (scanf("%d", &choice) != 1) continue;
@@ -237,8 +237,8 @@ static void modem_tx_cw(sys_st *sys)
 	current_power_lo = radio_low->tx_power;
 	current_power_hi = radio_hi->tx_power;
 	
-	state_lo = radio_low->state == at86rf215_radio_state_cmd_rx;
-	state_hi = radio_hi->state == at86rf215_radio_state_cmd_rx;
+	state_lo = radio_low->state == cariboulite_radio_state_cmd_rx;
+	state_hi = radio_hi->state == cariboulite_radio_state_cmd_rx;
 
 	while (1)
 	{
@@ -424,7 +424,7 @@ typedef struct
     bool *high_active;
 } iq_test_reader_st;
 
-static void print_iq(char* prefix, caribou_smi_sample_complex_int16* buffer, size_t num_samples, int num_head_tail)
+static void print_iq(char* prefix, cariboulite_sample_complex_int16* buffer, size_t num_samples, int num_head_tail)
 {
     int i;
     
@@ -449,8 +449,8 @@ static void* reader_thread_func(void* arg)
     size_t read_len = caribou_smi_get_native_batch_samples(&ctrl->sys->smi);
     
     // allocate buffer
-    caribou_smi_sample_complex_int16* buffer = malloc(sizeof(caribou_smi_sample_complex_int16)*read_len);
-    caribou_smi_sample_meta* metadata = malloc(sizeof(caribou_smi_sample_meta)*read_len);
+    cariboulite_sample_complex_int16* buffer = malloc(sizeof(cariboulite_sample_complex_int16)*read_len);
+    cariboulite_sample_meta* metadata = malloc(sizeof(cariboulite_sample_meta)*read_len);
     
     printf("Entering sampling thread\n");
 	while (ctrl->active)

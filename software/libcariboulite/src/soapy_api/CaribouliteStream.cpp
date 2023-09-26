@@ -4,7 +4,7 @@
 #include <chrono>
 
 
-#define NUM_BYTES_PER_CPLX_ELEM         ( sizeof(caribou_smi_sample_complex_int16) )
+#define NUM_BYTES_PER_CPLX_ELEM         ( sizeof(cariboulite_sample_complex_int16) )
 #define NUM_NATIVE_MTUS_PER_QUEUE		( 10 )
 
 #define USE_ASYNC                       ( 1 )
@@ -64,21 +64,21 @@ SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
     mtu_size = getMTUSizeElements();
     
     SoapySDR_logf(SOAPY_SDR_INFO, "Creating SampleQueue MTU: %d I/Q samples (%d bytes)", 
-				mtu_size, mtu_size * sizeof(caribou_smi_sample_complex_int16));
+				mtu_size, mtu_size * sizeof(cariboulite_sample_complex_int16));
 
     #if USE_ASYNC
-        rx_queue = new circular_buffer<caribou_smi_sample_complex_int16>(mtu_size * NUM_NATIVE_MTUS_PER_QUEUE, 
+        rx_queue = new circular_buffer<cariboulite_sample_complex_int16>(mtu_size * NUM_NATIVE_MTUS_PER_QUEUE, 
                                                                          USE_ASYNC_OVERRIDE_WRITES, 
                                                                          USE_ASYNC_BLOCK_READS);
-        interm_native_buffer1 = new caribou_smi_sample_complex_int16[mtu_size];
+        interm_native_buffer1 = new cariboulite_sample_complex_int16[mtu_size];
     #endif //USE_ASYNC
 
 	format = CARIBOULITE_FORMAT_INT16;
 
 	// Init the internal IIR filters
     // a buffer for conversion between native and emulated formats
-    interm_native_buffer2 = new caribou_smi_sample_complex_int16[mtu_size];
-    interm_native_meta = new caribou_smi_sample_meta[mtu_size];
+    interm_native_buffer2 = new cariboulite_sample_complex_int16[mtu_size];
+    interm_native_meta = new cariboulite_sample_meta[mtu_size];
     
 	filterType = DigitalFilter_None;
 	filt20_i.setup(4e6, 20e3/2);
@@ -172,13 +172,13 @@ int SoapySDR::Stream::setFormat(const std::string &fmt)
 }
 
 //=================================================================
-int SoapySDR::Stream::Write(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us)
+int SoapySDR::Stream::Write(cariboulite_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us)
 {
 	return cariboulite_radio_write_samples(radio, buffer, num_samples);
 }
 
 //=================================================================
-int SoapySDR::Stream::WriteSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us)
+int SoapySDR::Stream::WriteSamples(cariboulite_sample_complex_int16* buffer, size_t num_elements, long timeout_us)
 {
     int ret = cariboulite_radio_write_samples(radio, buffer, num_elements);
     if (ret < 0)
@@ -248,15 +248,15 @@ int SoapySDR::Stream::WriteSamplesGen(void* buffer, size_t num_elements, long ti
 	switch (format)
 	{
 		case CARIBOULITE_FORMAT_FLOAT32: return WriteSamples((sample_complex_float*)buffer, num_elements, timeout_us); break;
-	    case CARIBOULITE_FORMAT_INT16: return WriteSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_INT16: return WriteSamples((cariboulite_sample_complex_int16*)buffer, num_elements, timeout_us); break;
 	    case CARIBOULITE_FORMAT_INT8: return WriteSamples((sample_complex_int8*)buffer, num_elements, timeout_us); break;
 	    case CARIBOULITE_FORMAT_FLOAT64: return WriteSamples((sample_complex_double*)buffer, num_elements, timeout_us); break;
-		default: return WriteSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+		default: return WriteSamples((cariboulite_sample_complex_int16*)buffer, num_elements, timeout_us); break;
 	}
 	return 0;
 }
 //=================================================================
-int SoapySDR::Stream::Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us)
+int SoapySDR::Stream::Read(cariboulite_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us)
 {
     #if USE_ASYNC
         return rx_queue->get(buffer, num_samples, timeout_us);
@@ -277,7 +277,7 @@ int SoapySDR::Stream::Read(caribou_smi_sample_complex_int16 *buffer, size_t num_
 }
 
 //=================================================================
-int SoapySDR::Stream::ReadSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us)
+int SoapySDR::Stream::ReadSamples(cariboulite_sample_complex_int16* buffer, size_t num_elements, long timeout_us)
 {
     int res = Read(buffer, num_elements, NULL, timeout_us);
     if (res < 0)
@@ -371,10 +371,10 @@ int SoapySDR::Stream::ReadSamplesGen(void* buffer, size_t num_elements, long tim
 	switch (format)
 	{
 		case CARIBOULITE_FORMAT_FLOAT32: return ReadSamples((sample_complex_float*)buffer, num_elements, timeout_us); break;
-	    case CARIBOULITE_FORMAT_INT16: return ReadSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+	    case CARIBOULITE_FORMAT_INT16: return ReadSamples((cariboulite_sample_complex_int16*)buffer, num_elements, timeout_us); break;
 	    case CARIBOULITE_FORMAT_INT8: return ReadSamples((sample_complex_int8*)buffer, num_elements, timeout_us); break;
 	    case CARIBOULITE_FORMAT_FLOAT64: return ReadSamples((sample_complex_double*)buffer, num_elements, timeout_us); break;
-		default: return ReadSamples((caribou_smi_sample_complex_int16*)buffer, num_elements, timeout_us); break;
+		default: return ReadSamples((cariboulite_sample_complex_int16*)buffer, num_elements, timeout_us); break;
 	}
 	return 0;
 }

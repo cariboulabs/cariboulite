@@ -13,7 +13,7 @@
 #include <linux/random.h>
 #include <sys/ioctl.h>
 
-#include "cariboulite.h"
+#include "cariboulite_internal.h"
 #include "cariboulite_radio.h"
 #include "cariboulite_events.h"
 #include "cariboulite_setup.h"
@@ -98,23 +98,23 @@ int cariboulite_radio_sync_information(cariboulite_radio_state_st* radio)
 }
 
 //=========================================================================
-int cariboulite_radio_get_mod_state (cariboulite_radio_state_st* radio, at86rf215_radio_state_cmd_en *state)
+int cariboulite_radio_get_mod_state (cariboulite_radio_state_st* radio, cariboulite_radio_state_cmd_en *state)
 {
-    radio->state  = at86rf215_radio_get_state(&radio->sys->modem, GET_MODEM_CH(radio->type));
+    radio->state = (cariboulite_radio_state_cmd_en)at86rf215_radio_get_state(&radio->sys->modem, GET_MODEM_CH(radio->type));
 
     if (state) *state = radio->state;
     return 0;
 }
 
 //=========================================================================
-int cariboulite_radio_get_mod_intertupts (cariboulite_radio_state_st* radio, at86rf215_radio_irq_st **irq_table)
+int cariboulite_radio_get_mod_intertupts (cariboulite_radio_state_st* radio, cariboulite_radio_irq_st **irq_table)
 {
 	at86rf215_irq_st irq = {0};
     at86rf215_get_irqs(&radio->sys->modem, &irq, 0);
 
 	memcpy (&radio->interrupts, 
 			(radio->type == cariboulite_channel_s1g) ? (&irq.radio09) : (&irq.radio24),
-			sizeof(at86rf215_radio_irq_st));
+			sizeof(cariboulite_radio_irq_st));
 
 	if (irq_table) *irq_table = &radio->interrupts;
 
@@ -176,9 +176,9 @@ int cariboulite_radio_get_rx_gain_limits(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* radio, 
-                                 		at86rf215_radio_rx_bw_en rx_bw)
+                                 		cariboulite_radio_rx_bw_en rx_bw)
 {
-    at86rf215_radio_f_cut_en fcut = at86rf215_radio_rx_f_cut_half_fs;
+    cariboulite_radio_f_cut_en fcut = at86rf215_radio_rx_f_cut_half_fs;
 
     // Automatically calculate the digital f_cut
     if (rx_bw >= at86rf215_radio_rx_bw_BW160KHZ_IF250KHZ && rx_bw <= at86rf215_radio_rx_bw_BW500KHZ_IF500KHZ)
@@ -212,11 +212,11 @@ int cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_get_rx_bandwidth(cariboulite_radio_state_st* radio, 
-                                 at86rf215_radio_rx_bw_en *rx_bw)
+                                 cariboulite_radio_rx_bw_en *rx_bw)
 {
     at86rf215_radio_set_rx_bw_samp_st cfg = {0};
     at86rf215_radio_get_rx_bandwidth_sampling(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
-    radio->rx_bw = cfg.bw;
+    radio->rx_bw = (cariboulite_radio_rx_bw_en)cfg.bw;
     radio->rx_fcut = cfg.fcut;
     radio->rx_fs = cfg.fs;
     if (rx_bw) *rx_bw = radio->rx_bw;
@@ -225,8 +225,8 @@ int cariboulite_radio_get_rx_bandwidth(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* radio, 
-                                   at86rf215_radio_sample_rate_en rx_sample_rate,
-                                   at86rf215_radio_f_cut_en rx_cutoff)
+                                   cariboulite_radio_sample_rate_en rx_sample_rate,
+                                   cariboulite_radio_f_cut_en rx_cutoff)
 {
     at86rf215_radio_set_rx_bw_samp_st cfg = 
     {
@@ -263,8 +263,8 @@ int cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_get_rx_samp_cutoff(cariboulite_radio_state_st* radio, 
-                                   at86rf215_radio_sample_rate_en *rx_sample_rate,
-                                   at86rf215_radio_f_cut_en *rx_cutoff)
+                                   cariboulite_radio_sample_rate_en *rx_sample_rate,
+                                   cariboulite_radio_f_cut_en *rx_cutoff)
 {
     cariboulite_radio_get_rx_bandwidth(radio, NULL);
     if (rx_sample_rate) *rx_sample_rate = radio->rx_fs;
@@ -349,7 +349,7 @@ int cariboulite_radio_get_tx_power(cariboulite_radio_state_st* radio, int *tx_po
 
 //=========================================================================
 int cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio, 
-                                 at86rf215_radio_tx_cut_off_en tx_bw)
+                                 cariboulite_radio_tx_cut_off_en tx_bw)
 {
     at86rf215_radio_tx_ctrl_st cfg = 
     {
@@ -371,7 +371,7 @@ int cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_get_tx_bandwidth(cariboulite_radio_state_st* radio, 
-                                 at86rf215_radio_tx_cut_off_en *tx_bw)
+                                 cariboulite_radio_tx_cut_off_en *tx_bw)
 {
     cariboulite_radio_get_tx_power(radio, NULL);
     if (tx_bw) *tx_bw = radio->tx_bw;
@@ -380,8 +380,8 @@ int cariboulite_radio_get_tx_bandwidth(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio, 
-                                   at86rf215_radio_sample_rate_en tx_sample_rate,
-                                   at86rf215_radio_f_cut_en tx_cutoff)
+                                   cariboulite_radio_sample_rate_en tx_sample_rate,
+                                   cariboulite_radio_f_cut_en tx_cutoff)
 {
     uint8_t sample_gap = 0;
     at86rf215_radio_tx_ctrl_st cfg = 
@@ -397,7 +397,7 @@ int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
     };
 
     at86rf215_radio_setup_tx_ctrl(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
-    radio->tx_fcut = tx_cutoff;
+    radio->tx_fcut = (cariboulite_radio_f_cut_en)tx_cutoff;
     radio->tx_fs = tx_sample_rate;
     
     
@@ -421,8 +421,8 @@ int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_get_tx_samp_cutoff(cariboulite_radio_state_st* radio, 
-                                   at86rf215_radio_sample_rate_en *tx_sample_rate,
-                                   at86rf215_radio_f_cut_en *tx_cutoff)
+                                   cariboulite_radio_sample_rate_en *tx_sample_rate,
+                                   cariboulite_radio_f_cut_en *tx_cutoff)
 {
     uint8_t sample_gap = 0;
     cariboulite_radio_get_tx_power(radio, NULL);
@@ -1046,14 +1046,18 @@ int cariboulite_radio_get_cw_outputs(cariboulite_radio_state_st* radio, bool *lo
 // I/O Functions
 //=========================================================================
 int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
-                            caribou_smi_sample_complex_int16* buffer,
-                            caribou_smi_sample_meta* metadata,
+                            cariboulite_sample_complex_int16* buffer,
+                            cariboulite_sample_meta* metadata,
                             size_t length)
 {
     int ret = 0;
       
     // CaribouSMI read   
-    ret = caribou_smi_read(&radio->sys->smi, radio->smi_channel_id, buffer, metadata, length);
+    ret = caribou_smi_read( &radio->sys->smi, 
+                            radio->smi_channel_id, 
+                            (caribou_smi_sample_complex_int16*)buffer, 
+                            (caribou_smi_sample_meta*)metadata, 
+                            length);
     if (ret < 0)
     {
         // -2 reserved for debug mode
@@ -1069,11 +1073,14 @@ int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
 
 //=========================================================================
 int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
-                            caribou_smi_sample_complex_int16* buffer,
+                            cariboulite_sample_complex_int16* buffer,
                             size_t length)                            
 {   
     // Caribou SMI write
-    int ret = caribou_smi_write(&radio->sys->smi, radio->smi_channel_id, buffer, length);
+    int ret = caribou_smi_write(&radio->sys->smi, 
+                                radio->smi_channel_id, 
+                                (caribou_smi_sample_complex_int16*)buffer, 
+                                length);
     if (ret < 0)
     {
         ZF_LOGE("SMI writing operation failed");

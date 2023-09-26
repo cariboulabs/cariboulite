@@ -85,16 +85,16 @@ public:
 public:
 	Stream(cariboulite_radio_state_st *radio);
 	~Stream();
-	int Write(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us);
-	int Read(caribou_smi_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us);
+	int Write(cariboulite_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us);
+	int Read(cariboulite_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us);
 
-	int ReadSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us);
+	int ReadSamples(cariboulite_sample_complex_int16* buffer, size_t num_elements, long timeout_us);
 	int ReadSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us);
 	int ReadSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us);
 	int ReadSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
 	int ReadSamplesGen(void* buffer, size_t num_elements, long timeout_us);
     
-    int WriteSamples(caribou_smi_sample_complex_int16* buffer, size_t num_elements, long timeout_us);
+    int WriteSamples(cariboulite_sample_complex_int16* buffer, size_t num_elements, long timeout_us);
 	int WriteSamples(sample_complex_float* buffer, size_t num_elements, long timeout_us);
 	int WriteSamples(sample_complex_double* buffer, size_t num_elements, long timeout_us);
 	int WriteSamples(sample_complex_int8* buffer, size_t num_elements, long timeout_us);
@@ -114,11 +114,11 @@ public:
     std::thread *reader_thread;
     int stream_active;
     int reader_thread_running;
-	circular_buffer<caribou_smi_sample_complex_int16> *rx_queue;
+	circular_buffer<cariboulite_sample_complex_int16> *rx_queue;
     
-	caribou_smi_sample_complex_int16 *interm_native_buffer1;
-    caribou_smi_sample_complex_int16 *interm_native_buffer2;
-    caribou_smi_sample_meta* interm_native_meta;
+	cariboulite_sample_complex_int16 *interm_native_buffer1;
+    cariboulite_sample_complex_int16 *interm_native_buffer2;
+    cariboulite_sample_meta* interm_native_meta;
 	DigitalFilterType filterType;
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER>* filter_i;
 	Iir::Butterworth::LowPass<DIG_FILT_ORDER>* filter_q;

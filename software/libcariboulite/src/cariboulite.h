@@ -1,3 +1,12 @@
+/**
+ * @file cariboulite.h
+ * @author David Michaeli
+ * @date September 2023
+ * @brief Main Init/Close API
+ *
+ * A high level management API for CaribouLite
+ */
+ 
 #ifndef __CARIBOULITE_H__
 #define __CARIBOULITE_H__
 
@@ -5,108 +14,126 @@
 extern "C" {
 #endif
 
-#include "cariboulite_config_default.h"
-
 #include <signal.h>
-#include <linux/limits.h>						// for file system path max length
-
-#include "hat/hat.h"
-#include "ustimer/ustimer.h"
-#include "io_utils/io_utils.h"
-#include "io_utils/io_utils_spi.h"
-#include "io_utils/io_utils_sys_info.h"
-#include "rffc507x/rffc507x.h"
-#include "at86rf215/at86rf215.h"
-
-#include "caribou_programming/caribou_prog.h"
-#include "caribou_fpga/caribou_fpga.h"
-#include "caribou_smi/caribou_smi.h"
-
 #include "cariboulite_radio.h"
 
-// GENERAL SETTINGS
-struct sys_st_t;
-
-typedef void (*signal_handler)( struct sys_st_t *sys,       // the current cariboulite low-level management struct
-								void* context,                      // custom context - can be a higher level app class
-								int signal_number,                  // the signal number
-								siginfo_t *si);
-
-typedef enum
-{
-    signal_handler_op_last = 0,             // The curtom sighandler operates (if present) after the default sig handler
-    signal_handler_op_first = 1,            // The curtom sighandler operates (if present) before the default sig handler
-    signal_handler_op_override = 2,         // The curtom sighandler operates (if present) instead of the default sig handler
-} signal_handler_operation_en;
-
-typedef enum
-{
-    system_type_unknown = 0,
-    system_type_cariboulite_full = 1,
-    system_type_cariboulite_ism = 2,
-} system_type_en;
-
-typedef enum
-{
-    cariboulite_ext_ref_src_modem = 0,
-    cariboulite_ext_ref_src_connector = 1,
-    cariboulite_ext_ref_src_txco = 2,
-    cariboulite_ext_ref_src_na = 3,             // not applicable
-} cariboulite_ext_ref_src_en;
-
-typedef enum
-{
-	sys_status_unintialized = 0,
-	sys_status_minimal_init = 1,
-	sys_status_full_init = 2,
-} sys_status_en;
-
+/**
+ * @brief library version
+ */
 typedef struct
 {
-    cariboulite_ext_ref_src_en src;
-    double freq_hz;
-} cariboulite_ext_ref_settings_st;
+    int major_version;
+    int minor_version;
+    int revision;
+} cariboulite_lib_version_st;
 
-typedef struct sys_st_t
+/**
+ * @brief Log Level
+ */
+typedef enum
 {
-	// board information
-    hat_board_info_st board_info;
-	system_type_en sys_type;
+    cariboulite_log_level_verbose,   /**< Full */
+    cariboulite_log_level_info,      /**< partial - no debug */
+    cariboulite_log_level_none,      /**< none - errors only*/
+} cariboulite_log_level_en;
 
-    // SoC level
-    io_utils_spi_st spi_dev;
-    caribou_smi_st smi;
-    ustimer_t timer;
+/**
+ * @brief custom signal handler
+ */
+typedef void (*cariboulite_signal_handler)( void* context,      // custom context - can be a higher level app class
+                                            int signal_number,  // the signal number
+                                            siginfo_t *si);
 
-    // Peripheral chips
-    caribou_fpga_st fpga;
-    at86rf215_st modem;
-    cariboulite_ext_ref_settings_st ext_ref_settings;
-	rffc507x_st mixer;
-	
-    // Configuration
-    int reset_fpga_on_startup;
-	int force_fpga_reprogramming;
-	int fpga_config_resistor_state;
-    char firmware_path_operational[PATH_MAX];
-    char firmware_path_testing[PATH_MAX];
-	
-	// Radios
-	cariboulite_radio_state_st radio_low;
-	cariboulite_radio_state_st radio_high;
+/**
+ * @brief initialize the system
+ *
+ * This function performs fully entry initialization of the system and
+ * a short self-test sequence to communication and check all the components
+ * respond.
+ *
+ * @param sys a pre-allocated device handle structure
+ * @param info the initialization performs internally the board detection sequence.
+ *             which is stored into the "sys" struct. If the user wants to receive the
+ *             information explicitely, he can pass here a pre-allocated info structure and
+ *             it will be filled with the board information. If this is not needed
+ *             user can pass "NULL"
+ * @return success / fail codes according to "cariboulite_errors_en"
+ */
+int cariboulite_init(bool force_fpga_prog, cariboulite_log_level_en log_lvl);
 
-    // Signals
-    signal_handler signal_cb;
-    void* singal_cb_context;
-    signal_handler_operation_en sig_op;
+/**
+ * @brief Release resources
+ *
+ * Releasing resources taken during init and program execution. Should be
+ * called at the end of the session.
+ *
+ * @param sys a pre-allocated device handle structure
+ */
+void cariboulite_close(void);
 
-    // Management
-    caribou_fpga_versions_st fpga_versions;
-    uint8_t fpga_error_status;
-	int fpga_config_res_state;
-	// Initialization
-	sys_status_en system_status;
-} sys_st;
+/**
+ * @brief Returns init status
+ *
+ * checks whether the driver is initialized
+ *
+ * @return boolean result (true = initialized)
+ */
+bool cariboulite_is_initialized(void);
+
+
+/**
+ * @brief Register an explicit linux signal handler in the application level
+ *
+ * If a linux signal occures it is caught by the system. The user may want to be
+ * notified on the signal in the app level. This is done by registering a handler
+ * function with this fucntion.
+ *
+ * @param sys a pre-allocated device handle structure
+ * @param handler a handler function with the following prototype:
+ *           void (*signal_handler)( void* context,      // custom context - can be a higher level app class
+ *								     int signal_number,  // the signal number
+ *								     siginfo_t *si);
+ * @param context this void* pointer may contain an app specific handle to be passed to the explicit signal handler.
+ * @return always 0 (success)
+ */
+void cariboulite_register_signal_handler ( cariboulite_signal_handler handler,
+                                           void *context);
+                                        
+
+
+/**
+ * @brief Get lib version
+ *
+ * @param v a struct containing the version information
+ */
+void cariboulite_get_lib_version(cariboulite_lib_version_st* v);
+
+/**
+ * @brief Get board serial number
+ *
+ * Note - this 32bit serial number is a digest value of the UUID 128 bit that
+ * is automatically generated for each board. It is basically the result of
+ * "xor" operations on the UUID's parts.
+ *
+ * @param serial_number a 32bit storage to store the serial number (can be NULL - if not needed)
+ * @param count the number of 32bit variables returned - always returns "1".
+ * @return always 0
+ */
+int cariboulite_get_sn(uint32_t* serial_number, int *count);
+
+/**
+ * @brief Getting the used radio handle
+ *
+ * After initializing the drivers, a radio device is created and stored in
+ * the device driver main struct. To manipulate the radio features, this radio
+ * handle (pointer) needs to be obtained by the user. This handle is normally
+ * passed to the radio manipulation functions in "cariboulite_radio.h"
+ *
+ * @param type the radio channel (6G/2.4G or ISM)
+ * @return 0 (sucess), -1 (fail)
+ */
+cariboulite_radio_state_st* cariboulite_get_radio(cariboulite_channel_en type);
+
 
 #ifdef __cplusplus
 }

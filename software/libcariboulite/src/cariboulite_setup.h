@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #include "cariboulite.h"
+#include "cariboulite_internal.h"
 #include "cariboulite_radio.h"
 #include "caribou_fpga/caribou_fpga.h"
 #include "at86rf215/at86rf215.h"
@@ -28,8 +29,8 @@ extern "C" {
 #include "cariboulite_config_default.h"
 
 #define CARIBOULITE_MAJOR_VERSION 1
-#define CARIBOULITE_MINOR_VERSION 0
-#define CARIBOULITE_REVISION 1
+#define CARIBOULITE_MINOR_VERSION 2
+#define CARIBOULITE_REVISION 0
 
 typedef struct
 {
@@ -38,23 +39,6 @@ typedef struct
     int mixer_fail;
     int smi_fail;
 } cariboulite_self_test_result_st;
-
-typedef struct
-{
-    int major_version;
-    int minor_version;
-    int revision;
-} cariboulite_lib_version_st;
-
-/**
- * @brief Log Level
- */
-typedef enum
-{
-    cariboulite_log_level_verbose,   /**< Full */
-    cariboulite_log_level_info,      /**< partial - no debug */
-    cariboulite_log_level_none,      /**< none - errors only*/
-} cariboulite_log_level_en;
 
 /**
  * @brief FPGA programming source definition
