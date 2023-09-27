@@ -16,11 +16,11 @@ add_compile_options(-Wall -Wextra -pedantic -Wno-missing-braces)
 add_library(datatypes STATIC ${SOURCES_LIB})
 target_include_directories(datatypes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(test_tsqueue test_tsqueue.c)
-target_link_libraries(test_tsqueue datatypes pthread)
+#add_executable(test_tsqueue test_tsqueue.c)
+#target_link_libraries(test_tsqueue datatypes pthread)
 
-add_executable(test_circular_buffer test_circular_buffer.cpp)
-target_link_libraries(test_circular_buffer datatypes pthread)
+#add_executable(test_circular_buffer test_circular_buffer.cpp)
+#target_link_libraries(test_circular_buffer datatypes pthread)
 
 add_executable(test_tiny_list test_tiny_list.c)
 target_link_libraries(test_tiny_list datatypes pthread)

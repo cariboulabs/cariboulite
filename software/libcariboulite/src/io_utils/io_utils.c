@@ -45,7 +45,7 @@ inline void io_utils_set_pullupdn(int gpio, io_utils_pull_en pud)
 inline void io_utils_setup_gpio(int gpio, io_utils_dir_en direction, io_utils_pull_en pud)
 {
     io_utils_set_pullupdn(gpio, pud);
-    io_utils_set_gpio_mode(gpio, direction);
+    io_utils_set_gpio_mode(gpio, (io_utils_alt_en)direction);
 }
 
 //=============================================================================================

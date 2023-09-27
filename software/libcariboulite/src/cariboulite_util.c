@@ -22,9 +22,9 @@
 //=======================================================================
 // INTERNAL VARIABLES AND DEFINITIONS
 
-struct sigaction act;
-int signal_shown = 0;
-CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
+static struct sigaction act;
+static int signal_shown = 0;
+CARIBOULITE_CONFIG_STATIC_DEFAULT(cariboulite_sys);
 
 // Program state structure
 typedef struct

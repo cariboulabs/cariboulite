@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(cariboulite 
-        VERSION 1.2.0 
+        VERSION 1.2.0
+        LANGUAGES C CXX
         DESCRIPTION "CaribouLite RpiSDR C API")
         
 set(CMAKE_BUILD_TYPE Release)
@@ -9,15 +10,28 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Bring the headers
 include_directories(./src)
 include_directories(${PROJECT_SOURCE_DIR}/src)
+add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
 # ------------------------------------
 # MAIN - Source files for main library
 # ------------------------------------
-set(SOURCES_LIB src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radio.c src/cariboulite.c)
+set(SOURCES_LIB src/cariboulite.c src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radio.c)
+set(TARGET_LINK_LIBS    datatypes
+                        production_utils
+                        caribou_fpga
+                        at86rf215
+                        rffc507x
+                        caribou_smi
+                        caribou_prog
+                        hat
+                        io_utils
+                        zf_log
+                        rt
+                        m
+                        pthread)
 
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
-add_subdirectory(src/ustimer EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_programming EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_fpga EXCLUDE_FROM_ALL)
 add_subdirectory(src/at86rf215 EXCLUDE_FROM_ALL)
@@ -30,34 +44,22 @@ add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 
 # Create the library cariboulite
-add_library(cariboulite OBJECT ${SOURCES_LIB})
-target_link_libraries(cariboulite   datatypes
-                                    production_utils
-                                    ustimer
-                                    caribou_fpga
-                                    at86rf215
-                                    rffc507x
-                                    caribou_smi
-                                    caribou_prog
-                                    hat
-                                    io_utils
-                                    zf_log
-                                    rt
-                                    m
-                                    pthread
-                                    iir)
-                                    
+add_library(cariboulite STATIC ${SOURCES_LIB})
+target_link_libraries(cariboulite PRIVATE ${TARGET_LINK_LIBS})                                                                  
 set_target_properties(cariboulite PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h")
-set_property(TARGET cariboulite PROPERTY POSITION_INDEPENDENT_CODE 1)
-add_library(cariboulite_shared SHARED $<TARGET_OBJECTS:cariboulite>)
-add_library(cariboulite_static STATIC $<TARGET_OBJECTS:cariboulite>)
+set_target_properties(cariboulite PROPERTIES OUTPUT_NAME cariboulite)
+
+add_library(cariboulite_shared SHARED ${SOURCES_LIB})
+target_link_libraries(cariboulite_shared PRIVATE ${TARGET_LINK_LIBS})                                                                  
+set_target_properties(cariboulite_shared PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h")
+set_property(TARGET cariboulite_shared PROPERTY POSITION_INDEPENDENT_CODE 1)
 set_target_properties(cariboulite_shared PROPERTIES OUTPUT_NAME cariboulite)
-set_target_properties(cariboulite_static PROPERTIES OUTPUT_NAME cariboulite)
 
-target_include_directories(cariboulite PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
+
+#--------------------------------------
 # create the Soapy shared object
+#--------------------------------------
 find_package(SoapySDR CONFIG)
 if (NOT SoapySDR_FOUND)
     message(WARNING "SoapySDR development files not found - skipping support")
@@ -99,7 +101,7 @@ SOAPY_SDR_MODULE_UTIL(
         src/soapy_api/CaribouliteStream.cpp
         src/soapy_api/CaribouliteSession.cpp
         src/soapy_api/CaribouliteSensors.cpp
-    LIBRARIES cariboulite
+    LIBRARIES cariboulite iir
     DESTINATION ${SOAPY_DEST}
     PREFIX ""
 )
@@ -130,18 +132,21 @@ set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 # INSTALLATION
 # ------------
 
-install(TARGETS cariboulite_static 
-        LIBRARY DESTINATION ${BIN_DEST}/lib/)
+install(TARGETS cariboulite 
+        LIBRARY DESTINATION ${BIN_DEST}/lib/
+        ARCHIVE DESTINATION ${BIN_DEST}/lib/
+        PUBLIC_HEADER DESTINATION ${BIN_DEST}/include/)
         
 install(TARGETS cariboulite_shared
         LIBRARY DESTINATION ${BIN_DEST}/lib/
+        ARCHIVE DESTINATION ${BIN_DEST}/lib/
         PUBLIC_HEADER DESTINATION ${BIN_DEST}/include/)
 
 # generate pc file for pkg-config
 set(PC_FILE cariboulite)
-configure_file(libcariboulite.pc.in
-               libcariboulite.pc @ONLY)        
-install(FILES ${CMAKE_BINARY_DIR}/libcariboulite.pc 
+configure_file(cariboulite.pc.in
+               cariboulite.pc @ONLY)        
+install(FILES ${CMAKE_BINARY_DIR}/cariboulite.pc 
         DESTINATION ${BIN_DEST}/lib/pkgconfig/)
         
 #install(TARGETS cariboulite_test_app DESTINATION ${BIN_DEST}/bin/)

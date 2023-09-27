@@ -25,7 +25,6 @@ extern "C" {
 #include "io_utils/io_utils.h"
 #include "io_utils/io_utils_spi.h"
 #include "io_utils/io_utils_sys_info.h"
-#include "ustimer/ustimer.h"
 #include "cariboulite_config_default.h"
 
 #define CARIBOULITE_MAJOR_VERSION 1

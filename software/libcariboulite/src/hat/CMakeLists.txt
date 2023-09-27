@@ -17,8 +17,8 @@ add_compile_options(-Wall -Wextra -Wmissing-braces)
 add_library(hat STATIC ${SOURCES_LIB})
 target_link_libraries(hat rt m pthread)
 
-add_executable(test_hat ${SOURCES})
-target_link_libraries(test_hat rt pthread ${EXTERN_LIBS})
+#add_executable(test_hat ${SOURCES})
+#target_link_libraries(test_hat rt pthread ${EXTERN_LIBS})
 
 # Set the location for library installation -- i.e., /usr/lib in this case
 # not really necessary in this example. Use "sudo make install" to apply

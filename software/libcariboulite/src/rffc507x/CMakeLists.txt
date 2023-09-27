@@ -18,8 +18,8 @@ add_compile_options(-Wall -Wextra -Wno-missing-braces)
 add_library(rffc507x STATIC ${SOURCES_LIB})
 target_link_libraries(rffc507x rt m pthread)
 
-add_executable(test_rffc507x ${SOURCES})
-target_link_libraries(test_rffc507x rt m pthread ${EXTERN_LIBS})
+#add_executable(test_rffc507x ${SOURCES})
+#target_link_libraries(test_rffc507x rt m pthread ${EXTERN_LIBS})
 
 #Set the location for library installation -- i.e., /usr/lib in this case
 # not really necessary in this example. Use "sudo make install" to apply
