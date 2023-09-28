@@ -95,6 +95,7 @@ int cariboulite_init(bool force_fpga_prog, cariboulite_log_level_en log_lvl)
 //=============================================================================
 void cariboulite_close(void)
 {
+    if (!ctx.initialized) return;
     cariboulite_release_driver(&sys);
 }
 

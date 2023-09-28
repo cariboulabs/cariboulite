@@ -150,7 +150,7 @@ unsigned int cariboulite_get_sn();
  * passed to the radio manipulation functions in "cariboulite_radio.h"
  *
  * @param type the radio channel (6G/2.4G or ISM)
- * @return 0 (sucess), -1 (fail)
+ * @return the handle of the channel, or NULL if invalid channel id
  */
 cariboulite_radio_state_st* cariboulite_get_radio(cariboulite_channel_en ch);
 

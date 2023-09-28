@@ -54,18 +54,18 @@ typedef enum
 
 typedef enum
 {
-    cariboulite_radio_rx_bw_BW160KHZ_IF250KHZ = 0x0,      // cariboulite_radio_rx_f_cut_0_25_half_fs
-    cariboulite_radio_rx_bw_BW200KHZ_IF250KHZ = 0x1,      // cariboulite_radio_rx_f_cut_0_25_half_fs
-    cariboulite_radio_rx_bw_BW250KHZ_IF250KHZ = 0x2,      // cariboulite_radio_rx_f_cut_0_25_half_fs
-    cariboulite_radio_rx_bw_BW320KHZ_IF500KHZ = 0x3,      // cariboulite_radio_rx_f_cut_0_25_half_fs
-    cariboulite_radio_rx_bw_BW400KHZ_IF500KHZ = 0x4,      // cariboulite_radio_rx_f_cut_0_25_half_fs
-    cariboulite_radio_rx_bw_BW500KHZ_IF500KHZ = 0x5,      // cariboulite_radio_rx_f_cut_0_25_half_fs
-    cariboulite_radio_rx_bw_BW630KHZ_IF1000KHZ = 0x6,     // cariboulite_radio_rx_f_cut_0_375_half_fs
-    cariboulite_radio_rx_bw_BW800KHZ_IF1000KHZ = 0x7,     // cariboulite_radio_rx_f_cut_0_5_half_fs
-    cariboulite_radio_rx_bw_BW1000KHZ_IF1000KHZ = 0x8,    // cariboulite_radio_rx_f_cut_0_5_half_fs
-    cariboulite_radio_rx_bw_BW1250KHZ_IF2000KHZ = 0x9,    // cariboulite_radio_rx_f_cut_0_75_half_fs
-    cariboulite_radio_rx_bw_BW1600KHZ_IF2000KHZ = 0xA,    // cariboulite_radio_rx_f_cut_half_fs
-    cariboulite_radio_rx_bw_BW2000KHZ_IF2000KHZ = 0xB,    // cariboulite_radio_rx_f_cut_half_fs
+    cariboulite_radio_rx_bw_200KHz = 0x0,
+    cariboulite_radio_rx_bw_250KHz = 0x1,
+    cariboulite_radio_rx_bw_312KHz = 0x2,
+    cariboulite_radio_rx_bw_400KHz = 0x3,
+    cariboulite_radio_rx_bw_500KHz = 0x4,
+    cariboulite_radio_rx_bw_625KHz = 0x5,
+    cariboulite_radio_rx_bw_787KHz = 0x6,
+    cariboulite_radio_rx_bw_1000KHz = 0x7,
+    cariboulite_radio_rx_bw_1250KHz = 0x8,
+    cariboulite_radio_rx_bw_1562KHz = 0x9,
+    cariboulite_radio_rx_bw_2000KHz = 0xA,
+    cariboulite_radio_rx_bw_2500KHz = 0xB,
 } cariboulite_radio_rx_bw_en;
 
 typedef enum
@@ -324,6 +324,7 @@ int cariboulite_radio_get_rx_gain_limits(cariboulite_radio_state_st* radio,
  */
 int cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* radio, 
                                  cariboulite_radio_rx_bw_en rx_bw);
+int cariboulite_radio_set_rx_bandwidth_flt(cariboulite_radio_state_st* radio, float bw_hz);
 
 /**
  * @brief Modem get RX analog bandwidth
@@ -336,6 +337,7 @@ int cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* radio,
  */
 int cariboulite_radio_get_rx_bandwidth(cariboulite_radio_state_st* radio, 
                                  cariboulite_radio_rx_bw_en *rx_bw);
+int cariboulite_radio_get_rx_bandwidth_flt(cariboulite_radio_state_st* radio, float* bw_hz);
 
 /**
  * @brief Modem set RX sample cut-off bandwidth
@@ -350,6 +352,7 @@ int cariboulite_radio_get_rx_bandwidth(cariboulite_radio_state_st* radio,
 int cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* radio, 
                                    cariboulite_radio_sample_rate_en rx_sample_rate,
                                    cariboulite_radio_f_cut_en rx_cutoff);
+int cariboulite_radio_set_rx_sample_rate_flt(cariboulite_radio_state_st* radio, float sample_rate_hz);
 
 /**
  * @brief Modem get RX sample cut-off bandwidth
@@ -364,6 +367,7 @@ int cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* radio,
 int cariboulite_radio_get_rx_samp_cutoff(cariboulite_radio_state_st* radio, 
                                    cariboulite_radio_sample_rate_en *rx_sample_rate,
                                    cariboulite_radio_f_cut_en *rx_cutoff);
+int cariboulite_radio_get_rx_sample_rate_flt(cariboulite_radio_state_st* radio, float *sample_rate_hz);
 
 /**
  * @brief Modem set TX power
