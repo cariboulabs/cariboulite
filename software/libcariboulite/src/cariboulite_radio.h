@@ -28,7 +28,7 @@ typedef enum
 typedef enum
 {
     cariboulite_channel_s1g = 0,
-    cariboulite_channel_6g = 1,
+    cariboulite_channel_hif = 1,
 } cariboulite_channel_en;
 
 typedef enum
@@ -620,6 +620,7 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
  * @return the number of samples in an native sized chunk
  */
 size_t cariboulite_radio_get_native_mtu_size_samples(cariboulite_radio_state_st* radio);
+
 
 #ifdef __cplusplus
 }

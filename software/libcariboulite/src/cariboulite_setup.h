@@ -259,6 +259,19 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res);
  * @return 0 (sucess), -1 (fail)
  */
 cariboulite_radio_state_st* cariboulite_get_radio_handle(sys_st* sys, cariboulite_channel_en type);
+
+/**
+ * @brief Getting CaribouLite Type
+ *
+ * Returns the version of the hardware - ISM / 6G / Unknown
+ * ISM has two channels - 900MHz and 2.4 GHz
+ * 6G has two channels - 900MHz and 6000MHz
+ *
+ * @return according to cariboulite_version_en
+ */
+system_type_en cariboulite_get_system_type(sys_st* sys);
+
+
 #ifdef __cplusplus
 }
 #endif

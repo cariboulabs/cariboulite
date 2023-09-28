@@ -389,7 +389,7 @@ int cariboulite_init_submodules (sys_st* sys)
 	
 	// Initialize the two Radio High-Level devices
     cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);	
-    cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_6g);
+    cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_hif);
 	
 	cariboulite_radio_set_rx_samp_cutoff(&sys->radio_low, cariboulite_radio_rx_sample_rate_4000khz, cariboulite_radio_rx_f_cut_half_fs);
     cariboulite_radio_set_tx_samp_cutoff(&sys->radio_low, cariboulite_radio_rx_sample_rate_4000khz, cariboulite_radio_rx_f_cut_half_fs);
@@ -413,6 +413,12 @@ cariboulite_init_submodules_fail:
     // release the resources
     cariboulite_release_submodules(sys);
 	return -1;
+}
+
+//=======================================================================================
+system_type_en cariboulite_get_system_type(sys_st* sys)
+{
+    return sys->board_info.numeric_product_id;
 }
 
 //=======================================================================================
@@ -545,7 +551,7 @@ int cariboulite_init_system_production(sys_st *sys)
 	
 	// Initialize the two Radio High-Level devices	
 	cariboulite_radio_init(&sys->radio_low, sys, cariboulite_channel_s1g);
-	cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_6g);
+	cariboulite_radio_init(&sys->radio_high, sys, cariboulite_channel_hif);
 	
 	return 0;
 }

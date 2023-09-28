@@ -54,7 +54,7 @@ int cariboulite_radio_dispose(cariboulite_radio_state_st* radio)
     radio->state = cariboulite_radio_state_cmd_trx_off;
 
 	// Type specific
-	if (radio->type == cariboulite_channel_6g)
+	if (radio->type == cariboulite_channel_hif)
 	{
     	caribou_fpga_set_io_ctrl_mode (&radio->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
 	}
@@ -294,7 +294,7 @@ int cariboulite_radio_set_tx_power(cariboulite_radio_state_st* radio, int tx_pow
 		if (tx_power_ctrl < 0) tx_power_ctrl = 0;
 		if (tx_power_ctrl > 31) tx_power_ctrl = 31;
 	}
-	else if (radio->type == cariboulite_channel_6g)
+	else if (radio->type == cariboulite_channel_hif)
 	{
 		if (tx_power_dbm < -12) tx_power_dbm = -12;
 		if (tx_power_dbm > 12) tx_power_dbm = 12;
@@ -337,7 +337,7 @@ int cariboulite_radio_get_tx_power(cariboulite_radio_state_st* radio, int *tx_po
 	{
 		actual_model = -0.000546f*x*x*x + 0.014352f*x*x + 0.902754f*x - 13.954753f;
 	}
-	else if (radio->type == cariboulite_channel_6g)
+	else if (radio->type == cariboulite_channel_hif)
 	{
 		actual_model = 0.000031f*x*x*x*x - 0.002344f*x*x*x + 0.040478f*x*x + 0.712209f*x - 11.168502;
 	}
@@ -552,7 +552,7 @@ bool cariboulite_radio_wait_mixer_lock(cariboulite_radio_state_st* radio, int re
 	}
 
 	// applicable only to the 6G channel
-	if (radio->type != cariboulite_channel_6g)
+	if (radio->type != cariboulite_channel_hif)
 	{
 		return false;
 	}
@@ -607,7 +607,7 @@ bool cariboulite_radio_wait_modem_lock(cariboulite_radio_state_st* radio, int re
 bool cariboulite_radio_wait_for_lock( cariboulite_radio_state_st* radio, bool *mod, bool *mix, int retries)
 {
 	bool mix_lock = true, mod_lock = true;
-	if (radio->type == cariboulite_channel_6g && mix != NULL)
+	if (radio->type == cariboulite_channel_hif && mix != NULL)
 	{
 		mix_lock = cariboulite_radio_wait_mixer_lock(radio, retries);
 		*mix = mix_lock;
@@ -685,7 +685,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 	//--------------------------------------------------------------------------------
     // ISM 2.4 GHZ CONFIGURATION
     //--------------------------------------------------------------------------------
-	else if (radio->type == cariboulite_channel_6g && 
+	else if (radio->type == cariboulite_channel_hif && 
 			 radio->sys->board_info.numeric_product_id == system_type_cariboulite_ism)
 	{
 		if (FREQ_IN_ISM_24G_RANGE(f_rf))
@@ -716,7 +716,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
     //--------------------------------------------------------------------------------
     // FULL 30-6GHz CONFIGURATION
     //--------------------------------------------------------------------------------
-    else if (radio->type == cariboulite_channel_6g && 
+    else if (radio->type == cariboulite_channel_hif && 
 			 radio->sys->board_info.numeric_product_id == system_type_cariboulite_full)
     {		
         // Changing the frequency may sometimes need to break RX / TX
@@ -971,7 +971,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         // if its an LO frequency output from the mixer - no need for modem output
         // LO applicable only to the channel with the mixer
         if (radio->lo_output && 
-			radio->type == cariboulite_channel_6g &&
+			radio->type == cariboulite_channel_hif &&
 			radio->sys->board_info.numeric_product_id == system_type_cariboulite_full)
         {
             // here we need to configure lo bypass on the mixer
@@ -1025,7 +1025,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 //=========================================================================
 int cariboulite_radio_set_cw_outputs(cariboulite_radio_state_st* radio, bool lo_out, bool cw_out)
 {
-    if (radio->lo_output && radio->type == cariboulite_channel_6g)
+    if (radio->lo_output && radio->type == cariboulite_channel_hif)
     {
         radio->lo_output = lo_out;
     }

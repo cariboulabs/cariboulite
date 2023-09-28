@@ -77,7 +77,7 @@ std::vector<std::string> Cariboulite::listAntennas( const int direction, const s
     //printf("listAntennas dir: %d, channel: %ld\n", direction, channel);
 	std::vector<std::string> options;
     if (radio->type == cariboulite_channel_s1g) options.push_back( "TX/RX Sub1GHz" );
-    else if (radio->type == cariboulite_channel_6g) options.push_back( "TX/RX 6GHz" );
+    else if (radio->type == cariboulite_channel_hif) options.push_back( "TX/RX 6GHz" );
     
 	return(options);
 }
@@ -87,7 +87,7 @@ std::string Cariboulite::getAntenna( const int direction, const size_t channel )
 {
     //printf("getAntenna dir: %d, channel: %ld\n", direction, channel);
 	if (radio->type == cariboulite_channel_s1g) return "TX/RX Sub1GHz";
-    else if (radio->type == cariboulite_channel_6g) return "TX/RX 6GHz";
+    else if (radio->type == cariboulite_channel_hif) return "TX/RX 6GHz";
     return "";
 }
 
@@ -537,7 +537,7 @@ SoapySDR::RangeList Cariboulite::getFrequencyRange( const int direction, const s
         list.push_back(SoapySDR::Range( 779e6, 1020e6 ));
         return list;
     }
-    else if (radio->type == cariboulite_channel_6g) 
+    else if (radio->type == cariboulite_channel_hif) 
     {
         return (SoapySDR::RangeList( 1, SoapySDR::Range( 1e6, 6000e6 ) ) );
     }

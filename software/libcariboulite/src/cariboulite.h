@@ -38,6 +38,16 @@ typedef enum
 } cariboulite_log_level_en;
 
 /**
+ * @brief System Type (version)
+ */
+typedef enum
+{
+    cariboulite_unknown = 0,
+    cariboulite_full = 1,
+    cariboulite_ism = 2,
+} cariboulite_version_en;
+
+/**
  * @brief custom signal handler
  */
 typedef void (*cariboulite_signal_handler)( void* context,      // custom context - can be a higher level app class
@@ -111,15 +121,9 @@ void cariboulite_get_lib_version(cariboulite_lib_version_st* v);
 /**
  * @brief Get board serial number
  *
- * Note - this 32bit serial number is a digest value of the UUID 128 bit that
- * is automatically generated for each board. It is basically the result of
- * "xor" operations on the UUID's parts.
- *
- * @param serial_number a 32bit storage to store the serial number (can be NULL - if not needed)
- * @param count the number of 32bit variables returned - always returns "1".
- * @return always 0
+ * @return board serial number (32 bit)
  */
-int cariboulite_get_sn(uint32_t* serial_number, int *count);
+unsigned int cariboulite_get_sn();
 
 /**
  * @brief Getting the used radio handle
@@ -132,7 +136,64 @@ int cariboulite_get_sn(uint32_t* serial_number, int *count);
  * @param type the radio channel (6G/2.4G or ISM)
  * @return 0 (sucess), -1 (fail)
  */
-cariboulite_radio_state_st* cariboulite_get_radio(cariboulite_channel_en type);
+cariboulite_radio_state_st* cariboulite_get_radio(cariboulite_channel_en ch);
+
+/**
+ * @brief Getting CaribouLite version
+ *
+ * Returns the version of the hardware - ISM / 6G / Unknown
+ * ISM has two channels - 900MHz and 2.4 GHz
+ * 6G has two channels - 900MHz and 30-6000MHz
+ *
+ * @return according to cariboulite_version_en
+ */
+cariboulite_version_en cariboulite_get_version(void);
+
+/**
+ * @brief Getting frequency availability
+ *
+ * Given a certain frequency (in Hz) checking if that frequency is available in the
+ * connected hardware
+ *
+ * @return true / false
+ */
+bool cariboulite_frequency_available(cariboulite_channel_en ch, float freq_hz);
+
+/**
+ * @brief Getting the number frequency ranges
+ *
+ * Each channel has its frequency capabilities. in the ISM channel there are 2
+ * ranges, while in the HiF there is a single range. This function returns the number
+ * of available ranges. To get the actual limits use 'cariboulite_get_frequency_limits'
+ *
+ * @return number of ranges or -1 if the channel doesn't exist
+ */
+int cariboulite_get_num_frequency_ranges(cariboulite_channel_en ch);
+
+/**
+ * @brief Getting frequency ranges limits
+ *
+ * freq_low and freq_hi need to be pre-allocated according to 'cariboulite_get_num_frequency_ranges'
+ * then all the minimum values will be in the freq_low list and the corresponding max values will be in
+ * freq_hi.
+ * num_ranges returns the number of written ranges
+ *
+ * @return 0 for success or -1 if channel is wrong
+ */
+int cariboulite_get_frequency_limits(cariboulite_channel_en ch, float *freq_low, float *freq_hi, int* num_ranges);
+
+/**
+ * @brief Get channel name
+ *
+ * Returns the string name of a channel
+ *
+ * @param ch the chosen channel
+ * @param name a pre-allocated char array
+ * @param max_len the size of the pre-allocated char array
+ * @return 0 (success) or -1 (failed - when channel is incorrect)
+ */
+ int cariboulite_radio_get_channel_name(cariboulite_channel_en ch, char* name, size_t max_len);
+
 
 
 #ifdef __cplusplus

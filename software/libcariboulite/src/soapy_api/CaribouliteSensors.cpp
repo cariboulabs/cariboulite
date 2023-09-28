@@ -8,7 +8,7 @@ std::vector<std::string> Cariboulite::listSensors(const int direction, const siz
 	if (direction == SOAPY_SDR_RX) lst.push_back( "RSSI" );
     if (direction == SOAPY_SDR_RX) lst.push_back( "ENERGY" );
     lst.push_back( "PLL_LOCK_MODEM" );
-    if (channel == cariboulite_channel_6g)
+    if (channel == cariboulite_channel_hif)
     {
         lst.push_back( "PLL_LOCK_MIXER" );
     }
@@ -51,7 +51,7 @@ SoapySDR::ArgInfo Cariboulite::getSensorInfo(const int direction, const size_t c
         return info;
     }
 
-    if (channel == cariboulite_channel_6g && key == "PLL_LOCK_MIXER")
+    if (channel == cariboulite_channel_hif && key == "PLL_LOCK_MIXER")
     {
         info.name = "PLL Lock Mixer";
         info.key = "PLL_MIXER";
@@ -93,7 +93,7 @@ Type Cariboulite::readSensor(const int direction, const size_t channel, const st
         return radio->modem_pll_locked;
     }
 
-    if (channel == cariboulite_channel_6g && key == "PLL_LOCK_MIXER")
+    if (channel == cariboulite_channel_hif && key == "PLL_LOCK_MIXER")
     {
         return radio->lo_pll_locked;
     }
