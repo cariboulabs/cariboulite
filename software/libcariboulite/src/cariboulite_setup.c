@@ -602,7 +602,7 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool p
 		if (hat_detect_from_eeprom(&sys->board_info) != 1)
 		{
             ZF_LOGE("Failed to detect the board in /proc/device-tree/hat - EEPROM needs to be configured.");
-            ZF_LOGE("Please run the hermon_prod application with sudo permissions...");
+            ZF_LOGE("Please run the cariboulite_prod application with sudo permissions...");
 		}
         else
         {

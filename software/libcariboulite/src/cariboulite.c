@@ -45,6 +45,38 @@ static void internal_sighandler( struct sys_st_t *sys,
 }
 
 //=============================================================================
+bool cariboulite_detect_connected_board(cariboulite_version_en *hw_ver, char* name, char *uuid)
+{
+    hat_board_info_st hat;
+    if (hat_detect_board(&hat) == 0)
+	{
+		return false;
+	}
+    
+    switch (hat.numeric_product_id)
+    {
+        case system_type_cariboulite_full:
+            if (hw_ver) *hw_ver = cariboulite_full;
+            if (name) sprintf(name, "CaribouLite 6G");
+            break;
+            
+        case system_type_cariboulite_ism:
+            if (hw_ver) *hw_ver = cariboulite_ism;
+            if (name) sprintf(name, "CaribouLite ISM");
+            break;
+            
+        case system_type_unknown:
+            if (hw_ver) *hw_ver = cariboulite_unknown;
+            if (name) sprintf(name, "CaribouLite Unknown");
+        default: break;
+    }
+    
+    if (uuid) sprintf(uuid, "%s", hat.product_uuid);
+    
+    return true;
+}
+
+//=============================================================================
 int cariboulite_init(bool force_fpga_prog, cariboulite_log_level_en log_lvl)
 {
     sys.force_fpga_reprogramming = force_fpga_prog;

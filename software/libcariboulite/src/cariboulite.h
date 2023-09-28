@@ -55,18 +55,37 @@ typedef void (*cariboulite_signal_handler)( void* context,      // custom contex
                                             siginfo_t *si);
 
 /**
+ * @brief check if board connected (without initing it)
+ *
+ * This function attempts to read the HAT information and checks if a
+ * CaribouLite is registerred in the OS. If so gets its details.
+ * this fucntion is good to check whether the board is mounted without the need
+ * to initialize it. Preferably this is a simple check before we start working
+ * - kind of a sanity check.
+ *
+ * @param hw_ver the type of HW (full / ism) as ENUM (nullable is not needed)
+ * @param name the type of HW in textual manner - preallocate the string (at least 32 bytes)
+ *             (nullable is not needed)
+ * @uuid uuid if this is needed, the user needs to provide a preallocated string 64 byte typical
+ *            (nullable if not needed)
+ * @return true - when board was detected
+ *         false - board was not detected and then other parameters will not be valid
+ */
+bool cariboulite_detect_connected_board(cariboulite_version_en *hw_ver, char* name, char *guid);
+
+/**
  * @brief initialize the system
  *
  * This function performs fully entry initialization of the system and
  * a short self-test sequence to communication and check all the components
  * respond.
  *
- * @param sys a pre-allocated device handle structure
- * @param info the initialization performs internally the board detection sequence.
- *             which is stored into the "sys" struct. If the user wants to receive the
- *             information explicitely, he can pass here a pre-allocated info structure and
- *             it will be filled with the board information. If this is not needed
- *             user can pass "NULL"
+ * @param force_fpga_prog force the FPGA to program (even if it is already programmed
+ *                        this will have a penalty of around 3 seconds on init. If false
+ *                        and the FPGA is already programmed (typically when this is not
+ *                        the first time a program has run since last boot session), the program
+ *                        will not rerun the FPGA programming process.
+ * @param log_lvl the logging level according to 'cariboulite_log_level_en'
  * @return success / fail codes according to "cariboulite_errors_en"
  */
 int cariboulite_init(bool force_fpga_prog, cariboulite_log_level_en log_lvl);
@@ -90,7 +109,6 @@ void cariboulite_close(void);
  */
 bool cariboulite_is_initialized(void);
 
-
 /**
  * @brief Register an explicit linux signal handler in the application level
  *
@@ -108,8 +126,6 @@ bool cariboulite_is_initialized(void);
  */
 void cariboulite_register_signal_handler ( cariboulite_signal_handler handler,
                                            void *context);
-                                        
-
 
 /**
  * @brief Get lib version
@@ -143,7 +159,7 @@ cariboulite_radio_state_st* cariboulite_get_radio(cariboulite_channel_en ch);
  *
  * Returns the version of the hardware - ISM / 6G / Unknown
  * ISM has two channels - 900MHz and 2.4 GHz
- * 6G has two channels - 900MHz and 30-6000MHz
+ * 6G has two channels - 900MHz and 6000MHz
  *
  * @return according to cariboulite_version_en
  */
@@ -164,7 +180,7 @@ bool cariboulite_frequency_available(cariboulite_channel_en ch, float freq_hz);
  *
  * Each channel has its frequency capabilities. in the ISM channel there are 2
  * ranges, while in the HiF there is a single range. This function returns the number
- * of available ranges. To get the actual limits use 'cariboulite_get_frequency_limits'
+ * of available ranges per channel. To get the actual limits use 'cariboulite_get_frequency_limits'
  *
  * @return number of ranges or -1 if the channel doesn't exist
  */
@@ -175,7 +191,7 @@ int cariboulite_get_num_frequency_ranges(cariboulite_channel_en ch);
  *
  * freq_low and freq_hi need to be pre-allocated according to 'cariboulite_get_num_frequency_ranges'
  * then all the minimum values will be in the freq_low list and the corresponding max values will be in
- * freq_hi.
+ * freq_hi. All frequencies in Hz
  * num_ranges returns the number of written ranges
  *
  * @return 0 for success or -1 if channel is wrong
@@ -192,7 +208,7 @@ int cariboulite_get_frequency_limits(cariboulite_channel_en ch, float *freq_low,
  * @param max_len the size of the pre-allocated char array
  * @return 0 (success) or -1 (failed - when channel is incorrect)
  */
- int cariboulite_radio_get_channel_name(cariboulite_channel_en ch, char* name, size_t max_len);
+ int cariboulite_get_channel_name(cariboulite_channel_en ch, char* name, size_t max_len);
 
 
 
