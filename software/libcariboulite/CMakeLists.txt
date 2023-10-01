@@ -30,6 +30,8 @@ set(TARGET_LINK_LIBS    datatypes
                         m
                         pthread)
 
+set(SOURCES_CPP_LIB src/CaribouLiteCpp.cpp src/CaribouLiteRadioCpp.cpp)
+
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_programming EXCLUDE_FROM_ALL)
@@ -44,14 +46,14 @@ add_subdirectory(src/zf_log EXCLUDE_FROM_ALL)
 add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 
 # Create the library cariboulite
-add_library(cariboulite STATIC ${SOURCES_LIB})
+add_library(cariboulite STATIC ${SOURCES_LIB} ${SOURCES_CPP_LIB})
 target_link_libraries(cariboulite PRIVATE ${TARGET_LINK_LIBS})                                                                  
-set_target_properties(cariboulite PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h")
+set_target_properties(cariboulite PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h;src/CaribouLite.hpp")
 set_target_properties(cariboulite PROPERTIES OUTPUT_NAME cariboulite)
 
-add_library(cariboulite_shared SHARED ${SOURCES_LIB})
+add_library(cariboulite_shared SHARED ${SOURCES_LIB} ${SOURCES_CPP_LIB})
 target_link_libraries(cariboulite_shared PRIVATE ${TARGET_LINK_LIBS})                                                                  
-set_target_properties(cariboulite_shared PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h")
+set_target_properties(cariboulite_shared PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h;src/CaribouLite.hpp")
 set_property(TARGET cariboulite_shared PROPERTY POSITION_INDEPENDENT_CODE 1)
 set_target_properties(cariboulite_shared PROPERTIES OUTPUT_NAME cariboulite)
 

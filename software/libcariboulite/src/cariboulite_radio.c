@@ -306,20 +306,44 @@ int cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* radio,
 }
 
 //=========================================================================
+static cariboulite_radio_sample_rate_en sample_rate_from_flt(float sample_rate_hz)
+{
+    cariboulite_radio_sample_rate_en sample_rate = cariboulite_radio_rx_sample_rate_4000khz;
+    if (sample_rate_hz >= sample_rate_middles[0]) sample_rate = cariboulite_radio_rx_sample_rate_4000khz;
+    else if (sample_rate_hz >= sample_rate_middles[1]) sample_rate = cariboulite_radio_rx_sample_rate_2000khz;
+    else if (sample_rate_hz >= sample_rate_middles[2]) sample_rate = cariboulite_radio_rx_sample_rate_1333khz;
+    else if (sample_rate_hz >= sample_rate_middles[3]) sample_rate = cariboulite_radio_rx_sample_rate_1000khz;
+    else if (sample_rate_hz >= sample_rate_middles[4]) sample_rate = cariboulite_radio_rx_sample_rate_800khz;
+    else if (sample_rate_hz >= sample_rate_middles[5]) sample_rate = cariboulite_radio_rx_sample_rate_666khz;
+    else if (sample_rate_hz >= sample_rate_middles[6]) sample_rate = cariboulite_radio_rx_sample_rate_500khz;
+    else sample_rate = cariboulite_radio_rx_sample_rate_400khz;
+    return sample_rate;
+}
+
+//=========================================================================
+static float sample_rate_to_flt(cariboulite_radio_sample_rate_en sample_rate)
+{
+    float sample_rate_hz = 4000000;
+    switch(sample_rate)
+    {
+        case cariboulite_radio_rx_sample_rate_4000khz: sample_rate_hz = 4000000; break;
+        case cariboulite_radio_rx_sample_rate_2000khz: sample_rate_hz = 2000000; break;
+        case cariboulite_radio_rx_sample_rate_1333khz: sample_rate_hz = 1333000; break;
+        case cariboulite_radio_rx_sample_rate_1000khz: sample_rate_hz = 1000000; break;
+        case cariboulite_radio_rx_sample_rate_800khz: sample_rate_hz = 800000; break;
+        case cariboulite_radio_rx_sample_rate_666khz: sample_rate_hz = 666000; break;
+        case cariboulite_radio_rx_sample_rate_500khz: sample_rate_hz = 500000; break;
+        case cariboulite_radio_rx_sample_rate_400khz: sample_rate_hz = 400000; break;
+        default: sample_rate_hz = 4000000; break;
+    }
+    return sample_rate_hz;
+}
+
+//=========================================================================
 int cariboulite_radio_set_rx_sample_rate_flt(cariboulite_radio_state_st* radio, float sample_rate_hz)
 {
-    cariboulite_radio_sample_rate_en rx_sample_rate = cariboulite_radio_rx_sample_rate_4000khz;
+    cariboulite_radio_sample_rate_en rx_sample_rate = sample_rate_from_flt(sample_rate_hz);
     cariboulite_radio_f_cut_en rx_cutoff = radio->rx_fcut;
-    
-    if (sample_rate_hz >= sample_rate_middles[0]) rx_sample_rate = cariboulite_radio_rx_sample_rate_4000khz;
-    else if (sample_rate_hz >= sample_rate_middles[1]) rx_sample_rate = cariboulite_radio_rx_sample_rate_2000khz;
-    else if (sample_rate_hz >= sample_rate_middles[2]) rx_sample_rate = cariboulite_radio_rx_sample_rate_1333khz;
-    else if (sample_rate_hz >= sample_rate_middles[3]) rx_sample_rate = cariboulite_radio_rx_sample_rate_1000khz;
-    else if (sample_rate_hz >= sample_rate_middles[4]) rx_sample_rate = cariboulite_radio_rx_sample_rate_800khz;
-    else if (sample_rate_hz >= sample_rate_middles[5]) rx_sample_rate = cariboulite_radio_rx_sample_rate_666khz;
-    else if (sample_rate_hz >= sample_rate_middles[6]) rx_sample_rate = cariboulite_radio_rx_sample_rate_500khz;
-    else rx_sample_rate = cariboulite_radio_rx_sample_rate_400khz;
-    
     return cariboulite_radio_set_rx_samp_cutoff(radio, rx_sample_rate, rx_cutoff);
 }
 
@@ -342,19 +366,7 @@ int cariboulite_radio_get_rx_sample_rate_flt(cariboulite_radio_state_st* radio, 
     
     if (sample_rate_hz == NULL) return 0;
     
-    *sample_rate_hz = 4000000;
-    switch(rx_sample_rate)
-    {
-        case cariboulite_radio_rx_sample_rate_4000khz: *sample_rate_hz = 4000000; break;
-        case cariboulite_radio_rx_sample_rate_2000khz: *sample_rate_hz = 2000000; break;
-        case cariboulite_radio_rx_sample_rate_1333khz: *sample_rate_hz = 1333000; break;
-        case cariboulite_radio_rx_sample_rate_1000khz: *sample_rate_hz = 1000000; break;
-        case cariboulite_radio_rx_sample_rate_800khz: *sample_rate_hz = 800000; break;
-        case cariboulite_radio_rx_sample_rate_666khz: *sample_rate_hz = 666000; break;
-        case cariboulite_radio_rx_sample_rate_500khz: *sample_rate_hz = 500000; break;
-        case cariboulite_radio_rx_sample_rate_400khz: *sample_rate_hz = 400000; break;
-        default: *sample_rate_hz = 4000000; break;
-    }
+    *sample_rate_hz = sample_rate_to_flt(rx_sample_rate);
     return 0;
 }
 
@@ -456,11 +468,59 @@ int cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio,
 }
 
 //=========================================================================
+int cariboulite_radio_set_tx_bandwidth_flt(cariboulite_radio_state_st* radio, float tx_bw)
+{
+    cariboulite_radio_tx_cut_off_en bw = cariboulite_radio_tx_cut_off_80khz;
+    
+    if (tx_bw <= tx_bandwidth_middles[0]) bw = cariboulite_radio_tx_cut_off_80khz;
+    else if (tx_bw <= tx_bandwidth_middles[1]) bw = cariboulite_radio_tx_cut_off_100khz;
+    else if (tx_bw <= tx_bandwidth_middles[2]) bw = cariboulite_radio_tx_cut_off_125khz;
+    else if (tx_bw <= tx_bandwidth_middles[3]) bw = cariboulite_radio_tx_cut_off_160khz;
+    else if (tx_bw <= tx_bandwidth_middles[4]) bw = cariboulite_radio_tx_cut_off_200khz;
+    else if (tx_bw <= tx_bandwidth_middles[5]) bw = cariboulite_radio_tx_cut_off_250khz;
+    else if (tx_bw <= tx_bandwidth_middles[6]) bw = cariboulite_radio_tx_cut_off_315khz;
+    else if (tx_bw <= tx_bandwidth_middles[7]) bw = cariboulite_radio_tx_cut_off_400khz;
+    else if (tx_bw <= tx_bandwidth_middles[8]) bw = cariboulite_radio_tx_cut_off_500khz;
+    else if (tx_bw <= tx_bandwidth_middles[9]) bw = cariboulite_radio_tx_cut_off_625khz;
+    else if (tx_bw <= tx_bandwidth_middles[10]) bw = cariboulite_radio_tx_cut_off_800khz;
+    else bw = cariboulite_radio_tx_cut_off_1000khz;
+
+    return cariboulite_radio_set_tx_bandwidth(radio, bw);
+}
+
+//=========================================================================
 int cariboulite_radio_get_tx_bandwidth(cariboulite_radio_state_st* radio, 
                                  cariboulite_radio_tx_cut_off_en *tx_bw)
 {
     cariboulite_radio_get_tx_power(radio, NULL);
     if (tx_bw) *tx_bw = radio->tx_bw;
+    return 0;
+}
+
+//=========================================================================
+int cariboulite_radio_get_tx_bandwidth_flt(cariboulite_radio_state_st* radio, float *tx_bw)
+{
+    cariboulite_radio_tx_cut_off_en bw;
+    cariboulite_radio_get_tx_bandwidth(radio, &bw);
+    
+    if (tx_bw == NULL) return 0;
+    
+    switch(bw)
+    {
+        case cariboulite_radio_tx_cut_off_80khz: *tx_bw = 80e5; break;
+        case cariboulite_radio_tx_cut_off_100khz: *tx_bw = 100e5; break;
+        case cariboulite_radio_tx_cut_off_125khz: *tx_bw = 125e5; break;
+        case cariboulite_radio_tx_cut_off_160khz: *tx_bw = 160e5; break;
+        case cariboulite_radio_tx_cut_off_200khz: *tx_bw = 200e5; break;
+        case cariboulite_radio_tx_cut_off_250khz: *tx_bw = 250e5; break;
+        case cariboulite_radio_tx_cut_off_315khz: *tx_bw = 315e5; break;
+        case cariboulite_radio_tx_cut_off_400khz: *tx_bw = 400e5; break;
+        case cariboulite_radio_tx_cut_off_500khz: *tx_bw = 500e5; break;
+        case cariboulite_radio_tx_cut_off_625khz: *tx_bw = 625e5; break;
+        case cariboulite_radio_tx_cut_off_800khz: *tx_bw = 800e5; break;
+        case cariboulite_radio_tx_cut_off_1000khz:
+        default: *tx_bw = 1000e5; break;
+    }
     return 0;
 }
 
@@ -506,6 +566,14 @@ int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
 }
 
 //=========================================================================
+int cariboulite_radio_set_tx_samp_cutoff_flt(cariboulite_radio_state_st* radio, float sample_rate_hz)
+{
+    cariboulite_radio_sample_rate_en tx_sample_rate = sample_rate_from_flt(sample_rate_hz);
+    cariboulite_radio_f_cut_en tx_cutoff = radio->tx_fcut;
+    return cariboulite_radio_set_tx_samp_cutoff(radio, tx_sample_rate, tx_cutoff);
+}
+
+//=========================================================================
 int cariboulite_radio_get_tx_samp_cutoff(cariboulite_radio_state_st* radio, 
                                    cariboulite_radio_sample_rate_en *tx_sample_rate,
                                    cariboulite_radio_f_cut_en *tx_cutoff)
@@ -533,6 +601,19 @@ int cariboulite_radio_get_tx_samp_cutoff(cariboulite_radio_state_st* radio,
     
     return 0;
 }
+
+//=========================================================================
+int cariboulite_radio_get_tx_samp_cutoff_flt(cariboulite_radio_state_st* radio, float *sample_rate_hz)
+{
+    cariboulite_radio_sample_rate_en tx_sample_rate;
+    cariboulite_radio_get_tx_samp_cutoff(radio, &tx_sample_rate, NULL);
+    
+    if (sample_rate_hz == NULL) return 0;
+    
+    *sample_rate_hz = sample_rate_to_flt(tx_sample_rate);
+    return 0;
+}
+
 
 //=========================================================================
 int cariboulite_radio_get_rssi(cariboulite_radio_state_st* radio, float *rssi_dbm)

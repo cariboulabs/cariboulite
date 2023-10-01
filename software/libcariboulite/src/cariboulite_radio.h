@@ -406,6 +406,7 @@ int cariboulite_radio_get_tx_power(cariboulite_radio_state_st* radio,
 
 int cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio, 
                                  cariboulite_radio_tx_cut_off_en tx_bw);
+int cariboulite_radio_set_tx_bandwidth_flt(cariboulite_radio_state_st* radio, float tx_bw);
 
 /**
  * @brief Modem get Tx analog Bandwidth
@@ -418,6 +419,7 @@ int cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio,
  */
 int cariboulite_radio_get_tx_bandwidth(cariboulite_radio_state_st* radio, 
                                  cariboulite_radio_tx_cut_off_en *tx_bw);
+int cariboulite_radio_get_tx_bandwidth_flt(cariboulite_radio_state_st* radio, float *tx_bw);
 
 /**
  * @brief Modem set Tx digital bandwidth
@@ -432,6 +434,7 @@ int cariboulite_radio_get_tx_bandwidth(cariboulite_radio_state_st* radio,
 int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio, 
                                    cariboulite_radio_sample_rate_en tx_sample_rate,
                                    cariboulite_radio_f_cut_en tx_cutoff);
+int cariboulite_radio_set_tx_samp_cutoff_flt(cariboulite_radio_state_st* radio, float sample_rate_hz);
 
 /**
  * @brief Modem get Tx digital bandwidth
@@ -446,7 +449,7 @@ int cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
 int cariboulite_radio_get_tx_samp_cutoff(cariboulite_radio_state_st* radio, 
                                    cariboulite_radio_sample_rate_en *tx_sample_rate,
                                    cariboulite_radio_f_cut_en *tx_cutoff);
-
+int cariboulite_radio_get_tx_samp_cutoff_flt(cariboulite_radio_state_st* radio, float *sample_rate_hz);
 
 /**
  * @brief Modem get current RSSI
@@ -571,16 +574,6 @@ int cariboulite_radio_set_cw_outputs(cariboulite_radio_state_st* radio,
  */
 int cariboulite_radio_get_cw_outputs(cariboulite_radio_state_st* radio, 
                                			bool *lo_out, bool *cw_out);
-/**
- * @brief Get the SMI native buffer length (samples)
- *
- * This function gets the internal MTU size (nominal transfer size)
- * in samples.
- *
- * @param radio a pre-allocated radio state structure
- * @return the native mtu size
- */
-size_t cariboulite_radio_get_native_mtu_size_samples(cariboulite_radio_state_st* radio);
 
 /**
  * @brief Read samples

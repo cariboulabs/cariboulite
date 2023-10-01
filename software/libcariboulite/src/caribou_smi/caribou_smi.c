@@ -651,7 +651,7 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
         }
         else if (ret == 0)
         {
-            printf("caribou_smi_read -> Timeout\n");
+            ZF_LOGD("Reading timed-out");
             break;
         }
         else
