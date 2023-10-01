@@ -5,6 +5,14 @@ std::shared_ptr<CaribouLite> CaribouLite::_instance = nullptr;
 std::mutex CaribouLite::_instMutex;
 
 //==================================================================
+void CaribouLite::DefaultSignalHandler(void* context, int signal_number, siginfo_t *si)
+{
+    CaribouLite* cl = (CaribouLite*)context;
+    std::cout << " >> Signal caught: " << signal_number << std::endl << std::flush;
+    cl->ReleaseResources();
+}
+
+//==================================================================
 bool CaribouLite::DetectBoard(SysVersion *sysVer, std::string& name, std::string& guid)
 {
     cariboulite_version_en hw_ver;
@@ -53,6 +61,9 @@ CaribouLite::CaribouLite(bool forceFpgaProg, LogLevel logLvl)
         throw std::runtime_error("Driver initialization failed");
     }
     
+    // register signal handler
+    cariboulite_register_signal_handler (CaribouLite::DefaultSignalHandler, this);
+    
     // get information
     DetectBoard(&_systemVersion, _productName, _productGuid);
     
@@ -67,16 +78,23 @@ CaribouLite::CaribouLite(bool forceFpgaProg, LogLevel logLvl)
 }
 
 //==================================================================
+void CaribouLite::ReleaseResources(void)
+{
+    if (!_instance) return;
+    for (size_t i = 0; i < _instance->_channels.size(); i++)
+    {
+        if (_instance->_channels[i]) delete _instance->_channels[i];
+        _instance->_channels[i] = NULL;
+    }
+    if (cariboulite_is_initialized()) cariboulite_close();
+}
+
+//==================================================================
 CaribouLite::~CaribouLite()
 {
-    //std::cout << "Deleting Cariboulite ~CaribouLite" << std::endl;
     if (_instance != nullptr) 
     {
-        for (size_t i = 0; i < _instance->_channels.size(); i++)
-        {
-            delete _instance->_channels[i];
-        }
-        cariboulite_close();
+        ReleaseResources();
         
         _instance.reset();
         _instance = nullptr;

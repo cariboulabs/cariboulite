@@ -1264,5 +1264,7 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
 //=========================================================================
 size_t cariboulite_radio_get_native_mtu_size_samples(cariboulite_radio_state_st* radio)
 {
-    return caribou_smi_get_native_batch_samples(&radio->sys->smi);
+    size_t num_samples = caribou_smi_get_native_batch_samples(&radio->sys->smi);
+    //printf("DEBUG: native num samples: %lu\n", num_samples);
+    return num_samples;
 }

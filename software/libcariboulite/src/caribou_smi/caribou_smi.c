@@ -77,6 +77,8 @@ static int caribou_smi_get_smi_settings(caribou_smi_st *dev, struct smi_settings
         ZF_LOGE("failed reading native batch length, setting the default - this error is not fatal but we have wrong kernel drivers");
         dev->native_batch_len = (1024)*(1024)/2;
     }
+    
+    //printf("DEBUG: native batch len: %lu\n", dev->native_batch_len);
 
     if (print)
     {
@@ -751,5 +753,6 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
 //=========================================================================
 size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev)
 {
-    return dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
+    //printf("DEBUG: native batch len: %lu\n", dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE);
+    return (dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE);
 }

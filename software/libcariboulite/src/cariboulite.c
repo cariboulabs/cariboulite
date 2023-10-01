@@ -87,7 +87,7 @@ int cariboulite_init(bool force_fpga_prog, cariboulite_log_level_en log_lvl)
         fprintf(stderr, "CaribouLite driver init failed, terminating...");
         return -1;
     }
-    cariboulite_setup_signal_handler (&sys, internal_sighandler, signal_handler_op_last, &sys);
+    cariboulite_setup_signal_handler (&sys, internal_sighandler, signal_handler_op_override, &sys);
     ctx.initialized = true;
     return 0;
 }
@@ -96,6 +96,7 @@ int cariboulite_init(bool force_fpga_prog, cariboulite_log_level_en log_lvl)
 void cariboulite_close(void)
 {
     if (!ctx.initialized) return;
+    ctx.initialized = false;
     cariboulite_release_driver(&sys);
 }
 

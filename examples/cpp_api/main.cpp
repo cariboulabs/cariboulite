@@ -4,6 +4,7 @@
 #include <thread>
 #include <complex>
 
+// Print Board Information
 void printInfo(CaribouLite& cl)
 {
     std::cout << "Initialized CaribouLite: " << cl.IsInitialized() << std::endl;
@@ -13,6 +14,7 @@ void printInfo(CaribouLite& cl)
     std::cout << "Hardware Unique ID: " << cl.GetHwGuid() << std::endl;
 }
 
+// Detect the board before instantiating it
 void detectBoard()
 {
     CaribouLite::SysVersion ver;
@@ -29,26 +31,43 @@ void detectBoard()
     }    
 }
 
-void receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples, const bool* sync, size_t num_samples)
+// Rx Callback (async)
+void receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples, CaribouLiteMeta* sync, size_t num_samples)
 {
-    std::cout << "Radio: " << radio->GetRadioName() << " Received " << num_samples << " samples" << std::endl;
+    std::cout << "Radio: " << radio->GetRadioName() << " Received " << std::dec << num_samples << " samples" << std::endl;
+    
 }
 
+
+// Main entry
 int main ()
 {
+    // try detecting the board before getting the instance
     detectBoard();
+    
+    // get driver instance - use "CaribouLite&" rather than "CaribouLite" (ref)
     CaribouLite &cl = CaribouLite::GetInstance();
+    
+    // print the info after connecting
     printInfo(cl);
         
+    // get the radios
     CaribouLiteRadio *s1g = cl.GetRadioChannel(CaribouLiteRadio::RadioType::S1G);
     CaribouLiteRadio *hif = cl.GetRadioChannel(CaribouLiteRadio::RadioType::HiF);
     
-    std::cout << "First Radio Name: " << s1g->GetRadioName() << "  MtuSize: " << s1g->GetNativeMtuSample() << " Samples" << std::endl;
-    std::cout << "First Radio Name: " << hif->GetRadioName() << "  MtuSize: " << hif->GetNativeMtuSample() << " Samples" << std::endl;
+    // write radio information
+    std::cout << "First Radio Name: " << s1g->GetRadioName() << "  MtuSize: " << std::dec << s1g->GetNativeMtuSample() << " Samples" << std::endl;
+    std::cout << "First Radio Name: " << hif->GetRadioName() << "  MtuSize: " << std::dec << hif->GetNativeMtuSample() << " Samples" << std::endl;
     
+    // start receiving until enter pressed on 900MHz
     s1g->SetFrequency(900000000);
     s1g->StartReceiving(receivedSamples, 20000);
 
+    getchar();
+    
+    hif->SetFrequency(900000000);
+    hif->StartReceiving(receivedSamples, 20000);
+    
     getchar();
     
     return 0;

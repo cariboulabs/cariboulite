@@ -430,6 +430,8 @@ static void print_iq(char* prefix, cariboulite_sample_complex_int16* buffer, siz
     
     if (num_samples == 0) return;
     
+    printf("NS: %lu > ", num_samples);
+    
     for (i = 0; i < num_head_tail; i++)
     {
         printf("[%d, %d] ", buffer[i].i, buffer[i].q);

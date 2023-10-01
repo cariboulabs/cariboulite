@@ -67,6 +67,19 @@ private:
 /**
  * @brief CaribouLite Radio Channel
  */
+#pragma pack(1)
+struct CaribouLiteComplexInt
+{
+    int16_t i;
+    int16_t q;
+};
+
+struct CaribouLiteMeta
+{
+    uint8_t sync;
+};
+#pragma pack()
+ 
 class CaribouLite;
 class CaribouLiteRadio
 {
@@ -83,6 +96,15 @@ public:
         Tx = 1,
     };
     
+    enum RxCbType
+    {
+        None = 0,
+        FloatSync = 1,
+        Float = 2,
+        IntSync = 3,
+        Int = 4,
+    };
+
 public:
     CaribouLiteRadio(const cariboulite_radio_state_st* radio, RadioType type, const CaribouLite* parent = NULL);
     virtual ~CaribouLiteRadio();
@@ -139,7 +161,11 @@ public:
     float GetFrequencyResolution(void);
     
     // Activation
-    void StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, const bool*, size_t)> on_data_ready, size_t samples_per_chunk);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, size_t)> on_data_ready, size_t samples_per_chunk);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, size_t)> on_data_ready, size_t samples_per_chunk);
+    void StartReceivingInternal(size_t samples_per_chunk);
     void StopReceiving(void);
     void StartTransmitting(std::function<void(CaribouLiteRadio*, std::complex<float>*, const bool*, size_t*)> on_data_request, size_t samples_per_chunk);
     void StartTransmittingLo(void);
@@ -160,8 +186,12 @@ private:
     bool _rx_thread_running;
     bool _rx_is_active;
     std::thread *_rx_thread;
-    std::function<void(CaribouLiteRadio*, const std::complex<float>*, const bool*, size_t)> _on_data_ready;
+    std::function<void(CaribouLiteRadio*, const std::complex<float>*, CaribouLiteMeta*, size_t)> _on_data_ready_fm;
+    std::function<void(CaribouLiteRadio*, const std::complex<float>*, size_t)> _on_data_ready_f;
+    std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, CaribouLiteMeta*, size_t)> _on_data_ready_im;
+    std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, size_t)> _on_data_ready_i;
     size_t _rx_samples_per_chunk;
+    RxCbType _rxCallbackType;
     
     bool _tx_thread_running;
     bool _tx_is_active;
@@ -198,6 +228,7 @@ protected:
     CaribouLite(bool forceFpgaProg = false, LogLevel logLvl = LogLevel::None);
     CaribouLite(const CaribouLite& o) = delete;
     void operator=(const CaribouLite&) = delete;
+    void ReleaseResources(void);
     
 public:
     ~CaribouLite();
@@ -213,6 +244,7 @@ public:
     // Ststic detection and factory
     static CaribouLite &GetInstance(bool forceFpgaProg = false, LogLevel logLvl = LogLevel::None);
     static bool DetectBoard(SysVersion *sysVer, std::string& name, std::string& guid);
+    static void DefaultSignalHandler(void* context, int signal_number, siginfo_t *si);
     
 private:
     std::vector<CaribouLiteRadio*> _channels;
