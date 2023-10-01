@@ -161,10 +161,10 @@ public:
     float GetFrequencyResolution(void);
     
     // Activation
-    void StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk);
-    void StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, size_t)> on_data_ready, size_t samples_per_chunk);
-    void StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk);
-    void StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, size_t)> on_data_ready, size_t samples_per_chunk);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk = 0);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, size_t)> on_data_ready, size_t samples_per_chunk = 0);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk = 0);
+    void StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, size_t)> on_data_ready, size_t samples_per_chunk = 0);
     void StartReceivingInternal(size_t samples_per_chunk);
     void StopReceiving(void);
     void StartTransmitting(std::function<void(CaribouLiteRadio*, std::complex<float>*, const bool*, size_t*)> on_data_request, size_t samples_per_chunk);

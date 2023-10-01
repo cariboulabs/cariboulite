@@ -61,7 +61,9 @@ int main ()
     
     // start receiving until enter pressed on 900MHz
     s1g->SetFrequency(900000000);
-    s1g->StartReceiving(receivedSamples, 20000);
+    s1g->SetRxGain(50);
+    s1g->SetAgc(false);
+    s1g->StartReceiving(receivedSamples);
 
     getchar();
     

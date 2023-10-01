@@ -980,7 +980,7 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
 static unsigned int smi_stream_poll(struct file *filp, struct poll_table_struct *wait)
 {
 	__poll_t mask = 0;
-    
+        
     //dev_info(inst->dev, "poll_waiting");
     poll_wait(filp, &inst->poll_event, wait);
     

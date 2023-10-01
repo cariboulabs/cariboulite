@@ -466,25 +466,26 @@ static int caribou_smi_timeout_read(caribou_smi_st* dev,
                                 size_t len,
                                 uint32_t timeout_num_millisec)
 {
-    int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_device_to_smi);
-
-    if (res < 0)
-    {
-        ZF_LOGD("poll error");
-        return -1;
-    }
-    else if (res == 0)  // timeout
-    {
-        //ZF_LOGD("===> smi read fd timeout");
-        return 0;
-    }
-
+    // try reading the file
     int ret = read(dev->filedesc, buffer, len);
+    if (ret <= 0)
+    {    
+        int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_device_to_smi);
 
-    /*if (ret > 16)
-    {
-        smi_utils_dump_hex(buffer, 16);
-    }*/
+        if (res < 0)
+        {
+            ZF_LOGD("poll error");
+            return -1;
+        }
+        else if (res == 0)  // timeout
+        {
+            //ZF_LOGD("===> smi read fd timeout");
+            return 0;
+        }
+
+        return read(dev->filedesc, buffer, len);
+    }
+    
     return ret;
 }
 

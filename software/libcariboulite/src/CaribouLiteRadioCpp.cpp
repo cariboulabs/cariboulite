@@ -407,7 +407,7 @@ float CaribouLiteRadio::GetFrequencyResolution()
 //==================================================================
 void CaribouLiteRadio::StartReceivingInternal(size_t samples_per_chunk)
 {
-    _rx_samples_per_chunk = samples_per_chunk;
+    _rx_samples_per_chunk = (samples_per_chunk==0)?GetNativeMtuSample():samples_per_chunk;
     
     if (_rx_samples_per_chunk > GetNativeMtuSample())
     {
