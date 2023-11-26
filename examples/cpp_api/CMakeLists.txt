@@ -12,4 +12,4 @@ add_executable(test_app main.cpp)
 target_include_directories(test_app PRIVATE ${CARIBOULITE_INCLUDE_DIRS})
 
 # Link against the cariboulite library
-target_link_libraries(test_app PRIVATE ${CARIBOULITE_LIBRARIES})
+target_link_libraries(test_app PRIVATE ${CARIBOULITE_LIBRARIES} -lcariboulite)

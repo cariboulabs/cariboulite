@@ -143,6 +143,7 @@ mkdir -p build && cd build
 cmake $ROOT_DIR/software/libcariboulite/
 make
 sudo make install
+sudo ldconfig
 
 ## --------------------------------------------------------------------
 ## Configuration File - RPI /boot/config.txt

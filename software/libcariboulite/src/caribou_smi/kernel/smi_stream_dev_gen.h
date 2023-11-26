@@ -17,22 +17,22 @@ extern "C" {
 
 /*
  * Time tagging of the module through the 'struct tm' structure 
- *     Date: 2023-10-01
- *     Time: 23:20:12
+ *     Date: 2023-11-27
+ *     Time: 00:21:16
  */
 struct tm smi_stream_dev_date_time = {
-   .tm_sec = 12,
-   .tm_min = 20,
-   .tm_hour = 23,
-   .tm_mday = 1,
-   .tm_mon = 9,   /* +1    */
+   .tm_sec = 16,
+   .tm_min = 21,
+   .tm_hour = 0,
+   .tm_mday = 27,
+   .tm_mon = 10,   /* +1    */
    .tm_year = 123,  /* +1900 */
 };
 
 /*
  * Data blob of variable smi_stream_dev:
  *     Size: 34448 bytes
- *     Original filename: /home/pi/projects/cariboulite/driver/build/smi_stream_dev.ko
+ *     Original filename: /home/pi/cariboulite/driver/build/smi_stream_dev.ko
  */
 uint8_t smi_stream_dev[] = {
 	0x7F, 0x45, 0x4C, 0x46, 0x02, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
