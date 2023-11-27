@@ -54,6 +54,9 @@ The newly prepared SDCard can be inserted into the Raspberry Pi.
    `git clone https://github.com/cariboulabs/cariboulite.git`
    and:
    `git clone https://github.com/pothosware/SoapySDR.git`
+
+   **Note**: SoapySDR is useful for interacting with the SDR through its python interface. The aptitude version (0.7) which can be obtained through `sudo apt install soapysdr-tools libsoapysdr libsoapysdr-dev` has API compatibility issues with the the newer version (0.8-3). Thus it is recommanded to compile it from source as follows.
+
 2. Cmake installation and upgrade:
    `sudo apt update`
 
