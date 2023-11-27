@@ -1,5 +1,5 @@
-# Installation
-**Note**: ***Issues with distro bookworm*** - the required kernel modules cannot compile agains the latest 6.1.0 'bookworm' distribution. Current version was tested with bullseye 6.1.21-*. See details bellow.
+# Installation Details
+**Note**: ***Major issues with the newly published distro `bookworm`*** - the required kernel modules cannot compile agains the latest 6.1.0 'bookworm' distribution. We noticed that the kernel-headers in the latest rapsberry-pi image distributions do not agree with the mainline linux kernel modules compilation process. Same issues exist with other kernel modules compilations in other projects. This issue needs to be further inspected. **Therefore we suggest using the latest bullseye distribution** `bullseye 6.1.21-*`. See details bellow.
 
 ## Fresh SDCard preparation
 1. Download and install Raspberry Pi imager:
@@ -92,4 +92,4 @@ This application provides access to low / high level features of the board - boa
    The expected output shows the insterfacesm configurations and state of the board:
    ![Soapy Util](docs/images/soapySDRUtils.png)
    
-5. fdsfsd
+Once these steps are complete, CaribouLite is properly mounted and operational on the RPI.
