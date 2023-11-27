@@ -23,14 +23,14 @@
    Click the "CHOOSE OS" button and drag down to "Use Custom". Then select the downloaded file.
 
 6. Select the target storage - be very careful to choose the micro-SD card that was inserted into the computer. In cases where various such devices are present in the system, verify the correct card by removing / re-inserting while monitoring the storage selection menu.
-7. 
-8. Edit additional settings of the system:
+
+7. Edit additional settings of the system:
    
    ![Edit Settings](docs/images/settings.png)   
    
    Make sure to enable ssh, apply a proper host name (default 'raspberrypi') and  a username / password to further communicate with the RPI through Ethernet / Wifi. Wifi SSID can also be configured through this process to enable the RPI automatically connect the local Wifi Network.
 
-9. When the imager finished the process, remove the SDCard and insert into the Raspberry Pi.
+8. When the imager finished the process, remove the SDCard and insert into the Raspberry Pi.
  
    ![Imager progress](docs/images/progress.png)
    
@@ -104,7 +104,7 @@ This application provides access to low / high level features of the board - boa
 4. Testing the connection to the SoapySDR API. Use the following command to have the SoapySDR Util interract with the board and show it's information:
    `SoapySDRUtils --probe`
    The expected output shows the insterfacesm configurations and state of the board:
-   
+
    ![Soapy Util](docs/images/soapySDRUtils.png)
    
 Once these steps are complete, CaribouLite is properly mounted and operational on the RPI.
