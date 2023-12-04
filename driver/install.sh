@@ -55,6 +55,10 @@ install() {
         exit 100
     fi
 
+    if [[ ! $output_dir == *`uname -r`* ]]; then
+        printf "${CYAN}Warning: Not installing to currently operating kernel version\n"
+    fi
+    
     printf "\n[  3  ] ${GREEN}Installing into '${output_dir}'${NC}\n"
     xz -z ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko -c > ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz
 
