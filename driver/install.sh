@@ -59,7 +59,7 @@ install() {
     xz -z ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko -c > ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz
 
     for dir in $output_dir; do
-        sudo cp ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz $dir
+        sudo cp ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz $dir/
     done
         
         
