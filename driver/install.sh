@@ -56,7 +56,7 @@ install() {
     fi
 
     if [[ ! $output_dir == *`uname -r`* ]]; then
-        printf "${CYAN}Warning: Not installing to currently operating kernel version\n"
+        printf "${CYAN}Warning: Not installing to currently operating kernel version.${NC}\n"
     fi
     
     printf "\n[  3  ] ${GREEN}Installing into '${output_dir}'${NC}\n"
