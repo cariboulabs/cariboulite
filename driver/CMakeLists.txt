@@ -16,7 +16,9 @@ execute_process(
 # Find the headers
 find_path(
         KERNELHEADERS_DIR
-        include/linux/user.h
+        NAMES
+            include/linux/user.h
+            include/generated/autoconf.h
         PATHS /usr/src/linux-headers-${KERNEL_RELEASE}
 )
 
