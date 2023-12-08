@@ -83,13 +83,14 @@ public:
                         int &flags,
                         long long &timeNs,
                         const long timeoutUs = 100000);
-                        
+
+        // writeStream signature is different from readStream!!                
         int writeStream(SoapySDR::Stream *stream,
-                        void * const *buffs,
+                        const void * const *buffs, // const first!
                         const size_t numElems,
                         int &flags,
-                        long long &timeNs,
-                        const long timeoutUs);
+                        const long long timeNs = 0, // const first, don't pass as reference !
+                        const long timeoutUs = 100000); // default value ?
 
         /*******************************************************************
          * Antenna API
