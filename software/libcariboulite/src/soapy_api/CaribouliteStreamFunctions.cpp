@@ -116,7 +116,24 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
 
     stream->setInnerStreamType(direction == SOAPY_SDR_TX ? cariboulite_channel_dir_tx : cariboulite_channel_dir_rx);
     
+    // Default: CW Output -> OFF
 	cariboulite_radio_set_cw_outputs(radio, false, false);
+
+    // Check if args has CW Output -> ON/OFF
+    for(auto it = args.cbegin(); it != args.cend(); ++it)
+    {   
+        if(!it->first.compare("CW") && !it->second.compare("1")) // "CW=1"
+        { // SET CW ON
+            SoapySDR_logf(SOAPY_SDR_INFO, "CW Output: ON\n");
+            cariboulite_radio_set_cw_outputs(radio, false, true);
+        }
+        else if(!it->first.compare("CW") && !it->second.compare("0")) // "CW=0"
+        { // SET CW OFF
+            SoapySDR_logf(SOAPY_SDR_INFO, "CW Output: OFF\n");
+            cariboulite_radio_set_cw_outputs(radio, false, false);
+        }
+    }
+
     cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false);
     return stream;
 }
@@ -258,10 +275,10 @@ int Cariboulite::readStream(
      */
 int Cariboulite::writeStream(
             SoapySDR::Stream *stream,
-            void * const *buffs,
+            const void * const *buffs, // const void* !!
             const size_t numElems,
             int &flags,
-            long long &timeNs,
+            const long long timeNs, // const long long !!
             const long timeoutUs)
 {
 	// Verify that it is an TX stream
