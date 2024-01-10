@@ -7,7 +7,8 @@
 #define NUM_BYTES_PER_CPLX_ELEM         ( sizeof(cariboulite_sample_complex_int16) )
 #define NUM_NATIVE_MTUS_PER_QUEUE		( 10 )
 
-#define USE_ASYNC                       ( 1 )
+// Undefine to also use TX
+//#define USE_ASYNC                       ( 1 )
 #define USE_ASYNC_OVERRIDE_WRITES       ( true )
 #define USE_ASYNC_BLOCK_READS           ( true )
 
@@ -260,8 +261,8 @@ int SoapySDR::Stream::Read(cariboulite_sample_complex_int16 *buffer, size_t num_
 {
     #if USE_ASYNC
         return rx_queue->get(buffer, num_samples, timeout_us);
-    #else
-        int ret = cariboulite_radio_read_samples(radio, buffer, (caribou_smi_sample_meta*)meta, num_samples);
+    #else                                                        // caribou_smi_sample_meta not defined...
+        int ret = cariboulite_radio_read_samples(radio, buffer, (cariboulite_sample_meta*)meta, num_samples);
         if (ret < 0)
         {
             if (ret == -1)
