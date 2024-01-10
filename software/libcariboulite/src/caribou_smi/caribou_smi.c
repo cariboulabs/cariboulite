@@ -366,9 +366,9 @@ static int caribou_smi_rx_data_analyze(caribou_smi_st* dev,
                 if (cmplx_vec)
                 {   
 				 	s >>= 1;
-	                cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
-	                s >>= 3;
 	                cmplx_vec[i].i = s & 0x00001FFF; s >>= 13;
+	                s >>= 3;
+	                cmplx_vec[i].q = s & 0x00001FFF; s >>= 13;
 					
 					if (cmplx_vec[i].i >= (int16_t)0x1000) cmplx_vec[i].i -= (int16_t)0x2000;
                 	if (cmplx_vec[i].q >= (int16_t)0x1000) cmplx_vec[i].q -= (int16_t)0x2000;

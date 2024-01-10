@@ -59,56 +59,18 @@ int main ()
     std::cout << "First Radio Name: " << s1g->GetRadioName() << "  MtuSize: " << std::dec << s1g->GetNativeMtuSample() << " Samples" << std::endl;
     std::cout << "First Radio Name: " << hif->GetRadioName() << "  MtuSize: " << std::dec << hif->GetNativeMtuSample() << " Samples" << std::endl;
     
-    std::vector<CaribouLiteFreqRange> range_s1g = s1g->GetFrequencyRange();
-    std::vector<CaribouLiteFreqRange> range_hif = hif->GetFrequencyRange();
-    std::cout << "S1G Frequency Regions:" << std::endl;
-    for (int i = 0; i < range_s1g.size(); i++)
-    {
-        std::cout << "  " << i << ": " << range_s1g[i] << std::endl;
-    }
-    
-    std::cout << "HiF Frequency Regions:" << std::endl;
-    for (int i = 0; i < range_hif.size(); i++)
-    {
-        std::cout << "  " << i << ": " << range_hif[i] << std::endl;
-    }
-    
     // start receiving until enter pressed on 900MHz
-    int num = 1;
-    while (num --)
-    {
-        try
-        {
-            s1g->SetFrequency(900000000);
-        }
-        catch (...)
-        {
-            std::cout << "The specified freq couldn't be used" << std::endl;
-        }
-        
-        s1g->SetRxGain(50);
-        s1g->SetAgc(false);
-        s1g->StartReceiving(receivedSamples);
+    s1g->SetFrequency(900000000);
+    s1g->SetRxGain(50);
+    s1g->SetAgc(false);
+    s1g->StartReceiving(receivedSamples);
 
-        getchar();
-        
-        
-        try
-        {
-            hif->SetFrequency(2400000000);
-        }
-        catch (...)
-        {
-            std::cout << "The specified freq couldn't be used" << std::endl;
-        }
-        hif->SetRxGain(50);
-        hif->SetAgc(false);
-        hif->StartReceiving(receivedSamples, 20000);
-        
-        getchar();
-    }
+    getchar();
     
-    hif->StopReceiving();
+    hif->SetFrequency(900000000);
+    hif->StartReceiving(receivedSamples, 20000);
+    
+    getchar();
     
     return 0;
 }

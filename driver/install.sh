@@ -58,15 +58,14 @@ install() {
     if [[ ! $output_dir == *`uname -r`* ]]; then
         printf "${CYAN}Warning: Not installing to currently operating kernel version.${NC}\n"
     fi
-    
+
     printf "\n[  3  ] ${GREEN}Installing into '${output_dir}'${NC}\n"
     xz -z ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko -c > ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz
 
     for dir in $output_dir; do
         sudo cp ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz $dir/
     done
-        
-        
+
     printf "\n[  4  ] ${GREEN}Updating 'depmod'${NC}\n"
     sudo depmod -a
 
@@ -86,46 +85,46 @@ install() {
     cd ${ROOT_DIR}/udev
     sudo ./install.sh install
     cd ${ROOT_DIR}
-    
+
     printf "${GREEN}Installation completed.${NC}\n"
 }
 
 uninstall() {
     printf "${GREEN}Uninstalling started...${NC}\n"
-    
+
     # find the location of the older installed module
     output_dir=$(find "/lib/modules" -type f -name "smi_stream_dev*" -exec dirname {} \;)
-    
+
     if [ -z "$output_dir" ]; then
         printf "${CYAN}Warning: module 'smi_stream_dev' is not installed in the system${NC}\n"
         sudo depmod -a
         exit 0
     fi
-    
+
     printf "\n[  1  ] ${GREEN}Uninstalling from '${output_dir}'${NC}\n"
     sudo rm ${output_dir}/smi_stream_dev.ko.xz
-    
+
     printf "\n[  2  ] ${GREEN}Updating 'depmod'${NC}\n"
     sudo depmod -a
-    
+
     printf "\n[  3  ] ${GREEN}Removing the blacklist on the legacy smi device${NC}\n"
     if [ -f "/etc/modprobe.d/blacklist-bcm_smi.conf" ]; then
         sudo rm "/etc/modprobe.d/blacklist-bcm_smi.conf"
     fi
-    
+
     printf "\n[  4  ] ${GREEN}Removing device driver loading on start${NC}\n"
     if [ -f "/etc/modules-load.d/smi_stream_mod.conf" ]; then
         sudo rm "/etc/modules-load.d/smi_stream_mod.conf"
     fi
-    
+
     printf "\n[  5  ] ${GREEN}Removing modprobe parameters${NC}\n"
     if [ -f "/etc/modprobe.d/smi_stream_mod_cariboulite.conf" ]; then
         sudo rm "/etc/modprobe.d/smi_stream_mod_cariboulite.conf"
     fi
-    
+
     printf "\n[  6  ] ${GREEN}Removing UDEV rules${NC}\n"
     sudo udev/install.sh uninstall
-    
+
     printf "${GREEN}Uninstallation completed.${NC}\n"
 }
 
@@ -135,11 +134,11 @@ printf "${GREEN}=============================================${NC}\n\n"
 
 if [ "$1" == "install" ]; then
     install "$2" "$3" "$4"
-    
+
     exit 0
 elif [ "$1" == "uninstall" ]; then
     uninstall
-    
+
     exit 0
 else
     printf "${CYAN}Usage: $0 [install|uninstall] <mtu_mult dir_offs ch_offs>${NC}\n"

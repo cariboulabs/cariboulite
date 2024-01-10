@@ -267,6 +267,7 @@ int SoapySDR::Stream::Read(cariboulite_sample_complex_int16 *buffer, size_t num_
             if (ret == -1)
             {
                 printf("reader thread failed to read SMI!\n");
+                ret = 0;
             }
             // a special case for debug streams which are not
             // taken care of in the soapy front-end (ret = -2)

@@ -33,8 +33,8 @@ typedef struct
     char *filename;
     int rx_channel;
     double frequency;
-    double gain;
-    double ppm_error;
+    float gain;
+    float ppm_error;
     size_t samples_to_read;
     int force_fpga_prog;
     int write_metadata;
@@ -61,11 +61,12 @@ static int stop_program (void)
 }
 
 //=================================================
-static void sighandler( struct sys_st_t *sys,
-                         void* context,
-                         int signal_number,
-                         siginfo_t *si)
+static void sighandler(void* context,
+                       int signal_number,
+                       siginfo_t *si)
 {
+    struct sys_st_t *s = (struct sys_st_t *)context;
+    
     if (signal_shown != signal_number)
     {
         ZF_LOGI("Received signal %d", signal_number);
@@ -120,7 +121,12 @@ static void usage(void)
 		"\t[-S force sync output (default: async)]\n"
         "\t[-F force fpga reprogramming (default: '0')]\n"
         "\t[-M write metadata (default: '0')]\n"
-		"\tfilename ('-' dumps samples to stdout)\n\n");
+		"\tfilename ('-' dumps samples to stdout)\n\n"
+        "Example:\n"
+        "\t1. Sample S1G channel at 905MHz into filename capture.bin\n"
+        "\t\tcariboulite_util -c 0 -f 905000000 capture.bin\n"
+        "\t2. Sample S1G channel at 905MHz into filename capture.bin, only 30000 samples\n"
+        "\t\tcariboulite_util -c 0 -f 905000000 -n 30000 capture.bin\n\n");
 	exit(1);
 }
 
@@ -178,25 +184,34 @@ int analyze_arguments(int argc, char *argv[])
 		switch (opt) {
 		case 'c':
 			state.rx_channel = (int)atoi(optarg);
+            printf("DBG: RX Channel = %d\n", state.rx_channel);
 			break;
 		case 'f':
 			state.frequency = atof(optarg);
+            printf("DBG: Frequency = %.1f Hz\n", state.frequency);
 			break;
 		case 'g':
 			state.gain = (int)(atof(optarg));
+            printf("DBG: Rx Gain = %.1f dB\n", state.gain);
 			break;
 		case 'p':
-			state.ppm_error = atoi(optarg);
+			state.ppm_error = atof(optarg);
+            printf("DBG: PPM Error = %.2f\n", state.ppm_error);
 			break;
 		case 'n':
 			state.samples_to_read = atoi(optarg);
             state.sample_infinite = state.samples_to_read > 0 ? 0 : 1;
+            
+            if (state.sample_infinite) printf("DBG: Infinite Read\n");
+            else printf("DBG: Number of samples: %lu\n", state.samples_to_read);
 			break;
         case 'F':
 			state.force_fpga_prog = 1;
+            printf("DBG: Force FPGA programming = %d\n", state.force_fpga_prog);
 			break;
         case 'M':
 			state.write_metadata = 1;
+            printf("DBG: Write metadata = %d\n", state.write_metadata);
 			break;
 		default:
 			usage();
@@ -220,8 +235,11 @@ void release_system(void)
     cariboulite_radio_activate_channel(state.radio, cariboulite_channel_dir_rx, false);
     if (state.buffer) free (state.buffer);
     if (state.metadata) free (state.metadata);
-    if (state.file) fclose(state.file);
-    cariboulite_release_driver(&cariboulite_sys);
+    if (strcmp(state.filename, "-") != 0) 
+    {
+        if (state.file) fclose(state.file);
+    }
+    cariboulite_close();
 }
 
 //=================================================
@@ -240,26 +258,24 @@ int main(int argc, char *argv[])
 
     // Init the program
     //-------------------------------------
-	cariboulite_sys.force_fpga_reprogramming = state.force_fpga_prog;
-    if (cariboulite_init_driver(&cariboulite_sys, NULL)!=0)
+    if (cariboulite_init(state.force_fpga_prog, cariboulite_log_level_none) != 0)
     {
         ZF_LOGE("driver init failed, terminating...");
         return -1;
     }
 
     // setup the signal handler
-    cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, signal_handler_op_last, &cariboulite_sys);
-    
+    cariboulite_register_signal_handler ( sighandler, &cariboulite_sys);
+
     // check the input arguments (done after init to identify system type)
     if (check_inputs() != 0)
     {
-        release_system();
+        cariboulite_close();
         return -1;
     }
     
     // get the correct radio from the possible two
-    if (state.rx_channel == 0) state.radio = &cariboulite_sys.radio_low;
-    else state.radio = &cariboulite_sys.radio_high;
+    state.radio = cariboulite_get_radio((cariboulite_channel_en)(state.rx_channel));
     
     // Allocate rx buffer and metadata
     state.native_read_len = cariboulite_radio_get_native_mtu_size_samples(state.radio);
@@ -318,7 +334,7 @@ int main(int argc, char *argv[])
         if (ret < 0)
         {
             ZF_LOGE("Samples read operation failed. Quiting...");
-            state.program_running = 0;
+            continue;
         }
         
         // TODO: how should the metadata be expressed in the file?
@@ -338,6 +354,6 @@ int main(int argc, char *argv[])
     }
 
     // close the driver and release resources
-    release_system();
+    cariboulite_close();
     return 0;
 }

@@ -198,11 +198,13 @@ int cariboulite_get_frequency_limits(cariboulite_channel_en ch, float *freq_low,
         {
             freq_low[0] = CARIBOULITE_6G_MIN;
             freq_hi[0] = CARIBOULITE_6G_MAX;
+            if (num_ranges) *num_ranges = 1;
         }
         else if (ver == cariboulite_ism)
         {
             freq_low[0] = CARIBOULITE_2G4_MIN;
             freq_hi[0] = CARIBOULITE_2G4_MAX;
+            if (num_ranges) *num_ranges = 1;
         }
         else
         {
