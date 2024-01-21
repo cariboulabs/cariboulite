@@ -503,6 +503,18 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 		}
 		break;
 	}
+    //------------------------------- 
+    case SMI_STREAM_IOC_FLUSH_FIFO:
+    {
+        if (mutex_lock_interruptible(&inst->read_lock))
+        {
+            return -EINTR;
+        }
+        kfifo_reset_out(&inst->rx_fifo);
+        mutex_unlock(&inst->read_lock);
+        
+        break;
+    }    
     //-------------------------------
 	default:
 		dev_err(inst->dev, "invalid ioctl cmd: %d", cmd);
@@ -816,15 +828,15 @@ int reader_thread_stream_function(void *pv)
         //--------------------------------------------------------
         // Don't wait for the buffer to fill in, copy the "other" 
         // previously filled up buffer into the kfifo
-		//if (mutex_lock_interruptible(&inst->read_lock))
-		//{
-		//	return -EINTR;
-		//}
+		if (mutex_lock_interruptible(&inst->read_lock))
+		{
+			return -EINTR;
+		}
         
         start = ktime_get();
         
 		kfifo_in(&inst->rx_fifo, bounce->buffer[1-current_dma_buffer], DMA_BOUNCE_BUFFER_SIZE);
-		//mutex_unlock(&inst->read_lock);
+		mutex_unlock(&inst->read_lock);
 		
 		// for the polling mechanism
 		inst->readable = true;
@@ -1083,20 +1095,12 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 	size_t num_bytes = 0;
 	unsigned int count_actual = count;
 	
-	//if (kfifo_is_empty(&inst->rx_fifo))
-	//{
-	//	return -EAGAIN;
-	//}
-
-	/*if (mutex_lock_interruptible(&inst->read_lock))
+	if (mutex_lock_interruptible(&inst->read_lock))
 	{
 		return -EINTR;
-	}*/
-	//num_bytes = kfifo_len (&inst->rx_fifo);
-	//count_actual = num_bytes > count ? count : num_bytes;
-	//ret = kfifo_to_user(&inst->rx_fifo, buf, count_actual, &copied);
+	}
     ret = kfifo_to_user(&inst->rx_fifo, buf, count, &copied);
-	//mutex_unlock(&inst->read_lock);
+	mutex_unlock(&inst->read_lock);
 
 	return ret < 0 ? ret : (ssize_t)copied;
 }

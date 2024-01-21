@@ -243,3 +243,10 @@ int cariboulite_get_frequency_limits(cariboulite_channel_en ch, float *freq_low,
     }
     return -1;
 }
+
+//=============================================================================
+int cariboulite_flush_pipeline()
+{
+    // request the smi driver to flush its drivers fifo
+    return caribou_smi_flush_fifo(&sys.smi);
+}

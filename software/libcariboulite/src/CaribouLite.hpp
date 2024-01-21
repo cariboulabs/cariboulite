@@ -173,11 +173,12 @@ public:
     void StartTransmittingCw(void);
     void StopTransmitting(void);
     bool GetIsTransmittingLo(void);
-    bool GetIsTransmittingCw(void);   
+    bool GetIsTransmittingCw(void);
     
     // General
     size_t GetNativeMtuSample(void);
     std::string GetRadioName(void);
+    void FlushBuffers(void);
     
 private:
     const cariboulite_radio_state_st* _radio;

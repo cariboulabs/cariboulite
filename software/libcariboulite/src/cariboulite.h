@@ -210,6 +210,14 @@ int cariboulite_get_frequency_limits(cariboulite_channel_en ch, float *freq_low,
  */
  int cariboulite_get_channel_name(cariboulite_channel_en ch, char* name, size_t max_len);
 
+/**
+ * @brief Flush driver FIFO
+ *
+ * Removing all items in the pipeline (drivers kfifo)
+ *
+ * @return 0 (success) or -1 (failed - when channel is incorrect)
+ */
+ int cariboulite_flush_pipeline(void);
 
 
 #ifdef __cplusplus

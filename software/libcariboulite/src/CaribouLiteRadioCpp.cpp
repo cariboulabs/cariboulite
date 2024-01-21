@@ -24,11 +24,12 @@ void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
         {
             if (ret == -1)
             {
-                printf("reader thread failed to read SMI!\n");
+                //printf("reader thread failed to read SMI!\n");
             }
             ret = 0;
             continue;
         }
+        if (ret == 0) continue;
         
         // convert the buffer
         if (radio->_rxCallbackType == CaribouLiteRadio::RxCbType::FloatSync || radio->_rxCallbackType == CaribouLiteRadio::RxCbType::Float)
@@ -533,3 +534,9 @@ std::string CaribouLiteRadio::GetRadioName()
     return std::string(name);
 }
 
+//==================================================================
+void CaribouLiteRadio::FlushBuffers()
+{
+    int res = cariboulite_flush_pipeline();
+    
+}

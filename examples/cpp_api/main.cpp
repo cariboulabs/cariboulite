@@ -3,6 +3,7 @@
 #include <CaribouLite.hpp>
 #include <thread>
 #include <complex>
+#include <cmath>
 
 // Print Board Information
 void printInfo(CaribouLite& cl)
@@ -31,10 +32,38 @@ void detectBoard()
     }    
 }
 
+// Calculate the RSSI
+float RSSI(const std::complex<float>* signal, size_t num_of_samples)
+{
+    if (num_of_samples == 0) 
+    {
+        return 0.0f;
+    }
+
+    float sum_of_squares = 0.0f;
+    for (size_t i = 0; i < num_of_samples && i < num_of_samples; ++i) 
+    {
+        float vrms = std::norm(signal[i]);        
+        sum_of_squares += vrms * vrms / 100.0;
+    }
+
+    float mean_of_squares = sum_of_squares / num_of_samples;
+
+    // Convert RMS value to dBm
+    return 10 * log10(mean_of_squares);
+}
+
 // Rx Callback (async)
 void receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples, CaribouLiteMeta* sync, size_t num_samples)
 {
-    std::cout << "Radio: " << radio->GetRadioName() << " Received " << std::dec << num_samples << " samples" << std::endl;
+    /*for (int i = 0; i < 6; i ++)
+    {
+        std::cout << "[" << samples[i].real() << ", " << samples[i].imag() << "]";
+    }
+    std::cout << std::endl;*/
+    
+    std::cout << "Radio: " << radio->GetRadioName() << " Received " << std::dec << num_samples << " samples"
+              << "RSSI: " << RSSI(samples, num_samples) << " dBm" << std::endl;
     
 }
 
@@ -74,34 +103,35 @@ int main ()
     }
     
     // start receiving until enter pressed on 900MHz
-    int num = 1;
+    int num = 2;
     while (num --)
     {
         try
         {
             s1g->SetFrequency(900000000);
+            s1g->FlushBuffers();
         }
         catch (...)
         {
             std::cout << "The specified freq couldn't be used" << std::endl;
         }
         
-        s1g->SetRxGain(50);
+        s1g->SetRxGain(0);
         s1g->SetAgc(false);
         s1g->StartReceiving(receivedSamples);
 
         getchar();
         
-        
         try
         {
             hif->SetFrequency(2400000000);
+            hif->FlushBuffers();
         }
         catch (...)
         {
             std::cout << "The specified freq couldn't be used" << std::endl;
         }
-        hif->SetRxGain(50);
+        hif->SetRxGain(0);
         hif->SetAgc(false);
         hif->StartReceiving(receivedSamples, 20000);
         

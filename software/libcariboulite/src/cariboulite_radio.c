@@ -380,7 +380,7 @@ int cariboulite_radio_set_tx_power(cariboulite_radio_state_st* radio, int tx_pow
 	if (radio->type == cariboulite_channel_s1g)
 	{
 		if (tx_power_dbm < -14) tx_power_dbm = -14;
-		if (tx_power_dbm > 12) tx_power_dbm = 12;
+		if (tx_power_dbm > 14) tx_power_dbm = 14;
 
 		x = tx_power_dbm;
 		tx_power_ctrl_model = roundf(0.001502f*x*x*x + 0.020549f*x*x + 0.991045f*x + 13.727758f);
@@ -391,7 +391,7 @@ int cariboulite_radio_set_tx_power(cariboulite_radio_state_st* radio, int tx_pow
 	else if (radio->type == cariboulite_channel_hif)
 	{
 		if (tx_power_dbm < -12) tx_power_dbm = -12;
-		if (tx_power_dbm > 12) tx_power_dbm = 12;
+		if (tx_power_dbm > 14) tx_power_dbm = 14;
 
 		x = tx_power_dbm;
 		tx_power_ctrl_model = roundf(0.000710f*x*x*x*x + 0.010521f*x*x*x + 0.015169f*x*x + 0.914333f*x + 12.254084f);
@@ -399,6 +399,10 @@ int cariboulite_radio_set_tx_power(cariboulite_radio_state_st* radio, int tx_pow
 		if (tx_power_ctrl < 0) tx_power_ctrl = 0;
 		if (tx_power_ctrl > 31) tx_power_ctrl = 31;
 	}
+    
+    /*tx_power_ctrl = tx_power_dbm + 17;
+    if (tx_power_ctrl < 0) tx_power_ctrl = 0;
+	if (tx_power_ctrl > 31) tx_power_ctrl = 31;*/
 	
     at86rf215_radio_tx_ctrl_st cfg =
     {
@@ -435,7 +439,11 @@ int cariboulite_radio_get_tx_power(cariboulite_radio_state_st* radio, int *tx_po
 	{
 		actual_model = 0.000031f*x*x*x*x - 0.002344f*x*x*x + 0.040478f*x*x + 0.712209f*x - 11.168502;
 	}
-
+    
+    /*actual_model = x - 17;
+    if (actual_model < -17) actual_model = -17;
+	if (actual_model > 14) actual_model = 14;*/
+    
     radio->tx_power = (int)(actual_model);
     radio->tx_bw = (cariboulite_radio_tx_cut_off_en)cfg.analog_bw;
     radio->tx_fcut = (cariboulite_radio_f_cut_en)cfg.digital_bw;

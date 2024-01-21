@@ -98,7 +98,7 @@ static void init_program_state(void)
     state.write_metadata = 0;
     
     // state
-    state.sample_infinite = 0;
+    state.sample_infinite = 1;
     state.program_running = 1;
     state.sys_type = system_type_cariboulite_ism;
     state.native_read_len = 1024 * 1024 / 8;
@@ -192,7 +192,14 @@ int analyze_arguments(int argc, char *argv[])
 			break;
 		case 'g':
 			state.gain = (int)(atof(optarg));
-            printf("DBG: Rx Gain = %.1f dB\n", state.gain);
+            if (state.gain == -1)
+            {
+                printf("DBG: Rx Gain = AGC\n");
+            }
+            else 
+            {
+                printf("DBG: Rx Gain = %.1f dB\n", state.gain);
+            }
 			break;
 		case 'p':
 			state.ppm_error = atof(optarg);

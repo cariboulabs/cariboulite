@@ -757,3 +757,17 @@ size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev)
     //printf("DEBUG: native batch len: %lu\n", dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE);
     return (dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE);
 }
+
+//=========================================================================
+int caribou_smi_flush_fifo(caribou_smi_st* dev)
+{
+    if (!dev) return -1;
+    if (!dev->initialized) return -1;
+    int ret = ioctl(dev->filedesc, SMI_STREAM_IOC_FLUSH_FIFO, 1);
+    if (ret != 0)
+    {
+        ZF_LOGE("failed flushing driver fifos");
+        return -1;
+    }
+    return 0;
+}
