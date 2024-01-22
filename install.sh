@@ -35,13 +35,7 @@ sudo apt-get -y install swig avahi-daemon libavahi-client-dev python3-distutils 
 if grep -iq "NAME=\"Ubuntu\"" /etc/os-release; then
 	sudo apt-get install rpi.gpio-common
 	echo "Adding user `whoami` to dialout, root groups"
-	
-	if [[ "`groups ``whoami`" == *`whoami`* ]]; then
-	   echo "`   User already in the group`" 
-	else
-	   sudo usermod -aG dialout, root "${USER}"
-	fi
-	
+	sudo usermod -aG dialout,root "${USER}"
 fi
 
 sudo depmod -a
