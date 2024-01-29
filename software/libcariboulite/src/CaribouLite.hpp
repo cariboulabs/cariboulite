@@ -243,6 +243,9 @@ public:
     std::string GetHwGuid(void);
     CaribouLiteRadio* GetRadioChannel(CaribouLiteRadio::RadioType ch);
     
+    // Signal Handler
+    void RegisterSignalHandler(std::function<void(int)> on_signal_caught);
+    
     // Static detection and factory
     static CaribouLite &GetInstance(bool forceFpgaProg = false, LogLevel logLvl = LogLevel::None);
     static bool DetectBoard(SysVersion *sysVer, std::string& name, std::string& guid);
@@ -258,6 +261,7 @@ public:
     uint8_t GetPmodState (void);
     
 private:
+    std::function<void(int)> _on_signal_caught;
     std::vector<CaribouLiteRadio*> _channels;
     SysVersion _systemVersion;
     std::string _productName;

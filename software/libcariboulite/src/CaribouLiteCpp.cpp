@@ -9,7 +9,15 @@ void CaribouLite::DefaultSignalHandler(void* context, int signal_number, siginfo
 {
     CaribouLite* cl = (CaribouLite*)context;
     std::cout << " >> Signal caught: " << signal_number << std::endl << std::flush;
+    
+    if (cl->_on_signal_caught) cl->_on_signal_caught(signal_number);
     //cl->ReleaseResources();
+}
+
+//==================================================================
+void CaribouLite::RegisterSignalHandler(std::function<void(int)> on_signal_caught)
+{
+    _on_signal_caught = on_signal_caught;
 }
 
 //==================================================================
