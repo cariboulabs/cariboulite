@@ -35,13 +35,13 @@ static void internal_sighandler( struct sys_st_t *sys,
                                  int signal_number,
                                  siginfo_t *si)
 {
+    if (ctx.sighandler) ctx.sighandler(ctx.sig_context, signal_number, si);
+    
     if (ctx.signal_shown != signal_number)
     {
         fprintf(stderr, "Received signal %d", signal_number);
         ctx.signal_shown = signal_number;
     }
-
-    if (ctx.sighandler) ctx.sighandler(ctx.sig_context, signal_number, si);
 }
 
 //=============================================================================

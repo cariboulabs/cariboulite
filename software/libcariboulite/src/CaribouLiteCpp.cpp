@@ -9,7 +9,7 @@ void CaribouLite::DefaultSignalHandler(void* context, int signal_number, siginfo
 {
     CaribouLite* cl = (CaribouLite*)context;
     std::cout << " >> Signal caught: " << signal_number << std::endl << std::flush;
-    cl->ReleaseResources();
+    //cl->ReleaseResources();
 }
 
 //==================================================================
@@ -81,12 +81,19 @@ CaribouLite::CaribouLite(bool forceFpgaProg, LogLevel logLvl)
 void CaribouLite::ReleaseResources(void)
 {
     if (!_instance) return;
+    
     for (size_t i = 0; i < _instance->_channels.size(); i++)
     {
-        if (_instance->_channels[i]) delete _instance->_channels[i];
-        _instance->_channels[i] = NULL;
+        if (_instance->_channels[i]) 
+        {
+            delete _instance->_channels[i];
+        }
     }
-    if (cariboulite_is_initialized()) cariboulite_close();
+    
+    if (cariboulite_is_initialized()) 
+    {
+        cariboulite_close();
+    }
 }
 
 //==================================================================

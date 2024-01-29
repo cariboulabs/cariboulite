@@ -243,7 +243,7 @@ public:
     std::string GetHwGuid(void);
     CaribouLiteRadio* GetRadioChannel(CaribouLiteRadio::RadioType ch);
     
-    // Ststic detection and factory
+    // Static detection and factory
     static CaribouLite &GetInstance(bool forceFpgaProg = false, LogLevel logLvl = LogLevel::None);
     static bool DetectBoard(SysVersion *sysVer, std::string& name, std::string& guid);
     static void DefaultSignalHandler(void* context, int signal_number, siginfo_t *si);
