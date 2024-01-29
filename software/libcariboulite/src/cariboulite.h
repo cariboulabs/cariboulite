@@ -219,6 +219,18 @@ int cariboulite_get_frequency_limits(cariboulite_channel_en ch, float *freq_low,
  */
  int cariboulite_flush_pipeline(void);
 
+/**
+ * @brief IO Control
+ *
+ * FPGA level IO control API
+ *
+ * @return 0 (success) or -1 (failed)
+ */
+int cariboulite_set_leds_state (int led0, int led1);
+int cariboulite_get_leds_state (int *led0, int *led1);
+int cariboulite_get_button_state (int *btn);
+int cariboulite_set_pmod_val (uint8_t val);
+int cariboulite_get_pmod_val (uint8_t *val);
 
 #ifdef __cplusplus
 }

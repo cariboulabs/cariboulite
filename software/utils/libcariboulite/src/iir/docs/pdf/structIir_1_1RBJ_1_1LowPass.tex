@@ -1,0 +1,59 @@
+\hypertarget{structIir_1_1RBJ_1_1LowPass}{}\doxysubsection{Iir\+::R\+BJ\+::Low\+Pass Struct Reference}
+\label{structIir_1_1RBJ_1_1LowPass}\index{Iir::RBJ::LowPass@{Iir::RBJ::LowPass}}
+
+
+{\ttfamily \#include $<$R\+B\+J.\+h$>$}
+
+Inheritance diagram for Iir\+::R\+BJ\+::Low\+Pass\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=3.000000cm]{structIir_1_1RBJ_1_1LowPass}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{structIir_1_1RBJ_1_1LowPass_a210539758e8e95da26b74079b4219388}{setupN}} (double cutoff\+Frequency, double q=(1/sqrt(2)))
+\item 
+void \mbox{\hyperlink{structIir_1_1RBJ_1_1LowPass_adc6ffd4bab0cdc4f665f667841b96cea}{setup}} (double sample\+Rate, double cutoff\+Frequency, double q=(1/sqrt(2)))
+\end{DoxyCompactItemize}
+
+
+\doxysubsubsection{Detailed Description}
+Lowpass. 
+
+\doxysubsubsection{Member Function Documentation}
+\mbox{\Hypertarget{structIir_1_1RBJ_1_1LowPass_adc6ffd4bab0cdc4f665f667841b96cea}\label{structIir_1_1RBJ_1_1LowPass_adc6ffd4bab0cdc4f665f667841b96cea}} 
+\index{Iir::RBJ::LowPass@{Iir::RBJ::LowPass}!setup@{setup}}
+\index{setup@{setup}!Iir::RBJ::LowPass@{Iir::RBJ::LowPass}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}}
+{\footnotesize\ttfamily void Iir\+::\+R\+B\+J\+::\+Low\+Pass\+::setup (\begin{DoxyParamCaption}\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{q = {\ttfamily (1/sqrt(2))} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff frequency \\
+\hline
+{\em q} & Q factor determines the resonance peak at the cutoff. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1RBJ_1_1LowPass_a210539758e8e95da26b74079b4219388}\label{structIir_1_1RBJ_1_1LowPass_a210539758e8e95da26b74079b4219388}} 
+\index{Iir::RBJ::LowPass@{Iir::RBJ::LowPass}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::RBJ::LowPass@{Iir::RBJ::LowPass}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}}
+{\footnotesize\ttfamily void Iir\+::\+R\+B\+J\+::\+Low\+Pass\+::setupN (\begin{DoxyParamCaption}\item[{double}]{cutoff\+Frequency,  }\item[{double}]{q = {\ttfamily (1/sqrt(2))} }\end{DoxyParamCaption})}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em cutoff\+Frequency} & Normalised cutoff frequency \\
+\hline
+{\em q} & Q factor determines the resonance peak at the cutoff. \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+iir/R\+B\+J.\+h\item 
+iir/R\+B\+J.\+cpp\end{DoxyCompactItemize}

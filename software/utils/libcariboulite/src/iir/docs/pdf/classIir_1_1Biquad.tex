@@ -1,0 +1,178 @@
+\hypertarget{classIir_1_1Biquad}{}\doxysubsection{Iir\+::Biquad Class Reference}
+\label{classIir_1_1Biquad}\index{Iir::Biquad@{Iir::Biquad}}
+Inheritance diagram for Iir\+::Biquad\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=12.000000cm]{classIir_1_1Biquad}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+complex\+\_\+t \mbox{\hyperlink{classIir_1_1Biquad_ace03653f66fe65eddc55d48840458440}{response}} (double normalized\+Frequency) const
+\item 
+std\+::vector$<$ \mbox{\hyperlink{structIir_1_1PoleZeroPair}{Pole\+Zero\+Pair}} $>$ \mbox{\hyperlink{classIir_1_1Biquad_a63c78d766bc40be10004a34aaebfb8e7}{get\+Pole\+Zeros}} () const
+\item 
+double \mbox{\hyperlink{classIir_1_1Biquad_a7debc9f6ef5e64622c710b8c9ba96056}{get\+A0}} () const
+\item 
+double \mbox{\hyperlink{classIir_1_1Biquad_a459116db7aa381281997f428f15334cf}{get\+A1}} () const
+\item 
+double \mbox{\hyperlink{classIir_1_1Biquad_a061e2402d528312fc6095db6551c9141}{get\+A2}} () const
+\item 
+double \mbox{\hyperlink{classIir_1_1Biquad_a84686da988e160a216f3e7057682ffbb}{get\+B0}} () const
+\item 
+double \mbox{\hyperlink{classIir_1_1Biquad_af418a5f260baadbcffe5a7029f089937}{get\+B1}} () const
+\item 
+double \mbox{\hyperlink{classIir_1_1Biquad_a8f3d697bb7c2def508da648938f6afc3}{get\+B2}} () const
+\item 
+{\footnotesize template$<$class State\+Type $>$ }\\double \mbox{\hyperlink{classIir_1_1Biquad_a527b9666d6aef0e576193fdce7e19750}{filter}} (double s, State\+Type \&state) const
+\item 
+void \mbox{\hyperlink{classIir_1_1Biquad_a7f005089c194c68aeecdc66a3e6c6a78}{set\+Coefficients}} (double a0, double a1, double a2, double b0, double b1, double b2)
+\item 
+void \mbox{\hyperlink{classIir_1_1Biquad_a455fd42a2e99ac84b09184becf2d047f}{set\+One\+Pole}} (complex\+\_\+t pole, complex\+\_\+t zero)
+\item 
+void \mbox{\hyperlink{classIir_1_1Biquad_a6c614e84db8493b8495b314dd860d0bc}{set\+Two\+Pole}} (complex\+\_\+t pole1, complex\+\_\+t zero1, complex\+\_\+t pole2, complex\+\_\+t zero2)
+\item 
+void \mbox{\hyperlink{classIir_1_1Biquad_a69b4a2eaedb4b51aea9fb46a99c3d3c2}{set\+Pole\+Zero\+Pair}} (const \mbox{\hyperlink{structIir_1_1PoleZeroPair}{Pole\+Zero\+Pair}} \&pair)
+\item 
+void \mbox{\hyperlink{classIir_1_1Biquad_a53b066d077ce559a91f26fc3c4201c2c}{set\+Identity}} ()
+\item 
+void \mbox{\hyperlink{classIir_1_1Biquad_a38c8e327dca53dbfa9a25758b7be8227}{apply\+Scale}} (double scale)
+\end{DoxyCompactItemize}
+
+
+\doxysubsubsection{Member Function Documentation}
+\mbox{\Hypertarget{classIir_1_1Biquad_a38c8e327dca53dbfa9a25758b7be8227}\label{classIir_1_1Biquad_a38c8e327dca53dbfa9a25758b7be8227}} 
+\index{Iir::Biquad@{Iir::Biquad}!applyScale@{applyScale}}
+\index{applyScale@{applyScale}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{applyScale()}{applyScale()}}
+{\footnotesize\ttfamily void Iir\+::\+Biquad\+::apply\+Scale (\begin{DoxyParamCaption}\item[{double}]{scale }\end{DoxyParamCaption})}
+
+Performs scaling operation on the F\+IR coefficients 
+\begin{DoxyParams}{Parameters}
+{\em scale} & Mulitplies the coefficients b0,b1,b2 with the scaling factor scale. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classIir_1_1Biquad_a527b9666d6aef0e576193fdce7e19750}\label{classIir_1_1Biquad_a527b9666d6aef0e576193fdce7e19750}} 
+\index{Iir::Biquad@{Iir::Biquad}!filter@{filter}}
+\index{filter@{filter}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{filter()}{filter()}}
+{\footnotesize\ttfamily template$<$class State\+Type $>$ \\
+double Iir\+::\+Biquad\+::filter (\begin{DoxyParamCaption}\item[{double}]{s,  }\item[{State\+Type \&}]{state }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Filter a sample with the coefficients provided here and the State provided as an argument. 
+\begin{DoxyParams}{Parameters}
+{\em s} & The sample to be filtered. \\
+\hline
+{\em state} & The Delay lines (instance of a state from \mbox{\hyperlink{State_8h_source}{State.\+h}}) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The filtered sample. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{classIir_1_1Biquad_a7debc9f6ef5e64622c710b8c9ba96056}\label{classIir_1_1Biquad_a7debc9f6ef5e64622c710b8c9ba96056}} 
+\index{Iir::Biquad@{Iir::Biquad}!getA0@{getA0}}
+\index{getA0@{getA0}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{getA0()}{getA0()}}
+{\footnotesize\ttfamily double Iir\+::\+Biquad\+::get\+A0 (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns 1st I\+IR coefficient (usually one) \mbox{\Hypertarget{classIir_1_1Biquad_a459116db7aa381281997f428f15334cf}\label{classIir_1_1Biquad_a459116db7aa381281997f428f15334cf}} 
+\index{Iir::Biquad@{Iir::Biquad}!getA1@{getA1}}
+\index{getA1@{getA1}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{getA1()}{getA1()}}
+{\footnotesize\ttfamily double Iir\+::\+Biquad\+::get\+A1 (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns 2nd I\+IR coefficient \mbox{\Hypertarget{classIir_1_1Biquad_a061e2402d528312fc6095db6551c9141}\label{classIir_1_1Biquad_a061e2402d528312fc6095db6551c9141}} 
+\index{Iir::Biquad@{Iir::Biquad}!getA2@{getA2}}
+\index{getA2@{getA2}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{getA2()}{getA2()}}
+{\footnotesize\ttfamily double Iir\+::\+Biquad\+::get\+A2 (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns 3rd I\+IR coefficient \mbox{\Hypertarget{classIir_1_1Biquad_a84686da988e160a216f3e7057682ffbb}\label{classIir_1_1Biquad_a84686da988e160a216f3e7057682ffbb}} 
+\index{Iir::Biquad@{Iir::Biquad}!getB0@{getB0}}
+\index{getB0@{getB0}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{getB0()}{getB0()}}
+{\footnotesize\ttfamily double Iir\+::\+Biquad\+::get\+B0 (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns 1st F\+IR coefficient \mbox{\Hypertarget{classIir_1_1Biquad_af418a5f260baadbcffe5a7029f089937}\label{classIir_1_1Biquad_af418a5f260baadbcffe5a7029f089937}} 
+\index{Iir::Biquad@{Iir::Biquad}!getB1@{getB1}}
+\index{getB1@{getB1}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{getB1()}{getB1()}}
+{\footnotesize\ttfamily double Iir\+::\+Biquad\+::get\+B1 (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns 2nd F\+IR coefficient \mbox{\Hypertarget{classIir_1_1Biquad_a8f3d697bb7c2def508da648938f6afc3}\label{classIir_1_1Biquad_a8f3d697bb7c2def508da648938f6afc3}} 
+\index{Iir::Biquad@{Iir::Biquad}!getB2@{getB2}}
+\index{getB2@{getB2}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{getB2()}{getB2()}}
+{\footnotesize\ttfamily double Iir\+::\+Biquad\+::get\+B2 (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns 3rd F\+IR coefficient \mbox{\Hypertarget{classIir_1_1Biquad_a63c78d766bc40be10004a34aaebfb8e7}\label{classIir_1_1Biquad_a63c78d766bc40be10004a34aaebfb8e7}} 
+\index{Iir::Biquad@{Iir::Biquad}!getPoleZeros@{getPoleZeros}}
+\index{getPoleZeros@{getPoleZeros}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{getPoleZeros()}{getPoleZeros()}}
+{\footnotesize\ttfamily std\+::vector$<$ \mbox{\hyperlink{structIir_1_1PoleZeroPair}{Pole\+Zero\+Pair}} $>$ Iir\+::\+Biquad\+::get\+Pole\+Zeros (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption}) const}
+
+Returns the pole / zero Pairs as a vector. \mbox{\Hypertarget{classIir_1_1Biquad_ace03653f66fe65eddc55d48840458440}\label{classIir_1_1Biquad_ace03653f66fe65eddc55d48840458440}} 
+\index{Iir::Biquad@{Iir::Biquad}!response@{response}}
+\index{response@{response}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{response()}{response()}}
+{\footnotesize\ttfamily complex\+\_\+t Iir\+::\+Biquad\+::response (\begin{DoxyParamCaption}\item[{double}]{normalized\+Frequency }\end{DoxyParamCaption}) const}
+
+Calculate filter response at the given normalized frequency and return the complex response.
+
+Gets the frequency response of the \mbox{\hyperlink{classIir_1_1Biquad}{Biquad}} 
+\begin{DoxyParams}{Parameters}
+{\em normalized\+Frequency} & Normalised frequency (0 to 0.\+5) \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classIir_1_1Biquad_a7f005089c194c68aeecdc66a3e6c6a78}\label{classIir_1_1Biquad_a7f005089c194c68aeecdc66a3e6c6a78}} 
+\index{Iir::Biquad@{Iir::Biquad}!setCoefficients@{setCoefficients}}
+\index{setCoefficients@{setCoefficients}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{setCoefficients()}{setCoefficients()}}
+{\footnotesize\ttfamily void Iir\+::\+Biquad\+::set\+Coefficients (\begin{DoxyParamCaption}\item[{double}]{a0,  }\item[{double}]{a1,  }\item[{double}]{a2,  }\item[{double}]{b0,  }\item[{double}]{b1,  }\item[{double}]{b2 }\end{DoxyParamCaption})}
+
+Sets all coefficients 
+\begin{DoxyParams}{Parameters}
+{\em a0} & 1st I\+IR coefficient \\
+\hline
+{\em a1} & 2nd I\+IR coefficient \\
+\hline
+{\em a2} & 3rd I\+IR coefficient \\
+\hline
+{\em b0} & 1st F\+IR coefficient \\
+\hline
+{\em b1} & 2nd F\+IR coefficient \\
+\hline
+{\em b2} & 3rd F\+IR coefficient \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{classIir_1_1Biquad_a53b066d077ce559a91f26fc3c4201c2c}\label{classIir_1_1Biquad_a53b066d077ce559a91f26fc3c4201c2c}} 
+\index{Iir::Biquad@{Iir::Biquad}!setIdentity@{setIdentity}}
+\index{setIdentity@{setIdentity}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{setIdentity()}{setIdentity()}}
+{\footnotesize\ttfamily void Iir\+::\+Biquad\+::set\+Identity (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+Sets the coefficiens as pass through. (b0=1,a0=1, rest zero) \mbox{\Hypertarget{classIir_1_1Biquad_a455fd42a2e99ac84b09184becf2d047f}\label{classIir_1_1Biquad_a455fd42a2e99ac84b09184becf2d047f}} 
+\index{Iir::Biquad@{Iir::Biquad}!setOnePole@{setOnePole}}
+\index{setOnePole@{setOnePole}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{setOnePole()}{setOnePole()}}
+{\footnotesize\ttfamily void Iir\+::\+Biquad\+::set\+One\+Pole (\begin{DoxyParamCaption}\item[{complex\+\_\+t}]{pole,  }\item[{complex\+\_\+t}]{zero }\end{DoxyParamCaption})}
+
+Sets one (real) pole and zero. Throws exception if imaginary components. \mbox{\Hypertarget{classIir_1_1Biquad_a69b4a2eaedb4b51aea9fb46a99c3d3c2}\label{classIir_1_1Biquad_a69b4a2eaedb4b51aea9fb46a99c3d3c2}} 
+\index{Iir::Biquad@{Iir::Biquad}!setPoleZeroPair@{setPoleZeroPair}}
+\index{setPoleZeroPair@{setPoleZeroPair}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{setPoleZeroPair()}{setPoleZeroPair()}}
+{\footnotesize\ttfamily void Iir\+::\+Biquad\+::set\+Pole\+Zero\+Pair (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structIir_1_1PoleZeroPair}{Pole\+Zero\+Pair}} \&}]{pair }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Sets a complex conjugate pair \mbox{\Hypertarget{classIir_1_1Biquad_a6c614e84db8493b8495b314dd860d0bc}\label{classIir_1_1Biquad_a6c614e84db8493b8495b314dd860d0bc}} 
+\index{Iir::Biquad@{Iir::Biquad}!setTwoPole@{setTwoPole}}
+\index{setTwoPole@{setTwoPole}!Iir::Biquad@{Iir::Biquad}}
+\doxyparagraph{\texorpdfstring{setTwoPole()}{setTwoPole()}}
+{\footnotesize\ttfamily void Iir\+::\+Biquad\+::set\+Two\+Pole (\begin{DoxyParamCaption}\item[{complex\+\_\+t}]{pole1,  }\item[{complex\+\_\+t}]{zero1,  }\item[{complex\+\_\+t}]{pole2,  }\item[{complex\+\_\+t}]{zero2 }\end{DoxyParamCaption})}
+
+Sets two poles/zoes as a pair. Needs to be complex conjugate. 
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+iir/Biquad.\+h\item 
+iir/Biquad.\+cpp\end{DoxyCompactItemize}

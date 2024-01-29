@@ -17,14 +17,14 @@ extern "C" {
 
 /*
  * Time tagging of the module through the 'struct tm' structure 
- *     Date: 2024-01-15
- *     Time: 20:30:23
+ *     Date: 2024-01-25
+ *     Time: 15:48:17
  */
 struct tm smi_stream_dev_date_time = {
-   .tm_sec = 23,
-   .tm_min = 30,
-   .tm_hour = 20,
-   .tm_mday = 15,
+   .tm_sec = 17,
+   .tm_min = 48,
+   .tm_hour = 15,
+   .tm_mday = 25,
    .tm_mon = 0,   /* +1    */
    .tm_year = 124,  /* +1900 */
 };

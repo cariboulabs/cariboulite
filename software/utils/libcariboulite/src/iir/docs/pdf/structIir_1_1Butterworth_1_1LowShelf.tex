@@ -1,0 +1,108 @@
+\hypertarget{structIir_1_1Butterworth_1_1LowShelf}{}\doxysubsection{Iir\+::Butterworth\+::Low\+Shelf$<$ Filter\+Order, State\+Type $>$ Struct Template Reference}
+\label{structIir_1_1Butterworth_1_1LowShelf}\index{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}}
+
+
+{\ttfamily \#include $<$Butterworth.\+h$>$}
+
+Inheritance diagram for Iir\+::Butterworth\+::Low\+Shelf$<$ Filter\+Order, State\+Type $>$\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.400000cm]{structIir_1_1Butterworth_1_1LowShelf}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf_a74f72a17ffe747ad5b0e9f36235fcd34}{setup}} (double sample\+Rate, double cutoff\+Frequency, double gain\+Db)
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf_a660509a6bac1d3b7c10215806d5be5e2}{setup}} (int req\+Order, double sample\+Rate, double cutoff\+Frequency, double gain\+Db)
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf_a8bc2be489d0a5b901b02b9e2b62d7053}{setupN}} (double cutoff\+Frequency, double gain\+Db)
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf_a4637158be17c50cb14cf3686b30e135e}{setupN}} (int req\+Order, double cutoff\+Frequency, double gain\+Db)
+\end{DoxyCompactItemize}
+
+
+\doxysubsubsection{Detailed Description}
+\subsubsection*{template$<$int Filter\+Order = 4, class State\+Type = Direct\+Form\+II$>$\newline
+struct Iir\+::\+Butterworth\+::\+Low\+Shelf$<$ Filter\+Order, State\+Type $>$}
+
+\mbox{\hyperlink{namespaceIir_1_1Butterworth}{Butterworth}} low shelf filter\+: below the cutoff it has a specified gain and above the cutoff the gain is 0 dB. 
+\begin{DoxyParams}{Parameters}
+{\em Filter\+Order} & Reserves memory for a filter of the order Filter\+Order \\
+\hline
+{\em State\+Type} & The filter topology\+: \mbox{\hyperlink{classIir_1_1DirectFormI}{Direct\+FormI}}, \mbox{\hyperlink{classIir_1_1DirectFormII}{Direct\+Form\+II}}, ... \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsubsection{Member Function Documentation}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowShelf_a74f72a17ffe747ad5b0e9f36235fcd34}\label{structIir_1_1Butterworth_1_1LowShelf_a74f72a17ffe747ad5b0e9f36235fcd34}} 
+\index{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}}
+\index{setup@{setup}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf}{Iir\+::\+Butterworth\+::\+Low\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setup (\begin{DoxyParamCaption}\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients with the filter order provided by the instantiation 
+\begin{DoxyParams}{Parameters}
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff \\
+\hline
+{\em gain\+Db} & Gain in dB of the filter in the passband \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowShelf_a660509a6bac1d3b7c10215806d5be5e2}\label{structIir_1_1Butterworth_1_1LowShelf_a660509a6bac1d3b7c10215806d5be5e2}} 
+\index{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}}
+\index{setup@{setup}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf}{Iir\+::\+Butterworth\+::\+Low\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setup (\begin{DoxyParamCaption}\item[{int}]{req\+Order,  }\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em req\+Order} & The actual order which can be less than the instantiated one \\
+\hline
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff \\
+\hline
+{\em gain\+Db} & Gain in dB of the filter in the passband \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowShelf_a8bc2be489d0a5b901b02b9e2b62d7053}\label{structIir_1_1Butterworth_1_1LowShelf_a8bc2be489d0a5b901b02b9e2b62d7053}} 
+\index{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf}{Iir\+::\+Butterworth\+::\+Low\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setupN (\begin{DoxyParamCaption}\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients with the filter order provided by the instantiation 
+\begin{DoxyParams}{Parameters}
+{\em cutoff\+Frequency} & Normalised cutoff frequency (0..1/2) \\
+\hline
+{\em gain\+Db} & Gain in dB of the filter in the passband \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowShelf_a4637158be17c50cb14cf3686b30e135e}\label{structIir_1_1Butterworth_1_1LowShelf_a4637158be17c50cb14cf3686b30e135e}} 
+\index{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowShelf}{Iir\+::\+Butterworth\+::\+Low\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setupN (\begin{DoxyParamCaption}\item[{int}]{req\+Order,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em req\+Order} & The actual order which can be less than the instantiated one \\
+\hline
+{\em cutoff\+Frequency} & Normalised cutoff frequency (0..1/2) \\
+\hline
+{\em gain\+Db} & Gain in dB of the filter in the passband \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+iir/Butterworth.\+h\end{DoxyCompactItemize}

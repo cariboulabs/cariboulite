@@ -250,3 +250,34 @@ int cariboulite_flush_pipeline()
     // request the smi driver to flush its drivers fifo
     return caribou_smi_flush_fifo(&sys.smi);
 }
+
+//=============================================================================
+int cariboulite_set_leds_state (int led0, int led1)
+{   
+    return caribou_fpga_set_io_ctrl_dig (&sys.fpga, led0, led1);
+}
+
+//=============================================================================
+int cariboulite_get_leds_state (int *led0, int *led1)
+{
+    return caribou_fpga_get_io_ctrl_dig (&sys.fpga, led0, led1, NULL, NULL);
+}
+
+
+//=============================================================================
+int cariboulite_get_button_state (int *btn)
+{
+    return caribou_fpga_get_io_ctrl_dig (&sys.fpga, NULL, NULL, btn, NULL);
+}
+
+//=============================================================================
+int cariboulite_set_pmod_val (uint8_t val)
+{
+    return caribou_fpga_set_io_ctrl_pmod_val (&sys.fpga, val);
+}
+
+//=============================================================================
+int cariboulite_get_pmod_val (uint8_t *val)
+{
+    return caribou_fpga_get_io_ctrl_pmod_val (&sys.fpga, val);
+}

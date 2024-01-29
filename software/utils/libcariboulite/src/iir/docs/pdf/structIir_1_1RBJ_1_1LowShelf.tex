@@ -1,0 +1,63 @@
+\hypertarget{structIir_1_1RBJ_1_1LowShelf}{}\doxysubsection{Iir\+::R\+BJ\+::Low\+Shelf Struct Reference}
+\label{structIir_1_1RBJ_1_1LowShelf}\index{Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}}
+
+
+{\ttfamily \#include $<$R\+B\+J.\+h$>$}
+
+Inheritance diagram for Iir\+::R\+BJ\+::Low\+Shelf\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=3.000000cm]{structIir_1_1RBJ_1_1LowShelf}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{structIir_1_1RBJ_1_1LowShelf_a006830eb278deb38a4cfc0c3240d4a9a}{setupN}} (double cutoff\+Frequency, double gain\+Db, double shelf\+Slope=1)
+\item 
+void \mbox{\hyperlink{structIir_1_1RBJ_1_1LowShelf_a9bac813cc8399f3c274d9d10dc3a5a1e}{setup}} (double sample\+Rate, double cutoff\+Frequency, double gain\+Db, double shelf\+Slope=1)
+\end{DoxyCompactItemize}
+
+
+\doxysubsubsection{Detailed Description}
+Low shelf\+: 0db in the stopband and gain\+Db in the passband. 
+
+\doxysubsubsection{Member Function Documentation}
+\mbox{\Hypertarget{structIir_1_1RBJ_1_1LowShelf_a9bac813cc8399f3c274d9d10dc3a5a1e}\label{structIir_1_1RBJ_1_1LowShelf_a9bac813cc8399f3c274d9d10dc3a5a1e}} 
+\index{Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}!setup@{setup}}
+\index{setup@{setup}!Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}}
+{\footnotesize\ttfamily void Iir\+::\+R\+B\+J\+::\+Low\+Shelf\+::setup (\begin{DoxyParamCaption}\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db,  }\item[{double}]{shelf\+Slope = {\ttfamily 1} }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff frequency \\
+\hline
+{\em gain\+Db} & Gain in the passband \\
+\hline
+{\em shelf\+Slope} & Slope between stop/passband. 1 = as steep as it can. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1RBJ_1_1LowShelf_a006830eb278deb38a4cfc0c3240d4a9a}\label{structIir_1_1RBJ_1_1LowShelf_a006830eb278deb38a4cfc0c3240d4a9a}} 
+\index{Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}}
+{\footnotesize\ttfamily void Iir\+::\+R\+B\+J\+::\+Low\+Shelf\+::setupN (\begin{DoxyParamCaption}\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db,  }\item[{double}]{shelf\+Slope = {\ttfamily 1} }\end{DoxyParamCaption})}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em cutoff\+Frequency} & Normalised cutoff frequency \\
+\hline
+{\em gain\+Db} & Gain in the passband \\
+\hline
+{\em shelf\+Slope} & Slope between stop/passband. 1 = as steep as it can. \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+iir/R\+B\+J.\+h\item 
+iir/R\+B\+J.\+cpp\end{DoxyCompactItemize}

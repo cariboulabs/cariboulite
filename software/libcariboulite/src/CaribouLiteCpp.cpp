@@ -158,3 +158,57 @@ CaribouLiteRadio* CaribouLite::GetRadioChannel(CaribouLiteRadio::RadioType ch)
     return _channels[(int)ch];
 }
     
+//==================================================================
+void CaribouLite::SetLed0States (bool state)
+{
+    int led1 = 0;
+    cariboulite_get_leds_state (NULL, &led1);
+    cariboulite_set_leds_state (state, led1);
+}
+
+//==================================================================
+bool CaribouLite::GetLed0States ()
+{
+    int led0 = 0;
+    cariboulite_get_leds_state (&led0, NULL);
+    return led0 != 0;
+}
+
+//==================================================================
+void CaribouLite::SetLed1States (bool state)
+{
+    int led0 = 0;
+    cariboulite_get_leds_state (&led0, NULL);
+    cariboulite_set_leds_state (led0, state);
+
+}
+
+//==================================================================
+bool CaribouLite::GetLed1States ()
+{
+    int led1 = 0;
+    cariboulite_get_leds_state (NULL, &led1);
+    return led1 != 0;
+}
+
+//==================================================================
+bool CaribouLite::GetButtonState ()
+{
+    int btn = 0;
+    cariboulite_get_button_state (&btn);
+    return btn != 0;
+}
+
+//==================================================================
+void CaribouLite::SetPmodState (uint8_t val)
+{
+    cariboulite_set_pmod_val (val);
+}
+
+//==================================================================
+uint8_t CaribouLite::GetPmodState ()
+{
+    uint8_t val = 0;
+    cariboulite_get_pmod_val (&val);
+    return val;
+}

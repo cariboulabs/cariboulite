@@ -1,0 +1,100 @@
+\hypertarget{structIir_1_1Butterworth_1_1LowPass}{}\doxysubsection{Iir\+::Butterworth\+::Low\+Pass$<$ Filter\+Order, State\+Type $>$ Struct Template Reference}
+\label{structIir_1_1Butterworth_1_1LowPass}\index{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}}
+
+
+{\ttfamily \#include $<$Butterworth.\+h$>$}
+
+Inheritance diagram for Iir\+::Butterworth\+::Low\+Pass$<$ Filter\+Order, State\+Type $>$\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.400000cm]{structIir_1_1Butterworth_1_1LowPass}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass_a21da9f4c29a8dbf80f4611677a86d777}{setup}} (double sample\+Rate, double cutoff\+Frequency)
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass_a0e10c27ec72f076bf7d0b21c0281860c}{setup}} (int req\+Order, double sample\+Rate, double cutoff\+Frequency)
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass_a29cb3cdc2e4e8f8f5e76f8942dcbd249}{setupN}} (double cutoff\+Frequency)
+\item 
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass_af8fc4401089d8d36508a468dc09e74a0}{setupN}} (int req\+Order, double cutoff\+Frequency)
+\end{DoxyCompactItemize}
+
+
+\doxysubsubsection{Detailed Description}
+\subsubsection*{template$<$int Filter\+Order = 4, class State\+Type = Direct\+Form\+II$>$\newline
+struct Iir\+::\+Butterworth\+::\+Low\+Pass$<$ Filter\+Order, State\+Type $>$}
+
+\mbox{\hyperlink{namespaceIir_1_1Butterworth}{Butterworth}} Lowpass filter. 
+\begin{DoxyParams}{Parameters}
+{\em Filter\+Order} & Reserves memory for a filter of the order Filter\+Order \\
+\hline
+{\em State\+Type} & The filter topology\+: \mbox{\hyperlink{classIir_1_1DirectFormI}{Direct\+FormI}}, \mbox{\hyperlink{classIir_1_1DirectFormII}{Direct\+Form\+II}}, ... \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsubsection{Member Function Documentation}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowPass_a21da9f4c29a8dbf80f4611677a86d777}\label{structIir_1_1Butterworth_1_1LowPass_a21da9f4c29a8dbf80f4611677a86d777}} 
+\index{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}}
+\index{setup@{setup}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass}{Iir\+::\+Butterworth\+::\+Low\+Pass}}$<$ Filter\+Order, State\+Type $>$\+::setup (\begin{DoxyParamCaption}\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowPass_a0e10c27ec72f076bf7d0b21c0281860c}\label{structIir_1_1Butterworth_1_1LowPass_a0e10c27ec72f076bf7d0b21c0281860c}} 
+\index{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}}
+\index{setup@{setup}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass}{Iir\+::\+Butterworth\+::\+Low\+Pass}}$<$ Filter\+Order, State\+Type $>$\+::setup (\begin{DoxyParamCaption}\item[{int}]{req\+Order,  }\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em req\+Order} & The actual order which can be less than the instantiated one \\
+\hline
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowPass_a29cb3cdc2e4e8f8f5e76f8942dcbd249}\label{structIir_1_1Butterworth_1_1LowPass_a29cb3cdc2e4e8f8f5e76f8942dcbd249}} 
+\index{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass}{Iir\+::\+Butterworth\+::\+Low\+Pass}}$<$ Filter\+Order, State\+Type $>$\+::setupN (\begin{DoxyParamCaption}\item[{double}]{cutoff\+Frequency }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em cutoff\+Frequency} & Normalised cutoff frequency (0..1/2) \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1Butterworth_1_1LowPass_af8fc4401089d8d36508a468dc09e74a0}\label{structIir_1_1Butterworth_1_1LowPass_af8fc4401089d8d36508a468dc09e74a0}} 
+\index{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1Butterworth_1_1LowPass}{Iir\+::\+Butterworth\+::\+Low\+Pass}}$<$ Filter\+Order, State\+Type $>$\+::setupN (\begin{DoxyParamCaption}\item[{int}]{req\+Order,  }\item[{double}]{cutoff\+Frequency }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients 
+\begin{DoxyParams}{Parameters}
+{\em req\+Order} & The actual order which can be less than the instantiated one \\
+\hline
+{\em cutoff\+Frequency} & Normalised cutoff frequency (0..1/2) \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+iir/Butterworth.\+h\end{DoxyCompactItemize}

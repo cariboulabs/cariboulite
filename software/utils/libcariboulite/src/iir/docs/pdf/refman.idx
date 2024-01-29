@@ -1,0 +1,352 @@
+\indexentry{Iir@{Iir}|hyperpage}{8}
+\indexentry{Iir@{Iir}!Kind@{Kind}|hyperpage}{11}
+\indexentry{Kind@{Kind}!Iir@{Iir}|hyperpage}{11}
+\indexentry{Iir::Butterworth@{Iir::Butterworth}|hyperpage}{11}
+\indexentry{Iir::ChebyshevI@{Iir::ChebyshevI}|hyperpage}{11}
+\indexentry{Iir::ChebyshevII@{Iir::ChebyshevII}|hyperpage}{12}
+\indexentry{Iir::Custom@{Iir::Custom}|hyperpage}{12}
+\indexentry{Iir::RBJ::AllPass@{Iir::RBJ::AllPass}|hyperpage}{12}
+\indexentry{Iir::RBJ::AllPass@{Iir::RBJ::AllPass}!setup@{setup}|hyperpage}{13}
+\indexentry{setup@{setup}!Iir::RBJ::AllPass@{Iir::RBJ::AllPass}|hyperpage}{13}
+\indexentry{Iir::RBJ::AllPass@{Iir::RBJ::AllPass}!setupN@{setupN}|hyperpage}{13}
+\indexentry{setupN@{setupN}!Iir::RBJ::AllPass@{Iir::RBJ::AllPass}|hyperpage}{13}
+\indexentry{Iir::Butterworth::AnalogLowPass@{Iir::Butterworth::AnalogLowPass}|hyperpage}{13}
+\indexentry{Iir::ChebyshevI::AnalogLowPass@{Iir::ChebyshevI::AnalogLowPass}|hyperpage}{14}
+\indexentry{Iir::ChebyshevII::AnalogLowPass@{Iir::ChebyshevII::AnalogLowPass}|hyperpage}{14}
+\indexentry{Iir::ChebyshevII::AnalogLowShelf@{Iir::ChebyshevII::AnalogLowShelf}|hyperpage}{14}
+\indexentry{Iir::Butterworth::AnalogLowShelf@{Iir::Butterworth::AnalogLowShelf}|hyperpage}{15}
+\indexentry{Iir::ChebyshevI::AnalogLowShelf@{Iir::ChebyshevI::AnalogLowShelf}|hyperpage}{15}
+\indexentry{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{15}
+\indexentry{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{16}
+\indexentry{setup@{setup}!Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{16}
+\indexentry{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{16}
+\indexentry{setup@{setup}!Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{16}
+\indexentry{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{16}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{16}
+\indexentry{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{17}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{17}
+\indexentry{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{17}
+\indexentry{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{18}
+\indexentry{setup@{setup}!Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{18}
+\indexentry{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{18}
+\indexentry{setup@{setup}!Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{18}
+\indexentry{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{18}
+\indexentry{setupN@{setupN}!Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{18}
+\indexentry{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{18}
+\indexentry{setupN@{setupN}!Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{18}
+\indexentry{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{19}
+\indexentry{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{19}
+\indexentry{setup@{setup}!Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{19}
+\indexentry{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{20}
+\indexentry{setup@{setup}!Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{20}
+\indexentry{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{20}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{20}
+\indexentry{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{20}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandPass$<$ FilterOrder, StateType $>$}|hyperpage}{20}
+\indexentry{Iir::RBJ::BandPass1@{Iir::RBJ::BandPass1}|hyperpage}{21}
+\indexentry{Iir::RBJ::BandPass1@{Iir::RBJ::BandPass1}!setup@{setup}|hyperpage}{21}
+\indexentry{setup@{setup}!Iir::RBJ::BandPass1@{Iir::RBJ::BandPass1}|hyperpage}{21}
+\indexentry{Iir::RBJ::BandPass1@{Iir::RBJ::BandPass1}!setupN@{setupN}|hyperpage}{21}
+\indexentry{setupN@{setupN}!Iir::RBJ::BandPass1@{Iir::RBJ::BandPass1}|hyperpage}{21}
+\indexentry{Iir::RBJ::BandPass2@{Iir::RBJ::BandPass2}|hyperpage}{22}
+\indexentry{Iir::RBJ::BandPass2@{Iir::RBJ::BandPass2}!setup@{setup}|hyperpage}{22}
+\indexentry{setup@{setup}!Iir::RBJ::BandPass2@{Iir::RBJ::BandPass2}|hyperpage}{22}
+\indexentry{Iir::RBJ::BandPass2@{Iir::RBJ::BandPass2}!setupN@{setupN}|hyperpage}{22}
+\indexentry{setupN@{setupN}!Iir::RBJ::BandPass2@{Iir::RBJ::BandPass2}|hyperpage}{22}
+\indexentry{Iir::ChebyshevII::BandPassBase@{Iir::ChebyshevII::BandPassBase}|hyperpage}{23}
+\indexentry{Iir::ChebyshevI::BandPassBase@{Iir::ChebyshevI::BandPassBase}|hyperpage}{23}
+\indexentry{Iir::Butterworth::BandPassBase@{Iir::Butterworth::BandPassBase}|hyperpage}{24}
+\indexentry{Iir::BandPassTransform@{Iir::BandPassTransform}|hyperpage}{24}
+\indexentry{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{24}
+\indexentry{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{25}
+\indexentry{setup@{setup}!Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{25}
+\indexentry{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{25}
+\indexentry{setup@{setup}!Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{25}
+\indexentry{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{25}
+\indexentry{setupN@{setupN}!Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{25}
+\indexentry{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{26}
+\indexentry{setupN@{setupN}!Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{26}
+\indexentry{Iir::RBJ::BandShelf@{Iir::RBJ::BandShelf}|hyperpage}{26}
+\indexentry{Iir::RBJ::BandShelf@{Iir::RBJ::BandShelf}!setup@{setup}|hyperpage}{26}
+\indexentry{setup@{setup}!Iir::RBJ::BandShelf@{Iir::RBJ::BandShelf}|hyperpage}{26}
+\indexentry{Iir::RBJ::BandShelf@{Iir::RBJ::BandShelf}!setupN@{setupN}|hyperpage}{27}
+\indexentry{setupN@{setupN}!Iir::RBJ::BandShelf@{Iir::RBJ::BandShelf}|hyperpage}{27}
+\indexentry{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{27}
+\indexentry{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{28}
+\indexentry{setup@{setup}!Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{28}
+\indexentry{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{28}
+\indexentry{setup@{setup}!Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{28}
+\indexentry{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{28}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{28}
+\indexentry{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{29}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{29}
+\indexentry{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{29}
+\indexentry{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{30}
+\indexentry{setup@{setup}!Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{30}
+\indexentry{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{30}
+\indexentry{setup@{setup}!Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{30}
+\indexentry{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{31}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{31}
+\indexentry{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{31}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandShelf$<$ FilterOrder, StateType $>$}|hyperpage}{31}
+\indexentry{Iir::Butterworth::BandShelfBase@{Iir::Butterworth::BandShelfBase}|hyperpage}{31}
+\indexentry{Iir::ChebyshevII::BandShelfBase@{Iir::ChebyshevII::BandShelfBase}|hyperpage}{32}
+\indexentry{Iir::ChebyshevI::BandShelfBase@{Iir::ChebyshevI::BandShelfBase}|hyperpage}{32}
+\indexentry{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{33}
+\indexentry{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{33}
+\indexentry{setup@{setup}!Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{33}
+\indexentry{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{34}
+\indexentry{setup@{setup}!Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{34}
+\indexentry{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{34}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{34}
+\indexentry{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{34}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{34}
+\indexentry{Iir::RBJ::BandStop@{Iir::RBJ::BandStop}|hyperpage}{35}
+\indexentry{Iir::RBJ::BandStop@{Iir::RBJ::BandStop}!setup@{setup}|hyperpage}{35}
+\indexentry{setup@{setup}!Iir::RBJ::BandStop@{Iir::RBJ::BandStop}|hyperpage}{35}
+\indexentry{Iir::RBJ::BandStop@{Iir::RBJ::BandStop}!setupN@{setupN}|hyperpage}{35}
+\indexentry{setupN@{setupN}!Iir::RBJ::BandStop@{Iir::RBJ::BandStop}|hyperpage}{35}
+\indexentry{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{36}
+\indexentry{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{36}
+\indexentry{setup@{setup}!Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{36}
+\indexentry{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{36}
+\indexentry{setup@{setup}!Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{36}
+\indexentry{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{37}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{37}
+\indexentry{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{37}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{37}
+\indexentry{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{37}
+\indexentry{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{38}
+\indexentry{setup@{setup}!Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{38}
+\indexentry{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{38}
+\indexentry{setupN@{setupN}!Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{38}
+\indexentry{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{39}
+\indexentry{setupN@{setupN}!Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{39}
+\indexentry{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{39}
+\indexentry{setupN@{setupN}!Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$@{Iir::Butterworth::BandStop$<$ FilterOrder, StateType $>$}|hyperpage}{39}
+\indexentry{Iir::Butterworth::BandStopBase@{Iir::Butterworth::BandStopBase}|hyperpage}{39}
+\indexentry{Iir::ChebyshevII::BandStopBase@{Iir::ChebyshevII::BandStopBase}|hyperpage}{40}
+\indexentry{Iir::ChebyshevI::BandStopBase@{Iir::ChebyshevI::BandStopBase}|hyperpage}{40}
+\indexentry{Iir::BandStopTransform@{Iir::BandStopTransform}|hyperpage}{40}
+\indexentry{Iir::Biquad@{Iir::Biquad}|hyperpage}{41}
+\indexentry{Iir::Biquad@{Iir::Biquad}!applyScale@{applyScale}|hyperpage}{41}
+\indexentry{applyScale@{applyScale}!Iir::Biquad@{Iir::Biquad}|hyperpage}{41}
+\indexentry{Iir::Biquad@{Iir::Biquad}!filter@{filter}|hyperpage}{42}
+\indexentry{filter@{filter}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!getA0@{getA0}|hyperpage}{42}
+\indexentry{getA0@{getA0}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!getA1@{getA1}|hyperpage}{42}
+\indexentry{getA1@{getA1}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!getA2@{getA2}|hyperpage}{42}
+\indexentry{getA2@{getA2}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!getB0@{getB0}|hyperpage}{42}
+\indexentry{getB0@{getB0}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!getB1@{getB1}|hyperpage}{42}
+\indexentry{getB1@{getB1}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!getB2@{getB2}|hyperpage}{42}
+\indexentry{getB2@{getB2}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!getPoleZeros@{getPoleZeros}|hyperpage}{42}
+\indexentry{getPoleZeros@{getPoleZeros}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!response@{response}|hyperpage}{42}
+\indexentry{response@{response}!Iir::Biquad@{Iir::Biquad}|hyperpage}{42}
+\indexentry{Iir::Biquad@{Iir::Biquad}!setCoefficients@{setCoefficients}|hyperpage}{43}
+\indexentry{setCoefficients@{setCoefficients}!Iir::Biquad@{Iir::Biquad}|hyperpage}{43}
+\indexentry{Iir::Biquad@{Iir::Biquad}!setIdentity@{setIdentity}|hyperpage}{43}
+\indexentry{setIdentity@{setIdentity}!Iir::Biquad@{Iir::Biquad}|hyperpage}{43}
+\indexentry{Iir::Biquad@{Iir::Biquad}!setOnePole@{setOnePole}|hyperpage}{43}
+\indexentry{setOnePole@{setOnePole}!Iir::Biquad@{Iir::Biquad}|hyperpage}{43}
+\indexentry{Iir::Biquad@{Iir::Biquad}!setPoleZeroPair@{setPoleZeroPair}|hyperpage}{43}
+\indexentry{setPoleZeroPair@{setPoleZeroPair}!Iir::Biquad@{Iir::Biquad}|hyperpage}{43}
+\indexentry{Iir::Biquad@{Iir::Biquad}!setTwoPole@{setTwoPole}|hyperpage}{43}
+\indexentry{setTwoPole@{setTwoPole}!Iir::Biquad@{Iir::Biquad}|hyperpage}{43}
+\indexentry{Iir::BiquadPoleState@{Iir::BiquadPoleState}|hyperpage}{43}
+\indexentry{Iir::Cascade@{Iir::Cascade}|hyperpage}{44}
+\indexentry{Iir::Cascade@{Iir::Cascade}!getNumStages@{getNumStages}|hyperpage}{44}
+\indexentry{getNumStages@{getNumStages}!Iir::Cascade@{Iir::Cascade}|hyperpage}{44}
+\indexentry{Iir::Cascade@{Iir::Cascade}!getPoleZeros@{getPoleZeros}|hyperpage}{44}
+\indexentry{getPoleZeros@{getPoleZeros}!Iir::Cascade@{Iir::Cascade}|hyperpage}{44}
+\indexentry{Iir::Cascade@{Iir::Cascade}!operator\mbox{[}\mbox{]}@{operator[]}|hyperpage}{44}
+\indexentry{operator\mbox{[}\mbox{]}@{operator[]}!Iir::Cascade@{Iir::Cascade}|hyperpage}{44}
+\indexentry{Iir::Cascade@{Iir::Cascade}!response@{response}|hyperpage}{44}
+\indexentry{response@{response}!Iir::Cascade@{Iir::Cascade}|hyperpage}{44}
+\indexentry{Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}|hyperpage}{45}
+\indexentry{Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}!filter@{filter}|hyperpage}{45}
+\indexentry{filter@{filter}!Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}|hyperpage}{45}
+\indexentry{Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}!getCascadeStorage@{getCascadeStorage}|hyperpage}{45}
+\indexentry{getCascadeStorage@{getCascadeStorage}!Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}|hyperpage}{45}
+\indexentry{Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}!reset@{reset}|hyperpage}{45}
+\indexentry{reset@{reset}!Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}|hyperpage}{45}
+\indexentry{Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}!setup@{setup}|hyperpage}{46}
+\indexentry{setup@{setup}!Iir::CascadeStages$<$ MaxStages, StateType $>$@{Iir::CascadeStages$<$ MaxStages, StateType $>$}|hyperpage}{46}
+\indexentry{Iir::ComplexPair@{Iir::ComplexPair}|hyperpage}{46}
+\indexentry{Iir::ComplexPair@{Iir::ComplexPair}!isMatchedPair@{isMatchedPair}|hyperpage}{46}
+\indexentry{isMatchedPair@{isMatchedPair}!Iir::ComplexPair@{Iir::ComplexPair}|hyperpage}{46}
+\indexentry{Iir::DirectFormI@{Iir::DirectFormI}|hyperpage}{46}
+\indexentry{Iir::DirectFormII@{Iir::DirectFormII}|hyperpage}{47}
+\indexentry{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{47}
+\indexentry{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{47}
+\indexentry{setup@{setup}!Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{47}
+\indexentry{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{48}
+\indexentry{setup@{setup}!Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{48}
+\indexentry{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{48}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{48}
+\indexentry{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{48}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{48}
+\indexentry{Iir::RBJ::HighPass@{Iir::RBJ::HighPass}|hyperpage}{49}
+\indexentry{Iir::RBJ::HighPass@{Iir::RBJ::HighPass}!setup@{setup}|hyperpage}{49}
+\indexentry{setup@{setup}!Iir::RBJ::HighPass@{Iir::RBJ::HighPass}|hyperpage}{49}
+\indexentry{Iir::RBJ::HighPass@{Iir::RBJ::HighPass}!setupN@{setupN}|hyperpage}{49}
+\indexentry{setupN@{setupN}!Iir::RBJ::HighPass@{Iir::RBJ::HighPass}|hyperpage}{49}
+\indexentry{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{50}
+\indexentry{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{50}
+\indexentry{setup@{setup}!Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{50}
+\indexentry{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{50}
+\indexentry{setup@{setup}!Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{50}
+\indexentry{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{51}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{51}
+\indexentry{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{51}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{51}
+\indexentry{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{51}
+\indexentry{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{52}
+\indexentry{setup@{setup}!Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{52}
+\indexentry{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{52}
+\indexentry{setup@{setup}!Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{52}
+\indexentry{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{52}
+\indexentry{setupN@{setupN}!Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{52}
+\indexentry{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{53}
+\indexentry{setupN@{setupN}!Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighPass$<$ FilterOrder, StateType $>$}|hyperpage}{53}
+\indexentry{Iir::ChebyshevII::HighPassBase@{Iir::ChebyshevII::HighPassBase}|hyperpage}{53}
+\indexentry{Iir::ChebyshevI::HighPassBase@{Iir::ChebyshevI::HighPassBase}|hyperpage}{53}
+\indexentry{Iir::Butterworth::HighPassBase@{Iir::Butterworth::HighPassBase}|hyperpage}{54}
+\indexentry{Iir::HighPassTransform@{Iir::HighPassTransform}|hyperpage}{54}
+\indexentry{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{54}
+\indexentry{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{55}
+\indexentry{setup@{setup}!Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{55}
+\indexentry{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{55}
+\indexentry{setup@{setup}!Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{55}
+\indexentry{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{55}
+\indexentry{setupN@{setupN}!Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{55}
+\indexentry{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{55}
+\indexentry{setupN@{setupN}!Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{55}
+\indexentry{Iir::RBJ::HighShelf@{Iir::RBJ::HighShelf}|hyperpage}{56}
+\indexentry{Iir::RBJ::HighShelf@{Iir::RBJ::HighShelf}!setup@{setup}|hyperpage}{56}
+\indexentry{setup@{setup}!Iir::RBJ::HighShelf@{Iir::RBJ::HighShelf}|hyperpage}{56}
+\indexentry{Iir::RBJ::HighShelf@{Iir::RBJ::HighShelf}!setupN@{setupN}|hyperpage}{57}
+\indexentry{setupN@{setupN}!Iir::RBJ::HighShelf@{Iir::RBJ::HighShelf}|hyperpage}{57}
+\indexentry{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{57}
+\indexentry{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{57}
+\indexentry{setup@{setup}!Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{57}
+\indexentry{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{58}
+\indexentry{setup@{setup}!Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{58}
+\indexentry{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{58}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{58}
+\indexentry{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{58}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{58}
+\indexentry{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{59}
+\indexentry{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{59}
+\indexentry{setup@{setup}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{59}
+\indexentry{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{60}
+\indexentry{setup@{setup}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{60}
+\indexentry{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{60}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{60}
+\indexentry{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{60}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}|hyperpage}{60}
+\indexentry{Iir::ChebyshevII::HighShelfBase@{Iir::ChebyshevII::HighShelfBase}|hyperpage}{61}
+\indexentry{Iir::Butterworth::HighShelfBase@{Iir::Butterworth::HighShelfBase}|hyperpage}{61}
+\indexentry{Iir::ChebyshevI::HighShelfBase@{Iir::ChebyshevI::HighShelfBase}|hyperpage}{61}
+\indexentry{Iir::RBJ::IIRNotch@{Iir::RBJ::IIRNotch}|hyperpage}{62}
+\indexentry{Iir::RBJ::IIRNotch@{Iir::RBJ::IIRNotch}!setup@{setup}|hyperpage}{62}
+\indexentry{setup@{setup}!Iir::RBJ::IIRNotch@{Iir::RBJ::IIRNotch}|hyperpage}{62}
+\indexentry{Iir::RBJ::IIRNotch@{Iir::RBJ::IIRNotch}!setupN@{setupN}|hyperpage}{63}
+\indexentry{setupN@{setupN}!Iir::RBJ::IIRNotch@{Iir::RBJ::IIRNotch}|hyperpage}{63}
+\indexentry{Iir::Layout$<$ MaxPoles $>$@{Iir::Layout$<$ MaxPoles $>$}|hyperpage}{63}
+\indexentry{Iir::LayoutBase@{Iir::LayoutBase}|hyperpage}{63}
+\indexentry{Iir::RBJ::LowPass@{Iir::RBJ::LowPass}|hyperpage}{63}
+\indexentry{Iir::RBJ::LowPass@{Iir::RBJ::LowPass}!setup@{setup}|hyperpage}{64}
+\indexentry{setup@{setup}!Iir::RBJ::LowPass@{Iir::RBJ::LowPass}|hyperpage}{64}
+\indexentry{Iir::RBJ::LowPass@{Iir::RBJ::LowPass}!setupN@{setupN}|hyperpage}{64}
+\indexentry{setupN@{setupN}!Iir::RBJ::LowPass@{Iir::RBJ::LowPass}|hyperpage}{64}
+\indexentry{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{64}
+\indexentry{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{65}
+\indexentry{setup@{setup}!Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{65}
+\indexentry{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{65}
+\indexentry{setup@{setup}!Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{65}
+\indexentry{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{66}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{66}
+\indexentry{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{66}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{66}
+\indexentry{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{66}
+\indexentry{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{67}
+\indexentry{setup@{setup}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{67}
+\indexentry{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{67}
+\indexentry{setup@{setup}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{67}
+\indexentry{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{67}
+\indexentry{setupN@{setupN}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{67}
+\indexentry{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{67}
+\indexentry{setupN@{setupN}!Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{67}
+\indexentry{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{68}
+\indexentry{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{68}
+\indexentry{setup@{setup}!Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{68}
+\indexentry{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{69}
+\indexentry{setup@{setup}!Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{69}
+\indexentry{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{69}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{69}
+\indexentry{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{69}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowPass$<$ FilterOrder, StateType $>$}|hyperpage}{69}
+\indexentry{Iir::ChebyshevI::LowPassBase@{Iir::ChebyshevI::LowPassBase}|hyperpage}{70}
+\indexentry{Iir::Butterworth::LowPassBase@{Iir::Butterworth::LowPassBase}|hyperpage}{70}
+\indexentry{Iir::ChebyshevII::LowPassBase@{Iir::ChebyshevII::LowPassBase}|hyperpage}{70}
+\indexentry{Iir::LowPassTransform@{Iir::LowPassTransform}|hyperpage}{71}
+\indexentry{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{71}
+\indexentry{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{71}
+\indexentry{setup@{setup}!Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{71}
+\indexentry{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{72}
+\indexentry{setup@{setup}!Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{72}
+\indexentry{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{72}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{72}
+\indexentry{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{72}
+\indexentry{setupN@{setupN}!Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevI::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{72}
+\indexentry{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{73}
+\indexentry{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{73}
+\indexentry{setup@{setup}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{73}
+\indexentry{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{74}
+\indexentry{setup@{setup}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{74}
+\indexentry{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{74}
+\indexentry{setupN@{setupN}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{74}
+\indexentry{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{74}
+\indexentry{setupN@{setupN}!Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$@{Iir::Butterworth::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{74}
+\indexentry{Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}|hyperpage}{75}
+\indexentry{Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}!setup@{setup}|hyperpage}{75}
+\indexentry{setup@{setup}!Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}|hyperpage}{75}
+\indexentry{Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}!setupN@{setupN}|hyperpage}{75}
+\indexentry{setupN@{setupN}!Iir::RBJ::LowShelf@{Iir::RBJ::LowShelf}|hyperpage}{75}
+\indexentry{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{76}
+\indexentry{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{76}
+\indexentry{setup@{setup}!Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{76}
+\indexentry{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}!setup@{setup}|hyperpage}{76}
+\indexentry{setup@{setup}!Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{76}
+\indexentry{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{77}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{77}
+\indexentry{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}|hyperpage}{77}
+\indexentry{setupN@{setupN}!Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::LowShelf$<$ FilterOrder, StateType $>$}|hyperpage}{77}
+\indexentry{Iir::Butterworth::LowShelfBase@{Iir::Butterworth::LowShelfBase}|hyperpage}{77}
+\indexentry{Iir::ChebyshevI::LowShelfBase@{Iir::ChebyshevI::LowShelfBase}|hyperpage}{78}
+\indexentry{Iir::ChebyshevII::LowShelfBase@{Iir::ChebyshevII::LowShelfBase}|hyperpage}{78}
+\indexentry{Iir::Custom::OnePole@{Iir::Custom::OnePole}|hyperpage}{79}
+\indexentry{Iir::PoleFilter$<$ BaseClass, StateType, MaxAnalogPoles, MaxDigitalPoles $>$@{Iir::PoleFilter$<$ BaseClass, StateType, MaxAnalogPoles, MaxDigitalPoles $>$}|hyperpage}{79}
+\indexentry{Iir::PoleFilterBase$<$ AnalogPrototype $>$@{Iir::PoleFilterBase$<$ AnalogPrototype $>$}|hyperpage}{80}
+\indexentry{Iir::PoleFilterBase2@{Iir::PoleFilterBase2}|hyperpage}{80}
+\indexentry{Iir::PoleZeroPair@{Iir::PoleZeroPair}|hyperpage}{81}
+\indexentry{Iir::RBJ::RBJbase@{Iir::RBJ::RBJbase}|hyperpage}{81}
+\indexentry{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$@{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$}|hyperpage}{82}
+\indexentry{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$@{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$}!SOSCascade@{SOSCascade}|hyperpage}{82}
+\indexentry{SOSCascade@{SOSCascade}!Iir::Custom::SOSCascade$<$ NSOS, StateType $>$@{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$}|hyperpage}{82}
+\indexentry{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$@{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$}!SOSCascade@{SOSCascade}|hyperpage}{82}
+\indexentry{SOSCascade@{SOSCascade}!Iir::Custom::SOSCascade$<$ NSOS, StateType $>$@{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$}|hyperpage}{82}
+\indexentry{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$@{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$}!setup@{setup}|hyperpage}{83}
+\indexentry{setup@{setup}!Iir::Custom::SOSCascade$<$ NSOS, StateType $>$@{Iir::Custom::SOSCascade$<$ NSOS, StateType $>$}|hyperpage}{83}
+\indexentry{Iir::Cascade::Storage@{Iir::Cascade::Storage}|hyperpage}{83}
+\indexentry{Iir::Cascade::Storage@{Iir::Cascade::Storage}!Storage@{Storage}|hyperpage}{83}
+\indexentry{Storage@{Storage}!Iir::Cascade::Storage@{Iir::Cascade::Storage}|hyperpage}{83}
+\indexentry{Iir::TransposedDirectFormII@{Iir::TransposedDirectFormII}|hyperpage}{84}
+\indexentry{Iir::Custom::TwoPole@{Iir::Custom::TwoPole}|hyperpage}{84}

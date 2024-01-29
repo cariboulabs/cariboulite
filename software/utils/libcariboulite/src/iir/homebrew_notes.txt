@@ -1,0 +1,3 @@
+brew create https://github.com/berndporr/iir1 --tap berndporr/berndporr
+
+brew fetch iir --build-from-source

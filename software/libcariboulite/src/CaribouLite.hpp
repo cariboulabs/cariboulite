@@ -248,6 +248,15 @@ public:
     static bool DetectBoard(SysVersion *sysVer, std::string& name, std::string& guid);
     static void DefaultSignalHandler(void* context, int signal_number, siginfo_t *si);
     
+    // IO Control
+    void SetLed0States (bool state);
+    bool GetLed0States (void);
+    void SetLed1States (bool state);
+    bool GetLed1States (void);
+    bool GetButtonState (void);
+    void SetPmodState (uint8_t val);
+    uint8_t GetPmodState (void);
+    
 private:
     std::vector<CaribouLiteRadio*> _channels;
     SysVersion _systemVersion;

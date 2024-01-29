@@ -1,0 +1,116 @@
+\hypertarget{structIir_1_1ChebyshevII_1_1HighShelf}{}\doxysubsection{Iir\+::Chebyshev\+II\+::High\+Shelf$<$ Filter\+Order, State\+Type $>$ Struct Template Reference}
+\label{structIir_1_1ChebyshevII_1_1HighShelf}\index{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}}
+
+
+{\ttfamily \#include $<$Chebyshev\+I\+I.\+h$>$}
+
+Inheritance diagram for Iir\+::Chebyshev\+II\+::High\+Shelf$<$ Filter\+Order, State\+Type $>$\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.400000cm]{structIir_1_1ChebyshevII_1_1HighShelf}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf_afdf4c782aa49f832bce8cdca5404aec4}{setup}} (double sample\+Rate, double cutoff\+Frequency, double gain\+Db, double stop\+Band\+Db)
+\item 
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf_a3efb4a8649c08ab5095174804cd2edfa}{setup}} (int req\+Order, double sample\+Rate, double cutoff\+Frequency, double gain\+Db, double stop\+Band\+Db)
+\item 
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf_a092b00347c75913eb845080d753853ee}{setupN}} (double cutoff\+Frequency, double gain\+Db, double stop\+Band\+Db)
+\item 
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf_a713d1708e646df97794eacc8541605e2}{setupN}} (int req\+Order, double cutoff\+Frequency, double gain\+Db, double stop\+Band\+Db)
+\end{DoxyCompactItemize}
+
+
+\doxysubsubsection{Detailed Description}
+\subsubsection*{template$<$int Filter\+Order = 4, class State\+Type = Direct\+Form\+II$>$\newline
+struct Iir\+::\+Chebyshev\+I\+I\+::\+High\+Shelf$<$ Filter\+Order, State\+Type $>$}
+
+\mbox{\hyperlink{namespaceIir_1_1ChebyshevII}{Chebyshev\+II}} high shelf filter. Specified gain in the passband and 0dB in the stopband. 
+\begin{DoxyParams}{Parameters}
+{\em Filter\+Order} & Reserves memory for a filter of the order Filter\+Order \\
+\hline
+{\em State\+Type} & The filter topology\+: \mbox{\hyperlink{classIir_1_1DirectFormI}{Direct\+FormI}}, \mbox{\hyperlink{classIir_1_1DirectFormII}{Direct\+Form\+II}}, ... \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsubsection{Member Function Documentation}
+\mbox{\Hypertarget{structIir_1_1ChebyshevII_1_1HighShelf_afdf4c782aa49f832bce8cdca5404aec4}\label{structIir_1_1ChebyshevII_1_1HighShelf_afdf4c782aa49f832bce8cdca5404aec4}} 
+\index{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}}
+\index{setup@{setup}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf}{Iir\+::\+Chebyshev\+I\+I\+::\+High\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setup (\begin{DoxyParamCaption}\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db,  }\item[{double}]{stop\+Band\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients of the filter 
+\begin{DoxyParams}{Parameters}
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff frequency. \\
+\hline
+{\em gain\+Db} & Gain the passbard. The stopband has 0 dB gain. \\
+\hline
+{\em stop\+Band\+Db} & Permitted ripples in dB in the stopband \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1ChebyshevII_1_1HighShelf_a3efb4a8649c08ab5095174804cd2edfa}\label{structIir_1_1ChebyshevII_1_1HighShelf_a3efb4a8649c08ab5095174804cd2edfa}} 
+\index{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setup@{setup}}
+\index{setup@{setup}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setup()}{setup()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf}{Iir\+::\+Chebyshev\+I\+I\+::\+High\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setup (\begin{DoxyParamCaption}\item[{int}]{req\+Order,  }\item[{double}]{sample\+Rate,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db,  }\item[{double}]{stop\+Band\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients of the filter 
+\begin{DoxyParams}{Parameters}
+{\em req\+Order} & Requested order which can be less than the instantiated one \\
+\hline
+{\em sample\+Rate} & Sampling rate \\
+\hline
+{\em cutoff\+Frequency} & Cutoff frequency. \\
+\hline
+{\em gain\+Db} & Gain the passbard. The stopband has 0 dB gain. \\
+\hline
+{\em stop\+Band\+Db} & Permitted ripples in dB in the stopband \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1ChebyshevII_1_1HighShelf_a092b00347c75913eb845080d753853ee}\label{structIir_1_1ChebyshevII_1_1HighShelf_a092b00347c75913eb845080d753853ee}} 
+\index{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf}{Iir\+::\+Chebyshev\+I\+I\+::\+High\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setupN (\begin{DoxyParamCaption}\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db,  }\item[{double}]{stop\+Band\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients of the filter 
+\begin{DoxyParams}{Parameters}
+{\em cutoff\+Frequency} & Normalised cutoff frequency (0..1/2) \\
+\hline
+{\em gain\+Db} & Gain the passbard. The stopband has 0 dB gain. \\
+\hline
+{\em stop\+Band\+Db} & Permitted ripples in dB in the stopband \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{structIir_1_1ChebyshevII_1_1HighShelf_a713d1708e646df97794eacc8541605e2}\label{structIir_1_1ChebyshevII_1_1HighShelf_a713d1708e646df97794eacc8541605e2}} 
+\index{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}!setupN@{setupN}}
+\index{setupN@{setupN}!Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$@{Iir::ChebyshevII::HighShelf$<$ FilterOrder, StateType $>$}}
+\doxyparagraph{\texorpdfstring{setupN()}{setupN()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily template$<$int Filter\+Order = 4, class State\+Type  = Direct\+Form\+II$>$ \\
+void \mbox{\hyperlink{structIir_1_1ChebyshevII_1_1HighShelf}{Iir\+::\+Chebyshev\+I\+I\+::\+High\+Shelf}}$<$ Filter\+Order, State\+Type $>$\+::setupN (\begin{DoxyParamCaption}\item[{int}]{req\+Order,  }\item[{double}]{cutoff\+Frequency,  }\item[{double}]{gain\+Db,  }\item[{double}]{stop\+Band\+Db }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+Calculates the coefficients of the filter 
+\begin{DoxyParams}{Parameters}
+{\em req\+Order} & Requested order which can be less than the instantiated one \\
+\hline
+{\em cutoff\+Frequency} & Normalised cutoff frequency (0..1/2) \\
+\hline
+{\em gain\+Db} & Gain the passbard. The stopband has 0 dB gain. \\
+\hline
+{\em stop\+Band\+Db} & Permitted ripples in dB in the stopband \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+iir/Chebyshev\+I\+I.\+h\end{DoxyCompactItemize}
