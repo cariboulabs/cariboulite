@@ -4,7 +4,7 @@
 void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
 {
     size_t mtu_size = radio->GetNativeMtuSample();
-    CaribouLiteComplexInt* rx_buffer = new CaribouLiteComplexInt[mtu_size];
+    std::complex<short>* rx_buffer = new std::complex<short>[mtu_size];
     CaribouLiteMeta* rx_meta_buffer = new CaribouLiteMeta[mtu_size];
     std::complex<float>* rx_copmlex_data = new std::complex<float>[mtu_size];
     
@@ -36,8 +36,8 @@ void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
         {
             for (int i = 0; i < ret; i ++)
             {
-                rx_copmlex_data[i].real(rx_buffer[i].i / 4096.0);
-                rx_copmlex_data[i].imag(rx_buffer[i].q / 4096.0);
+                rx_copmlex_data[i].real(rx_buffer[i].real() / 4096.0);
+                rx_copmlex_data[i].imag(rx_buffer[i].imag() / 4096.0);
             }
         }
         
@@ -66,6 +66,62 @@ void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
 }
 
 //==================================================================
+int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_read)
+{
+    int ret = ReadSamples((std::complex<short>*)NULL, num_to_read);
+    if (ret <= 0)
+    {
+        return ret;
+    }
+    
+    if (samples)
+    {
+        for (size_t i = 0; i < (size_t)ret; i++)
+        {
+            samples[i] = {((float)_read_samples[i].i) / 4096.0f, ((float)_read_samples[i].q) / 4096.0f};
+        }
+    }
+    return ret;
+}
+
+//==================================================================
+int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_read)
+{
+    int ret = cariboulite_radio_read_samples((cariboulite_radio_state_st*)_radio,
+                                             _read_samples, 
+                                             _read_metadata, 
+                                             num_to_read);
+    if (ret <= 0)
+    {
+        return ret;
+    }
+    
+    if (samples)
+    {
+        for (size_t i = 0; i < (size_t)ret; i++)
+        {
+            samples[i] = {_read_samples[i].i, _read_samples[i].q};
+        }
+    }
+    
+    return ret;
+}
+
+//==================================================================
+int CaribouLiteRadio::WriteSamples(std::complex<float>* samples, size_t num_to_write)
+{
+    return 0;
+}
+
+//==================================================================
+int CaribouLiteRadio::WriteSamples(std::complex<short>* samples, size_t num_to_write)
+{
+    return cariboulite_radio_write_samples((cariboulite_radio_state_st*)_radio,
+                            (cariboulite_sample_complex_int16*)samples,
+                            num_to_write);
+}
+
+//==================================================================
 void CaribouLiteRadio::CaribouLiteTxThread(CaribouLiteRadio* radio)
 {
     while (radio->_tx_thread_running)
@@ -80,14 +136,29 @@ void CaribouLiteRadio::CaribouLiteTxThread(CaribouLiteRadio* radio)
 }
 
 //==================================================================
-CaribouLiteRadio::CaribouLiteRadio(const cariboulite_radio_state_st* radio, RadioType type, const CaribouLite* parent) 
-            : _radio(radio), _device(parent), _type(type), _rxCallbackType(RxCbType::None)
+CaribouLiteRadio::CaribouLiteRadio( const cariboulite_radio_state_st* radio, 
+                                    RadioType type, 
+                                    ApiType api_type, 
+                                    const CaribouLite* parent) 
+            : _radio(radio), _device(parent), _type(type), _rxCallbackType(RxCbType::None), _api_type(api_type)
 {
-    _rx_thread_running = true;
-    _rx_thread = new std::thread(CaribouLiteRadio::CaribouLiteRxThread, this);
-    
-    _tx_thread_running = true;
-    _tx_thread = new std::thread(CaribouLiteRadio::CaribouLiteTxThread, this);
+    if (_api_type == Async)
+    {
+        _rx_thread_running = true;
+        _rx_thread = new std::thread(CaribouLiteRadio::CaribouLiteRxThread, this);
+        
+        _tx_thread_running = true;
+        _tx_thread = new std::thread(CaribouLiteRadio::CaribouLiteTxThread, this);
+    }
+    else
+    {
+        _read_samples = NULL;
+        _read_metadata = NULL;
+        size_t mtu_size = GetNativeMtuSample();
+        // allocate internal buffers
+        _read_samples = new cariboulite_sample_complex_int16[mtu_size];
+        _read_metadata = new cariboulite_sample_meta[mtu_size];        
+    }
 }
 
 //==================================================================
@@ -97,13 +168,21 @@ CaribouLiteRadio::~CaribouLiteRadio()
     StopReceiving();
     StopTransmitting();
     
-    _rx_thread_running = false;
-    _rx_thread->join();
-    if (_rx_thread) delete _rx_thread;
-    
-    _tx_thread_running = false;
-    _tx_thread->join();
-    if (_tx_thread) delete _tx_thread;
+    if (_api_type == Async)
+    {
+        _rx_thread_running = false;
+        _rx_thread->join();
+        if (_rx_thread) delete _rx_thread;
+        
+        _tx_thread_running = false;
+        _tx_thread->join();
+        if (_tx_thread) delete _tx_thread;
+    }
+    else
+    {
+        if (_read_samples) delete [] _read_samples;
+        if (_read_metadata) delete [] _read_metadata;
+    }        
 }    
 
 // Gain
@@ -426,6 +505,11 @@ void CaribouLiteRadio::StartReceivingInternal(size_t samples_per_chunk)
 //==================================================================
 void CaribouLiteRadio::StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk)
 {
+    if (_api_type == CaribouLiteRadio::ApiType::Sync)
+    {
+        StartReceiving();
+        return;
+    }
     _on_data_ready_fm = on_data_ready;
     _rxCallbackType = RxCbType::FloatSync;
     StartReceivingInternal(samples_per_chunk);
@@ -434,25 +518,48 @@ void CaribouLiteRadio::StartReceiving(std::function<void(CaribouLiteRadio*, cons
 //==================================================================
 void CaribouLiteRadio::StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<float>*, size_t)> on_data_ready, size_t samples_per_chunk)
 {
+    if (_api_type == CaribouLiteRadio::ApiType::Sync)
+    {
+        StartReceiving();
+        return;
+    }
     _on_data_ready_f = on_data_ready;
     _rxCallbackType = RxCbType::Float;
     StartReceivingInternal(samples_per_chunk);
 }
 
 //==================================================================
-void CaribouLiteRadio::StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk)
+void CaribouLiteRadio::StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<short>*, CaribouLiteMeta*, size_t)> on_data_ready, size_t samples_per_chunk)
 {
+    if (_api_type == CaribouLiteRadio::ApiType::Sync)
+    {
+        StartReceiving();
+        return;
+    }
     _on_data_ready_im = on_data_ready;
     _rxCallbackType = RxCbType::IntSync;
     StartReceivingInternal(samples_per_chunk);
 }
 
 //==================================================================
-void CaribouLiteRadio::StartReceiving(std::function<void(CaribouLiteRadio*, const CaribouLiteComplexInt*, size_t)> on_data_ready, size_t samples_per_chunk)
+void CaribouLiteRadio::StartReceiving(std::function<void(CaribouLiteRadio*, const std::complex<short>*, size_t)> on_data_ready, size_t samples_per_chunk)
 {
+    if (_api_type == CaribouLiteRadio::ApiType::Sync)
+    {
+        StartReceiving();
+        return;
+    }
     _on_data_ready_i = on_data_ready;
     _rxCallbackType = RxCbType::Int;
     StartReceivingInternal(samples_per_chunk);
+}
+
+//==================================================================
+void CaribouLiteRadio::StartReceiving()
+{
+    _on_data_ready_im = nullptr;
+    _rxCallbackType = RxCbType::None;
+    StartReceivingInternal(0);
 }
 
 //==================================================================

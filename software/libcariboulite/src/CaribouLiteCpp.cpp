@@ -37,7 +37,7 @@ bool CaribouLite::DetectBoard(SysVersion *sysVer, std::string& name, std::string
 }
 
 //==================================================================
-CaribouLite &CaribouLite::GetInstance(bool forceFpgaProg, LogLevel logLvl)
+CaribouLite &CaribouLite::GetInstance(bool asyncApi, bool forceFpgaProg, LogLevel logLvl)
 {
     SysVersion ver;
     std::string name, guid;
@@ -51,7 +51,7 @@ CaribouLite &CaribouLite::GetInstance(bool forceFpgaProg, LogLevel logLvl)
     {
         try
         {
-            _instance = std::shared_ptr<CaribouLite>(new CaribouLite(forceFpgaProg, logLvl));
+            _instance = std::shared_ptr<CaribouLite>(new CaribouLite(forceFpgaProg, asyncApi, logLvl));
         }
         catch (std::exception& e)
         {
@@ -62,7 +62,7 @@ CaribouLite &CaribouLite::GetInstance(bool forceFpgaProg, LogLevel logLvl)
 }
 
 //==================================================================
-CaribouLite::CaribouLite(bool forceFpgaProg, LogLevel logLvl)
+CaribouLite::CaribouLite(bool asyncApi, bool forceFpgaProg, LogLevel logLvl)
 {
     if (cariboulite_init(forceFpgaProg, (cariboulite_log_level_en)logLvl) != 0)
     {
@@ -75,13 +75,15 @@ CaribouLite::CaribouLite(bool forceFpgaProg, LogLevel logLvl)
     // get information
     DetectBoard(&_systemVersion, _productName, _productGuid);
     
+    CaribouLiteRadio::ApiType api_type = asyncApi ? CaribouLiteRadio::ApiType::Async : CaribouLiteRadio::ApiType::Sync;
+    
     // populate the radio devices
     cariboulite_radio_state_st *radio_s1g = cariboulite_get_radio(cariboulite_channel_s1g);
-    CaribouLiteRadio* radio_s1g_int = new CaribouLiteRadio(radio_s1g, CaribouLiteRadio::RadioType::S1G, this);
+    CaribouLiteRadio* radio_s1g_int = new CaribouLiteRadio(radio_s1g, CaribouLiteRadio::RadioType::S1G, api_type, this);
     _channels.push_back(radio_s1g_int);
     
     cariboulite_radio_state_st *radio_hif = cariboulite_get_radio(cariboulite_channel_hif);
-    CaribouLiteRadio* radio_hif_int = new CaribouLiteRadio(radio_hif, CaribouLiteRadio::RadioType::HiF, this);
+    CaribouLiteRadio* radio_hif_int = new CaribouLiteRadio(radio_hif, CaribouLiteRadio::RadioType::HiF, api_type, this);
     _channels.push_back(radio_hif_int);
 }
 
