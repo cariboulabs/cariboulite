@@ -267,7 +267,13 @@ int cariboulite_get_leds_state (int *led0, int *led1)
 //=============================================================================
 int cariboulite_get_button_state (int *btn)
 {
-    return caribou_fpga_get_io_ctrl_dig (&sys.fpga, NULL, NULL, btn, NULL);
+    int btn_temp = 0;
+    int ret = caribou_fpga_get_io_ctrl_dig (&sys.fpga, NULL, NULL, &btn_temp, NULL);
+    
+    // its open collector style - we need to negate
+    if (btn) *btn = !btn_temp;
+    
+    return ret;
 }
 
 //=============================================================================
