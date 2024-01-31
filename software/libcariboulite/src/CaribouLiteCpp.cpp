@@ -51,7 +51,7 @@ CaribouLite &CaribouLite::GetInstance(bool asyncApi, bool forceFpgaProg, LogLeve
     {
         try
         {
-            _instance = std::shared_ptr<CaribouLite>(new CaribouLite(forceFpgaProg, asyncApi, logLvl));
+            _instance = std::shared_ptr<CaribouLite>(new CaribouLite(asyncApi, forceFpgaProg, logLvl));
         }
         catch (std::exception& e)
         {
@@ -75,7 +75,8 @@ CaribouLite::CaribouLite(bool asyncApi, bool forceFpgaProg, LogLevel logLvl)
     // get information
     DetectBoard(&_systemVersion, _productName, _productGuid);
     
-    CaribouLiteRadio::ApiType api_type = asyncApi ? CaribouLiteRadio::ApiType::Async : CaribouLiteRadio::ApiType::Sync;
+    //printf("API TYPE: %d\n", asyncApi);
+    CaribouLiteRadio::ApiType api_type = (asyncApi) ? CaribouLiteRadio::ApiType::Async : CaribouLiteRadio::ApiType::Sync;
     
     // populate the radio devices
     cariboulite_radio_state_st *radio_s1g = cariboulite_get_radio(cariboulite_channel_s1g);

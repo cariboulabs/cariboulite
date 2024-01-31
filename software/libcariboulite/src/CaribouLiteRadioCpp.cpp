@@ -8,6 +8,8 @@ void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
     CaribouLiteMeta* rx_meta_buffer = new CaribouLiteMeta[mtu_size];
     std::complex<float>* rx_copmlex_data = new std::complex<float>[mtu_size];
     
+    //printf("Enterred Thread\n");
+    
     while (radio->_rx_thread_running)
     {
         if (!radio->_rx_is_active)
@@ -139,11 +141,12 @@ void CaribouLiteRadio::CaribouLiteTxThread(CaribouLiteRadio* radio)
 CaribouLiteRadio::CaribouLiteRadio( const cariboulite_radio_state_st* radio, 
                                     RadioType type, 
                                     ApiType api_type, 
-                                    const CaribouLite* parent) 
+                                    const CaribouLite* parent)                                    
             : _radio(radio), _device(parent), _type(type), _rxCallbackType(RxCbType::None), _api_type(api_type)
 {
     if (_api_type == Async)
     {
+        //printf("Creating Radio Type %d ASYNC\n", type);
         _rx_thread_running = true;
         _rx_thread = new std::thread(CaribouLiteRadio::CaribouLiteRxThread, this);
         
@@ -152,6 +155,7 @@ CaribouLiteRadio::CaribouLiteRadio( const cariboulite_radio_state_st* radio,
     }
     else
     {
+        //printf("Creating Radio Type %d SYNC\n", type);
         _read_samples = NULL;
         _read_metadata = NULL;
         size_t mtu_size = GetNativeMtuSample();
