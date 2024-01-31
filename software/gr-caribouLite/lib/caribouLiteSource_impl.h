@@ -10,16 +10,17 @@
 
 #include <gnuradio/caribouLite/caribouLiteSource.h>
 #include <CaribouLite.hpp>
-#include "circular_buffer.h"
 
 namespace gr 
 {
     namespace caribouLite 
     {        
+        void detectBoard();
+
         class caribouLiteSource_impl : public caribouLiteSource
         {
         private:
-            CaribouLiteRadio::RadioType _channel;
+            CaribouLiteRadio::RadioType _channel;  //RadioType, NOT frequency
             bool _enable_agc;
             float _rx_gain;
             float _rx_bw;
@@ -29,10 +30,6 @@ namespace gr
             
             CaribouLite* _cl;
             CaribouLiteRadio *_radio;
-            circular_buffer<gr_complex> *_rx_queue;
-
-        private:
-            void receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples, CaribouLiteMeta* sync, size_t num_samples);
             
         public:
             caribouLiteSource_impl(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq);

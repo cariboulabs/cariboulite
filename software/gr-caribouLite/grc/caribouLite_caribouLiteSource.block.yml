@@ -1,7 +1,7 @@
 id: caribouLite_caribouLiteSource
 label: CaribouLite Source
 category: '[caribouLite]'
-flags: throttle
+flags: [python,cpp,throttle]
 
 templates:
   imports: 
@@ -9,13 +9,6 @@ templates:
   make: 
     caribouLite.caribouLiteSource(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq})
   
-
-#  Make one 'parameters' list entry for every parameter you want settable from the GUI.
-#     Keys include:
-#     * id (makes the value accessible as keyname, e.g. in the make entry)
-#     * label (label shown in the GUI)
-#     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#     * default
 parameters:
 - id: channel
   label: S1G(0) or HiF(1)
@@ -46,24 +39,22 @@ parameters:
   label: Frequency [Hz]
   dtype: float
   default: 900000000.0
+
+cpp_templates:
+    includes: ['#include <gnuradio/caribouLite/caribouLiteSource.h>']
+    declarations: 'caribouLite::caribouLiteSource::sptr ${id};'
+    make: 'this->${id} = caribouLite::caribouLiteSource::make(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq});'
+    packages: ['gnuradio-caribouLite']
+    link: ['gnuradio::gnuradio-caribouLite']
+    translations:
+        'False': 'false'
+        'True': 'true'
+        \[: '{'
+        \]: '}'
   
-
-#  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
-#  Keys include:
-#      * label (an identifier for the GUI)
-#      * domain (optional - stream or message. Default is stream)
-#      * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#      * vlen (optional - data stream vector length. Default is 1)
-#      * optional (optional - set to 1 for optional inputs. Default is 0)
-inputs:
-
-
 outputs:
 - label: samples
   domain: stream
   dtype: complex
 
-
-#  'file_format' specifies the version of the GRC yml format used in the file
-#  and should usually not be changed.
 file_format: 1

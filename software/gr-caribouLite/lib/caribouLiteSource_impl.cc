@@ -40,30 +40,26 @@ namespace gr {
         }
 
 
-        // private constructor
+        // public constructor
         //-------------------------------------------------------------------------------------------------------------
         caribouLiteSource_impl::caribouLiteSource_impl(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq)
                         : gr::sync_block("caribouLiteSource",
                           gr::io_signature::make(0, 0, 0),
                           gr::io_signature::make(1 /* min outputs */, 1 /*max outputs */, sizeof(output_type)))
         {
-            _rx_queue = NULL;
+            detectBoard();
+
             _channel = (CaribouLiteRadio::RadioType)channel;
             _enable_agc = enable_agc;
             _rx_gain = rx_gain;
             _rx_bw = rx_bw;
             _sample_rate = sample_rate;
             _frequency = freq;
-            detectBoard();
-            CaribouLite &cl = CaribouLite::GetInstance();
+            CaribouLite &cl = CaribouLite::GetInstance(false);
             _cl = &cl;
             _radio = cl.GetRadioChannel(_channel);
             
             _mtu_size = _radio->GetNativeMtuSample();
-            
-            _rx_queue = new circular_buffer<gr_complex>(_mtu_size * NUM_NATIVE_MTUS_PER_QUEUE, 
-                                                         USE_ASYNC_OVERRIDE_WRITES, 
-                                                         USE_ASYNC_BLOCK_READS);
             
             // setup parameters
             _radio->SetRxGain(rx_gain);
@@ -71,9 +67,9 @@ namespace gr {
             _radio->SetRxBandwidth(rx_bw);
             _radio->SetRxSampleRate(sample_rate);
             _radio->SetFrequency(freq);
-            _radio->StartReceiving([this](CaribouLiteRadio* radio, const std::complex<float>* samples, CaribouLiteMeta* sync, size_t num_samples) {
-                receivedSamples(radio, samples, sync, num_samples);
-            });
+            
+            //do the thing
+            _radio->StartReceiving();
         }
 
         // virtual destructor
@@ -81,25 +77,15 @@ namespace gr {
         caribouLiteSource_impl::~caribouLiteSource_impl()
         {
             _radio->StopReceiving();
-            if (_rx_queue) delete _rx_queue;
-        }
-        
-        // Receive samples callback
-        //-------------------------------------------------------------------------------------------------------------
-        void caribouLiteSource_impl::receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples, CaribouLiteMeta* sync, size_t num_samples)
-        {
-            //std::cout << "Radio: " << radio->GetRadioName() << " Received " << std::dec << num_samples << " samples" << std::endl;
-            _rx_queue->put(static_cast<const gr_complex*>(samples), num_samples);
         }
 
         //-------------------------------------------------------------------------------------------------------------
-        int caribouLiteSource_impl::work(   int noutput_items,
-                                            gr_vector_const_void_star &input_items,
-                                            gr_vector_void_star &output_items)
+        int caribouLiteSource_impl::work(int noutput_items,
+                                        gr_vector_const_void_star &input_items,
+                                        gr_vector_void_star &output_items)
         {
             auto out = static_cast<output_type*>(output_items[0]);
-            size_t num_read = _rx_queue->get(out, noutput_items);
-            return noutput_items;
+            return _radio->ReadSamples(out, static_cast<size_t>(noutput_items));            
         }
 
     } /* namespace caribouLite */
