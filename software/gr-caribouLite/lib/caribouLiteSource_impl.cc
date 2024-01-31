@@ -67,6 +67,9 @@ namespace gr {
             _radio->SetRxBandwidth(rx_bw);
             _radio->SetRxSampleRate(sample_rate);
             _radio->SetFrequency(freq);
+            
+            //do the thing
+            _radio->StartReceiving();
         }
 
         // virtual destructor
@@ -82,8 +85,7 @@ namespace gr {
                                         gr_vector_void_star &output_items)
         {
             auto out = static_cast<output_type*>(output_items[0]);
-            _radio->ReadSamples(out, static_cast<size_t>(noutput_items));            
-            return noutput_items;
+            return _radio->ReadSamples(out, static_cast<size_t>(noutput_items));            
         }
 
     } /* namespace caribouLite */
