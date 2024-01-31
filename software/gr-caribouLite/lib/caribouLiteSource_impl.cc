@@ -55,7 +55,7 @@ namespace gr {
             _rx_bw = rx_bw;
             _sample_rate = sample_rate;
             _frequency = freq;
-            CaribouLite &cl = CaribouLite::GetInstance();
+            CaribouLite &cl = CaribouLite::GetInstance(false);
             _cl = &cl;
             _radio = cl.GetRadioChannel(_channel);
             
