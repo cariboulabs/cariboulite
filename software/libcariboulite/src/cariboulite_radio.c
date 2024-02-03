@@ -1237,7 +1237,10 @@ int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
     if (ret < 0)
     {
         // -2 reserved for debug mode
-        if (ret == -1) ZF_LOGE("SMI reading operation failed");
+        if (ret == -1) {ZF_LOGE("SMI reading operation failed");}
+        else if (ret == -2) {}
+        else if (ret == -3) {ZF_LOGE("SMI data synchronization failed");}
+        
     }
     else if (ret == 0)
     {

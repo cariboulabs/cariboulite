@@ -9,12 +9,7 @@
 #include "caribouLiteSource_impl.h"
 
 namespace gr {
-    namespace caribouLite {
-        
-        #define NUM_NATIVE_MTUS_PER_QUEUE		( 10 )
-        #define USE_ASYNC_OVERRIDE_WRITES       ( true )
-        #define USE_ASYNC_BLOCK_READS           ( true )
-        
+    namespace caribouLite {       
         using output_type = gr_complex;
 
         void detectBoard()
@@ -85,7 +80,9 @@ namespace gr {
                                         gr_vector_void_star &output_items)
         {
             auto out = static_cast<output_type*>(output_items[0]);
-            return _radio->ReadSamples(out, static_cast<size_t>(noutput_items));            
+            int ret = _radio->ReadSamples(out, static_cast<size_t>(noutput_items));
+            if (ret <= 0) return 0;
+            return ret;
         }
 
     } /* namespace caribouLite */

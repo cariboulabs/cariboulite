@@ -237,10 +237,11 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
     size_t offs = 0;
     bool found = false;
 
-    if (len <= 4)
+    if (len <= (CARIBOU_SMI_BYTES_PER_SAMPLE*4))
     {
         return 0;
     }
+    //smi_utils_dump_hex(buffer, 16);
 
     if (dev->debug_mode == caribou_smi_none)
     {
@@ -283,6 +284,7 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
 
     if (found == false)
     {
+        smi_utils_dump_hex(buffer, 16);
         return -1;
     }
 
@@ -623,7 +625,7 @@ static int caribou_smi_calc_read_timeout(uint32_t sample_rate, size_t len)
 {
     uint32_t to_millisec = (2 * len * 1000) / sample_rate;
     if (to_millisec < 1) to_millisec = 1;
-    return to_millisec;
+    return to_millisec * 2;
 }
 
 //=========================================================================
@@ -662,7 +664,7 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
             int data_affset = caribou_smi_rx_data_analyze(dev, channel, dev->read_temp_buffer, ret, sample_offset, meta_offset);
             if (data_affset < 0)
             {
-                return -1;
+                return -3;
             }
 
             // A special functionality for debug modes

@@ -70,7 +70,14 @@ void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
 //==================================================================
 int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_read)
 {
+    if (samples == 0)
+    {
+        printf("samples_is_null=%d", _read_samples==NULL);
+        return 0;
+    }        
+
     int ret = ReadSamples((std::complex<short>*)NULL, num_to_read);
+    //printf("ret = %d\n", ret);
     if (ret <= 0)
     {
         return ret;
@@ -89,6 +96,13 @@ int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_re
 //==================================================================
 int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_read)
 {
+    if (!_rx_is_active || _read_samples == NULL || _read_metadata == NULL || num_to_read == 0)
+    {
+        printf("reading from closed stream: rx_active = %d, _read_samples_is_null=%d, _read_metadata_is_null=%d, num_to_read=%ld\n",
+            _rx_is_active, _read_samples==NULL, _read_metadata==NULL, num_to_read);
+        return 0;
+    }        
+    
     int ret = cariboulite_radio_read_samples((cariboulite_radio_state_st*)_radio,
                                              _read_samples, 
                                              _read_metadata, 
@@ -185,7 +199,9 @@ CaribouLiteRadio::~CaribouLiteRadio()
     else
     {
         if (_read_samples) delete [] _read_samples;
+        _read_samples = NULL;
         if (_read_metadata) delete [] _read_metadata;
+        _read_metadata = NULL;
     }        
 }    
 

@@ -33,23 +33,6 @@ options:
     state: enabled
 
 blocks:
-- name: blocks_null_sink_0
-  id: blocks_null_sink
-  parameters:
-    affinity: ''
-    alias: ''
-    bus_structure_sink: '[[0,],]'
-    comment: ''
-    num_inputs: '1'
-    type: complex
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [624, 256.0]
-    rotation: 0
-    state: enabled
 - name: caribouLite_caribouLiteSource_0
   id: caribouLite_caribouLiteSource
   parameters:
@@ -57,8 +40,8 @@ blocks:
     alias: ''
     channel: '0'
     comment: ''
-    enable_agc: 'False'
-    freq: '900000000.0'
+    enable_agc: 'True'
+    freq: '905000000.0'
     maxoutbuf: '0'
     minoutbuf: '0'
     rx_bw: '2500000.0'
@@ -71,9 +54,50 @@ blocks:
     coordinate: [296, 212.0]
     rotation: 0
     state: enabled
+- name: lora_sdr_fft_demod_0
+  id: lora_sdr_fft_demod
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    max_log_approx: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    soft_decoding: soft_decoding
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [904, 252.0]
+    rotation: 0
+    state: enabled
+- name: lora_sdr_frame_sync_0
+  id: lora_sdr_frame_sync
+  parameters:
+    affinity: ''
+    alias: ''
+    bandwidth: '500000'
+    center_freq: '0'
+    comment: ''
+    impl_head: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    os_factor: '4'
+    preamb_len: '8'
+    sf: '5'
+    show_log_port: 'True'
+    sync_word: '18'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [696, 236.0]
+    rotation: 0
+    state: enabled
 
 connections:
-- [caribouLite_caribouLiteSource_0, '0', blocks_null_sink_0, '0']
+- [caribouLite_caribouLiteSource_0, '0', lora_sdr_frame_sync_0, '0']
+- [lora_sdr_frame_sync_0, '0', lora_sdr_fft_demod_0, '0']
 
 metadata:
   file_format: 1
