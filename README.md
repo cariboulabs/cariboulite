@@ -17,6 +17,10 @@ CaribouLite is an affordable, educational, open-source SDR evaluation platform a
   </tr>
 </table>
 
+## NOTE: No Support for RPI-5
+Due to the architectural changes in RPI5 - the new I/O controller called "RP1" chip, CaribouLite is not supported on RPI5. We assume that the reason is the removal of the SMI interface altogether from the external interfaces by Broadcomm's team.
+So, if you intend to use CaribouLite on RPI5 please don't - it won't work. Why was the SMI interface deprecated by Broadcomm (either from its hardware or kernel SW support)? Most probably due to the same reason this interface was not documented in the first place - no interest in supporting a high-speed external interface within the 40-pin connector.
+
 # Getting Started & Installation
 Use the following steps to install the CaribouLite on your choice of RPI board
 1. Mount the CaribouLite on a **un-powered** RPI device using the 40-pin header.
