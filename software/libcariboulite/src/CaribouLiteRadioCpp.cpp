@@ -68,7 +68,7 @@ void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
 }
 
 //==================================================================
-int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_read)
+int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, cariboulite_sample_meta* meta, size_t num_to_read)
 {
     if (samples == 0)
     {
@@ -76,7 +76,7 @@ int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_re
         return 0;
     }        
 
-    int ret = ReadSamples((std::complex<short>*)NULL, num_to_read);
+    int ret = ReadSamples((std::complex<short>*)NULL, meta,  num_to_read);
     //printf("ret = %d\n", ret);
     if (ret <= 0)
     {
@@ -94,7 +94,7 @@ int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_re
 }
 
 //==================================================================
-int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_read)
+int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, cariboulite_sample_meta* meta, size_t num_to_read)
 {
     if (!_rx_is_active || _read_samples == NULL || _read_metadata == NULL || num_to_read == 0)
     {
@@ -117,6 +117,14 @@ int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_re
         for (size_t i = 0; i < (size_t)ret; i++)
         {
             samples[i] = {_read_samples[i].i, _read_samples[i].q};
+        }
+    }
+
+    if (meta)
+    {
+        for (size_t i = 0; i < (size_t)ret; i++)
+        {
+            meta[i] = _read_metadata[i];
         }
     }
     

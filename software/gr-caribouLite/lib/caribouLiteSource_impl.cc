@@ -10,7 +10,6 @@
 
 namespace gr {
     namespace caribouLite {       
-        using output_type = gr_complex;
 
         void detectBoard()
         {
@@ -40,7 +39,7 @@ namespace gr {
         caribouLiteSource_impl::caribouLiteSource_impl(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq)
                         : gr::sync_block("caribouLiteSource",
                           gr::io_signature::make(0, 0, 0),
-                          gr::io_signature::make(1 /* min outputs */, 1 /*max outputs */, sizeof(output_type)))
+                          gr::io_signature::make(1 /* min outputs */, 1 /*max outputs */, sizeof(gr_complex)))
         {
             detectBoard();
 
@@ -79,8 +78,9 @@ namespace gr {
                                         gr_vector_const_void_star &input_items,
                                         gr_vector_void_star &output_items)
         {
-            auto out = static_cast<output_type*>(output_items[0]);
-            int ret = _radio->ReadSamples(out, static_cast<size_t>(noutput_items));
+            auto out_samples = static_cast<gr_complex*>(output_items[0]);
+            auto out_meta = static_cast<cariboulite_sample_meta*>(output_items[1]);
+            int ret = _radio->ReadSamples(out_samples, out_meta, static_cast<size_t>(noutput_items));
             if (ret <= 0) return 0;
             return ret;
         }
