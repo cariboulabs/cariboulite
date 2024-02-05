@@ -109,7 +109,7 @@ int main ()
         try
         {
             s1g->SetFrequency(900000000);
-            s1g->FlushBuffers();
+            //s1g->FlushBuffers();
         }
         catch (...)
         {
@@ -125,7 +125,7 @@ int main ()
         try
         {
             hif->SetFrequency(2400000000);
-            hif->FlushBuffers();
+            //hif->FlushBuffers();
         }
         catch (...)
         {
@@ -133,7 +133,7 @@ int main ()
         }
         hif->SetRxGain(0);
         hif->SetAgc(false);
-        hif->StartReceiving(receivedSamples, 20000);
+        hif->StartReceiving(receivedSamples);
         
         getchar();
     }

@@ -505,14 +505,7 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	}
     //------------------------------- 
     case SMI_STREAM_IOC_FLUSH_FIFO:
-    {
-        if (mutex_lock_interruptible(&inst->read_lock))
-        {
-            return -EINTR;
-        }
-        kfifo_reset_out(&inst->rx_fifo);
-        mutex_unlock(&inst->read_lock);
-        
+    {        
         break;
     }    
     //-------------------------------
@@ -1091,17 +1084,29 @@ static int smi_stream_release(struct inode *inode, struct file *file)
 static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
 	int ret = 0;
-	unsigned int copied;
-	size_t num_bytes = 0;
-	unsigned int count_actual = count;
+	unsigned int copied = 0;
+	//size_t num_bytes = 0;
+	//unsigned int count_actual = count;
 	
-	if (mutex_lock_interruptible(&inst->read_lock))
+    if (buf == NULL)
 	{
-		return -EINTR;
-	}
-    ret = kfifo_to_user(&inst->rx_fifo, buf, count, &copied);
-	mutex_unlock(&inst->read_lock);
-
+        //dev_info(inst->dev, "Flushing internal rx_kfifo");
+        if (mutex_lock_interruptible(&inst->read_lock))
+        {
+            return -EINTR;
+        }
+        kfifo_reset_out(&inst->rx_fifo);
+        mutex_unlock(&inst->read_lock);
+    }
+    else
+    {
+        if (mutex_lock_interruptible(&inst->read_lock))
+        {
+            return -EINTR;
+        }
+        ret = kfifo_to_user(&inst->rx_fifo, buf, count, &copied);
+        mutex_unlock(&inst->read_lock);
+    }
 	return ret < 0 ? ret : (ssize_t)copied;
 }
 
