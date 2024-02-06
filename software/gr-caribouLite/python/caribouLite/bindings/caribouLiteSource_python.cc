@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(caribouLiteSource.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(9aa68c862233e30766b0524aaf530760)                     */
+/* BINDTOOL_HEADER_FILE_HASH(2af106876738c9927aadb177d064272d)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -47,7 +47,7 @@ void bind_caribouLiteSource(py::module& m)
              py::arg("rx_bw") = 2500000,
              py::arg("sample_rate") = 4000000,
              py::arg("freq") = 900000000,
-             py::arg("provide_sync") = false,
+             py::arg("provide_meta") = false,
              D(caribouLiteSource, make))
 
 

@@ -183,8 +183,8 @@ public:
     bool GetIsTransmittingCw(void);
     
     // Synchronous Reading and Writing
-    int ReadSamples(std::complex<float>* samples, cariboulite_sample_meta* meta, size_t num_to_read);
-    int ReadSamples(std::complex<short>* samples, cariboulite_sample_meta* meta, size_t num_to_read);
+    int ReadSamples(std::complex<float>* samples, size_t num_to_read, uint8_t* meta = NULL);
+    int ReadSamples(std::complex<short>* samples, size_t num_to_read, uint8_t* meta = NULL);
     int WriteSamples(std::complex<float>* samples, size_t num_to_write);
     int WriteSamples(std::complex<short>* samples, size_t num_to_write);
     

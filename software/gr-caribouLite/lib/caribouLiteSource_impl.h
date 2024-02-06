@@ -27,7 +27,7 @@ namespace gr
             float _sample_rate;
             float _frequency;
             size_t _mtu_size;
-            bool _provide_sync;
+            bool _provide_meta;
 
             cariboulite_sample_meta* _metadata;
             CaribouLite* _cl;
@@ -40,7 +40,7 @@ namespace gr
                                 float rx_bw,
                                 float sample_rate,
                                 float freq,
-                                bool provide_sync);
+                                bool provide_meta);
             ~caribouLiteSource_impl();
 
             int work(

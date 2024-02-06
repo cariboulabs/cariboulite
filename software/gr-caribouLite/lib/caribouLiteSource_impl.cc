@@ -34,7 +34,7 @@ namespace gr {
                                                     float rx_bw,
                                                     float sample_rate,
                                                     float freq,
-                                                    bool provide_sync)
+                                                    bool provide_meta)
         {
             return gnuradio::make_block_sptr<caribouLiteSource_impl>(channel,
                                                                     enable_agc,
@@ -42,7 +42,7 @@ namespace gr {
                                                                     rx_bw,
                                                                     sample_rate,
                                                                     freq,
-                                                                    provide_sync);
+                                                                    provide_meta);
         }
 
 
@@ -54,10 +54,10 @@ namespace gr {
                                                 float rx_bw,
                                                 float sample_rate,
                                                 float freq,
-                                                bool provide_sync)
+                                                bool provide_meta)
                         : gr::sync_block("caribouLiteSource",
                           gr::io_signature::make(0, 0, 0),
-                          gr::io_signature::make(1 /* min outputs */, 1 /*max outputs */, sizeof(gr_complex)))
+                          gr::io_signature::make(1 /* min outputs */, 2 /*max outputs */, sizeof(gr_complex)))
         {
             detectBoard();
 
@@ -67,12 +67,12 @@ namespace gr {
             _rx_bw = rx_bw;
             _sample_rate = sample_rate;
             _frequency = freq;
-            _mtu_size = _radio->GetNativeMtuSample();
-            _provide_sync = provide_sync;
+            _provide_meta = provide_meta;
 
             CaribouLite &cl = CaribouLite::GetInstance(false);
             _cl = &cl;
             _radio = cl.GetRadioChannel(_channel);
+            _mtu_size = _radio->GetNativeMtuSample();
             
             // setup parameters
             _radio->SetRxGain(rx_gain);
@@ -98,23 +98,12 @@ namespace gr {
                                         gr_vector_void_star &output_items)
         {
             auto out_samples = static_cast<gr_complex*>(output_items[0]);
-            auto out_sync = static_cast<uint8_t*>(output_items[1]);
+            auto out_meta = _provide_meta == true ? static_cast<uint8_t*>(output_items[1]) : (uint8_t*) NULL ;
+            int ret = _radio->ReadSamples(out_samples, static_cast<size_t>(noutput_items), out_meta);
             
-            _metadata = new cariboulite_sample_meta[noutput_items];
-            int ret = _radio->ReadSamples(out_samples, _metadata, static_cast<size_t>(noutput_items));
-            
-            if (ret <= 0) { //fail
-                delete[] _metadata;
+            if (ret <= 0) 
+            {
                 return 0;
-            } else { //success
-                if (_provide_sync)
-                {
-                    for (int i = 0; i < ret; i++)
-                    {
-                        out_sync[i] = _metadata[i].sync;
-                    }
-                }
-                delete[] _metadata;
             }
             return ret;
         }
