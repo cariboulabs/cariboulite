@@ -1,4 +1,5 @@
 #include "CaribouLite.hpp"
+#include <string.h>
 
 //=================================================================
 void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
@@ -68,15 +69,15 @@ void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
 }
 
 //==================================================================
-int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_read)
+int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_read, uint8_t* meta)
 {
-    if (samples == 0)
+    if (samples == NULL)
     {
         printf("samples_is_null=%d", _read_samples==NULL);
         return 0;
     }        
 
-    int ret = ReadSamples((std::complex<short>*)NULL, num_to_read);
+    int ret = ReadSamples((std::complex<short>*)NULL,  num_to_read, meta);
     //printf("ret = %d\n", ret);
     if (ret <= 0)
     {
@@ -94,7 +95,7 @@ int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_re
 }
 
 //==================================================================
-int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_read)
+int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_read, uint8_t* meta)
 {
     if (!_rx_is_active || _read_samples == NULL || _read_metadata == NULL || num_to_read == 0)
     {
@@ -118,6 +119,11 @@ int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_re
         {
             samples[i] = {_read_samples[i].i, _read_samples[i].q};
         }
+    }
+
+    if (meta)
+    {
+        memcpy(meta, _read_metadata, (size_t)ret);
     }
     
     return ret;
