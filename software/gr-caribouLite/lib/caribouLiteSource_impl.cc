@@ -28,15 +28,33 @@ namespace gr {
         }
 
         //-------------------------------------------------------------------------------------------------------------
-        caribouLiteSource::sptr caribouLiteSource::make(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq)
+        caribouLiteSource::sptr caribouLiteSource::make(int channel,
+                                                    bool enable_agc,
+                                                    float rx_gain,
+                                                    float rx_bw,
+                                                    float sample_rate,
+                                                    float freq,
+                                                    bool provide_sync)
         {
-            return gnuradio::make_block_sptr<caribouLiteSource_impl>(channel, enable_agc, rx_gain, rx_bw, sample_rate, freq);
+            return gnuradio::make_block_sptr<caribouLiteSource_impl>(channel,
+                                                                    enable_agc,
+                                                                    rx_gain,
+                                                                    rx_bw,
+                                                                    sample_rate,
+                                                                    freq,
+                                                                    provide_sync);
         }
 
 
         // public constructor
         //-------------------------------------------------------------------------------------------------------------
-        caribouLiteSource_impl::caribouLiteSource_impl(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq)
+        caribouLiteSource_impl::caribouLiteSource_impl(int channel,
+                                                bool enable_agc,
+                                                float rx_gain,
+                                                float rx_bw,
+                                                float sample_rate,
+                                                float freq,
+                                                bool provide_sync)
                         : gr::sync_block("caribouLiteSource",
                           gr::io_signature::make(0, 0, 0),
                           gr::io_signature::make(1 /* min outputs */, 1 /*max outputs */, sizeof(gr_complex)))
@@ -49,11 +67,12 @@ namespace gr {
             _rx_bw = rx_bw;
             _sample_rate = sample_rate;
             _frequency = freq;
+            _mtu_size = _radio->GetNativeMtuSample();
+            _provide_sync = provide_sync;
+
             CaribouLite &cl = CaribouLite::GetInstance(false);
             _cl = &cl;
             _radio = cl.GetRadioChannel(_channel);
-            
-            _mtu_size = _radio->GetNativeMtuSample();
             
             // setup parameters
             _radio->SetRxGain(rx_gain);
@@ -82,16 +101,18 @@ namespace gr {
             auto out_sync = static_cast<uint8_t*>(output_items[1]);
             
             _metadata = new cariboulite_sample_meta[noutput_items];
-
             int ret = _radio->ReadSamples(out_samples, _metadata, static_cast<size_t>(noutput_items));
             
             if (ret <= 0) { //fail
                 delete[] _metadata;
                 return 0;
-            }  else { //success
-                for (int i = 0; i < ret; i++)
+            } else { //success
+                if (_provide_sync)
                 {
-                    out_sync[i] = _metadata[i].sync;
+                    for (int i = 0; i < ret; i++)
+                    {
+                        out_sync[i] = _metadata[i].sync;
+                    }
                 }
                 delete[] _metadata;
             }

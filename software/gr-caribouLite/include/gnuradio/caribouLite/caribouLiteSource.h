@@ -32,7 +32,13 @@ namespace gr {
        * class. caribouLite::caribouLiteSource::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int channel=0, bool enable_agc=false, float rx_gain=40, float rx_bw=2500000, float sample_rate=4000000, float freq=900000000);
+      static sptr make(int channel=0,
+                      bool enable_agc=false,
+                      float rx_gain=40,
+                      float rx_bw=2500000,
+                      float sample_rate=4000000,
+                      float freq=900000000,
+                      bool provide_sync = false);
     };
 
   } // namespace caribouLite

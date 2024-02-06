@@ -27,13 +27,20 @@ namespace gr
             float _sample_rate;
             float _frequency;
             size_t _mtu_size;
+            bool _provide_sync;
+
             cariboulite_sample_meta* _metadata;
-            
             CaribouLite* _cl;
             CaribouLiteRadio *_radio;
             
         public:
-            caribouLiteSource_impl(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq);
+            caribouLiteSource_impl(int channel,
+                                bool enable_agc,
+                                float rx_gain,
+                                float rx_bw,
+                                float sample_rate,
+                                float freq,
+                                bool provide_sync);
             ~caribouLiteSource_impl();
 
             int work(

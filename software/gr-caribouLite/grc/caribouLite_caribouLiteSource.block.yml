@@ -7,7 +7,7 @@ templates:
   imports: 
     from gnuradio import caribouLite
   make: 
-    caribouLite.caribouLiteSource(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq})
+    caribouLite.caribouLiteSource(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq}, ${provide_sync})
   
 parameters:
 - id: channel
@@ -40,10 +40,16 @@ parameters:
   dtype: float
   default: 900000000.0
 
+- id: provide_sync
+  dtype: enum
+  options: ['True', 'False']
+  hide: part
+  default: 'False'
+
 cpp_templates:
     includes: ['#include <gnuradio/caribouLite/caribouLiteSource.h>']
     declarations: 'caribouLite::caribouLiteSource::sptr ${id};'
-    make: 'this->${id} = caribouLite::caribouLiteSource::make(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq});'
+    make: 'this->${id} = caribouLite::caribouLiteSource::make(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq}, ${provide_sync});'
     packages: ['gnuradio-caribouLite']
     link: ['gnuradio::gnuradio-caribouLite']
     translations:
@@ -60,5 +66,6 @@ outputs:
 - label: sync
   domain: stream
   dtype: byte
+  hide: ${False if str(provide_sync)=='True' else True}
 
 file_format: 1

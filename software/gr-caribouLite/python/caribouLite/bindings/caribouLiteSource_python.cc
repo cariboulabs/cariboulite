@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Free Software Foundation, Inc.
+ * Copyright 2024 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(caribouLiteSource.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(9ce2846f2939a8b8e624a4612154ad52)                     */
+/* BINDTOOL_HEADER_FILE_HASH(9aa68c862233e30766b0524aaf530760)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -30,30 +30,26 @@ namespace py = pybind11;
 void bind_caribouLiteSource(py::module& m)
 {
 
-    using caribouLiteSource    = gr::caribouLite::caribouLiteSource;
+    using caribouLiteSource = ::gr::caribouLite::caribouLiteSource;
 
 
-    py::class_<caribouLiteSource, gr::sync_block, gr::block, gr::basic_block,
-        std::shared_ptr<caribouLiteSource>>(m, "caribouLiteSource", D(caribouLiteSource))
+    py::class_<caribouLiteSource,
+               gr::sync_block,
+               gr::block,
+               gr::basic_block,
+               std::shared_ptr<caribouLiteSource>>(
+        m, "caribouLiteSource", D(caribouLiteSource))
 
         .def(py::init(&caribouLiteSource::make),
-           D(caribouLiteSource,make)
-        )
-        
-
+             py::arg("channel") = 0,
+             py::arg("enable_agc") = false,
+             py::arg("rx_gain") = 40,
+             py::arg("rx_bw") = 2500000,
+             py::arg("sample_rate") = 4000000,
+             py::arg("freq") = 900000000,
+             py::arg("provide_sync") = false,
+             D(caribouLiteSource, make))
 
 
         ;
-
-
-
-
 }
-
-
-
-
-
-
-
-
