@@ -81,6 +81,10 @@ struct bcm2835_smi_dev_instance
 	// address related
 	unsigned int cur_address;
     int address_changed;
+    
+    // flags
+    int invalidate_rx_buffers;
+    int invalidate_tx_buffers;
 	
 	struct task_struct *reader_thread;
 	struct task_struct *writer_thread;
@@ -503,18 +507,12 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 		}
 		break;
 	}
-    //------------------------------- 
+    //-------------------------------
     case SMI_STREAM_IOC_FLUSH_FIFO:
     {
-        if (mutex_lock_interruptible(&inst->read_lock))
-        {
-            return -EINTR;
-        }
-        kfifo_reset_out(&inst->rx_fifo);
-        mutex_unlock(&inst->read_lock);
-        
+	// moved to read file operation
         break;
-    }    
+    }
     //-------------------------------
 	default:
 		dev_err(inst->dev, "invalid ioctl cmd: %d", cmd);
@@ -569,7 +567,6 @@ static void stream_smi_dma_callback_user_copy(void *param)
 {
 	/* Notify the bottom half that a chunk is ready for user copy */
 	struct bcm2835_smi_instance *inst = (struct bcm2835_smi_instance *)param;
-	
 	up(&inst->bounce.callback_sem);
 }
 
@@ -604,7 +601,7 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 		spin_unlock(&inst->transaction_lock);
 		return 0;
 	}
-    
+
 	dma_async_issue_pending(inst->dma_chan);
 
 	if (dma_dir == DMA_DEV_TO_MEM)
@@ -785,8 +782,9 @@ int reader_thread_stream_function(void *pv)
 {
 	int count = 0;
     int current_dma_buffer = 0;
+    int buffer_ready[2] = {0, 0};       // does a certain buffer contain actual data
 	struct bcm2835_smi_bounce_info *bounce = NULL;
-    
+
     ktime_t start;
     s64 t1, t2, t3;
 
@@ -798,9 +796,21 @@ int reader_thread_stream_function(void *pv)
 		// check if the streaming state is on, if not, sleep and check again
 		if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
 		{
-			msleep(10);
+			msleep(2);
+            // invalidate both buffers integrity
+            buffer_ready[0] = 0;
+            buffer_ready[1] = 0;
+            current_dma_buffer = 0;
 			continue;
 		}
+        
+        if (inst->invalidate_rx_buffers)
+        {
+            inst->invalidate_rx_buffers = 0;
+            buffer_ready[0] = 0;
+            buffer_ready[1] = 0;
+            current_dma_buffer = 0;
+        }
         
         start = ktime_get();
         // sync smi address
@@ -813,13 +823,14 @@ int reader_thread_stream_function(void *pv)
         //--------------------------------------------------------
 		// try setup a new DMA transfer into dma bounce buffer
 		// bounce will hold the current transfers state
+        buffer_ready[current_dma_buffer] = 0;
 		count = stream_smi_user_dma(inst->smi_inst, DMA_DEV_TO_MEM, &bounce, current_dma_buffer);
 		if (count != DMA_BOUNCE_BUFFER_SIZE || bounce == NULL)
 		{
 			dev_err(inst->dev, "stream_smi_user_dma returned illegal count = %d, buff_num = %d", count, current_dma_buffer);
-            spin_lock(&inst->smi_inst->transaction_lock);
-            dmaengine_terminate_all(inst->smi_inst->dma_chan);
-            spin_unlock(&inst->smi_inst->transaction_lock);
+            //spin_lock(&inst->smi_inst->transaction_lock);
+            //dmaengine_terminate_all(inst->smi_inst->dma_chan);
+            //spin_unlock(&inst->smi_inst->transaction_lock);
 			continue;
 		}
         
@@ -827,20 +838,25 @@ int reader_thread_stream_function(void *pv)
         
         //--------------------------------------------------------
         // Don't wait for the buffer to fill in, copy the "other" 
-        // previously filled up buffer into the kfifo
-		if (mutex_lock_interruptible(&inst->read_lock))
-		{
-			return -EINTR;
-		}
-        
+        // previously filled up buffer into the kfifo - only if
+        // buffer is valid
         start = ktime_get();
         
-		kfifo_in(&inst->rx_fifo, bounce->buffer[1-current_dma_buffer], DMA_BOUNCE_BUFFER_SIZE);
-		mutex_unlock(&inst->read_lock);
-		
-		// for the polling mechanism
-		inst->readable = true;
-		wake_up_interruptible(&inst->poll_event);
+        if (buffer_ready[1-current_dma_buffer])
+        {
+            if (mutex_lock_interruptible(&inst->read_lock))
+            {
+                //return -EINTR;
+                continue;
+            }
+            
+            kfifo_in(&inst->rx_fifo, bounce->buffer[1-current_dma_buffer], DMA_BOUNCE_BUFFER_SIZE);
+            mutex_unlock(&inst->read_lock);
+            
+            // for the polling mechanism
+            inst->readable = true;
+            wake_up_interruptible(&inst->poll_event);
+        }
         
         t2 = ktime_to_ns(ktime_sub(ktime_get(), start));
 
@@ -866,13 +882,14 @@ int reader_thread_stream_function(void *pv)
             if (inst->state == smi_stream_idle)
             {
                 dev_info(inst->dev, "Reader state became idle, terminating dma");
-                spin_lock(&inst->smi_inst->transaction_lock);
-                dmaengine_terminate_all(inst->smi_inst->dma_chan);
-                spin_unlock(&inst->smi_inst->transaction_lock);
+                //spin_lock(&inst->smi_inst->transaction_lock);
+                //dmaengine_terminate_all(inst->smi_inst->dma_chan);
+                //spin_unlock(&inst->smi_inst->transaction_lock);
             }
             
             //--------------------------------------------------------
             // Switch the buffers
+            buffer_ready[current_dma_buffer] = 1;
             current_dma_buffer = 1-current_dma_buffer;
         }
         inst->reader_waiting_sema = false;
@@ -1091,17 +1108,28 @@ static int smi_stream_release(struct inode *inode, struct file *file)
 static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
 	int ret = 0;
-	unsigned int copied;
-	size_t num_bytes = 0;
-	unsigned int count_actual = count;
+	unsigned int copied = 0;
 	
-	if (mutex_lock_interruptible(&inst->read_lock))
+    if (buf == NULL)
 	{
-		return -EINTR;
-	}
-    ret = kfifo_to_user(&inst->rx_fifo, buf, count, &copied);
-	mutex_unlock(&inst->read_lock);
-
+        //dev_info(inst->dev, "Flushing internal rx_kfifo");
+        if (mutex_lock_interruptible(&inst->read_lock))
+        {
+            return -EINTR;
+        }
+        kfifo_reset_out(&inst->rx_fifo);
+        mutex_unlock(&inst->read_lock);
+        inst->invalidate_rx_buffers = 1;
+    }
+    else
+    {
+        if (mutex_lock_interruptible(&inst->read_lock))
+        {
+            return -EINTR;
+        }
+        ret = kfifo_to_user(&inst->rx_fifo, buf, count, &copied);
+        mutex_unlock(&inst->read_lock);
+    }
 	return ret < 0 ? ret : (ssize_t)copied;
 }
 
@@ -1348,6 +1376,8 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 	// Streaming instance initializations
 	inst->reader_thread = NULL;
 	inst->writer_thread = NULL;
+    inst->invalidate_rx_buffers = 0;
+    inst->invalidate_tx_buffers = 0;
 	init_waitqueue_head(&inst->poll_event);
 	inst->readable = false;
 	inst->writeable = false;
