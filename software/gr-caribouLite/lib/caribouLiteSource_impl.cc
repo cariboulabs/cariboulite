@@ -79,9 +79,22 @@ namespace gr {
                                         gr_vector_void_star &output_items)
         {
             auto out_samples = static_cast<gr_complex*>(output_items[0]);
-            auto out_meta = static_cast<cariboulite_sample_meta*>(output_items[1]);
-            int ret = _radio->ReadSamples(out_samples, out_meta, static_cast<size_t>(noutput_items));
-            if (ret <= 0) return 0;
+            auto out_sync = static_cast<uint8_t*>(output_items[1]);
+            
+            _metadata = new cariboulite_sample_meta[noutput_items];
+
+            int ret = _radio->ReadSamples(out_samples, _metadata, static_cast<size_t>(noutput_items));
+            
+            if (ret <= 0) { //fail
+                delete[] _metadata;
+                return 0;
+            }  else { //success
+                for (int i = 0; i < ret; i++)
+                {
+                    out_sync[i] = _metadata[i].sync;
+                }
+                delete[] _metadata;
+            }
             return ret;
         }
 

@@ -57,7 +57,7 @@ outputs:
   domain: stream
   dtype: complex
 
-- label: meta
+- label: sync
   domain: stream
   dtype: byte
 

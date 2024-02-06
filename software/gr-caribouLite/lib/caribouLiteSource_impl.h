@@ -27,6 +27,7 @@ namespace gr
             float _sample_rate;
             float _frequency;
             size_t _mtu_size;
+            cariboulite_sample_meta* _metadata;
             
             CaribouLite* _cl;
             CaribouLiteRadio *_radio;

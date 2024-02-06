@@ -1,4 +1,5 @@
 #include "CaribouLite.hpp"
+#include <string.h>
 
 //=================================================================
 void CaribouLiteRadio::CaribouLiteRxThread(CaribouLiteRadio* radio)
@@ -122,10 +123,7 @@ int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, cariboulite_samp
 
     if (meta)
     {
-        for (size_t i = 0; i < (size_t)ret; i++)
-        {
-            meta[i] = _read_metadata[i];
-        }
+        memcpy(meta, _read_metadata, sizeof(cariboulite_sample_meta) * (size_t)ret);
     }
     
     return ret;
