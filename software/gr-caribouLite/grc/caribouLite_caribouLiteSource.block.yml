@@ -41,6 +41,7 @@ parameters:
   default: 900000000.0
 
 - id: provide_meta
+  label: output meta data
   dtype: enum
   options: ['True', 'False']
   hide: part
@@ -63,7 +64,7 @@ outputs:
   domain: stream
   dtype: complex
 
-- label: sync
+- label: meta
   domain: stream
   dtype: byte
   hide: ${False if str(provide_meta)=='True' else True}
