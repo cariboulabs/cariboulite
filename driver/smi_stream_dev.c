@@ -842,7 +842,7 @@ int reader_thread_stream_function(void *pv)
         // buffer is valid
         start = ktime_get();
         
-        if (buffer_ready[1-current_dma_buffer])
+        if (buffer_ready[1-current_dma_buffer] && !inst->invalidate_rx_buffers)
         {
             if (mutex_lock_interruptible(&inst->read_lock))
             {
