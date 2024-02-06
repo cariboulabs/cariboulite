@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Free Software Foundation, Inc.
+ * Copyright 2024 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -15,13 +15,10 @@
  */
 
 
-
- static const char *__doc_gr_caribouLite_caribouLiteSource = R"doc()doc";
-
-
- static const char *__doc_gr_caribouLite_caribouLiteSource_caribouLiteSource = R"doc()doc";
+static const char* __doc_gr_caribouLite_caribouLiteSource = R"doc()doc";
 
 
- static const char *__doc_gr_caribouLite_caribouLiteSource_make = R"doc()doc";
+static const char* __doc_gr_caribouLite_caribouLiteSource_caribouLiteSource = R"doc()doc";
 
-  
+
+static const char* __doc_gr_caribouLite_caribouLiteSource_make = R"doc()doc";

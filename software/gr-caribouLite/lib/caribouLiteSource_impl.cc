@@ -10,7 +10,6 @@
 
 namespace gr {
     namespace caribouLite {       
-        using output_type = gr_complex;
 
         void detectBoard()
         {
@@ -29,18 +28,37 @@ namespace gr {
         }
 
         //-------------------------------------------------------------------------------------------------------------
-        caribouLiteSource::sptr caribouLiteSource::make(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq)
+        caribouLiteSource::sptr caribouLiteSource::make(int channel,
+                                                    bool enable_agc,
+                                                    float rx_gain,
+                                                    float rx_bw,
+                                                    float sample_rate,
+                                                    float freq,
+                                                    bool provide_meta)
         {
-            return gnuradio::make_block_sptr<caribouLiteSource_impl>(channel, enable_agc, rx_gain, rx_bw, sample_rate, freq);
+            return gnuradio::make_block_sptr<caribouLiteSource_impl>(channel,
+                                                                    enable_agc,
+                                                                    rx_gain,
+                                                                    rx_bw,
+                                                                    sample_rate,
+                                                                    freq,
+                                                                    provide_meta);
         }
 
 
         // public constructor
         //-------------------------------------------------------------------------------------------------------------
-        caribouLiteSource_impl::caribouLiteSource_impl(int channel, bool enable_agc, float rx_gain, float rx_bw, float sample_rate, float freq)
+        caribouLiteSource_impl::caribouLiteSource_impl(int channel,
+                                                bool enable_agc,
+                                                float rx_gain,
+                                                float rx_bw,
+                                                float sample_rate,
+                                                float freq,
+                                                bool provide_meta)
                         : gr::sync_block("caribouLiteSource",
                           gr::io_signature::make(0, 0, 0),
-                          gr::io_signature::make(1 /* min outputs */, 1 /*max outputs */, sizeof(output_type)))
+                          gr::io_signature::make(1, 2, {sizeof(gr_complex), sizeof(uint8_t)})
+                          )
         {
             detectBoard();
 
@@ -50,10 +68,11 @@ namespace gr {
             _rx_bw = rx_bw;
             _sample_rate = sample_rate;
             _frequency = freq;
+            _provide_meta = provide_meta;
+
             CaribouLite &cl = CaribouLite::GetInstance(false);
             _cl = &cl;
             _radio = cl.GetRadioChannel(_channel);
-            
             _mtu_size = _radio->GetNativeMtuSample();
             
             // setup parameters
@@ -79,9 +98,14 @@ namespace gr {
                                         gr_vector_const_void_star &input_items,
                                         gr_vector_void_star &output_items)
         {
-            auto out = static_cast<output_type*>(output_items[0]);
-            int ret = _radio->ReadSamples(out, static_cast<size_t>(noutput_items));
-            if (ret <= 0) return 0;
+            auto out_samples = static_cast<gr_complex*>(output_items[0]);
+            auto out_meta = _provide_meta == true ? static_cast<uint8_t*>(output_items[1]) : (uint8_t*) NULL ;
+            int ret = _radio->ReadSamples(out_samples, static_cast<size_t>(noutput_items), out_meta);
+            
+            if (ret <= 0) 
+            {
+                return 0;
+            }
             return ret;
         }
 
