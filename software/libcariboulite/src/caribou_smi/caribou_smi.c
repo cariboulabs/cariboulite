@@ -56,7 +56,7 @@ static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_setti
     printf("    dma enable: %c, passthru enable: %c\n", settings->dma_enable ? 'Y':'N', settings->dma_passthrough_enable ? 'Y':'N');
     printf("    dma threshold read: %d, write: %d\n", settings->dma_read_thresh, settings->dma_write_thresh);
     printf("    dma panic threshold read: %d, write: %d\n", settings->dma_panic_read_thresh, settings->dma_panic_write_thresh);
-    printf("    native kernel chunk size: %ld bytes\n", dev->native_batch_len);
+    printf("    native kernel chunk size: %d bytes\n", dev->native_batch_len);
 }
 
 //=========================================================================
@@ -765,7 +765,7 @@ int caribou_smi_flush_fifo(caribou_smi_st* dev)
 {
     if (!dev) return -1;
     if (!dev->initialized) return -1;
-    int ret = ioctl(dev->filedesc, SMI_STREAM_IOC_FLUSH_FIFO, 1);
+    int ret = read(dev->filedesc, NULL, 0);
     if (ret != 0)
     {
         ZF_LOGE("failed flushing driver fifos");

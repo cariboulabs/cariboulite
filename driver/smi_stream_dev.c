@@ -510,7 +510,7 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
     //-------------------------------
     case SMI_STREAM_IOC_FLUSH_FIFO:
     {
-	// moved to read file operation
+        // moved to read file operation
         break;
     }
     //-------------------------------
