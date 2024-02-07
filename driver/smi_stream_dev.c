@@ -794,23 +794,16 @@ int reader_thread_stream_function(void *pv)
 	while(!kthread_should_stop())
 	{       
 		// check if the streaming state is on, if not, sleep and check again
-		if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
+		if ((inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1) || inst->invalidate_rx_buffers)
 		{
 			msleep(2);
             // invalidate both buffers integrity
+            inst->invalidate_rx_buffers = 0;
             buffer_ready[0] = 0;
             buffer_ready[1] = 0;
             current_dma_buffer = 0;
 			continue;
 		}
-        
-        if (inst->invalidate_rx_buffers)
-        {
-            inst->invalidate_rx_buffers = 0;
-            buffer_ready[0] = 0;
-            buffer_ready[1] = 0;
-            current_dma_buffer = 0;
-        }
         
         start = ktime_get();
         // sync smi address
@@ -818,6 +811,10 @@ int reader_thread_stream_function(void *pv)
         {
             bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
             inst->address_changed = 0;
+            // invalidate the buffers
+            buffer_ready[0] = 0;
+            buffer_ready[1] = 0;
+            current_dma_buffer = 0;
         }
 		
         //--------------------------------------------------------
@@ -828,9 +825,9 @@ int reader_thread_stream_function(void *pv)
 		if (count != DMA_BOUNCE_BUFFER_SIZE || bounce == NULL)
 		{
 			dev_err(inst->dev, "stream_smi_user_dma returned illegal count = %d, buff_num = %d", count, current_dma_buffer);
-            //spin_lock(&inst->smi_inst->transaction_lock);
-            //dmaengine_terminate_all(inst->smi_inst->dma_chan);
-            //spin_unlock(&inst->smi_inst->transaction_lock);
+            spin_lock(&inst->smi_inst->transaction_lock);
+            dmaengine_terminate_sync(inst->smi_inst->dma_chan);
+            spin_unlock(&inst->smi_inst->transaction_lock);
 			continue;
 		}
         
@@ -873,7 +870,7 @@ int reader_thread_stream_function(void *pv)
         {
             dev_info(inst->dev, "Reader DMA bounce timed out");
             spin_lock(&inst->smi_inst->transaction_lock);
-            dmaengine_terminate_all(inst->smi_inst->dma_chan);
+            dmaengine_terminate_sync(inst->smi_inst->dma_chan);
             spin_unlock(&inst->smi_inst->transaction_lock);
         }
         else
@@ -882,9 +879,9 @@ int reader_thread_stream_function(void *pv)
             if (inst->state == smi_stream_idle)
             {
                 dev_info(inst->dev, "Reader state became idle, terminating dma");
-                //spin_lock(&inst->smi_inst->transaction_lock);
-                //dmaengine_terminate_all(inst->smi_inst->dma_chan);
-                //spin_unlock(&inst->smi_inst->transaction_lock);
+                spin_lock(&inst->smi_inst->transaction_lock);
+                dmaengine_terminate_sync(inst->smi_inst->dma_chan);
+                spin_unlock(&inst->smi_inst->transaction_lock);
             }
             
             //--------------------------------------------------------

@@ -1,4 +1,4 @@
-#include "CaribouLite.hpp"
+#include <CaribouLite.hpp>
 #include <string.h>
 
 //=================================================================
