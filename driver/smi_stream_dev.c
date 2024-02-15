@@ -242,18 +242,25 @@ static int smi_disable_sync(struct bcm2835_smi_instance *smi_inst)
 	
 }
 
+static void smi_refresh_dma_command(struct bcm2835_smi_instance *smi_inst, int num_transfers)
+{
+	int smics_temp;
+	
+	write_smi_reg(smi_inst, 4*num_transfers, SMIL);
+	
+	// Start the transaction
+	smics_temp = read_smi_reg(smi_inst, SMICS);
+	smics_temp |= SMICS_START;
+	write_smi_reg(smi_inst, smics_temp, SMICS);
+}
+
 /***************************************************************************/
 static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int num_transfers)
 {
 	int smics_temp;
 	int success = 0;
 
-	if(smi_is_active(smi_inst))
-	{
-		
-		write_smi_reg(smi_inst, 4*num_transfers, SMIL);
-		return 0;
-	}
+
 	
 	
 	write_smi_reg(inst->smi_inst, 0, SMIL);
@@ -282,11 +289,11 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 	// Clear the FIFO (reset it to zero contents)
 	write_smi_reg(smi_inst, smics_temp, SMICS);
 
-	// Start the transaction
-	smics_temp |= SMICS_START;
-	write_smi_reg(smi_inst, smics_temp, SMICS);
+
 	return 0;
 }
+
+
 
 /***************************************************************************/
 static int smi_init_programmed_write(struct bcm2835_smi_instance *smi_inst, int num_transfers)
@@ -618,6 +625,17 @@ int reader_thread_stream_function(void *pv)
 	
 	sema_init(&inst->smi_inst->bounce.callback_sem, 0);
 	
+	spin_lock(&inst->smi_inst->transaction_lock);
+	ret = smi_init_programmed_read(inst->smi_inst, DMA_BOUNCE_BUFFER_SIZE);
+	if (ret != 0)
+	{
+		spin_unlock(&inst->smi_inst->transaction_lock);
+		dev_err(inst->smi_inst->dev, "smi_init_programmed_read returned %d", ret);
+		errors = 1;
+		
+	}
+	spin_unlock(&inst->smi_inst->transaction_lock);
+	
 	while(!kthread_should_stop() && !(inst->address_changed) && !errors)
 	{       
 		struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
@@ -660,22 +678,15 @@ int reader_thread_stream_function(void *pv)
         
         t1 = ktime_to_ns(ktime_sub(ktime_get(), start));
         
-		spin_lock(&smi_inst->transaction_lock);
+		smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE);
+		
 		if(!(dma_buffer_idx_rd % 100 ))
 		printk("init programmed read %u %u\n",dma_buffer_idx_wr ,dma_buffer_idx_rd);
-		ret = smi_init_programmed_read(smi_inst, DMA_BOUNCE_BUFFER_SIZE);
-		if (ret != 0)
-		{
-			spin_unlock(&smi_inst->transaction_lock);
-            dev_err(smi_inst->dev, "smi_init_programmed_read returned %d", ret);
-			errors = 1;
-			break;
-		}
-		spin_unlock(&smi_inst->transaction_lock);
+		
 		
 		// wait for completion
         inst->reader_waiting_sema = true;
-        if (down_timeout(&smi_inst->bounce.callback_sem, msecs_to_jiffies(200))) 
+        if (down_timeout(&smi_inst->bounce.callback_sem, msecs_to_jiffies(1500))) 
         {
             dev_info(inst->dev, "Reader DMA bounce timed out");
             errors = 1;
