@@ -823,6 +823,7 @@ int reader_thread_stream_function(void *pv)
     int current_dma_buffer = 0;
     int buffer_ready[2] = {0, 0};       // does a certain buffer contain actual data
 	struct bcm2835_smi_bounce_info *bounce = NULL;
+    unsigned int errors = 0;
 
     ktime_t start;
     s64 t1, t2, t3;
@@ -830,7 +831,7 @@ int reader_thread_stream_function(void *pv)
 	dev_info(inst->dev, "Enterred reader thread");
     inst->reader_thread_running = true;
 
-	while(!kthread_should_stop())
+	while(!kthread_should_stop() && !(inst->address_changed) && !errors)
 	{       
 		// check if the streaming state is on, if not, sleep and check again
 		if ((inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1) || inst->invalidate_rx_buffers)
@@ -949,10 +950,10 @@ int writer_thread_stream_function(void *pv)
     int current_dma_buffer = 0;
 	int num_bytes = 0;
 	int num_copied = 0;
-	dev_info(inst->dev, "Enterred writer thread");
+	dev_info(inst->dev, "Enterred writer thread. Matteo");
     inst->writer_thread_running = true;
 
-	while(!kthread_should_stop())
+	while(!kthread_should_stop() && !(inst->address_changed))
 	{        
 		// check if the streaming state is on, if not, sleep and check again
 		if (inst->state != smi_stream_tx_channel)
@@ -1032,6 +1033,45 @@ int writer_thread_stream_function(void *pv)
 	return 0;
 }
 
+int main_thread_stream_function(void *pv)
+{
+	while(!kthread_should_stop())
+	{        
+		// check if the streaming state is on, if not, sleep and check again
+		smi_stream_state_en state = inst->state;
+		if (inst->state == smi_stream_idle)
+		{
+			msleep(5);
+			continue;
+		}
+		
+		inst->address_changed = 0;
+		
+		state = inst->state;
+		
+		if(state == smi_stream_rx_channel_0 || state == smi_stream_rx_channel_1)
+		{
+			bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(state));
+			reader_thread_stream_function(pv);
+		}
+		else if(state == smi_stream_tx_channel)
+		{
+			bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(state));
+			writer_thread_stream_function(pv);
+		}
+
+		while(!kthread_should_stop() && inst->state != smi_stream_idle)
+		{
+			msleep(5);
+		}
+		bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
+		
+		
+	}
+	
+	return 0;
+}
+
 /***************************************************************************/
 static int smi_stream_open(struct inode *inode, struct file *file)
 {
@@ -1074,7 +1114,7 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 	// Create the reader thread
 	// this thread is in charge of continuedly interogating the smi for new rx data and
 	// activating dma transfers
-	inst->reader_thread = kthread_create(reader_thread_stream_function, NULL, "smi-reader-thread"); 
+	inst->reader_thread = kthread_create(main_thread_stream_function, NULL, "smi-reader-thread"); 
 	if(IS_ERR(inst->reader_thread))
 	{
 		printk(KERN_ERR DRIVER_NAME": reader_thread creation failed - kthread\n");
@@ -1085,27 +1125,10 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 		return ret;
 	} 
 
-	// Create the writer thread
-	// this thread is in charge of continuedly checking if tx fifo contains data and sending it
-	// over dma to the hardware
-	inst->writer_thread = kthread_create(writer_thread_stream_function, NULL, "smi-writer-thread"); 
-	if(IS_ERR(inst->writer_thread))
-	{
-		printk(KERN_ERR DRIVER_NAME": writer_thread creation failed - kthread\n");
-		ret = PTR_ERR(inst->writer_thread);
-		inst->writer_thread = NULL;
-        
-        kthread_stop(inst->reader_thread);
-        inst->reader_thread = NULL;
-        
-		kfifo_free(&inst->rx_fifo);
-		kfifo_free(&inst->tx_fifo);
-		return ret;
-	} 
+	
 	
 	// wake up both threads
 	wake_up_process(inst->reader_thread); 
-	wake_up_process(inst->writer_thread); 
 	
     inst->address_changed = 0;
 	return 0;
