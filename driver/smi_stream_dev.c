@@ -730,12 +730,14 @@ int reader_thread_stream_function(void *pv)
 		
 		//if (!mutex_lock_interruptible(&inst->read_lock))
 		{
+			if(kfifo_avail(&inst->rx_fifo) >=DMA_BOUNCE_BUFFER_SIZE/4)
+			{
 			kfifo_in(&inst->rx_fifo, buffer_pos, DMA_BOUNCE_BUFFER_SIZE/4);
+			}
 			//mutex_unlock(&inst->read_lock);
             
 			// for the polling mechanism
 			inst->readable = true;
-			dev_info(inst->dev, "waking up");
             wake_up_interruptible(&inst->poll_event);
 		}
             
@@ -988,7 +990,6 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 {
 	int ret = 0;
 	unsigned int copied = 0;
-	dev_info(inst->dev, "copied enter");
 	
 	 if (buf == NULL)
 	{
@@ -1005,13 +1006,11 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 	
 	if (kfifo_is_empty(&inst->rx_fifo))
 	{
-		dev_info(inst->dev, "fifo empty wait");
 			int ret = wait_event_interruptible(inst->poll_event,  !kfifo_is_empty(&inst->rx_fifo) );
 			if (ret)
 				return ret;
 	}
 	
-	dev_info(inst->dev, "copying");
     
     {
         if (mutex_lock_interruptible(&inst->read_lock))
@@ -1021,7 +1020,6 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
         ret = kfifo_to_user(&inst->rx_fifo, buf, count, &copied);
         mutex_unlock(&inst->read_lock);
     }
-    dev_info(inst->dev, "copied %d,  e %d",copied, ret);
 	return ret < 0 ? ret : (ssize_t)copied;
 }
 
