@@ -195,6 +195,28 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 }*/
 
 /***************************************************************************/
+
+static unsigned int calc_address_from_state(smi_stream_state_en state)
+{
+	unsigned int return_val = (smi_stream_dir_device_to_smi<<addr_dir_offset) | (smi_stream_channel_0<<addr_ch_offset);
+	if (state == smi_stream_rx_channel_0)
+    {
+        return_val = (smi_stream_dir_device_to_smi<<addr_dir_offset) | (smi_stream_channel_0<<addr_ch_offset);
+    }
+    else if (state == smi_stream_rx_channel_1)
+    {
+        return_val = (smi_stream_dir_device_to_smi<<addr_dir_offset) | (smi_stream_channel_1<<addr_ch_offset);
+    }
+    else if (state == smi_stream_tx_channel)
+    { 
+        return_val = smi_stream_dir_smi_to_device<<addr_dir_offset;
+    }
+    else
+    {
+    }
+    return return_val;
+}
+
 static void set_state(smi_stream_state_en state)
 {
     if (inst == NULL) return;
@@ -286,6 +308,23 @@ static inline int smi_enabled(struct bcm2835_smi_instance *inst)
 	if (!success) return -1;
 	return 0;
 }*/
+
+static int smi_disable_sync(struct bcm2835_smi_instance *smi_inst)
+{
+	int smics_temp;
+	int success = 0;
+	/* Disable the peripheral: */
+	smics_temp = read_smi_reg(smi_inst, SMICS) & ~(SMICS_ENABLE | SMICS_WRITE);
+	write_smi_reg(smi_inst, smics_temp, SMICS);
+	// wait for the ENABLE to go low
+	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 1000000U, success);
+	if (!success)
+	{
+		return -1;
+	}
+	return 0;
+	
+}
 
 /***************************************************************************/
 static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int num_transfers)
