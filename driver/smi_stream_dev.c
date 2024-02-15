@@ -243,10 +243,11 @@ static void set_state(smi_stream_state_en state)
         inst->address_changed = 1;
         
         // abort the current waiting on the current channel
-        if (inst->smi_inst != NULL && inst->reader_waiting_sema && state == smi_stream_idle)
+        /*if (inst->smi_inst != NULL && inst->reader_waiting_sema && state == smi_stream_idle)
         {
             up(&inst->smi_inst->bounce.callback_sem);
         }
+        */
     }
     
     inst->state = state;
@@ -332,19 +333,20 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 	int smics_temp;
 	int success = 0;
 
-	/* Disable the peripheral: */
-	smics_temp = read_smi_reg(smi_inst, SMICS) & ~(SMICS_ENABLE | SMICS_WRITE);
-	write_smi_reg(smi_inst, smics_temp, SMICS);
-
-	// wait for the ENABLE to go low
-	BUSY_WAIT_WHILE_TIMEOUT(smi_enabled(smi_inst), 1000000U, success);
-	if (!success)
+	if(smi_is_active(smi_inst))
 	{
-		return -1;
+		
+		write_smi_reg(smi_inst, 4*num_transfers, SMIL);
+		return 0;
 	}
-
+	
+	
+	write_smi_reg(inst->smi_inst, 0, SMIL);
+	
+	
+	smics_temp = read_smi_reg(smi_inst, SMICS);
 	/* Program the transfer count: */
-	write_smi_reg(smi_inst, num_transfers, SMIL);
+	write_smi_reg(smi_inst, 4*num_transfers, SMIL);
 
 	/* re-enable and start: */
 	smics_temp |= SMICS_ENABLE;
@@ -375,7 +377,7 @@ static int smi_init_programmed_read(struct bcm2835_smi_instance *smi_inst, int n
 static int smi_init_programmed_write(struct bcm2835_smi_instance *smi_inst, int num_transfers)
 {
 	int smics_temp;
-	int success = 0;
+	int success = 0; 
    
 	/* Disable the peripheral: */
 	smics_temp = read_smi_reg(smi_inst, SMICS) & ~SMICS_ENABLE;
@@ -819,11 +821,15 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 /***************************************************************************/
 int reader_thread_stream_function(void *pv) 
 {
-	int count = 0;
     int current_dma_buffer = 0;
+	int current_dma_user = 0;
     int buffer_ready[2] = {0, 0};       // does a certain buffer contain actual data
-	struct bcm2835_smi_bounce_info *bounce = NULL;
+    uint32_t dma_buffer_idx_wr = 0;
+	uint32_t dma_buffer_idx_rd = 0;
     unsigned int errors = 0;
+	int ret;
+	
+	
 
     ktime_t start;
     s64 t1, t2, t3;
@@ -831,111 +837,111 @@ int reader_thread_stream_function(void *pv)
 	dev_info(inst->dev, "Enterred reader thread");
     inst->reader_thread_running = true;
 
+	/* Disable the peripheral: */
+	if(smi_disable_sync(inst->smi_inst))
+	{
+			return -1;
+	}
+	write_smi_reg(inst->smi_inst, 0, SMIL);
+	
+	sema_init(&inst->smi_inst->bounce.callback_sem, 0);
+	
 	while(!kthread_should_stop() && !(inst->address_changed) && !errors)
 	{       
-		// check if the streaming state is on, if not, sleep and check again
-		if ((inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1) || inst->invalidate_rx_buffers)
+		struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
+		uint32_t used_buffers = dma_buffer_idx_wr - dma_buffer_idx_rd;
+		while(used_buffers < DMA_BOUNCE_BUFFER_COUNT)
 		{
-			msleep(2);
-            // invalidate both buffers integrity
-            inst->invalidate_rx_buffers = 0;
-            buffer_ready[0] = 0;
-            buffer_ready[1] = 0;
-            current_dma_buffer = 0;
-			continue;
-		}
-        
-        start = ktime_get();
-        // sync smi address
-        if (inst->address_changed) 
-        {
-            bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-            inst->address_changed = 0;
-            // invalidate the buffers
-            buffer_ready[0] = 0;
-            buffer_ready[1] = 0;
-            current_dma_buffer = 0;
-        }
-		
-        //--------------------------------------------------------
-		// try setup a new DMA transfer into dma bounce buffer
-		// bounce will hold the current transfers state
-        buffer_ready[current_dma_buffer] = 0;
-		count = stream_smi_user_dma(inst->smi_inst, DMA_DEV_TO_MEM, &bounce, current_dma_buffer);
-		if (count != DMA_BOUNCE_BUFFER_SIZE || bounce == NULL)
-		{
-			dev_err(inst->dev, "stream_smi_user_dma returned illegal count = %d, buff_num = %d", count, current_dma_buffer);
-            spin_lock(&inst->smi_inst->transaction_lock);
-            dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-            spin_unlock(&inst->smi_inst->transaction_lock);
-			continue;
+				
+				struct scatterlist *sgl = NULL;
+
+				spin_lock(&smi_inst->transaction_lock);
+
+
+				sgl = &(smi_inst->bounce.sgl[current_dma_buffer]);
+				if (sgl == NULL)
+				{
+					dev_err(smi_inst->dev, "sgl is NULL");
+					spin_unlock(&smi_inst->transaction_lock);
+					errors = 1;
+					break;
+
+				}
+
+				if (!stream_smi_dma_submit_sgl(smi_inst, sgl, 1, DMA_DEV_TO_MEM, stream_smi_dma_callback_user_copy)) 
+				{
+					dev_err(smi_inst->dev, "sgl submit failed");
+					spin_unlock(&smi_inst->transaction_lock);
+					errors = 1;
+					break;
+				}
+
+				dma_async_issue_pending(smi_inst->dma_chan);
+				spin_unlock(&smi_inst->transaction_lock);
+			
+
+			
+			current_dma_buffer = (current_dma_buffer + 1) % DMA_BOUNCE_BUFFER_COUNT;
+			dma_buffer_idx_wr++;
+			used_buffers = dma_buffer_idx_wr - dma_buffer_idx_rd;
 		}
         
         t1 = ktime_to_ns(ktime_sub(ktime_get(), start));
         
-        //--------------------------------------------------------
-        // Don't wait for the buffer to fill in, copy the "other" 
-        // previously filled up buffer into the kfifo - only if
-        // buffer is valid
-        start = ktime_get();
-        
-        if (buffer_ready[1-current_dma_buffer] && !inst->invalidate_rx_buffers)
-        {
-            if (mutex_lock_interruptible(&inst->read_lock))
-            {
-                //return -EINTR;
-                continue;
-            }
-            
-            kfifo_in(&inst->rx_fifo, bounce->buffer[1-current_dma_buffer], DMA_BOUNCE_BUFFER_SIZE);
-            mutex_unlock(&inst->read_lock);
-            
-            // for the polling mechanism
-            inst->readable = true;
-            wake_up_interruptible(&inst->poll_event);
-        }
-        
-        t2 = ktime_to_ns(ktime_sub(ktime_get(), start));
-
-        //--------------------------------------------------------
-		// Wait for current chunk to complete
-		// the semaphore will go up when "stream_smi_dma_callback_user_copy" interrupt is trigerred
-		// indicating that the dma transfer finished. If doesn't happen in 1000 jiffies, we have a
-		// timeout. This means that we didn't get enough data into the buffer during this period. we shall
-		// "continue" and try again
-        start = ktime_get();
-        // wait for completion
+		spin_lock(&smi_inst->transaction_lock);
+		if(!(dma_buffer_idx_rd % 100 ))
+		printk("init programmed read %u %u\n",dma_buffer_idx_wr ,dma_buffer_idx_rd);
+		ret = smi_init_programmed_read(smi_inst, DMA_BOUNCE_BUFFER_SIZE);
+		if (ret != 0)
+		{
+			spin_unlock(&smi_inst->transaction_lock);
+            dev_err(smi_inst->dev, "smi_init_programmed_read returned %d", ret);
+			errors = 1;
+			break;
+		}
+		spin_unlock(&smi_inst->transaction_lock);
+		
+		// wait for completion
         inst->reader_waiting_sema = true;
-        if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(200))) 
+        if (down_timeout(&smi_inst->bounce.callback_sem, msecs_to_jiffies(200))) 
         {
             dev_info(inst->dev, "Reader DMA bounce timed out");
-            spin_lock(&inst->smi_inst->transaction_lock);
-            dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-            spin_unlock(&inst->smi_inst->transaction_lock);
-        }
-        else
-        {
-            // if state has become idle
-            if (inst->state == smi_stream_idle)
-            {
-                dev_info(inst->dev, "Reader state became idle, terminating dma");
-                spin_lock(&inst->smi_inst->transaction_lock);
-                dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-                spin_unlock(&inst->smi_inst->transaction_lock);
-            }
-            
-            //--------------------------------------------------------
-            // Switch the buffers
-            buffer_ready[current_dma_buffer] = 1;
-            current_dma_buffer = 1-current_dma_buffer;
+            errors = 1;
+			break;
         }
         inst->reader_waiting_sema = false;
+		
+		current_dma_user = (current_dma_user + 1) % DMA_BOUNCE_BUFFER_COUNT;
+		dma_buffer_idx_rd++;
+        
+		
+		if (!mutex_lock_interruptible(&inst->read_lock))
+		{
+			kfifo_in(&inst->rx_fifo, smi_inst->bounce.buffer[current_dma_user], DMA_BOUNCE_BUFFER_SIZE);
+			mutex_unlock(&inst->read_lock);
+            
+			// for the polling mechanism
+			inst->readable = true;
+            wake_up_interruptible(&inst->poll_event);
+		}
+            
+		
+        
+        
 
         t3 = ktime_to_ns(ktime_sub(ktime_get(), start));
         
         //dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld %d", (long long)t1, (long long)t2, (long long)t3, current_dma_buffer);
 	}
 
+	dev_info(inst->dev, "Reader state became idle, terminating dma");
+	spin_lock(&inst->smi_inst->transaction_lock);
+    dmaengine_terminate_sync(inst->smi_inst->dma_chan);
+    spin_unlock(&inst->smi_inst->transaction_lock);
+	
+	dev_info(inst->dev, "Reader state became idle, terminating smi transaction");
+	smi_disable_sync(inst->smi_inst);
+	
 	dev_info(inst->dev, "Left reader thread");
     inst->reader_thread_running = false;
     inst->reader_waiting_sema = false;
