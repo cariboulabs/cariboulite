@@ -151,50 +151,6 @@ static u32 read_smi_reg(struct bcm2835_smi_instance *inst, unsigned reg)
 	return readl(inst->smi_regs_ptr + reg);
 }
 
-/***************************************************************************/
-/*static void set_address_direction(smi_stream_direction_en dir)
-{   
-	uint32_t t = (uint32_t)dir;
-    
-    if (inst == NULL) return;
-    
-	inst->cur_address &= ~(1<<addr_dir_offset);
-	inst->cur_address |= t<<addr_dir_offset;
-	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-}*/
-
-/***************************************************************************/
-/*static void set_address_channel(smi_stream_channel_en ch)
-{
-	uint32_t t = (uint32_t)ch;
-    
-    if (inst == NULL) return;
-    
-	inst->cur_address &= ~(1<<addr_ch_offset);
-	inst->cur_address |= t<<addr_ch_offset;
-	bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-}*/
-
-/***************************************************************************/
-/*static smi_stream_channel_en get_address_channel(void)
-{
-    if (inst == NULL) return smi_stream_channel_0;
-    
-	return (smi_stream_channel_en)((inst->cur_address >> addr_ch_offset) & 0x1);
-}*/
-
-/***************************************************************************/
-/*static void switch_address_channel(void)
-{    
-	smi_stream_channel_en cur_ch = get_address_channel();
-    
-    if (inst == NULL) return;
-    
-	if (cur_ch == smi_stream_channel_0) set_address_channel(smi_stream_channel_0);
-	else set_address_channel(smi_stream_channel_1);
-}*/
-
-/***************************************************************************/
 
 static unsigned int calc_address_from_state(smi_stream_state_en state)
 {
@@ -242,12 +198,7 @@ static void set_state(smi_stream_state_en state)
         dev_info(inst->dev, "Set STREAMING_STATUS = %d, cur_addr = %d", state, inst->cur_address);
         inst->address_changed = 1;
         
-        // abort the current waiting on the current channel
-        /*if (inst->smi_inst != NULL && inst->reader_waiting_sema && state == smi_stream_idle)
-        {
-            up(&inst->smi_inst->bounce.callback_sem);
-        }
-        */
+
     }
     
     inst->state = state;
@@ -256,18 +207,7 @@ static void set_state(smi_stream_state_en state)
 /***************************************************************************/
 static void smi_setup_clock(struct bcm2835_smi_instance *inst)
 {
-	/*uint32_t v = 0;
-	dev_dbg(inst->dev, "Setting up clock...");
-	// Disable SMI clock and wait for it to stop.
-	write_smi_reg(inst, CM_PWD | 0, CM_SMI_CTL);
-	while (read_smi_reg(inst, CM_SMI_CTL) & CM_SMI_CTL_BUSY) ;
-
-	write_smi_reg(inst, CM_PWD | (1 << CM_SMI_DIV_DIVI_OFFS), CM_SMI_DIV);
-	//write_smi_reg(inst, CM_PWD | (6 << CM_SMI_CTL_SRC_OFFS), CM_SMI_CTL);
-
-	// Enable the clock
-	v = read_smi_reg(inst, CM_SMI_CTL);
-	write_smi_reg(inst, CM_PWD | v | CM_SMI_CTL_ENAB, CM_SMI_CTL);*/
+	
 }
 
 /***************************************************************************/
@@ -283,32 +223,7 @@ static inline int smi_enabled(struct bcm2835_smi_instance *inst)
 }
 
 /***************************************************************************/
-/*static int smi_disable(struct bcm2835_smi_instance *inst, enum dma_transfer_direction direction)
-{
-	// put smi in power save state while maintaining read/write capability from registers
-	int smics_temp = read_smi_reg(inst, SMICS) & ~SMICS_ENABLE;
-	int success = 0;
 
-	if (direction == DMA_DEV_TO_MEM)
-	{
-		// RESET Write bit = setup a read sequence
-		smics_temp &= ~SMICS_WRITE;
-	}
-	else
-	{
-		// SET Write bit = setup a write sequence
-		smics_temp |= SMICS_WRITE;
-	}
-	write_smi_reg(inst, smics_temp, SMICS);
-
-	//timeout = 100;
-	//while ((read_smi_reg(inst, SMICS) & SMICS_ACTIVE) && timeout>0) {timeout --;}
-
-	// wait till transfer state becomes '0' (not active)
-	BUSY_WAIT_WHILE_TIMEOUT(smi_is_active(inst), 10000, success);
-	if (!success) return -1;
-	return 0;
-}*/
 
 static int smi_disable_sync(struct bcm2835_smi_instance *smi_inst)
 {
@@ -672,150 +587,7 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 }
 
 /***************************************************************************/
-/*int reader_thread_stream_function(void *pv) 
-{
-	int count = 0;
-    int current_dma_buffer = 0;
-	struct bcm2835_smi_bounce_info *bounce = NULL;
-    struct dma_async_tx_descriptor *desc = NULL;
-    
-	dev_info(inst->dev, "Enterred reader thread");
-    inst->reader_thread_running = true;
-    
-    //=================================================
-    // create cyclic dma read
-    //=================================================
-    struct scatterlist *sgl = NULL;
-    bounce = &(inst->smi_inst->inst->bounce)
-	spin_lock(&inst->smi_inst->inst->transaction_lock);
-	sema_init(&inst->smi_inst->inst->bounce.callback_sem, 0);
-    
-	desc = dmaengine_prep_dma_cyclic(inst->smi_inst->inst->dma_chan,
-                       bounce->phys[0],
-				       DMA_BOUNCE_BUFFER_SIZE,
-                       DMA_BOUNCE_BUFFER_SIZE,
-				       DMA_DEV_TO_MEM,
-				       DMA_PREP_INTERRUPT | DMA_CTRL_ACK | DMA_PREP_FENCE);
-	if (!desc) 
-	{
-		unsigned int timeout = 10000U;
-		write_smi_reg(inst->smi_inst->inst, read_smi_reg(inst->smi_inst->inst, SMICS) & ~SMICS_ACTIVE, 	SMICS);
-		while ((read_smi_reg(inst->smi_inst->inst, SMICS) & SMICS_ACTIVE) && (timeout--)>0)
-		{
-			cpu_relax();
-		}
-		write_smi_reg(inst->smi_inst->inst, read_smi_reg(inst, SMICS) | SMICS_ACTIVE, SMICS);
-		return 0;
-	}
 
-	desc->callback = callback;
-	desc->callback_param = inst;
-
-	if (dmaengine_submit(desc) < 0)
-	{
-		return 0;
-	}
-    
-    dma_async_issue_pending(inst->smi_inst->inst->dma_chan);
-    
-    int ret = smi_init_programmed_read(inst->smi_inst->inst, DMA_BOUNCE_BUFFER_SIZE);
-    if (ret != 0)
-    {
-        spin_unlock(&inst->smi_inst->inst->transaction_lock);
-        dev_err(inst->smi_inst->inst->dev, "smi_init_programmed_read returned %d", ret);
-        return 0;
-    }
-    
-    spin_unlock(&inst->smi_inst->inst->transaction_lock);
-
-    //=================================================
-    // reader loop
-    //=================================================
-	while(!kthread_should_stop())
-	{       
-		// check if the streaming state is on, if not, sleep and check again
-		if (inst->state != smi_stream_rx_channel_0 && inst->state != smi_stream_rx_channel_1)
-		{
-			msleep(1);
-			continue;
-		}
-        
-        start = ktime_get();
-        // sync smi address
-        if (inst->address_changed) 
-        {
-            bcm2835_smi_set_address(inst->smi_inst, inst->cur_address);
-            inst->address_changed = 0;
-        }
-		
-        //--------------------------------------------------------
-		// try setup a new DMA transfer into dma bounce buffer
-		// bounce will hold the current transfers state
-		count = stream_smi_user_dma(inst->smi_inst, DMA_DEV_TO_MEM, &bounce, current_dma_buffer);
-		if (count != DMA_BOUNCE_BUFFER_SIZE || bounce == NULL)
-		{
-			dev_err(inst->dev, "stream_smi_user_dma returned illegal count = %d, buff_num = %d", count, current_dma_buffer);
-            spin_lock(&inst->smi_inst->transaction_lock);
-            dmaengine_terminate_all(inst->smi_inst->dma_chan);
-            spin_unlock(&inst->smi_inst->transaction_lock);
-			continue;
-		}
-        
-        t1 = ktime_to_ns(ktime_sub(ktime_get(), start));
-        
-        //--------------------------------------------------------
-        // Don't wait for the buffer to fill in, copy the "other" 
-        // previously filled up buffer into the kfifo
-		//if (mutex_lock_interruptible(&inst->read_lock))
-		//{
-		//	return -EINTR;
-		//}
-        
-        start = ktime_get();
-        
-		kfifo_in(&inst->rx_fifo, bounce->buffer[1-current_dma_buffer], DMA_BOUNCE_BUFFER_SIZE);
-		//mutex_unlock(&inst->read_lock);
-		
-		// for the polling mechanism
-		inst->readable = true;
-		wake_up_interruptible(&inst->poll_event);
-        
-        t2 = ktime_to_ns(ktime_sub(ktime_get(), start));
-
-        //--------------------------------------------------------
-		// Wait for current chunk to complete
-		// the semaphore will go up when "stream_smi_dma_callback_user_copy" interrupt is trigerred
-		// indicating that the dma transfer finished. If doesn't happen in 1000 jiffies, we have a
-		// timeout. This means that we didn't get enough data into the buffer during this period. we shall
-		// "continue" and try again
-        start = ktime_get();
-        // wait for completion
-        inst->reader_waiting_sema = true;
-        if (down_timeout(&bounce->callback_sem, msecs_to_jiffies(1000))) 
-        {
-            dev_info(inst->dev, "Reader DMA bounce timed out");
-            spin_lock(&inst->smi_inst->transaction_lock);
-            dmaengine_terminate_all(inst->smi_inst->dma_chan);
-            spin_unlock(&inst->smi_inst->transaction_lock);
-        }
-        else
-        {
-            //--------------------------------------------------------
-            // Switch the buffers
-            current_dma_buffer = 1-current_dma_buffer;
-        }
-        inst->reader_waiting_sema = false;
-
-        t3 = ktime_to_ns(ktime_sub(ktime_get(), start));
-        
-        //dev_info(inst->dev, "TIMING (1,2,3): %lld %lld %lld %d", (long long)t1, (long long)t2, (long long)t3, current_dma_buffer);
-	}
-
-	dev_info(inst->dev, "Left reader thread");
-    inst->reader_thread_running = false;
-    inst->reader_waiting_sema = false;
-	return 0; 
-}*/
 
 
 /***************************************************************************/
@@ -1269,51 +1041,7 @@ static const struct file_operations smi_stream_fops =
 *   smi_stream_probe - called when the driver is loaded.
 *
 ***************************************************************************/
-/*static void smi_stream_print_smi_inst(struct bcm2835_smi_instance* inst)
-{
-	uint8_t * buff_temp = NULL;
-	int kk = 0;
 
-	// print out the SMI instance data
-	printk("sizeof bool %d, smi_settings %d, void* %d, dma_addr_t %d, int %d, device* %d", 
-			sizeof(bool), sizeof(struct smi_settings), sizeof(void*), sizeof(dma_addr_t), sizeof(int), sizeof(struct device*));
-	buff_temp = (void*)inst;
-	for (kk = 0; kk < sizeof(struct bcm2835_smi_instance); kk++)
-	{
-		if (kk%32 == 0) printk(" ");
-		printk(KERN_CONT"%02X ", buff_temp[kk]);
-	}
-
-	printk(">> struct device *dev = %016llx", *((uint64_t*)&inst->dev));
-    printk(">> SMI SETTINGS:\n");
-    printk(">>     width: %d\n", inst->settings.data_width);
-    printk(">>     pack: %c\n", inst->settings.pack_data ? 'Y' : 'N');
-    printk(">>     read setup: %d, strobe: %d, hold: %d, pace: %d\n", inst->settings.read_setup_time, inst->settings.read_strobe_time, inst->settings.read_hold_time, inst->settings.read_pace_time);
-    printk(">>     write setup: %d, strobe: %d, hold: %d, pace: %d\n", inst->settings.write_setup_time, inst->settings.write_strobe_time, inst->settings.write_hold_time, inst->settings.write_pace_time);
-    printk(">>     dma enable: %c, passthru enable: %c\n", inst->settings.dma_enable ? 'Y':'N', inst->settings.dma_passthrough_enable ? 'Y':'N');
-    printk(">>     dma threshold read: %d, write: %d\n", inst->settings.dma_read_thresh, inst->settings.dma_write_thresh);
-    printk(">>     dma panic threshold read: %d, write: %d\n", inst->settings.dma_panic_read_thresh, inst->settings.dma_panic_write_thresh);
-	printk(">> iomem* smi_regs_ptr = %016llx", *((uint64_t*)&inst->smi_regs_ptr));
-	printk(">> dma_addr_t smi_regs_busaddr = %016llx", *((uint64_t*)&inst->smi_regs_busaddr));
-	printk(">> dma_chan *dma_chan = %016llx", *((uint64_t*)&inst->dma_chan));
-	printk(">> dma_config.direction = %d", inst->dma_config.direction);
-	printk(">> dma_config.src_addr = %016llx", *((uint64_t*)&inst->dma_config.src_addr));
-	printk(">> dma_config.dst_addr = %016llx", *((uint64_t*)&inst->dma_config.dst_addr));
-	printk(">> dma_config.src_addr_width = %d", inst->dma_config.src_addr_width);
-	printk(">> dma_config.dst_addr_width = %d", inst->dma_config.dst_addr_width);
-	printk(">> dma_config.src_maxburst = %d", inst->dma_config.src_maxburst);
-	printk(">> dma_config.dst_maxburst = %d", inst->dma_config.dst_maxburst);
-	printk(">> dma_config.src_port_window_size = %d", inst->dma_config.src_port_window_size);
-	printk(">> dma_config.dst_port_window_size = %d", inst->dma_config.dst_port_window_size);
-	printk(">> dma_config.device_fc = %d", inst->dma_config.device_fc);
-	printk(">> dma_config.slave_id = %d", inst->dma_config.slave_id);
-	printk(">> dma_config.clk = %016llx", *((uint64_t*)&inst->clk));
-
-	//struct bcm2835_smi_bounce_info bounce;
-
-	//struct scatterlist buffer_sgl;
-
-}*/
 
 static struct cdev smi_stream_cdev;
 static dev_t smi_stream_devid;
