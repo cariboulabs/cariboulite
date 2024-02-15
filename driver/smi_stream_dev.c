@@ -595,7 +595,41 @@ ssize_t stream_smi_user_dma(	struct bcm2835_smi_instance *inst,
 
 /***************************************************************************/
 
+static void stream_smi_dma_callback_and_refresh(void *param)
+{
+	/* Notify the bottom half that a chunk is ready for user copy */
+	struct bcm2835_smi_instance *inst = (struct bcm2835_smi_instance *)param;
+	stream_smi_dma_callback_user_copy(param);
+	smi_refresh_dma_command(inst, DMA_BOUNCE_BUFFER_SIZE);
+}
 
+static struct dma_async_tx_descriptor *stream_smi_dma_init_cyclic(struct bcm2835_smi_instance *inst,
+																enum dma_transfer_direction dir,
+																dma_async_tx_callback callback)
+{
+	struct dma_async_tx_descriptor *desc = NULL;
+
+	//printk(KERN_ERR DRIVER_NAME": SUBMIT_PREP %lu\n", (long unsigned int)(inst->dma_chan));
+	desc = dmaengine_prep_dma_cyclic(inst->dma_chan,
+				       inst->bounce.phys[0],
+				       DMA_BOUNCE_BUFFER_SIZE,
+				       DMA_BOUNCE_BUFFER_SIZE/4,
+				       dir,DMA_PREP_INTERRUPT | DMA_CTRL_ACK | DMA_PREP_FENCE);
+	if (!desc) 
+	{
+		dev_err(inst->dev, "read_sgl: dma slave preparation failed!");
+		return NULL;
+	}
+
+	desc->callback = callback;
+	desc->callback_param = inst;
+
+	if (dmaengine_submit(desc) < 0)
+	{
+		return NULL;
+	}
+	return desc;
+}
 
 /***************************************************************************/
 int reader_thread_stream_function(void *pv) 
@@ -636,40 +670,32 @@ int reader_thread_stream_function(void *pv)
 	}
 	spin_unlock(&inst->smi_inst->transaction_lock);
 	
+	if(!errors)
+	{
+		struct dma_async_tx_descriptor *desc = NULL;
+		struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
+		spin_lock(&smi_inst->transaction_lock);
+		desc = stream_smi_dma_init_cyclic(smi_inst, DMA_DEV_TO_MEM, stream_smi_dma_callback_and_refresh);
+
+		if(desc)
+		{
+			dma_async_issue_pending(smi_inst->dma_chan);
+		}
+		else
+		{
+			errors = 1;
+		}
+		spin_unlock(&smi_inst->transaction_lock);
+	}
+	smi_refresh_dma_command(inst->smi_inst, DMA_BOUNCE_BUFFER_SIZE);
+	
 	while(!kthread_should_stop() && !(inst->address_changed) && !errors)
 	{       
 		struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
 		uint32_t used_buffers = dma_buffer_idx_wr - dma_buffer_idx_rd;
+		uint8_t * buffer_pos;
 		while(used_buffers < DMA_BOUNCE_BUFFER_COUNT)
 		{
-				
-				struct scatterlist *sgl = NULL;
-
-				spin_lock(&smi_inst->transaction_lock);
-
-
-				sgl = &(smi_inst->bounce.sgl[current_dma_buffer]);
-				if (sgl == NULL)
-				{
-					dev_err(smi_inst->dev, "sgl is NULL");
-					spin_unlock(&smi_inst->transaction_lock);
-					errors = 1;
-					break;
-
-				}
-
-				if (!stream_smi_dma_submit_sgl(smi_inst, sgl, 1, DMA_DEV_TO_MEM, stream_smi_dma_callback_user_copy)) 
-				{
-					dev_err(smi_inst->dev, "sgl submit failed");
-					spin_unlock(&smi_inst->transaction_lock);
-					errors = 1;
-					break;
-				}
-
-				dma_async_issue_pending(smi_inst->dma_chan);
-				spin_unlock(&smi_inst->transaction_lock);
-			
-
 			
 			current_dma_buffer = (current_dma_buffer + 1) % DMA_BOUNCE_BUFFER_COUNT;
 			dma_buffer_idx_wr++;
@@ -678,7 +704,7 @@ int reader_thread_stream_function(void *pv)
         
         t1 = ktime_to_ns(ktime_sub(ktime_get(), start));
         
-		smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE);
+		//smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE);
 		
 		if(!(dma_buffer_idx_rd % 100 ))
 		printk("init programmed read %u %u\n",dma_buffer_idx_wr ,dma_buffer_idx_rd);
@@ -686,7 +712,7 @@ int reader_thread_stream_function(void *pv)
 		
 		// wait for completion
         inst->reader_waiting_sema = true;
-        if (down_timeout(&smi_inst->bounce.callback_sem, msecs_to_jiffies(1500))) 
+        if (down_timeout(&smi_inst->bounce.callback_sem, msecs_to_jiffies(2000))) 
         {
             dev_info(inst->dev, "Reader DMA bounce timed out");
             errors = 1;
@@ -696,15 +722,20 @@ int reader_thread_stream_function(void *pv)
 		
 		current_dma_user = (current_dma_user + 1) % DMA_BOUNCE_BUFFER_COUNT;
 		dma_buffer_idx_rd++;
-        
-		
-		if (!mutex_lock_interruptible(&inst->read_lock))
+        buffer_pos = (uint8_t*) smi_inst->bounce.buffer[0];
+		if(dma_buffer_idx_rd % 4)
 		{
-			kfifo_in(&inst->rx_fifo, smi_inst->bounce.buffer[current_dma_user], DMA_BOUNCE_BUFFER_SIZE);
-			mutex_unlock(&inst->read_lock);
+				buffer_pos = &buffer_pos[ (DMA_BOUNCE_BUFFER_SIZE/4) * (dma_buffer_idx_rd % 4)];
+		}
+		
+		//if (!mutex_lock_interruptible(&inst->read_lock))
+		{
+			kfifo_in(&inst->rx_fifo, buffer_pos, DMA_BOUNCE_BUFFER_SIZE/4);
+			//mutex_unlock(&inst->read_lock);
             
 			// for the polling mechanism
 			inst->readable = true;
+			dev_info(inst->dev, "waking up");
             wake_up_interruptible(&inst->poll_event);
 		}
             
@@ -957,8 +988,9 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
 {
 	int ret = 0;
 	unsigned int copied = 0;
+	dev_info(inst->dev, "copied enter");
 	
-    if (buf == NULL)
+	 if (buf == NULL)
 	{
         //dev_info(inst->dev, "Flushing internal rx_kfifo");
         if (mutex_lock_interruptible(&inst->read_lock))
@@ -968,8 +1000,19 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
         kfifo_reset_out(&inst->rx_fifo);
         mutex_unlock(&inst->read_lock);
         inst->invalidate_rx_buffers = 1;
+		return 0;
     }
-    else
+	
+	if (kfifo_is_empty(&inst->rx_fifo))
+	{
+		dev_info(inst->dev, "fifo empty wait");
+			int ret = wait_event_interruptible(inst->poll_event,  !kfifo_is_empty(&inst->rx_fifo) );
+			if (ret)
+				return ret;
+	}
+	
+	dev_info(inst->dev, "copying");
+    
     {
         if (mutex_lock_interruptible(&inst->read_lock))
         {
@@ -978,6 +1021,7 @@ static ssize_t smi_stream_read_file_fifo(struct file *file, char __user *buf, si
         ret = kfifo_to_user(&inst->rx_fifo, buf, count, &copied);
         mutex_unlock(&inst->read_lock);
     }
+    dev_info(inst->dev, "copied %d,  e %d",copied, ret);
 	return ret < 0 ? ret : (ssize_t)copied;
 }
 
@@ -1015,10 +1059,10 @@ static unsigned int smi_stream_poll(struct file *filp, struct poll_table_struct 
 {
 	__poll_t mask = 0;
         
-    //dev_info(inst->dev, "poll_waiting");
+    dev_info(inst->dev, "poll_waiting");
     poll_wait(filp, &inst->poll_event, wait);
-    
-    if (inst->readable)
+    dev_info(inst->dev, "poll_waiting complete %u ",inst->readable);
+    if (inst->readable || !kfifo_is_empty(&inst->rx_fifo))
     {
         //dev_info(inst->dev, "poll_wait result => readable=%d", inst->readable);
 		inst->readable = false;
