@@ -641,7 +641,7 @@ int reader_thread_stream_function(void *pv)
 	uint32_t dma_buffer_idx_rd = 0;
     unsigned int errors = 0;
 	int ret;
-	
+	int counter_missed = 0;
 	
 
     ktime_t start;
@@ -707,8 +707,9 @@ int reader_thread_stream_function(void *pv)
 		//smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE);
 		
 		if(!(dma_buffer_idx_rd % 100 ))
-		printk("init programmed read %u %u\n",dma_buffer_idx_wr ,dma_buffer_idx_rd);
-		
+		{
+			dev_info(inst->dev,"init programmed read. missed: %u, sema %u",counter_missed,smi_inst->bounce.callback_sem.count);
+		}
 		
 		// wait for completion
         inst->reader_waiting_sema = true;
@@ -723,16 +724,18 @@ int reader_thread_stream_function(void *pv)
 		current_dma_user = (current_dma_user + 1) % DMA_BOUNCE_BUFFER_COUNT;
 		dma_buffer_idx_rd++;
         buffer_pos = (uint8_t*) smi_inst->bounce.buffer[0];
-		if(dma_buffer_idx_rd % 4)
-		{
-				buffer_pos = &buffer_pos[ (DMA_BOUNCE_BUFFER_SIZE/4) * (dma_buffer_idx_rd % 4)];
-		}
+		buffer_pos = &buffer_pos[ (DMA_BOUNCE_BUFFER_SIZE/4) * (dma_buffer_idx_rd % 4)];
+		
 		
 		//if (!mutex_lock_interruptible(&inst->read_lock))
 		{
 			if(kfifo_avail(&inst->rx_fifo) >=DMA_BOUNCE_BUFFER_SIZE/4)
 			{
 			kfifo_in(&inst->rx_fifo, buffer_pos, DMA_BOUNCE_BUFFER_SIZE/4);
+			}
+			else
+			{
+					counter_missed++;
 			}
 			//mutex_unlock(&inst->read_lock);
             
