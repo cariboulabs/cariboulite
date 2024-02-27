@@ -69,7 +69,7 @@ module_param(fifo_mtu_multiplier, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 module_param(addr_dir_offset, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 module_param(addr_ch_offset, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
-MODULE_PARM_DESC(fifo_mtu_multiplier, "the number of MTUs (N*MTU_SIZE) to allocate for kfifo's (default 6) valid: [3..19]");
+MODULE_PARM_DESC(fifo_mtu_multiplier, "the number of MTUs (N*MTU_SIZE) to allocate for kfifo's (default 6) valid: [3..33]");
 MODULE_PARM_DESC(addr_dir_offset, "GPIO_SA[4:0] offset of the channel direction (default cariboulite 2), valid: [0..4] or (-1) if unused");
 MODULE_PARM_DESC(addr_ch_offset, "GPIO_SA[4:0] offset of the channel select (default cariboulite 3), valid: [0..4] or (-1) if unused");
 
@@ -90,6 +90,8 @@ struct bcm2835_smi_dev_instance
 	struct task_struct *writer_thread;
 	struct kfifo rx_fifo;
 	struct kfifo tx_fifo;
+    uint8_t* rx_fifo_buffer;
+    uint8_t* tx_fifo_buffer;
 	smi_stream_state_en state;
 	struct mutex read_lock;
 	struct mutex write_lock;
@@ -441,9 +443,9 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 	case SMI_STREAM_IOC_SET_FIFO_MULT:
 	{
         int temp = (int)arg;
-        if (temp > 20 || temp < 2)
+        if (temp > 32 || temp < 2)
         {
-            dev_err(inst->dev, "Parameter error: 2<fifo_mtu_multiplier<20, got %d", temp);
+            dev_err(inst->dev, "Parameter error: 2<fifo_mtu_multiplier<33, got %d", temp);
             return -EINVAL;
         }
         dev_info(inst->dev, "Setting FIFO size multiplier to %d", temp);
@@ -1014,20 +1016,38 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 	// create the data fifo ( N x dma_bounce size )
 	// we want this fifo to be deep enough to allow the application react without
 	// loosing stream elements
-	ret = kfifo_alloc(&inst->rx_fifo, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
-	if (ret)
+    inst->rx_fifo_buffer = vmalloc(fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
+    if (!inst->rx_fifo_buffer)
+	{
+		printk(KERN_ERR DRIVER_NAME": error rx_fifo_buffer vmallok failed\n");
+		return -ENOMEM;
+	}
+    
+    inst->tx_fifo_buffer = vmalloc(fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
+    if (!inst->tx_fifo_buffer)
+	{
+		printk(KERN_ERR DRIVER_NAME": error tx_fifo_buffer vmallok failed\n");
+        vfree(inst->rx_fifo_buffer);
+		return -ENOMEM;
+	}
+	
+    kfifo_init(&inst->rx_fifo, inst->rx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
+    //ret = kfifo_alloc(&inst->rx_fifo, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
+	/*if (ret)
 	{
 		printk(KERN_ERR DRIVER_NAME": error rx kfifo_alloc\n");
 		return ret;
-	}
+	}*/
 	
 	// and the writer
-	ret = kfifo_alloc(&inst->tx_fifo, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
+    kfifo_init(&inst->tx_fifo, inst->tx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
+    
+	/*ret = kfifo_alloc(&inst->tx_fifo, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE, GFP_KERNEL);
 	if (ret)
 	{
 		printk(KERN_ERR DRIVER_NAME": error tx kfifo_alloc\n");
 		return ret;
-	}
+	}*/
 
 	// when file is being openned, stream state is still idle
     set_state(smi_stream_idle);
@@ -1041,8 +1061,10 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 		printk(KERN_ERR DRIVER_NAME": reader_thread creation failed - kthread\n");
 		ret = PTR_ERR(inst->reader_thread);
 		inst->reader_thread = NULL;
-		kfifo_free(&inst->rx_fifo);
-		kfifo_free(&inst->tx_fifo);
+        vfree(inst->rx_fifo_buffer);
+        vfree(inst->tx_fifo_buffer);
+		//kfifo_free(&inst->rx_fifo);
+		//kfifo_free(&inst->tx_fifo);
 		return ret;
 	} 
 
@@ -1059,8 +1081,10 @@ static int smi_stream_open(struct inode *inode, struct file *file)
         kthread_stop(inst->reader_thread);
         inst->reader_thread = NULL;
         
-		kfifo_free(&inst->rx_fifo);
-		kfifo_free(&inst->tx_fifo);
+        vfree(inst->rx_fifo_buffer);
+        vfree(inst->tx_fifo_buffer);
+		//kfifo_free(&inst->rx_fifo);
+		//kfifo_free(&inst->tx_fifo);
 		return ret;
 	} 
 	
@@ -1091,8 +1115,12 @@ static int smi_stream_release(struct inode *inode, struct file *file)
 	if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
 	if (inst->writer_thread != NULL) kthread_stop(inst->writer_thread);
 	
-	if (kfifo_initialized(&inst->rx_fifo)) kfifo_free(&inst->rx_fifo);
-	if (kfifo_initialized(&inst->tx_fifo)) kfifo_free(&inst->tx_fifo);
+	//if (kfifo_initialized(&inst->rx_fifo)) kfifo_free(&inst->rx_fifo);
+	//if (kfifo_initialized(&inst->tx_fifo)) kfifo_free(&inst->tx_fifo);
+    if (inst->rx_fifo_buffer) vfree(inst->rx_fifo_buffer);
+    inst->rx_fifo_buffer = NULL;
+    if (inst->tx_fifo_buffer) vfree(inst->tx_fifo_buffer);
+    inst->tx_fifo_buffer = NULL;
     
     inst->reader_thread = NULL;
     inst->writer_thread = NULL;
@@ -1265,9 +1293,9 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
                                     addr_ch_offset);
     
     // Check parameters
-    if (fifo_mtu_multiplier > 20 || fifo_mtu_multiplier < 2)
+    if (fifo_mtu_multiplier > 32 || fifo_mtu_multiplier < 2)
     {
-        dev_err(dev, "Parameter error: 2<fifo_mtu_multiplier<20");
+        dev_err(dev, "Parameter error: 2<fifo_mtu_multiplier<33");
 		return -EINVAL;
     }
     
@@ -1378,6 +1406,8 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 	init_waitqueue_head(&inst->poll_event);
 	inst->readable = false;
 	inst->writeable = false;
+    inst->rx_fifo_buffer = NULL;
+    inst->tx_fifo_buffer = NULL;
     inst->reader_thread_running = false;
     inst->writer_thread_running = false;
     inst->reader_waiting_sema = false;
