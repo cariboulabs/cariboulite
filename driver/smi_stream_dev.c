@@ -764,7 +764,6 @@ void transfer_thread_stop(struct bcm2835_smi_dev_instance *inst)
 
 static int smi_stream_open(struct inode *inode, struct file *file)
 {
-	int ret;
 	int dev = iminor(inode);
 
 	dev_dbg(inst->dev, "SMI device opened.");
@@ -888,13 +887,18 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
 	
 	if (mutex_lock_interruptible(&inst->write_lock))
 	{
-		return -EINTR;
+		return -EAGAIN;
 	}
 	
 	if (kfifo_is_full(&inst->tx_fifo))
 	{
-		mutex_unlock(&inst->write_lock);
-		return -EAGAIN;
+		if(wait_event_interruptible(inst->poll_event,  !kfifo_is_full(&inst->tx_fifo)))
+		{
+			mutex_unlock(&inst->write_lock);
+			return -EAGAIN;
+		}
+		
+		
 	}
 	
 	// check how many bytes are available in the tx fifo
@@ -915,14 +919,14 @@ static unsigned int smi_stream_poll(struct file *filp, struct poll_table_struct 
     
     poll_wait(filp, &inst->poll_event, wait);
 
-    if (inst->readable || !kfifo_is_empty(&inst->rx_fifo))
+    if (!kfifo_is_empty(&inst->rx_fifo))
     {
         //dev_info(inst->dev, "poll_wait result => readable=%d", inst->readable);
 		inst->readable = false;
 		mask |= ( POLLIN | POLLRDNORM );
 	}
 	
-	if (inst->writeable)
+	if (!kfifo_is_full(&inst->rx_fifo))
 	{
         //dev_info(inst->dev, "poll_wait result => writeable=%d", inst->writeable);
 		inst->writeable = false;
