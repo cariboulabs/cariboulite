@@ -762,17 +762,8 @@ void transfer_thread_stop(struct bcm2835_smi_dev_instance *inst)
 *
 ***************************************************************************/
 
-static int smi_stream_open(struct inode *inode, struct file *file)
+static int smi_stream_init_buffers(struct bcm2835_smi_dev_instance *inst)
 {
-	int dev = iminor(inode);
-
-	dev_dbg(inst->dev, "SMI device opened.");
-
-	if (dev != DEVICE_MINOR) 
-	{
-		dev_err(inst->dev, "smi_stream_open: Unknown minor device: %d", dev);		// error here
-		return -ENXIO;
-	}
 	
 	// preinit the thread handlers to NULL
 	inst->reader_thread = NULL;
@@ -799,6 +790,36 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 
 	kfifo_init(&inst->rx_fifo, inst->rx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
 	kfifo_init(&inst->tx_fifo, inst->tx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
+
+	return 0;
+}
+
+static void smi_stream_clear_buffers(struct bcm2835_smi_dev_instance *inst)
+{
+	if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
+	if (inst->writer_thread != NULL) kthread_stop(inst->writer_thread);
+	if (inst->rx_fifo_buffer) vfree(inst->rx_fifo_buffer);
+	if (inst->tx_fifo_buffer) vfree(inst->tx_fifo_buffer);
+
+	inst->rx_fifo_buffer = NULL;
+    	inst->tx_fifo_buffer = NULL;
+	inst->reader_thread = NULL;
+    	inst->writer_thread = NULL;
+
+}
+
+static int smi_stream_open(struct inode *inode, struct file *file)
+{
+	int dev = iminor(inode);
+
+	dev_dbg(inst->dev, "SMI device opened.");
+
+	if (dev != DEVICE_MINOR) 
+	{
+		dev_err(inst->dev, "smi_stream_open: Unknown minor device: %d", dev);		// error here
+		return -ENXIO;
+	}
+	smi_stream_init_buffers(inst);
 	// when file is being openned, stream state is still idle
     set_state(smi_stream_idle);
 	
@@ -823,18 +844,9 @@ static int smi_stream_release(struct inode *inode, struct file *file)
 
 	// make sure stream is idle
 	set_state(smi_stream_idle);
-    
-	if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
-	if (inst->writer_thread != NULL) kthread_stop(inst->writer_thread);
-	
-	if (inst->rx_fifo_buffer) vfree(inst->rx_fifo_buffer);
-	if (inst->tx_fifo_buffer) vfree(inst->tx_fifo_buffer);
-    
-	inst->rx_fifo_buffer = NULL;
-    inst->tx_fifo_buffer = NULL;
-    inst->reader_thread = NULL;
-    inst->writer_thread = NULL;
-    inst->address_changed = 0;
+
+	smi_stream_clear_buffers(inst);
+    	inst->address_changed = 0;
 
 	return 0;
 }
