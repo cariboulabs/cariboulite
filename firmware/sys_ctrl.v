@@ -46,6 +46,7 @@ module sys_ctrl
 	assign o_debug_fifo_push = debug_fifo_push;
 	assign o_debug_fifo_pull = debug_fifo_pull;
 	assign o_debug_smi_test = debug_smi_test;
+        assign o_tx_sample_gap = tx_sample_gap;
 
     // MODULE MAIN PROCESS
     // -------------------
