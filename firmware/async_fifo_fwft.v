@@ -1,4 +1,5 @@
-module complex_fifo #(	
+//`include "async_fifo_ctrl_fwft.v"
+module async_fifo_fwft #(	
 	parameter ADDR_WIDTH = 10,
 	parameter DATA_WIDTH = 16 
 )
@@ -20,6 +21,24 @@ module complex_fifo #(
 	input wire						debug_push,
 );
 
+	/*   async_fifo_ctrl_fwft #(
+      .ADDR_WIDTH(ADDR_WIDTH),  // 1024 samples
+		) async_fifo_ctrl_inst (
+      .wr_rst_b_i(wr_rst_b_i),
+      .wr_clk_i(wr_clk_i),
+      .wr_en_i(wr_en_i),
+      .rd_rst_b_i(rd_rst_b_i),
+      .rd_clk_i(rd_clk_i),
+      .rd_en_i(rd_en_i),
+      .full_o(full_o),
+      .empty_o(empty_o),
+      .wr_addr_mem(wr_addr_mem),
+      .rd_addr_mem(rd_addr_mem)
+    );*/
+	wire [ADDR_WIDTH-1:0] rd_addr_mem;
+	wire [ADDR_WIDTH-1:0] wr_addr_mem;
+	
+	
 	reg [ADDR_WIDTH-1:0]	wr_addr;
 	reg [ADDR_WIDTH-1:0]	wr_addr_gray;
 	reg [ADDR_WIDTH-1:0]	wr_addr_gray_rd;
@@ -28,8 +47,6 @@ module complex_fifo #(
 	reg [ADDR_WIDTH-1:0]	rd_addr_gray;
 	reg [ADDR_WIDTH-1:0]	rd_addr_gray_wr;
 	reg [ADDR_WIDTH-1:0]	rd_addr_gray_wr_r;
-
-	reg [2*DATA_WIDTH-1:0] 	debug_buffer;
 
 	function [ADDR_WIDTH-1:0] gray_conv;
 		input [ADDR_WIDTH-1:0] in;
@@ -60,7 +77,7 @@ module complex_fifo #(
 		end else if (wr_en_i) begin
 			full_o <= gray_conv(wr_addr + 2) == rd_addr_gray_wr_r;
 		end else begin
-			full_o <= full_o & (gray_conv(wr_addr + 1'b1) == rd_addr_gray_wr_r);
+			full_o <= (gray_conv(wr_addr + 1'b1) == rd_addr_gray_wr_r);
 		end
 	end
 
@@ -68,7 +85,7 @@ module complex_fifo #(
 		if (rd_rst_b_i == 1'b0) begin
 			rd_addr <= 0;
 			rd_addr_gray <= 0;
-			debug_buffer <= 32'hABCDEF01;
+			
 		end else if (rd_en_i) begin
 			rd_addr <= rd_addr + 1'b1;
 			rd_addr_gray <= gray_conv(rd_addr + 1'b1);
@@ -87,34 +104,28 @@ module complex_fifo #(
 		end else if (rd_en_i) begin
 			empty_o <= gray_conv(rd_addr + 1) == wr_addr_gray_rd_r;
 		end else begin
-			empty_o <= empty_o & (gray_conv(rd_addr) == wr_addr_gray_rd_r);
+			empty_o <= (gray_conv(rd_addr) == wr_addr_gray_rd_r);
 		end
 	end
 
+	assign rd_addr_mem = (rd_en_i)? rd_addr +1 : rd_addr;
+	assign wr_addr_mem = wr_addr;
+	
+	
+	// ////
+	// MEMORY OPERATIONS
+	// ////
 	always @(posedge rd_clk_i) begin
-		if (rd_en_i) begin
-			if (debug_pull) begin
-				rd_data_o <= debug_buffer;
-			end else begin
-				rd_data_o[15:0] <= mem_q[rd_addr][15:0];
-				rd_data_o[31:16] <= mem_i[rd_addr][15:0];
-			end
-		end
+		rd_data_o <= mem_iq[rd_addr_mem];
+		
 	end
-
+		
 	always @(posedge wr_clk_i) begin
 		if (wr_en_i) begin
-			if (debug_push) begin
-				mem_q[wr_addr] <= debug_buffer[15:0];
-				mem_i[wr_addr] <= debug_buffer[31:16];
-			end else begin
-				mem_q[wr_addr] <= wr_data_i[15:0];
-				mem_i[wr_addr] <= wr_data_i[31:16];
-			end
+				mem_iq[wr_addr_mem] <= wr_data_i;
 		end
 	end
 
-	reg [DATA_WIDTH-1:0] mem_i[(1<<ADDR_WIDTH)-1:0];
-	reg [DATA_WIDTH-1:0] mem_q[(1<<ADDR_WIDTH)-1:0];
+	reg [(2*DATA_WIDTH)-1:0] mem_iq[(1<<(ADDR_WIDTH))-1:0];
 
 endmodule

@@ -4,7 +4,7 @@
 `include "smi_ctrl.v"
 `include "lvds_rx.v"
 `include "lvds_tx.v"
-`include "complex_fifo.v"
+`include "async_fifo_fwft.v"
 
 module top (
     input i_glob_clock,
@@ -384,8 +384,8 @@ module top (
 
   //assign channel = i_smi_a3;
 
-  complex_fifo  #(
-      .ADDR_WIDTH(10),  // 1024 samples
+  async_fifo_fwft  #(
+      .ADDR_WIDTH(8),  // 1024 samples
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) rx_fifo (
       .wr_rst_b_i(i_rst_b),
@@ -433,8 +433,8 @@ module top (
   wire w_tx_fifo_pull;
   wire [31:0] w_tx_fifo_pulled_data;
   
-  complex_fifo #(
-      .ADDR_WIDTH(10),  // 1024 samples
+  async_fifo_fwft #(
+      .ADDR_WIDTH(8),  // 1024 samples
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) tx_fifo (
       // smi clock is writing

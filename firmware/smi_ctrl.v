@@ -111,7 +111,7 @@ module smi_ctrl
     reg [7:0] r_smi_test_count;
     reg r_fifo_pull;
     reg r_fifo_pull_1;
-    wire w_fifo_pull_trigger;
+    reg w_fifo_pull_trigger;
     reg r_channel;
     reg r_dir;
     reg [31:0] r_fifo_pulled_data;
@@ -128,25 +128,12 @@ module smi_ctrl
             r_smi_test_count <= 8'h56;
             r_fifo_pulled_data <= 32'h00000000;
         end else begin
-            // trigger the fifo pulling on the second byte
-            w_fifo_pull_trigger <= (int_cnt_rx == 5'd8) && !i_smi_test;
-
-            if ( i_smi_test ) begin
-                if (r_smi_test_count == 0) begin
-                    r_smi_test_count <= 8'h56;
-                end else begin
-                    o_smi_data_out <= r_smi_test_count;
-                    r_smi_test_count <= {((r_smi_test_count[2] ^ r_smi_test_count[3]) & 1'b1), r_smi_test_count[7:1]};
-                end
-            end else begin
-                int_cnt_rx <= int_cnt_rx + 8;
-                o_smi_data_out <= r_fifo_pulled_data[int_cnt_rx+7:int_cnt_rx];
+            
+            w_fifo_pull_trigger <= (int_cnt_rx == 5'd24) && !i_smi_test;
+            int_cnt_rx <= int_cnt_rx + 8;
+            o_smi_data_out <= i_rx_fifo_pulled_data[int_cnt_rx+7:int_cnt_rx];
                 
-                // update the internal register as soon as we reach the fourth byte
-                if (int_cnt_rx == 5'd24) begin
-                    r_fifo_pulled_data <= i_rx_fifo_pulled_data;
-                end
-            end
+            
 
         end
     end
