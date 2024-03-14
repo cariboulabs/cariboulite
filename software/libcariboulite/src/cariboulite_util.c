@@ -122,11 +122,13 @@ static void usage(void)
         "\t[-F force fpga reprogramming (default: '0')]\n"
         "\t[-M write metadata (default: '0')]\n"
 		"\tfilename ('-' dumps samples to stdout)\n\n"
-        "Example:\n"
-        "\t1. Sample S1G channel at 905MHz into filename capture.bin\n"
-        "\t\tcariboulite_util -c 0 -f 905000000 capture.bin\n"
-        "\t2. Sample S1G channel at 905MHz into filename capture.bin, only 30000 samples\n"
-        "\t\tcariboulite_util -c 0 -f 905000000 -n 30000 capture.bin\n\n");
+        "Example (CS16 files readable by 'inspectrum' analyzer):\n"
+        "\t1. Sample S1G channel at 905MHz into filename capture.cs16\n"
+        "\t\tcariboulite_util -c 0 -f 905000000 capture.cs16\n"
+        "\t2. Sample HiF channel at 2410MHz into filename capture_hif.cs16\n"
+        "\t\tcariboulite_util -c 1 -f 2410000000 capture_hif.cs16\n"
+        "\t3. Sample S1G channel at 905MHz into filename capture.cs16, only 30000 samples\n"
+        "\t\tcariboulite_util -c 0 -f 905000000 -n 30000 capture.cs16\n\n");
 	exit(1);
 }
 

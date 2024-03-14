@@ -20,7 +20,7 @@ void detectBoard()
     CaribouLite::SysVersion ver;
     std::string name;
     std::string guid;
-    
+
     if (CaribouLite::DetectBoard(&ver, name, guid))
     {
         std::cout << "Detected Version: " << CaribouLite::GetSystemVersionStr(ver) << ", Name: " << name << ", GUID: " << guid << std::endl;
@@ -28,14 +28,13 @@ void detectBoard()
     else
     {
         std::cout << "Undetected CaribouLite!" << std::endl;
-    }    
+    }
 }
 
 // Rx Callback (async)
 void receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples, CaribouLiteMeta* sync, size_t num_samples)
 {
     std::cout << "Radio: " << radio->GetRadioName() << " Received " << std::dec << num_samples << " samples" << std::endl;
-    
 }
 
 
@@ -44,21 +43,21 @@ int main ()
 {
     // try detecting the board before getting the instance
     detectBoard();
-    
+
     // get driver instance - use "CaribouLite&" rather than "CaribouLite" (ref)
     CaribouLite &cl = CaribouLite::GetInstance();
-    
+
     // print the info after connecting
     printInfo(cl);
-        
+
     // get the radios
     CaribouLiteRadio *s1g = cl.GetRadioChannel(CaribouLiteRadio::RadioType::S1G);
     CaribouLiteRadio *hif = cl.GetRadioChannel(CaribouLiteRadio::RadioType::HiF);
-    
+
     // write radio information
     std::cout << "First Radio Name: " << s1g->GetRadioName() << "  MtuSize: " << std::dec << s1g->GetNativeMtuSample() << " Samples" << std::endl;
     std::cout << "First Radio Name: " << hif->GetRadioName() << "  MtuSize: " << std::dec << hif->GetNativeMtuSample() << " Samples" << std::endl;
-    
+
     // start receiving until enter pressed on 900MHz
     s1g->SetFrequency(900000000);
     s1g->SetRxGain(50);
@@ -66,11 +65,11 @@ int main ()
     s1g->StartReceiving(receivedSamples);
 
     getchar();
-    
+
     hif->SetFrequency(900000000);
     hif->StartReceiving(receivedSamples, 20000);
-    
+
     getchar();
-    
+
     return 0;
 }
