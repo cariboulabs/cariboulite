@@ -26,6 +26,19 @@ static float rx_bandwidth_middles[] = {225, 281, 356, 450, 562, 706, 893, 1125, 
 static float tx_bandwidth_middles[] = {90, 112, 142, 180, 225, 282, 357, 450, 562, 712, 900};
 
 
+void cariboulite_radio_debug(cariboulite_radio_state_st* radio)
+{
+    at86rf215_radio_state_cmd_en state = at86rf215_radio_get_state(&radio->sys->modem, at86rf215_rf_channel_2400mhz);
+    printf("rf state %u\n",state);
+    
+    at86rf215_iq_interface_config_st cfg;
+    at86rf215_get_iq_if_cfg(&radio->sys->modem,&cfg,1);
+    
+    uint8_t debug_word = 0;
+    //caribou_fpga_get_debug (&radio->sys->fpga, &debug_word);
+    printf("debug word vale %02X\n",(int)debug_word);
+}
+
 //=========================================================================
 int cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, cariboulite_channel_en type)
 {
@@ -1000,7 +1013,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
         }
 
         // Make sure the LO and the IF PLLs are locked
-        cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx_prep);
+        /*cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx_prep);
         if (!cariboulite_radio_wait_for_lock(radio, &radio->modem_pll_locked, 
                                             lo_act_freq > CARIBOULITE_MIN_LO ? &radio->lo_pll_locked : NULL, 
                                             100))
@@ -1009,7 +1022,7 @@ int cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
             if (!radio->modem_pll_locked) ZF_LOGE("PLL MODEM failed to lock IF frequency (%.2f Hz), deactivating", modem_act_freq);
             cariboulite_radio_activate_channel(radio, radio->channel_direction, false);
             return -1;
-        }
+        }*/
 
         // Update the actual frequencies
         radio->lo_frequency = lo_act_freq;
