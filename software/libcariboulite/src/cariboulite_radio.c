@@ -1040,6 +1040,32 @@ int cariboulite_radio_get_frequency(cariboulite_radio_state_st* radio,
 }
 
 //=========================================================================
+
+
+static int cariboulite_radio_tx_prep(cariboulite_radio_state_st* radio)
+{
+    int cal_i, cal_q;
+            cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx_prep);  
+            {
+                // deactivate the channel and prep it for pll lock
+                at86rf215_radio_get_tx_iq_calibration(&radio->sys->modem, GET_MODEM_CH(radio->type), &cal_i, &cal_q);
+
+                ZF_LOGD("Setup Modem state tx_prep");
+                radio->modem_pll_locked = cariboulite_radio_wait_modem_lock(radio, 5);
+                if (!radio->modem_pll_locked)
+                {
+                    ZF_LOGE("PLL didn't lock");
+
+                    // deactivate the channel if this happens
+                    cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_trx_off);
+                    return -1;
+                }
+            }
+            //cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx); 
+
+	return 0;
+}
+
 int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                         cariboulite_channel_dir_en dir,
                                         bool activate)
@@ -1062,25 +1088,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         return ret;
     }
     
-    // ACTIVATION STEPS
-    if (radio->state != cariboulite_radio_state_cmd_tx_prep)
-    {   
-        // deactivate the channel and prep it for pll lock
-        cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx_prep);        
-        
-        at86rf215_radio_get_tx_iq_calibration(&radio->sys->modem, GET_MODEM_CH(radio->type), &cal_i, &cal_q);
 
-        ZF_LOGD("Setup Modem state tx_prep");
-        radio->modem_pll_locked = cariboulite_radio_wait_modem_lock(radio, 5);
-        if (!radio->modem_pll_locked)
-        {
-            ZF_LOGE("PLL didn't lock");
-
-            // deactivate the channel if this happens
-            cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_trx_off);
-            return -1;
-        }
-    }
 
 	//===========================================================
 	// ACTIVATE RX
@@ -1110,6 +1118,11 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         // configure FPGA with the correct rx channel
 		caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
         //caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? 0 : 1, 0);
+	    if(cariboulite_radio_tx_prep(radio))
+	    {
+
+		return -1;
+	    }
         
         // turn on the modem RX
         cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_rx);
@@ -1174,7 +1187,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 		else
         {
             ZF_LOGD("Transmitting with iq");
-            cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx_prep); 
+            //cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx_prep); 
             
             cariboulite_radio_set_tx_bandwidth(radio, radio->tx_bw);
             
@@ -1186,6 +1199,10 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             
             // apply the state
             caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
+	    if(cariboulite_radio_tx_prep(radio))
+	    {
+		return -1;
+	    }
             caribou_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
         }
     }
