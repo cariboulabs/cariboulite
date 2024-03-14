@@ -98,6 +98,20 @@ typedef enum
     caribou_fpga_smi_channel_1 = 1,
 } caribou_fpga_smi_channel_en;
 
+/**
+ * @brief Syncronization bit (metadata) source. Either software
+ *        setting using "caribou_fpga_set_sys_ctrl_soft_sync_value"
+ *        or by using an external pulse on the PMOD 6/7 pins.
+ *        If no change is needed on a specific sync source,
+ *        "caribou_fpga_sync_src_no_change" should be used
+ */
+typedef enum
+{
+    caribou_fpga_sync_src_soft = 0,
+    caribou_fpga_sync_src_pmod = 1,
+    caribou_fpga_sync_src_no_change = 2,
+} caribou_fpga_sync_source_en;
+
 #pragma pack()
 
 /**
@@ -154,6 +168,19 @@ int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool
 int caribou_fpga_set_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t gap);
 int caribou_fpga_get_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t *gap);
 
+int caribou_fpga_set_sys_ctrl_sync_source (caribou_fpga_st* dev, caribou_fpga_sync_source_en rx_09,
+                                                                 caribou_fpga_sync_source_en rx_24,
+                                                                 caribou_fpga_sync_source_en tx_09,
+                                                                 caribou_fpga_sync_source_en tx_24);
+int caribou_fpga_get_sys_ctrl_sync_source (caribou_fpga_st* dev, caribou_fpga_sync_source_en *rx_09,
+                                                                 caribou_fpga_sync_source_en *rx_24,
+                                                                 caribou_fpga_sync_source_en *tx_09,
+                                                                 caribou_fpga_sync_source_en *tx_24);
+                                                                 
+int caribou_fpga_set_sys_ctrl_soft_sync_value (caribou_fpga_st* dev, uint8_t rx_09,
+                                                                     uint8_t rx_24,
+                                                                     uint8_t tx_09,
+                                                                     uint8_t tx_24);
 // I/O Controller
 int caribou_fpga_set_io_ctrl_mode (caribou_fpga_st* dev, uint8_t debug_mode, caribou_fpga_io_ctrl_rfm_en rfm);
 int caribou_fpga_get_io_ctrl_mode (caribou_fpga_st* dev, uint8_t *debug_mode, caribou_fpga_io_ctrl_rfm_en *rfm);

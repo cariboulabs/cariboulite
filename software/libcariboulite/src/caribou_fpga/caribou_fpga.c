@@ -13,13 +13,14 @@
 //--------------------------------------------------------------
 // Static Definitions
 //--------------------------------------------------------------
-#define IOC_MOD_VER                 0
-#define IOC_SYS_CTRL_SYS_VERSION    1
-#define IOC_SYS_CTRL_MANU_ID        2
-#define IOC_SYS_CTRL_SYS_ERR_STAT   3
-#define IOC_SYS_CTRL_SYS_SOFT_RST   4
-#define IOC_SYS_CTRL_DEBUG_MODES    5
-#define IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP  6
+#define IOC_MOD_VER                     0
+#define IOC_SYS_CTRL_SYS_VERSION        1
+#define IOC_SYS_CTRL_MANU_ID            2
+#define IOC_SYS_CTRL_SYS_ERR_STAT       3
+#define IOC_SYS_CTRL_SYS_SOFT_RST       4
+#define IOC_SYS_CTRL_DEBUG_MODES        5
+#define IOC_SYS_CTRL_TX_SAMPLE_GAP      6
+#define IOC_SYS_CTRL_SOFT_SYNC          7
 
 #define IOC_IO_CTRL_MODE            1
 #define IOC_IO_CTRL_DIG_PIN         2
@@ -31,7 +32,7 @@
 
 #define IOC_SMI_CTRL_FIFO_STATUS    1
 #define IOC_SMI_CHANNEL_SELECT      2
-#define IOC_SMI_CTRL_DIR_SELECT         3
+#define IOC_SMI_CTRL_DIR_SELECT     3
 
 //--------------------------------------------------------------
 // Internal Data-Types
@@ -380,21 +381,42 @@ int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map)
         .ioc = IOC_SYS_CTRL_SYS_ERR_STAT
     };
 
-    *err_map = 0;
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), err_map);
+    if (err_map)
+    {
+        *err_map = 0;
+        return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), err_map);
+    }
+    return -1;
 }
 
 //--------------------------------------------------------------
 int caribou_fpga_set_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t gap)
 {
+    uint8_t actual_val = 0;
+    uint8_t actual_gap = 0;
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_sys_ctrl_tx_sample_gap");
+    
+    // read before write
     caribou_fpga_opcode_st oc =
     {
-        .rw  = caribou_fpga_rw_write,
+        .rw  = caribou_fpga_rw_read,
         .mid = caribou_fpga_mid_sys_ctrl,
-        .ioc = IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP,
+        .ioc = IOC_SYS_CTRL_TX_SAMPLE_GAP,
     };
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &gap);
+    int ret = caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &actual_val);
+    if (ret != 0) return -1;
+    
+    actual_gap = actual_val & 0xF;
+    actual_val &= 0xF0;
+    
+    if (gap != actual_gap)
+    {
+        // only if change is needed
+        oc.rw = caribou_fpga_rw_write;  
+        actual_val |= (gap & 0xF);
+        return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &actual_val);
+    }
+    return 0;
 }
 
 //--------------------------------------------------------------
@@ -406,14 +428,104 @@ int caribou_fpga_get_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t *gap)
     {
         .rw  = caribou_fpga_rw_read,
         .mid = caribou_fpga_mid_sys_ctrl,
-        .ioc = IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP
+        .ioc = IOC_SYS_CTRL_TX_SAMPLE_GAP
     };
 
-    *gap = 0;
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), gap);
+    uint8_t actual_gap = 0;
+    
+    int ret = caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &actual_gap);
+    
+    if (gap) *gap = actual_gap & 0xF;
+    return ret;
 }
 
+//--------------------------------------------------------------
+int caribou_fpga_set_sys_ctrl_sync_source (caribou_fpga_st* dev, caribou_fpga_sync_source_en rx_09,
+                                                                 caribou_fpga_sync_source_en rx_24,
+                                                                 caribou_fpga_sync_source_en tx_09,
+                                                                 caribou_fpga_sync_source_en tx_24)
+{
+    uint8_t actual_val = 0;
+    uint8_t temp = 0;
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_sys_ctrl_sync_source");
+    
+    // read before write
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_read,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_TX_SAMPLE_GAP,
+    };
+    int ret = caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &actual_val);
+    if (ret != 0) return -1;
+    
+    temp = actual_val & 0xF;
+    uint8_t cur_rx_09 = (actual_val >> 4) & 0x1;
+    uint8_t cur_rx_24 = (actual_val >> 5) & 0x1;
+    uint8_t cur_tx_09 = (actual_val >> 6) & 0x1;
+    uint8_t cur_tx_24 = (actual_val >> 7) & 0x1;
+    
+    if (rx_09 != caribou_fpga_sync_src_no_change) cur_rx_09 = rx_09 & 0x1;
+    if (rx_24 != caribou_fpga_sync_src_no_change) cur_rx_24 = rx_24 & 0x1;
+    if (tx_09 != caribou_fpga_sync_src_no_change) cur_tx_09 = tx_09 & 0x1;
+    if (tx_24 != caribou_fpga_sync_src_no_change) cur_tx_24 = tx_24 & 0x1;
+    
+    temp |= cur_rx_09 << 4;
+    temp |= cur_rx_24 << 5;
+    temp |= cur_tx_09 << 6;
+    temp |= cur_tx_24 << 7;
+    
+    oc.rw = caribou_fpga_rw_write;
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &temp);
+}
 
+//--------------------------------------------------------------
+int caribou_fpga_get_sys_ctrl_sync_source (caribou_fpga_st* dev, caribou_fpga_sync_source_en *rx_09,
+                                                                 caribou_fpga_sync_source_en *rx_24,
+                                                                 caribou_fpga_sync_source_en *tx_09,
+                                                                 caribou_fpga_sync_source_en *tx_24)
+{
+    uint8_t temp = 0;
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_sys_ctrl_sync_source");
+    
+    // read before write
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_read,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_TX_SAMPLE_GAP,
+    };
+    int ret = caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &temp);
+    if (ret != 0) return -1;
+
+    if (rx_09) *rx_09 = (temp >> 4) & 0x1;
+    if (rx_24) *rx_24 = (temp >> 5) & 0x1;
+    if (tx_09) *tx_09 = (temp >> 6) & 0x1;
+    if (tx_24) *tx_24 = (temp >> 7) & 0x1;
+    
+    return 0;
+}
+     
+//--------------------------------------------------------------     
+int caribou_fpga_set_sys_ctrl_soft_sync_value (caribou_fpga_st* dev, uint8_t rx_09,
+                                                                     uint8_t rx_24,
+                                                                     uint8_t tx_09,
+                                                                     uint8_t tx_24)
+{
+    uint8_t temp = (rx_09 & 0xf) | ((tx_09 & 0xf) << 1) | ((rx_24 & 0xf) << 2) | ((tx_24 & 0xf) << 3);
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_sys_ctrl_soft_sync_value");
+    
+    // read before write
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_SOFT_SYNC,
+    };
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &temp);
+}
+
+//--------------------------------------------------------------     
 // I/O Controller
 int caribou_fpga_set_io_ctrl_mode (caribou_fpga_st* dev, uint8_t debug_mode, caribou_fpga_io_ctrl_rfm_en rfm)
 {
@@ -445,8 +557,8 @@ int caribou_fpga_get_io_ctrl_mode (caribou_fpga_st* dev, uint8_t* debug_mode, ca
     uint8_t mode = 0;
     caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &mode);
 
-    *debug_mode = mode & 0x3;
-    *rfm = (mode >> 2) & 0x7;
+    if (debug_mode) *debug_mode = mode & 0x3;
+    if (rfm) *rfm = (mode >> 2) & 0x7;
     return 0;
 }
 
@@ -512,8 +624,12 @@ int caribou_fpga_get_io_ctrl_pmod_dir (caribou_fpga_st* dev, uint8_t *dir)
         .mid = caribou_fpga_mid_io_ctrl,
         .ioc = IOC_IO_CTRL_PMOD_DIR
     };
-    *dir = 0;
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), dir);
+    if (dir)
+    {
+        *dir = 0;
+        return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), dir);
+    }
+    return -1;
 }
 
 //--------------------------------------------------------------
@@ -540,8 +656,12 @@ int caribou_fpga_get_io_ctrl_pmod_val (caribou_fpga_st* dev, uint8_t *val)
         .mid = caribou_fpga_mid_io_ctrl,
         .ioc = IOC_IO_CTRL_PMOD_VAL
     };
-    *val = 0;
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), val);
+    if (val)
+    {
+        *val = 0;
+        return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), val);
+    }
+    return -1;
 }
 
 //--------------------------------------------------------------
@@ -568,8 +688,12 @@ int caribou_fpga_get_io_ctrl_rf_state (caribou_fpga_st* dev, caribou_fpga_rf_pin
         .mid = caribou_fpga_mid_io_ctrl,
         .ioc = IOC_IO_CTRL_RF_PIN
     };
-    memset(pins, 0, sizeof(caribou_fpga_rf_pin_st));
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)pins);
+    if (pins)
+    {
+        memset(pins, 0, sizeof(caribou_fpga_rf_pin_st));
+        return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)pins);
+    }
+    return -1;
 }
 
 //--------------------------------------------------------------
@@ -583,8 +707,12 @@ int caribou_fpga_get_smi_ctrl_fifo_status (caribou_fpga_st* dev, caribou_fpga_sm
         .mid = caribou_fpga_mid_smi_ctrl,
         .ioc = IOC_SMI_CTRL_FIFO_STATUS
     };
-    memset(status, 0, sizeof(caribou_fpga_smi_fifo_status_st));
-    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)status);
+    if (status)
+    {
+        memset(status, 0, sizeof(caribou_fpga_smi_fifo_status_st));
+        return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), (uint8_t*)status);
+    }
+    return -1;
 }
 
 //--------------------------------------------------------------

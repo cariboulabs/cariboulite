@@ -18,12 +18,13 @@
 #include "cariboulite_events.h"
 #include "cariboulite_setup.h"
 
+
 #define GET_MODEM_CH(rad_ch)	((rad_ch)==cariboulite_channel_s1g ? at86rf215_rf_channel_900mhz : at86rf215_rf_channel_2400mhz)
 #define GET_SMI_CH(rad_ch)		((rad_ch)==cariboulite_channel_s1g ? caribou_smi_channel_900 : caribou_smi_channel_2400)
 
-static float sample_rate_middles[] = {3000, 1666, 1166, 900, 733, 583, 450};
-static float rx_bandwidth_middles[] = {225, 281, 356, 450, 562, 706, 893, 1125, 1406, 1781, 2250};
-static float tx_bandwidth_middles[] = {90, 112, 142, 180, 225, 282, 357, 450, 562, 712, 900};
+static float sample_rate_middles[] = {3000e3, 1666e3, 1166e3, 900e3, 733e3, 583e3, 450e3};
+static float rx_bandwidth_middles[] = {225e3, 281e3, 356e3, 450e3, 562e3, 706e3, 893e3, 1125e3, 1406e3, 1781e3, 2250e3};
+static float tx_bandwidth_middles[] = {90e3, 112e3, 142e3, 180e3, 225e3, 282e3, 357e3, 450e3, 562e3, 712e3, 900e3};
 
 
 //=========================================================================
@@ -187,8 +188,30 @@ int cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* radio,
                                  		cariboulite_radio_rx_bw_en rx_bw)
 {
     cariboulite_radio_f_cut_en fcut = cariboulite_radio_rx_f_cut_half_fs;
+    
+    /*if (rx_bw == cariboulite_radio_rx_bw_2500KHz || rx_bw == cariboulite_radio_rx_bw_2000KHz)
+    {
+        fcut = cariboulite_radio_rx_f_cut_half_fs;      // 2MHz cuttof
+    }
+    else if (rx_bw == cariboulite_radio_rx_bw_1562KHz ||
+             rx_bw == cariboulite_radio_rx_bw_1250KHz || 
+             rx_bw == cariboulite_radio_rx_bw_1000KHz)
+    {
+        fcut = cariboulite_radio_rx_f_cut_0_75_half_fs; // 1.5MHz cuttof
+    }
+    else if (rx_bw == cariboulite_radio_rx_bw_787KHz ||
+             rx_bw == cariboulite_radio_rx_bw_625KHz)
+    {
+        fcut = cariboulite_radio_rx_f_cut_0_5_half_fs; // 1MHz cuttof
+    }
+    else 
+    {
+        fcut = cariboulite_radio_rx_f_cut_0_25_half_fs; // 500kHz cuttof
+    }*/
+   
+    
     radio->rx_fcut = fcut;
-
+    
     at86rf215_radio_set_rx_bw_samp_st cfg = 
     {
         .inverter_sign_if = 0,
@@ -197,8 +220,8 @@ int cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* radio,
                                             // to channel scheme. This increases the IF frequency to max 2.5MHz
                                             // thus places the internal LO fasr away from the signal => lower noise
         .bw = (at86rf215_radio_rx_bw_en)rx_bw,
-        .fcut = (at86rf215_radio_f_cut_en)radio->rx_fcut,             // keep the same
-        .fs = (at86rf215_radio_sample_rate_en)radio->rx_fs,           // keep the same
+        .fcut = (at86rf215_radio_f_cut_en)radio->rx_fcut,
+        .fs = (at86rf215_radio_sample_rate_en)radio->rx_fs,
     };
     at86rf215_radio_set_rx_bandwidth_sampling(&radio->sys->modem, GET_MODEM_CH(radio->type), &cfg);
     radio->rx_bw = rx_bw;
@@ -1053,12 +1076,11 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 
     // then deactivate the modem's stream
     cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_trx_off);
+    ret = caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
    
     // DEACTIVATION
     if (!activate) 
     {
-        // if we deactivate, first shut off the smi stream
-        ret = caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
         return ret;
     }
     
@@ -1088,14 +1110,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // Activate the channel according to the configurations
     // RX on both channels looks the same
     if (radio->channel_direction == cariboulite_channel_dir_rx)
-    {        
-        // Setup the IQ stream properties
-        smi_stream_state_en smi_state = smi_stream_idle;
-        if (radio->smi_channel_id == caribou_smi_channel_900)
-            smi_state = smi_stream_rx_channel_0;
-        else if (radio->smi_channel_id == caribou_smi_channel_2400)
-            smi_state = smi_stream_rx_channel_1;
-        
+    {
         at86rf215_iq_interface_config_st modem_iq_config = {
             .loopback_enable = radio->tx_loopback_anabled,
             .drv_strength = at86rf215_iq_drive_current_4ma,
@@ -1105,11 +1120,29 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             .radio24_mode = at86rf215_iq_if_mode,
             .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
         };
-        at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);	
-                
+        
+        // Setup the IQ stream properties
+        smi_stream_state_en smi_state = smi_stream_idle;
+        if (radio->smi_channel_id == caribou_smi_channel_900)
+        {
+            modem_iq_config.radio09_mode = at86rf215_iq_if_mode;
+            modem_iq_config.radio24_mode = at86rf215_baseband_mode;
+            modem_iq_config.clock_skew = at86rf215_iq_clock_data_skew_4_906ns;
+            smi_state = smi_stream_rx_channel_0;
+        }
+        else if (radio->smi_channel_id == caribou_smi_channel_2400)
+        {
+            modem_iq_config.radio09_mode = at86rf215_baseband_mode;
+            modem_iq_config.radio24_mode = at86rf215_iq_if_mode;
+            modem_iq_config.clock_skew = at86rf215_iq_clock_data_skew_2_906ns;
+            smi_state = smi_stream_rx_channel_1;
+        }
+        
+        at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);
+        
         // configure FPGA with the correct rx channel
 		caribou_fpga_set_smi_channel (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? caribou_fpga_smi_channel_0 : caribou_fpga_smi_channel_1);
-        //caribou_fpga_set_io_ctrl_dig (&radio->sys->fpga, radio->type == cariboulite_channel_s1g? 0 : 1, 0);
+        caribou_fpga_set_smi_ctrl_data_direction(&radio->sys->fpga, 1);
         
         // turn on the modem RX
         cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_rx);
@@ -1135,7 +1168,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             .tx_control_with_iq_if = !radio->cw_output,
             .radio09_mode = at86rf215_iq_if_mode,
             .radio24_mode = at86rf215_iq_if_mode,
-            .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
+            .clock_skew = at86rf215_iq_clock_data_skew_2_906ns,
         };
         at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);
 

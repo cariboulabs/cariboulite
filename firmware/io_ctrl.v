@@ -15,7 +15,7 @@ module io_ctrl
 	input [3:0]         i_config,
 	output              o_led0,
 	output              o_led1,
-	output [7:0]        o_pmod,
+	output [3:0]        o_pmod,
 
 	// Analog interfaces
 	output              o_mixer_fm,
@@ -26,7 +26,7 @@ module io_ctrl
 	output              o_tr_vc2,
 	output              o_shdn_tx_lna,
 	output              o_shdn_rx_lna,
-	output              o_mixer_en 
+	output              o_mixer_en
     );
 				
 
@@ -73,7 +73,7 @@ module io_ctrl
     reg         led0_state;
     reg         led1_state;
     reg [7:0]   pmod_dir_state;
-    reg [7:0]   pmod_state;
+    reg [3:0]   pmod_state;
     reg [7:0]   rf_pin_state;
     reg         mixer_en_state;
 
@@ -146,7 +146,8 @@ module io_ctrl
 
                         //----------------------------------------------
                         ioc_pmod_val: begin
-                            o_data_out <= pmod_state;
+                            o_data_out[3:0] <= pmod_state;
+                            o_data_out[7:4] <= 4'b0000;
                         end
 
                         //----------------------------------------------
@@ -191,7 +192,7 @@ module io_ctrl
 
                         //----------------------------------------------
                         ioc_pmod_val: begin
-                            pmod_state <= i_data_in;
+                            pmod_state[3:0] <= i_data_in[3:0];
                         end
 
                         //----------------------------------------------

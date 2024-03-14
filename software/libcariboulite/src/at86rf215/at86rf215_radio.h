@@ -90,10 +90,6 @@ typedef enum
     at86rf215_radio_rx_bw_BW1250KHZ_IF2000KHZ = 0x9,    // at86rf215_radio_rx_f_cut_0_75_half_fs
     at86rf215_radio_rx_bw_BW1600KHZ_IF2000KHZ = 0xA,    // at86rf215_radio_rx_f_cut_half_fs
     at86rf215_radio_rx_bw_BW2000KHZ_IF2000KHZ = 0xB,    // at86rf215_radio_rx_f_cut_half_fs
-    at86rf215_radio_rx_bw_BW2000KHZ_IFCCKHZ = 0xC,      // **
-    at86rf215_radio_rx_bw_BW2000KHZ_IFDDHZ = 0xD,       // **
-    at86rf215_radio_rx_bw_BW2000KHZ_IFEEKHZ = 0xE,      // **
-    at86rf215_radio_rx_bw_BW2000KHZ_IFFFKHZ = 0xF,      // **
 } at86rf215_radio_rx_bw_en;
 
 typedef enum

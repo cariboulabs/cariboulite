@@ -132,7 +132,32 @@ int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_re
 //==================================================================
 int CaribouLiteRadio::WriteSamples(std::complex<float>* samples, size_t num_to_write)
 {
-    return 0;
+    // fill in the _write_samples internal buffer
+    size_t written_so_far = 0;
+    size_t left_to_write = num_to_write;
+    size_t mtu_size = GetNativeMtuSample();
+    
+    while (written_so_far < num_to_write)
+    {
+        size_t current_write = left_to_write;
+        size_t k = written_so_far;
+        if (current_write > mtu_size) current_write = mtu_size;
+        
+        for (size_t i = 0; i < current_write; i++, k++)
+        {
+            _write_samples[i].real((uint16_t)(samples[k].real() * 4096));
+            _write_samples[i].imag((uint16_t)(samples[k].imag() * 4096));
+        }
+        int ret = WriteSamples(_write_samples, current_write);
+        if (ret <= 0)
+        {
+            break;
+        }
+        written_so_far += ret;
+        left_to_write -= ret;
+    }
+    
+    return written_so_far;
 }
 
 //==================================================================
@@ -144,45 +169,32 @@ int CaribouLiteRadio::WriteSamples(std::complex<short>* samples, size_t num_to_w
 }
 
 //==================================================================
-void CaribouLiteRadio::CaribouLiteTxThread(CaribouLiteRadio* radio)
-{
-    while (radio->_tx_thread_running)
-    {
-        if (!radio->_tx_is_active)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(4));
-            continue;
-        }
-        // TBD
-    }
-}
-
-//==================================================================
 CaribouLiteRadio::CaribouLiteRadio( const cariboulite_radio_state_st* radio, 
                                     RadioType type, 
                                     ApiType api_type, 
                                     const CaribouLite* parent)                                    
             : _radio(radio), _device(parent), _type(type), _rxCallbackType(RxCbType::None), _api_type(api_type)
 {
+    size_t mtu_size = GetNativeMtuSample();
     if (_api_type == Async)
     {
         //printf("Creating Radio Type %d ASYNC\n", type);
         _rx_thread_running = true;
         _rx_thread = new std::thread(CaribouLiteRadio::CaribouLiteRxThread, this);
-        
-        _tx_thread_running = true;
-        _tx_thread = new std::thread(CaribouLiteRadio::CaribouLiteTxThread, this);
     }
     else
     {
         //printf("Creating Radio Type %d SYNC\n", type);
         _read_samples = NULL;
         _read_metadata = NULL;
-        size_t mtu_size = GetNativeMtuSample();
+        
         // allocate internal buffers
-        _read_samples = new cariboulite_sample_complex_int16[mtu_size];
+        _read_samples = new cariboulite_sample_complex_int16[mtu_size];       
         _read_metadata = new cariboulite_sample_meta[mtu_size];        
     }
+    
+    _write_samples = NULL;
+    _write_samples = new std::complex<short>[mtu_size];
 }
 
 //==================================================================
@@ -197,18 +209,18 @@ CaribouLiteRadio::~CaribouLiteRadio()
         _rx_thread_running = false;
         _rx_thread->join();
         if (_rx_thread) delete _rx_thread;
-        
-        _tx_thread_running = false;
-        _tx_thread->join();
-        if (_tx_thread) delete _tx_thread;
     }
     else
     {
         if (_read_samples) delete [] _read_samples;
         _read_samples = NULL;
+        
         if (_read_metadata) delete [] _read_metadata;
         _read_metadata = NULL;
-    }        
+    }
+    
+    if (_write_samples) delete [] _write_samples;
+    _write_samples = NULL;
 }    
 
 // Gain
@@ -596,11 +608,9 @@ void CaribouLiteRadio::StopReceiving()
 }
 
 //==================================================================
-void CaribouLiteRadio::StartTransmitting(std::function<void(CaribouLiteRadio*, std::complex<float>*, const bool*, size_t*)> on_data_request, size_t samples_per_chunk)
+void CaribouLiteRadio::StartTransmitting()
 {
     _rx_is_active = false;
-    _on_data_request = on_data_request;
-    _tx_samples_per_chunk = samples_per_chunk;
     cariboulite_radio_activate_channel((cariboulite_radio_state_st*)_radio, cariboulite_channel_dir_rx, false);
     cariboulite_radio_set_cw_outputs((cariboulite_radio_state_st*)_radio, false, false);
     cariboulite_radio_activate_channel((cariboulite_radio_state_st*)_radio, cariboulite_channel_dir_tx, true);

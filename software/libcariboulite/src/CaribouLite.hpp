@@ -175,7 +175,7 @@ public:
     void StartReceiving();
     void StartReceivingInternal(size_t samples_per_chunk);
     void StopReceiving(void);
-    void StartTransmitting(std::function<void(CaribouLiteRadio*, std::complex<float>*, const bool*, size_t*)> on_data_request, size_t samples_per_chunk);
+    void StartTransmitting(void);
     void StartTransmittingLo(void);
     void StartTransmittingCw(void);
     void StopTransmitting(void);
@@ -198,6 +198,7 @@ private:
     const CaribouLite* _device;
     const RadioType _type;
     
+    // Rx information
     bool _rx_thread_running;
     bool _rx_is_active;
     std::thread *_rx_thread;
@@ -209,14 +210,12 @@ private:
     RxCbType _rxCallbackType;
     ApiType _api_type;
     
-    bool _tx_thread_running;
+    // Tx information
     bool _tx_is_active;
-    std::thread *_tx_thread;
-    std::function<void(CaribouLiteRadio*, std::complex<float>*, const bool*, size_t*)> _on_data_request;
-    size_t _tx_samples_per_chunk;
     
     // buffers
     cariboulite_sample_complex_int16 *_read_samples;
+    std::complex<short> *_write_samples;
     cariboulite_sample_meta* _read_metadata;
     
 private:

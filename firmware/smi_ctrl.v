@@ -29,7 +29,7 @@ module smi_ctrl
     output              o_smi_write_req,
     input               i_smi_test,
     output              o_channel,
-        output              o_dir,
+    output              o_dir,
 
     // TX CONDITIONAL
     output reg          o_cond_tx,

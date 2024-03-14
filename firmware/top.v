@@ -50,27 +50,28 @@ module top (
     //
     //		RPI PIN			| 	FPGA TOP-LEVEL SIGNAL
     //		------------------------------------------------------------------------
-    //		GPIO2_SA3		| 	i_smi_a[2] - RX09 / RX24 channel select
-    //		GPIO3_SA2		| 	i_smi_a[1] - Tx SMI (0) / Rx SMI (1) select
-    //		GPIO4_SA1		| 	i_smi_a[0] - used as a sys async reset (GBIN1)
+    //		GPIO2_SA3		| 	i_smi_a3 - RX09 / RX24 channel select
+    //		GPIO3_SA2		| 	i_smi_a2 - Tx SMI (0) / Rx SMI (1) select
+    //		GPIO4_SA1		| 	i_rst_b - used as a sys async reset (GBIN1)
     //		GPIO5_SA0		| 	Not connected to FPGA (MixerRst)
     //
     // In order to perform SMI data bus direction selection (highZ / PushPull)
     // signal a[0] was chosen, while the '0' level (default) denotes RPI => FPGA
     // direction, and the DATA bus is highZ (recessive mode).
-    // The signal a[2] selects the RX source (900 MHZ or 2.4GHz)
-    // The signal a[1] can be used in the future for other purposes
+    // The signal i_smi_a2 selects Tx(0) or Rx(1) direction
+    // The signal i_smi_a3 selects the RX source (900 MHZ or 2.4GHz)
+
     //
-    // Description	| a[2] (SA3)|   a[1] (SA2)   |	
-    // -------------|------------|---------------|
-    // 				|	  0		 |	   0		 |		
-    // 		TX		|------------| RPI => FPGA   |
-    // 				|	  1		 | Data HighZ	 |		
-    // -------------|------------|---------------|
-    // 		RX09	|	  0		 |	   1		 |	
-    // -------------|------------| FPGA => RPI	 |	
-    // 		RX24	|	  1		 | Data PushPull |		
-    // -------------|------------|---------------|	
+    // Description	|   a2 (SA2)    | a3 (SA3)   |
+    // -------------|---------------|------------|
+    // 				|	   0		|	  0		 |
+    // 		TX		| RPI => FPGA   |------------|
+    // 				| Data HighZ	|	  1		 |
+    // -------------|---------------|------------|
+    // 		RX09	|	   1		|	  0		 |
+    // -------------| FPGA => RPI	|------------|
+    // 		RX24	| Data PushPull |	  1		 |
+    // -------------|---------------|------------|
     input i_smi_a2,
     input i_smi_a3,
 
@@ -105,6 +106,26 @@ module top (
   wire [7:0] w_tx_data_io;
   wire [7:0] w_tx_data_smi;
 
+  wire w_rx_sync_type_09;
+  wire w_rx_sync_type_24;
+  wire w_tx_sync_type_09;
+  wire w_tx_sync_type_24;
+
+  wire w_rx_sync_09;
+  wire w_rx_sync_24;
+  wire w_tx_sync_09;
+  wire w_tx_sync_24;
+
+  wire w_rx_sync_input_09;
+  wire w_rx_sync_input_24;
+  wire w_tx_sync_input_09;
+  wire w_tx_sync_input_24;
+
+  assign w_rx_sync_input_09 = (w_rx_sync_type_09) ? io_pmod[7] : w_rx_sync_09;
+  assign w_rx_sync_input_24 = (w_rx_sync_type_24) ? io_pmod[6] : w_rx_sync_24;
+  assign w_tx_sync_input_09 = (w_tx_sync_type_09) ? io_pmod[5] : w_tx_sync_09;
+  assign w_tx_sync_input_24 = (w_tx_sync_type_24) ? io_pmod[4] : w_tx_sync_24;
+
   //=========================================================================
   // INSTANCES
   //=========================================================================
@@ -138,11 +159,22 @@ module top (
       .i_cs(w_cs[0]),
       .i_fetch_cmd(w_fetch),
       .i_load_cmd(w_load),
+
       .o_debug_fifo_push(),
       .o_debug_fifo_pull(),
       .o_debug_smi_test(),
       .o_debug_loopback_tx(w_debug_lb_tx),
       .o_tx_sample_gap(tx_sample_gap),
+
+      .o_rx_sync_type09(w_rx_sync_type_09),
+      .o_rx_sync_type24(w_rx_sync_type_24),
+      .o_tx_sync_type09(w_tx_sync_type_09),
+      .o_tx_sync_type24(w_tx_sync_type_24),
+
+      .o_rx_sync_09(w_rx_sync_09),
+      .o_rx_sync_24(w_rx_sync_24),
+      .o_tx_sync_09(w_tx_sync_09),
+      .o_tx_sync_24(w_tx_sync_24)
   );
 
   wire w_debug_fifo_push;
@@ -167,7 +199,7 @@ module top (
       .i_config(i_config),
       .o_led0  (/*o_led0*/),
       .o_led1  (/*o_led1*/),
-      .o_pmod  (),
+      .o_pmod  (io_pmod[3:0]),
 
       // Analog interfaces
       .o_mixer_fm(/*o_mixer_fm*/),
@@ -266,7 +298,7 @@ module top (
 
   // Non-inverting, P-side of pair
   SB_IO #(
-      .PIN_TYPE   (6'b010000),   // {PIN_OUTPUT_DDR, PIN_INPUT_REGISTER }
+      .PIN_TYPE   (6'b010000),   // {PIN_OUTPUT_DDR, PIN_OUTPUT_REGISTER }
       .IO_STANDARD("SB_LVCMOS"),
   ) iq_tx_p (
       .PACKAGE_PIN(o_iq_tx_p),
@@ -277,7 +309,7 @@ module top (
 
   // Inverting, N-side of pair 
   SB_IO #(
-      .PIN_TYPE   (6'b010000),   // {PIN_OUTPUT_DDR, PIN_INPUT_REGISTER }
+      .PIN_TYPE   (6'b010000),   // {PIN_OUTPUT_DDR, PIN_OUTPUT_REGISTER }
       .IO_STANDARD("SB_LVCMOS"),
   ) iq_tx_n (
       .PACKAGE_PIN(o_iq_tx_n),
@@ -318,7 +350,7 @@ module top (
       .o_fifo_push(w_rx_09_fifo_push),
 
       .o_fifo_data  (w_rx_09_fifo_data),
-      .i_sync_input (1'b0),
+      .i_sync_input (w_rx_sync_input_09),
       .o_debug_state()
   );
 
@@ -333,7 +365,7 @@ module top (
       .o_fifo_push(w_rx_24_fifo_push),
 
       .o_fifo_data  (w_rx_24_fifo_data),
-      .i_sync_input (1'b0),
+      .i_sync_input (w_rx_sync_input_24),
       .o_debug_state()
   );
 
@@ -344,9 +376,6 @@ module top (
   wire [31:0] w_rx_fifo_pulled_data;
   wire w_rx_fifo_full;
   wire w_rx_fifo_empty;
-  wire channel;
-
-  //assign channel = i_smi_a3;
 
   complex_fifo  #(
       .ADDR_WIDTH(10),  // 1024 samples
@@ -382,12 +411,12 @@ module top (
       .i_fifo_data(w_tx_fifo_pulled_data),
       .i_sample_gap(tx_sample_gap),
       .i_tx_state(~w_smi_data_direction),
-      .i_sync_input(1'b0),
+      .i_sync_input(w_tx_sync_input_09),
       .i_debug_lb(w_debug_lb_tx), 
       .o_tx_state_bit(),
       .o_sync_state_bit(),
   );
-  
+
   wire w_tx_fifo_full;
   wire w_tx_fifo_empty;
   wire w_tx_fifo_read_clk;
@@ -418,6 +447,11 @@ module top (
       .debug_push(1'b0)
   );
 
+  wire channel;
+  wire w_smi_data_direction;
+  //assign channel = i_smi_a3;
+  //assign w_smi_data_direction = i_smi_a2;
+
   smi_ctrl smi_ctrl_ins (
       .i_rst_b(i_rst_b),
       .i_sys_clk(w_clock_sys),
@@ -446,7 +480,7 @@ module top (
       .o_smi_read_req(w_smi_read_req),
       .o_smi_write_req(w_smi_write_req),
       .o_channel(channel),
-      .o_dir (/*w_smi_data_direction*/),
+      .o_dir (w_smi_data_direction),
       .i_smi_test(1'b0/*w_debug_smi_test*/),
       .o_cond_tx(),
       .o_address_error()
@@ -456,7 +490,6 @@ module top (
   wire [7:0] w_smi_data_input;
   wire w_smi_read_req;
   wire w_smi_write_req;
-  wire w_smi_data_direction;
 
   // the "Writing" flag indicates that the data[7:0] direction (inout)
   // from the FPGA's SMI module should be "output". This happens when the
@@ -464,7 +497,6 @@ module top (
   // The address has the MSB '1' when in RX mode. otherwise (when IDLE or TX)
   // the data is high-z, which is the more "recessive" mode
 
-  assign w_smi_data_direction = i_smi_a2;
   SB_IO #(
       .PIN_TYPE(6'b1010_01),
       .PULLUP  (1'b0)
@@ -538,8 +570,6 @@ module top (
       .D_IN_0(w_smi_data_input[7])
   );
 
-  // We need the 'o_smi_write_req' to be 1 only when the direction is TX 
-  // (w_smi_data_direction == 0) and the write fifo is not full
   assign o_smi_read_req  = (w_smi_data_direction) ? w_smi_read_req : w_smi_write_req;
   assign o_smi_write_req = 1'bZ;
 
