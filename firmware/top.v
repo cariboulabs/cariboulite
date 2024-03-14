@@ -126,7 +126,18 @@ module top (
   );
 
   wire int_miso;
-  assign o_miso = (i_ss) ? 1'bZ : int_miso;
+  SB_IO #(
+      .PIN_TYPE(6'b1010_01),
+      .PULLUP  (1'b0)
+  ) miso_out (
+      .PACKAGE_PIN(o_miso),
+      .OUTPUT_ENABLE(!i_ss),
+      .D_OUT_0(int_miso),
+      .D_IN_0()
+  );
+
+
+  //assign o_miso = (i_ss) ? 1'bZ : int_miso;
 
   // SYSTEM CTRL
   sys_ctrl sys_ctrl_ins (
@@ -184,7 +195,11 @@ module top (
   //=========================================================================
   // CONBINATORIAL ASSIGNMENTS
   //=========================================================================
-  assign w_clock_sys = r_counter;
+  //assign w_clock_sys = r_counter;
+    SB_GB clock_Global_Buffer_i ( // Required for a user‟s internally generated FPGA signal that is heavily loaded
+    //and requires global buffering. For example, a user‟s logic-generated clock.
+    .USER_SIGNAL_TO_GLOBAL_BUFFER (r_counter),
+    .GLOBAL_BUFFER_OUTPUT ( w_clock_sys) );
 
   //=========================================================================
   // CLOCK AND DATA-FLOW
@@ -225,8 +240,11 @@ module top (
       .D_IN_0(lvds_clock)
   );  // Wire out to 'lvds_clock'
 
-  assign lvds_clock_buf = lvds_clock;
-
+  //assign lvds_clock_buf = lvds_clock;
+    SB_GB My_Global_Buffer_i ( // Required for a user‟s internally generated FPGA signal that is heavily loaded
+    //and requires global buffering. For example, a user‟s logic-generated clock.
+    .USER_SIGNAL_TO_GLOBAL_BUFFER (lvds_clock),
+    .GLOBAL_BUFFER_OUTPUT ( lvds_clock_buf) );
   //---------------------------------------------
   // LVDS RX - I/Q Data
   //---------------------------------------------
@@ -287,10 +305,28 @@ module top (
   );
 
 
-  // Logic on a clock signal is very bad - try to use a dedicated
-  // SB_IO
-  assign o_iq_tx_clk_p = lvds_clock_buf;
-  assign o_iq_tx_clk_n = ~lvds_clock_buf;
+  // generating clock with logic and a SB_IO. The PLL conflicts with pin A14
+   
+  SB_IO #(
+      .PIN_TYPE   (6'b010000),   // {PIN_OUTPUT_DDR, PIN_INPUT_REGISTER }
+      .IO_STANDARD("SB_LVCMOS"),
+  ) iq_tx_clk_p (
+      .PACKAGE_PIN(o_iq_tx_clk_p),
+      .OUTPUT_CLK(lvds_clock_buf),
+      .D_OUT_0(1'b1),
+      .D_OUT_1(1'b0)
+  );
+  
+  SB_IO #(
+      .PIN_TYPE   (6'b010000),   // {PIN_OUTPUT_DDR, PIN_INPUT_REGISTER }
+      .IO_STANDARD("SB_LVCMOS"),
+  ) iq_tx_clk_n (
+      .PACKAGE_PIN(o_iq_tx_clk_n),
+      .OUTPUT_CLK(lvds_clock_buf),
+      .D_OUT_0(1'b0),
+      .D_OUT_1(1'b1)
+  );
+  
 
   //=========================================================================
   // LVDS RX SIGNAL FROM MODEM
