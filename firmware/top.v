@@ -197,8 +197,8 @@ module top (
       // Digital interfaces
       .i_button(i_button),
       .i_config(i_config),
-      .o_led0  (/*o_led0*/),
-      .o_led1  (/*o_led1*/),
+      .o_led0  (o_led0),
+      .o_led1  (o_led1),
       .o_pmod  (io_pmod[3:0]),
 
       // Analog interfaces
@@ -573,7 +573,7 @@ module top (
   assign o_smi_read_req  = (w_smi_data_direction) ? w_smi_read_req : w_smi_write_req;
   assign o_smi_write_req = 1'bZ;
 
-  assign o_led0 = w_smi_data_direction;
-  assign o_led1 = channel;
+  //assign o_led0 = w_smi_data_direction;
+  //assign o_led1 = channel;
 
 endmodule  // top
