@@ -411,6 +411,7 @@ module top (
   lvds_tx lvds_tx_inst (
       .i_rst_b(i_rst_b),
       .i_ddr_clk(~lvds_clock_buf),
+      .i_sys_clk(w_clock_sys),
       .o_ddr_data({w_lvds_tx_d0, w_lvds_tx_d1}),
       .i_fifo_empty(w_tx_fifo_empty),
       .o_fifo_read_clk(w_tx_fifo_read_clk),

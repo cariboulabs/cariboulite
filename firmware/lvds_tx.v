@@ -1,6 +1,14 @@
+
+/*
+ *  Contribution by matteo serva
+ *  https://github.com/matteoserva
+ * 
+ */
+`include "lvds_clock_sync.v"
 module lvds_tx (
     input        i_rst_b,
     input        i_ddr_clk,
+    input        i_sys_clk,        // FPGA Clock
     output reg[1:0] o_ddr_data,
 
     input             i_fifo_empty,
@@ -42,6 +50,15 @@ module lvds_tx (
     assign o_tx_state_bit = r_state;
     assign o_sync_state_bit = 1'b0;
     assign o_fifo_pull = r_pulled;
+    wire lvds_ready_syncd;
+    wire w_data_sbe_ddr;
+    lvds_clock_sync  lvds_clock_inst (
+      .i_rst_b(i_rst_b),
+      .i_ddr_clk(i_ddr_clk),
+      .i_sys_clk(i_sys_clk),
+      .o_lvds_ready_ddr(lvds_ready_syncd),
+      .o_data_sbe_ddr(w_data_sbe_ddr),
+    );
 
     // SHIFT REGISTER
     always @(posedge i_ddr_clk) begin
