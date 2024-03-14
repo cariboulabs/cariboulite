@@ -33,6 +33,7 @@ typedef struct
     char *filename;
     int rx_channel;
     double frequency;
+    float rate;
     float gain;
     float ppm_error;
     size_t samples_to_read;
@@ -96,6 +97,7 @@ static void init_program_state(void)
     state.samples_to_read = 1024*1024/8;
     state.force_fpga_prog = 0;
     state.write_metadata = 0;
+    state.rate = 4000000;
     
     // state
     state.sample_infinite = 1;
@@ -118,6 +120,7 @@ static void usage(void)
 		"\t[-g gain (default: -1 for agc)]\n"
 		"\t[-p ppm_error (default: 0)]\n"
 		"\t[-n number of samples to read (default: 0, infinite)]\n"
+        "\t[-r sample Rate (default: 4000000)]\n"
 		"\t[-S force sync output (default: async)]\n"
         "\t[-F force fpga reprogramming (default: '0')]\n"
         "\t[-M write metadata (default: '0')]\n"
@@ -180,7 +183,7 @@ static int check_inputs(void)
 int analyze_arguments(int argc, char *argv[])
 {
     int opt;
-    while ((opt = getopt(argc, argv, "c:f:g:n:S:F")) != -1) {
+    while ((opt = getopt(argc, argv, "c:f:g:n:r:S:F")) != -1) {
 		switch (opt) {
 		case 'c':
 			state.rx_channel = (int)atoi(optarg);
@@ -189,6 +192,9 @@ int analyze_arguments(int argc, char *argv[])
 		case 'f':
 			state.frequency = atof(optarg);
             printf("DBG: Frequency = %.1f Hz\n", state.frequency);
+			break;
+        case 'r':
+			state.rate = atof(optarg);
 			break;
 		case 'g':
 			state.gain = (int)(atof(optarg));
@@ -314,8 +320,14 @@ int main(int argc, char *argv[])
     //-------------------------------------    
     // Set radio parameters
     cariboulite_radio_set_frequency(state.radio, true, &state.frequency);
+
     cariboulite_radio_set_rx_gain_control(state.radio, state.gain == -1.0, state.gain);
     cariboulite_radio_sync_information(state.radio);
+	if(state.rate < 3900000)
+    {
+        cariboulite_radio_set_rx_sample_rate_flt(state.radio, state.rate/1000);
+		//cariboulite_radio_set_rx_bandwidth(state.radio, state.rate/2);
+    }
     cariboulite_radio_activate_channel(state.radio, cariboulite_channel_dir_rx, true);
     
     // Open the file for writing
