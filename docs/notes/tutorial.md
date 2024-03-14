@@ -78,14 +78,17 @@ printf "3\n2\n99\n" | ./cariboulite_test_app
 ## transmit from gnuradio
 
 socat tcp-listen:9999,fork - |  ./tx_test -c 1 -f 433125000 -r 400000 -w 0 -g 0 -e 1 -
+ follow the example workflow in gnuradio_tx.png
 
 ## planned features
 
 - Soapy TX
-  - fix range
-  - broken data
+  - fix numeric range in exchanged data
+  - wrong data arriving at the transmitter
 
 - Raspberry pi 5 support
-  RP1: dual-dual spi because of pin limitations. in future quad-spi
+  The original developers are trying to use the camera port as a high speed device.
+  My approach is to use two RP1 dual spi ports. In future this can be replaced with a quad-spi but
+  right now the required pins are not routed by the caribou lite.
 
 
