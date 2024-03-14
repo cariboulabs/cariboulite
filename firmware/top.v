@@ -493,6 +493,7 @@ module top (
   wire w_smi_read_req;
   wire w_smi_write_req;
   wire w_smi_data_direction;
+  wire w_smi_data_output_enable;
 
   // the "Writing" flag indicates that the data[7:0] direction (inout)
   // from the FPGA's SMI module should be "output". This happens when the
@@ -501,78 +502,23 @@ module top (
   // the data is high-z, which is the more "recessive" mode
 
   assign w_smi_data_direction = i_smi_a2;
+  assign w_smi_data_output_enable = i_smi_a2 & !i_smi_soe_se;
+  
+  genvar k;
+  generate
+   for (k=0; k<8;k++) begin
   SB_IO #(
       .PIN_TYPE(6'b1010_01),
       .PULLUP  (1'b0)
   ) smi_io0 (
-      .PACKAGE_PIN(io_smi_data[0]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[0]),
-      .D_IN_0(w_smi_data_input[0])
+      .PACKAGE_PIN(io_smi_data[k]),
+      .OUTPUT_ENABLE(w_smi_data_output_enable),
+      .D_OUT_0(w_smi_data_output[k]),
+      .D_IN_0(w_smi_data_input[k])
   );
-  SB_IO #(
-      .PIN_TYPE(6'b1010_01),
-      .PULLUP  (1'b0)
-  ) smi_io1 (
-      .PACKAGE_PIN(io_smi_data[1]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[1]),
-      .D_IN_0(w_smi_data_input[1])
-  );
-  SB_IO #(
-      .PIN_TYPE(6'b1010_01),
-      .PULLUP  (1'b0)
-  ) smi_io2 (
-      .PACKAGE_PIN(io_smi_data[2]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[2]),
-      .D_IN_0(w_smi_data_input[2])
-  );
-  SB_IO #(
-      .PIN_TYPE(6'b1010_01),
-      .PULLUP  (1'b0)
-  ) smi_io3 (
-      .PACKAGE_PIN(io_smi_data[3]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[3]),
-      .D_IN_0(w_smi_data_input[3])
-  );
-  SB_IO #(
-      .PIN_TYPE(6'b1010_01),
-      .PULLUP  (1'b0)
-  ) smi_io4 (
-      .PACKAGE_PIN(io_smi_data[4]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[4]),
-      .D_IN_0(w_smi_data_input[4])
-  );
-  SB_IO #(
-      .PIN_TYPE(6'b1010_01),
-      .PULLUP  (1'b0)
-  ) smi_io5 (
-      .PACKAGE_PIN(io_smi_data[5]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[5]),
-      .D_IN_0(w_smi_data_input[5])
-  );
-  SB_IO #(
-      .PIN_TYPE(6'b1010_01),
-      .PULLUP  (1'b0)
-  ) smi_io6 (
-      .PACKAGE_PIN(io_smi_data[6]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[6]),
-      .D_IN_0(w_smi_data_input[6])
-  );
-  SB_IO #(
-      .PIN_TYPE(6'b1010_01),
-      .PULLUP  (1'b0)
-  ) smi_io7 (
-      .PACKAGE_PIN(io_smi_data[7]),
-      .OUTPUT_ENABLE(w_smi_data_direction),
-      .D_OUT_0(w_smi_data_output[7]),
-      .D_IN_0(w_smi_data_input[7])
-  );
+  
+  end
+  endgenerate
 
   // We need the 'o_smi_write_req' to be 1 only when the direction is TX 
   // (w_smi_data_direction == 0) and the write fifo is not full
