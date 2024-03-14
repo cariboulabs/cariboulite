@@ -21,7 +21,9 @@ module lvds_rx (
   reg [1:0] r_state_if;
   reg [2:0] r_phase_count;
   reg r_sync_input;
-
+  reg r_fifo_push;
+  assign o_fifo_push = r_fifo_push;
+  
   // Initial conditions
   initial begin
     r_state_if = state_idle;
@@ -36,7 +38,7 @@ module lvds_rx (
   always @(posedge i_ddr_clk or negedge i_rst_b) begin
     if (i_rst_b == 1'b0) begin
       r_state_if <= state_idle;
-      o_fifo_push <= 1'b0;
+      r_fifo_push <= 1'b0;
       r_phase_count <= 3'b111;
       r_sync_input <= 1'b0;
     end else begin
@@ -48,7 +50,7 @@ module lvds_rx (
             r_sync_input <= i_sync_input;  // mark the sync input for this sample
           end
           r_phase_count <= 3'b111;
-          o_fifo_push   <= 1'b0;
+          r_fifo_push   <= 1'b0;
         end
 
         state_i_phase: begin
@@ -63,17 +65,17 @@ module lvds_rx (
           
           r_phase_count <= r_phase_count - 1;
           end
-          o_fifo_push <= 1'b0;
+          r_fifo_push <= 1'b0;
           o_fifo_data <= {o_fifo_data[29:0], i_ddr_data};
         end
 
         state_q_phase: begin
           if (r_phase_count == 3'b000) begin
-            o_fifo_push <= ~i_fifo_full;
+            r_fifo_push <= ~i_fifo_full;
             r_state_if  <= state_idle;
             o_fifo_data <= {o_fifo_data[29:0], i_ddr_data[1], r_sync_input};
           end else begin
-            o_fifo_push   <= 1'b0;
+            r_fifo_push   <= 1'b0;
             r_phase_count <= r_phase_count - 1;
             o_fifo_data   <= {o_fifo_data[29:0], i_ddr_data};
           end
