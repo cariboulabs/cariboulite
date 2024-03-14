@@ -93,20 +93,65 @@ static void app_fpga_programming(sys_st *sys)
 
 	printf("FPGA Programming:\n");
 	sys->force_fpga_reprogramming = true;
-	int res = cariboulite_configure_fpga (sys, cariboulite_firmware_source_blob, NULL);
-	if (res < 0)
+	
+	int choice;
+	int res;
+	char* firmware_file = "../../../firmware/top.bin";
+	while (1)
 	{
-		printf("	ERROR: FPGA programming failed `%d`\n", res);
-		return;
+		int should_break = 0;
+		printf("	Parameters:\n");
+		printf("	[1] program from blob\n");
+		printf("	[2] program from %s\n", firmware_file);
+		printf("	[99] Return to Main Menu\n");
+		printf("	Choice: ");
+		if (scanf("%d", &choice) != 1) continue;
+	
+		switch (choice)
+		{
+			case 1:
+			case 2:
+			case 99:
+				should_break = 1;
+				break;
+			default:
+				should_break = 0;
+		}
+		printf("choice %d %d\n",choice, should_break);
+		if(should_break)
+			break;
 	}
-	printf("	FPGA programming successful, Versions:\n");
+	
+	switch (choice)
+	{
+			case 1:
+				res = cariboulite_configure_fpga (sys, cariboulite_firmware_source_blob, 0);
+				break;
+			case 2:
+				res = cariboulite_configure_fpga (sys, cariboulite_firmware_source_file, firmware_file);
+				break;
+				
+			default:
+				break;
+	}
+	
+	if(choice != 99)
+	{
 
-	caribou_fpga_soft_reset(&sys->fpga);
-	io_utils_usleep(100000);
+		if (res < 0)
+		{
+			printf("	ERROR: FPGA programming failed `%d`\n", res);
+			return;
+		}
+		printf("	FPGA programming successful, Versions:\n");
 
-	caribou_fpga_get_versions (&sys->fpga, NULL);
+		caribou_fpga_soft_reset(&sys->fpga);
+		io_utils_usleep(100000);
 
-	caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
+		caribou_fpga_get_versions (&sys->fpga, NULL);
+
+		caribou_fpga_set_io_ctrl_mode (&sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
+	}
 }
 
 //=================================================

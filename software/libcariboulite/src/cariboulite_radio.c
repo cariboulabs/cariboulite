@@ -40,10 +40,8 @@ int cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, carib
     radio->tx_loopback_anabled = false;
     radio->smi_channel_id = GET_SMI_CH(type);
     
-    // activation of the channel
-    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, true);
-    usleep(1000);
-	cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
+    cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_reset);
+    usleep(100000);
     
     return 0;
 }
@@ -1074,7 +1072,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     radio->channel_direction = dir;
     radio->active = activate;
     
-	int cal_i, cal_q;
+	
     ZF_LOGD("Activating channel %d, dir = %s, activate = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", activate);
 
     // then deactivate the modem's stream
@@ -1096,7 +1094,8 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
     // Activate the channel according to the configurations
     // RX on both channels looks the same
     if (radio->channel_direction == cariboulite_channel_dir_rx)
-    {        
+    {   
+        caribou_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 1);
         // Setup the IQ stream properties
         smi_stream_state_en smi_state = smi_stream_idle;
         if (radio->smi_channel_id == caribou_smi_channel_900)
@@ -1140,6 +1139,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 	//===========================================================
     else if (radio->channel_direction == cariboulite_channel_dir_tx)
     {
+        caribou_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
         at86rf215_iq_interface_config_st modem_iq_config = 
         {
             .loopback_enable = radio->tx_loopback_anabled,
@@ -1203,7 +1203,6 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 	    {
 		return -1;
 	    }
-            caribou_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
         }
     }
 
