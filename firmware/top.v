@@ -482,7 +482,7 @@ module top (
       .o_smi_read_req(w_smi_read_req),
       .o_smi_write_req(w_smi_write_req),
       .o_channel(channel),
-      .o_dir (/*w_smi_data_direction*/),
+      .o_dir (control_smi_data_direction),
       .i_smi_test(1'b0/*w_debug_smi_test*/),
       .o_cond_tx(),
       .o_address_error()
@@ -520,10 +520,22 @@ module top (
   end
   endgenerate
 
-  // We need the 'o_smi_write_req' to be 1 only when the direction is TX 
-  // (w_smi_data_direction == 0) and the write fifo is not full
-  assign o_smi_read_req  = (w_smi_data_direction) ? w_smi_read_req : w_smi_write_req;
-  assign o_smi_write_req = 1'bZ;
+  /*
+   * SMI DMA REQ/ACK
+   *
+   * wrong naming. It's a dma req + dma ack. dma_req must be asserted before starting the transaction
+   */
+  wire control_smi_data_direction;
+  assign o_smi_read_req  =  (control_smi_data_direction) ? w_smi_read_req : w_smi_write_req;
+  SB_IO #(
+      .PIN_TYPE(6'b1010_01),
+      .PULLUP  (1'b0)
+  ) smi_ack_in (
+      .PACKAGE_PIN(o_smi_write_req),
+      .OUTPUT_ENABLE(1'b0),
+      .D_OUT_0(1'b0),
+      .D_IN_0()
+  );
 
   assign o_led0 = w_smi_data_direction;
   assign o_led1 = channel;
