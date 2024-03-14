@@ -1,3 +1,20 @@
+# MODIFIED CARIBOULITE
+
+This is a non-official branch of cariboulite.
+Features:
+ - performance upgrades
+ - transmission of arbitrary waveforms
+
+The guide on how to use this version is in docs/notes/tutorial.txt
+
+___
+ _
+___
+ _
+___
+_
+
+
 # CaribouLite
 CaribouLite is an affordable, educational, open-source SDR evaluation platform and a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio.
 
