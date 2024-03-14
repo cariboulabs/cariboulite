@@ -95,10 +95,10 @@ static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings 
     settings->read_hold_time = 0;
     settings->read_pace_time = 0;
 
-    settings->write_setup_time = 0;
+    settings->write_setup_time = 1;
     settings->write_strobe_time = 5;
-    settings->write_hold_time = 0;
-    settings->write_pace_time = 0;
+    settings->write_hold_time = 1;
+    settings->write_pace_time = 1;
 
 	// 8 bit on each transmission (4 TRX per sample)
     settings->data_width = SMI_WIDTH_8BIT;
@@ -689,9 +689,11 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
 {
     caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
     uint32_t *samples = (uint32_t*)(data);
-	
+	uint32_t *orig = (uint32_t*)(sample_offset);
+    
     for (unsigned int i = 0; i < (data_length / CARIBOU_SMI_BYTES_PER_SAMPLE); i++)
     {                    
+        /*
         int32_t ii = cmplx_vec[i].i;
         int32_t qq = cmplx_vec[i].q;
 		
@@ -705,6 +707,9 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
 		//if (i < 2) printf("0x%08X\n", s);
 		
         samples[i] = __builtin_bswap32(s);
+        */
+        samples[i] = (orig[i] & 0xfffefffe)  | 0x00000001;
+        
     }
 }
 
@@ -746,7 +751,7 @@ int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
         }
         else if (ret == 0) break;
 
-        written_so_far += current_write_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
+        written_so_far += ret / CARIBOU_SMI_BYTES_PER_SAMPLE;
         left_to_write -= ret;
     }
 
