@@ -2,7 +2,8 @@ PROG = ../software/libcariboulite/build/test/ice40programmer
 filename = top
 pcf_file = ./io.pcf
 
-top.bin:
+SOURCES := $(wildcard *.v)
+top.bin: $(SOURCES)
 	yosys -p 'synth_ice40 -top top -json $(filename).json -blif $(filename).blif' -p 'ice40_opt' -p 'fsm_opt' $(filename).v
 	#nextpnr-ice40 --lp1k --package qn84 --json $(filename).json --pcf $(pcf_file) --asc $(filename).asc
 	nextpnr-ice40 --lp1k --package qn84 --json $(filename).json --pcf $(pcf_file) --asc $(filename).asc --freq 64 --parallel-refine --opt-timing --timing-allow-fail
