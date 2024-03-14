@@ -121,11 +121,13 @@ add_executable(caribou_programmer ${SOURCES_CARIBOU_PROGRAMMER})
 add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_test_app ${SOURCES_TEST_MAIN})
 add_executable(cariboulite_util ${SOURCES_MAIN})
+add_executable(tx_test src/tx_test.c)
 
 target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
 target_link_libraries(cariboulite_test_app cariboulite)
 target_link_libraries(cariboulite_util cariboulite)
+target_link_libraries(tx_test cariboulite)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
