@@ -5,7 +5,7 @@ Features:
  - performance upgrades
  - transmission of arbitrary waveforms
 
-The guide on how to use this version is in docs/notes/tutorial.txt
+The guide on how to use this version is in docs/notes/tutorial.md
 
 ___
  _
