@@ -1369,7 +1369,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 	}
 
 	// Create sysfs entries with "smi-stream-dev"
-	smi_stream_class = class_create(THIS_MODULE, DEVICE_NAME);
+	smi_stream_class = class_create(DEVICE_NAME);
 	ptr_err = smi_stream_class;
 	if (IS_ERR(ptr_err))
 	{
