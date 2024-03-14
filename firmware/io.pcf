@@ -27,7 +27,7 @@
 
 #set_frequency i_glob_clock 			    125
 set_frequency w_clock_sys 			        64
-set_frequency smi_ctrl_ins.soe_and_reset 	16
+set_frequency i_smi_soe_se 	                16
 set_frequency i_smi_swe_srw 			    16
 set_frequency lvds_clock_buf 			    64
 set_frequency i_sck 				        5
