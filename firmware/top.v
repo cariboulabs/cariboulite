@@ -346,7 +346,7 @@ module top (
   wire w_rx_fifo_empty;
   wire channel;
 
-  assign channel = i_smi_a3;
+  //assign channel = i_smi_a3;
 
   complex_fifo  #(
       .ADDR_WIDTH(10),  // 1024 samples
@@ -445,7 +445,7 @@ module top (
       .i_smi_data_in(w_smi_data_input),
       .o_smi_read_req(w_smi_read_req),
       .o_smi_write_req(w_smi_write_req),
-      .o_channel(/*channel*/),
+      .o_channel(channel),
       .o_dir (/*w_smi_data_direction*/),
       .i_smi_test(1'b0/*w_debug_smi_test*/),
       .o_cond_tx(),
