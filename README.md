@@ -1,20 +1,3 @@
-# MODIFIED CARIBOULITE
-
-This is a non-official branch of cariboulite.
-Features:
- - performance upgrades
- - transmission of arbitrary waveforms
-
-The guide on how to use this version is in docs/notes/tutorial.md
-
-___
- _
-___
- _
-___
-_
-
-
 # CaribouLite
 CaribouLite is an affordable, educational, open-source SDR evaluation platform and a HAT for the Raspberry-Pi family of boards (40-pin versions only). It is built for makers, hackers, and researchers and was designed to complement the current SDR (Software Defined Radio) eco-systems offering with a scalable, standalone dual-channel software-defined radio.
 
@@ -39,6 +22,7 @@ Due to the architectural changes in RPI5 - the new I/O controller called "RP1" c
 So, if you intend to use CaribouLite on RPI5 please don't - it won't work. Why was the SMI interface deprecated by Broadcomm (either from its hardware or kernel SW support)? Most probably due to the same reason this interface was not documented in the first place - no interest in supporting a high-speed external interface within the 40-pin connector.
 
 Edit: The workaround we are working to support RPI5 anyway - trying to utilize the Display and Camera I/O pins from the 40-pin connector to stream information - FPGA + Kernel module adaptation.
+Edit2: A unofficial developer (Matteo Serva) is working on supporting the RPI5 by leveraging multiple SPI interfaces
 
 # Getting Started & Installation
 Use the following steps to install the CaribouLite on your choice of RPI board
@@ -83,6 +67,11 @@ So currently, sudo'ing is needed whenever CaribouLite is accessed (including sud
 
 
 To compile the API library and SoapySDR API from code please click [here](/software/libcariboulite/README.md)
+
+# Transmitting a signal
+
+There is an experimental feature for transmitting arbitrary waveforms.
+The guide on how to use this version is [here](/docs/notes/tutorial.md)
 
 # SMI Interface
 
