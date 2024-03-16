@@ -1134,7 +1134,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         {
             modem_iq_config.radio09_mode = at86rf215_baseband_mode;
             modem_iq_config.radio24_mode = at86rf215_iq_if_mode;
-            modem_iq_config.clock_skew = at86rf215_iq_clock_data_skew_2_906ns;
+            modem_iq_config.clock_skew = at86rf215_iq_clock_data_skew_4_906ns;
             smi_state = smi_stream_rx_channel_1;
         }
         
@@ -1220,6 +1220,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             // apply the state
             caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
             caribou_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
+            //cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx); 
         }
     }
 

@@ -171,7 +171,7 @@ module smi_ctrl
         tx_state_third  = 2'b10,
         tx_state_fourth = 2'b11;
 
-    reg [4:0] int_cnt_tx;
+    reg [12:0] int_cnt_tx;
     reg [31:0] r_fifo_pushed_data;
     reg [1:0] tx_reg_state;
     reg modem_tx_ctrl;
@@ -194,7 +194,11 @@ module smi_ctrl
             r_fifo_pushed_data <= 32'h00000000;
             modem_tx_ctrl <= 1'b0;
             cond_tx_ctrl <= 1'b0;
-            //cnt <= 0;
+            
+            // DEBUG
+            int_cnt_tx <= 0;
+            // END_DEBUG
+
         end else begin
             case (tx_reg_state)
                 //----------------------------------------------
@@ -247,10 +251,11 @@ module smi_ctrl
                 begin
                     if (i_smi_data_in[7] == 1'b0) begin
                         o_tx_fifo_pushed_data <= {r_fifo_pushed_data[31:8], i_smi_data_in[6:0], 1'b0};
+
                         //o_tx_fifo_pushed_data <= {i_smi_data_in[6:0], 1'b0, r_fifo_pushed_data[15:8], r_fifo_pushed_data[23:16], r_fifo_pushed_data[31:24]};
-                        //o_tx_fifo_pushed_data <= {2'b10, cnt, 1'b1, 2'b01, 13'h3F, 1'b0};
-                        //o_tx_fifo_pushed_data <= {cnt, cnt, 6'b111111};
-                        //cnt <= cnt + 1024;
+                        o_tx_fifo_pushed_data <= {2'b10, int_cnt_tx, 1'b1, 2'b01, 13'h3F, 1'b0};
+                        int_cnt_tx <= int_cnt_tx + 512;
+                        
                         w_fifo_push_trigger <= 1'b1;
                         o_cond_tx <= cond_tx_ctrl;
                     end else begin

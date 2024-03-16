@@ -262,11 +262,11 @@ static int set_state(smi_stream_state_en new_state)
 
         if (new_state == smi_stream_tx_channel)
         {
-            ret = transfer_thread_init(inst,DMA_MEM_TO_DEV,stream_smi_write_dma_callback);
+            ret = transfer_thread_init(inst, DMA_MEM_TO_DEV, stream_smi_write_dma_callback);
         }
         else
         {
-            ret = transfer_thread_init(inst,DMA_DEV_TO_MEM,stream_smi_read_dma_callback);
+            ret = transfer_thread_init(inst, DMA_DEV_TO_MEM, stream_smi_read_dma_callback);
         }
         
         // if starting the transfer succeeded update the state
@@ -329,12 +329,14 @@ static int smi_disable_sync(struct bcm2835_smi_instance *smi_inst)
     
 }
 
+/***************************************************************************/
 static void smi_refresh_dma_command(struct bcm2835_smi_instance *smi_inst, int num_transfers)
 {
     int smics_temp = 0;
     //print_smil_registers_ext("refresh 1");
     write_smi_reg(smi_inst, SMI_TRANSFER_MULTIPLIER*num_transfers, SMIL); //to avoid stopping and restarting
     //print_smil_registers_ext("refresh 2");
+    
     // Start the transaction
     smics_temp = read_smi_reg(smi_inst, SMICS);
     smics_temp |= SMICS_START;
@@ -345,7 +347,7 @@ static void smi_refresh_dma_command(struct bcm2835_smi_instance *smi_inst, int n
 }
 
 /***************************************************************************/
-static int smi_init_programmed_transfer(struct bcm2835_smi_instance *smi_inst, enum dma_transfer_direction dma_dir,int num_transfers)
+static int smi_init_programmed_transfer(struct bcm2835_smi_instance *smi_inst, enum dma_transfer_direction dma_dir, int num_transfers)
 {
     int smics_temp = 0;
     int success = 0;
@@ -597,6 +599,7 @@ static void stream_smi_read_dma_callback(void *param)
     inst->current_read_chunk++;
 }
 
+/***************************************************************************/
 static void stream_smi_check_and_restart(struct bcm2835_smi_dev_instance *inst)
 {
     struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
@@ -621,6 +624,7 @@ static void stream_smi_check_and_restart(struct bcm2835_smi_dev_instance *inst)
     }
 }
 
+/***************************************************************************/
 static void stream_smi_write_dma_callback(void *param)
 {
     /* Notify the bottom half that a chunk is ready for user copy */
@@ -656,7 +660,7 @@ static void stream_smi_write_dma_callback(void *param)
     
 }
 
-
+/***************************************************************************/
 static struct dma_async_tx_descriptor *stream_smi_dma_init_cyclic(  struct bcm2835_smi_instance *inst,
                                                                     enum dma_transfer_direction dir,
                                                                     dma_async_tx_callback callback, void*param)
@@ -691,14 +695,13 @@ static struct dma_async_tx_descriptor *stream_smi_dma_init_cyclic(  struct bcm28
 *
 ***************************************************************************/
 
-int transfer_thread_init(struct bcm2835_smi_dev_instance *inst, enum dma_transfer_direction dir,dma_async_tx_callback callback)
+int transfer_thread_init(struct bcm2835_smi_dev_instance *inst, enum dma_transfer_direction dir, dma_async_tx_callback callback)
 {
-
     unsigned int errors = 0;
     int ret;
     int success;
     
-    dev_info(inst->dev, "Starting cyclic transfer");
+    dev_info(inst->dev, "Starting cyclic transfer, dma dir: %d", dir);
     inst->transfer_thread_running = true;
 
     /* Disable the peripheral: */
@@ -723,6 +726,7 @@ int transfer_thread_init(struct bcm2835_smi_dev_instance *inst, enum dma_transfe
     {
         spin_unlock(&inst->smi_inst->transaction_lock);
     }
+    
     inst->current_read_chunk = 0;
     inst->counter_missed = 0;
     if(!errors)
@@ -896,6 +900,7 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
     num_to_push = num_bytes_available > count ? count : num_bytes_available;
     ret = kfifo_from_user(&inst->tx_fifo, user_ptr, num_to_push, &actual_copied);
 
+    //dev_info(inst->dev, "smi_stream_write_file: pushed %ld bytes of %ld, available was %ld", actual_copied, count, num_bytes_available);
     mutex_unlock(&inst->write_lock);
 
     return ret ? ret : (ssize_t)actual_copied;
@@ -949,6 +954,7 @@ static dev_t smi_stream_devid;
 static struct class *smi_stream_class;
 static struct device *smi_stream_dev;
 
+/***************************************************************************/
 static int smi_stream_dev_probe(struct platform_device *pdev)
 {
     int err;

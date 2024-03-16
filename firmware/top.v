@@ -199,7 +199,7 @@ module top (
       .i_config(i_config),
       .o_led0  (o_led0),
       .o_led1  (o_led1),
-      .o_pmod  (io_pmod[3:0]),
+      .o_pmod  (/*io_pmod[3:0]*/),
 
       // Analog interfaces
       .o_mixer_fm(/*o_mixer_fm*/),
@@ -212,6 +212,11 @@ module top (
       .o_shdn_rx_lna(o_shdn_rx_lna),
       .o_mixer_en(/*o_mixer_en*/)
   );
+
+  assign io_pmod[0] = ~lvds_clock_buf;
+  assign io_pmod[1] = w_lvds_tx_d0;
+  assign io_pmod[2] = w_lvds_tx_d1;
+  assign io_pmod[3] = i_smi_swe_srw;
 
   //=========================================================================
   // CONBINATORIAL ASSIGNMENTS
@@ -302,7 +307,7 @@ module top (
       .IO_STANDARD("SB_LVCMOS"),
   ) iq_tx_p (
       .PACKAGE_PIN(o_iq_tx_p),
-      .OUTPUT_CLK(lvds_clock_buf),
+      .OUTPUT_CLK(~lvds_clock_buf),
       .D_OUT_0(~w_lvds_tx_d0),
       .D_OUT_1(~w_lvds_tx_d1)
   );
@@ -313,16 +318,34 @@ module top (
       .IO_STANDARD("SB_LVCMOS"),
   ) iq_tx_n (
       .PACKAGE_PIN(o_iq_tx_n),
-      .OUTPUT_CLK(lvds_clock_buf),
+      .OUTPUT_CLK(~lvds_clock_buf),
       .D_OUT_0(w_lvds_tx_d0),
       .D_OUT_1(w_lvds_tx_d1)
+  );
+
+  // Non-inverting, P-side clock
+  SB_IO #(
+      .PIN_TYPE(6'b011001),
+      .IO_STANDARD("SB_LVCMOS")
+  ) iq_tx_clk_p (
+      .PACKAGE_PIN(o_iq_tx_clk_p),
+      .D_OUT_0(lvds_clock_buf),
+  );
+
+  // Inverting, N-side clock
+  SB_IO #(
+      .PIN_TYPE(6'b011001),
+      .IO_STANDARD("SB_LVCMOS")
+  ) iq_tx_clk_n (
+      .PACKAGE_PIN(o_iq_tx_clk_n),
+      .D_OUT_0(~lvds_clock_buf),
   );
 
 
   // Logic on a clock signal is very bad - try to use a dedicated
   // SB_IO
-  assign o_iq_tx_clk_p = lvds_clock_buf;
-  assign o_iq_tx_clk_n = ~lvds_clock_buf;
+  //assign o_iq_tx_clk_p = lvds_clock_buf;
+  //assign o_iq_tx_clk_n = ~lvds_clock_buf;
 
   //=========================================================================
   // LVDS RX SIGNAL FROM MODEM

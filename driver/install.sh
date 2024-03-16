@@ -15,7 +15,7 @@ USERSPACE_SMI_DIR="../software/libcariboulite/src/caribou_smi/kernel"
 
 ## FUNCTIONS
 install() {
-    local mtu_mult=${1:-6}
+    local mtu_mult=${1:-16}
     local dir_offs=${2:-2}
     local ch_offs=${3:-3}
 
