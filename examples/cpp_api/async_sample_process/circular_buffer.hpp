@@ -72,7 +72,7 @@ public:
                 return size() >= length;
             });
             
-            if (size() < length)
+            if (size() == 0)
             {
                 return 0;
             }

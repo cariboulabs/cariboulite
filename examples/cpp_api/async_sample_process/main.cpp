@@ -23,7 +23,7 @@ typedef enum
 {
     app_state_setup = 0,
     app_state_sampling = 1,
-    app_state_sleaping = 2,
+    app_state_sleeping = 2,
 } appState_en;
 
 typedef struct
@@ -42,8 +42,8 @@ typedef struct
     bool requested_to_quit;
     
     // buffers & threads
-    circular_buffer<std::complex<float>> rx_fifo;
-    thread *dsp_thread;
+    circular_buffer<std::complex<float>> *rx_fifo;
+    std::thread *dsp_thread;
 } appContext_st;
 
 static appContext_st app = {0};
@@ -116,7 +116,7 @@ float RSSI(const std::complex<float>* signal, size_t num_of_samples)
     return 10 * log10(mean_of_squares);
 }
 
-// Consumer thread
+// Consumer (parallel DSP) thread
 void dataConsumerThread(appContext_st* app)
 {
     std::cout << "Data consumer thread started" << std::endl;
@@ -126,14 +126,21 @@ void dataConsumerThread(appContext_st* app)
     while (app->running)
     {
         // get the number of elements in the fifo
-        size_t num_lements = app.rx_fifo.size();
+        size_t num_lements = app->rx_fifo->size();
         if (num_lements == 0) 
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50))
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
             continue;
         }
         
-        app.rx_fifo.get(local_dsp_buffer, (num_lements>(RX_CHUNK_SAMPLES*4)) ? (RX_CHUNK_SAMPLES * 4) : num_lements);
+        size_t actual_read = app->rx_fifo->get(local_dsp_buffer, (num_lements>(RX_CHUNK_SAMPLES*4)) ? (RX_CHUNK_SAMPLES * 4) : num_lements);
+        if (actual_read)
+        {
+            // here goes the DSP
+            app->num_samples_read_so_far += actual_read;
+            float rssi = RSSI(local_dsp_buffer, actual_read);
+            printf("DSP EPOCH: %ld, NUM_READ: %ld, RSSI: %.3f\n", app->epoch, app->num_samples_read_so_far, rssi);
+        }
     }
     
     std::cout << "Data consumer thread exitting" << std::endl;
@@ -152,11 +159,12 @@ void receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples
     std::cout << std::endl;
 
     // push the received samples in the fifo
-    app.rx_fifo.put(samples, num_samples);
+    app.rx_fifo->put(samples, num_samples);
 }
 
-
-// Main entry
+// ==========================================================================================
+// A simple asynchronous DSP flow
+// ==========================================================================================
 int main ()
 {
     // try detecting the board before getting the instance
@@ -188,6 +196,7 @@ int main ()
         {
             //----------------------------------------------
             case app_state_setup:
+                std::cout << "Starting Epoch " << app.epoch << std::endl;
                 // an example periodic radio setup stage
                 app.radio->SetRxGain(app.gain);
                 app.radio->SetFrequency(app.freq);
@@ -212,7 +221,10 @@ int main ()
             case app_state_sleeping:
                 std::this_thread::sleep_for(std::chrono::milliseconds(TIME_BETWEEN_EPOCHS * 1000));
                 app.epoch ++;
-
+                
+                // reset the fifo
+                app.rx_fifo->reset();
+                
                 // either go the next epoch or quit the program
                 // this is an example flow but other possibilities exist
                 if (!app.requested_to_quit) app.state = app_state_setup;
