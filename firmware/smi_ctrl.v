@@ -27,14 +27,13 @@ module smi_ctrl
     input [7:0]         i_smi_data_in,
     output              o_smi_read_req,
     output              o_smi_write_req,
-    input               i_smi_test,
     output              o_channel,
     output              o_dir,
 
     // TX CONDITIONAL
     output reg          o_cond_tx,
-    // Errors
-    output reg          o_address_error);
+    
+    output wire [1:0]   o_state);
 
     // ---------------------------------
 
@@ -60,7 +59,6 @@ module smi_ctrl
     always @(posedge i_sys_clk or negedge i_rst_b)
     begin
         if (i_rst_b == 1'b0) begin
-            o_address_error <= 1'b0;
             r_dir <= 1'b0;
             r_channel <= 1'b0;
         end else begin
@@ -78,7 +76,7 @@ module smi_ctrl
                             o_data_out[0] <= i_rx_fifo_empty;
                             o_data_out[1] <= i_tx_fifo_full;
                             o_data_out[2] <= r_channel;
-                            o_data_out[3] <= i_smi_test;
+                            o_data_out[3] <= 1'b0;
                             o_data_out[4] <= r_dir;
                             o_data_out[7:4] <= 3'b000;
                         end
@@ -118,7 +116,7 @@ module smi_ctrl
 
     wire soe_and_reset;
     assign soe_and_reset = i_rst_b & i_smi_soe_se;
-    assign o_smi_read_req = (!i_rx_fifo_empty) || i_smi_test;
+    assign o_smi_read_req = (!i_rx_fifo_empty);
     assign o_rx_fifo_pull = !r_fifo_pull_1 && r_fifo_pull && !i_rx_fifo_empty;
 
     always @(negedge soe_and_reset)
@@ -129,25 +127,15 @@ module smi_ctrl
             r_fifo_pulled_data <= 32'h00000000;
         end else begin
             // trigger the fifo pulling on the second byte
-            w_fifo_pull_trigger <= (int_cnt_rx == 5'd8) && !i_smi_test;
+            w_fifo_pull_trigger <= (int_cnt_rx == 5'd8);
 
-            if ( i_smi_test ) begin
-                if (r_smi_test_count == 0) begin
-                    r_smi_test_count <= 8'h56;
-                end else begin
-                    o_smi_data_out <= r_smi_test_count;
-                    r_smi_test_count <= {((r_smi_test_count[2] ^ r_smi_test_count[3]) & 1'b1), r_smi_test_count[7:1]};
-                end
-            end else begin
-                int_cnt_rx <= int_cnt_rx + 8;
-                o_smi_data_out <= r_fifo_pulled_data[int_cnt_rx+7:int_cnt_rx];
-                
-                // update the internal register as soon as we reach the fourth byte
-                if (int_cnt_rx == 5'd24) begin
-                    r_fifo_pulled_data <= i_rx_fifo_pulled_data;
-                end
+            int_cnt_rx <= int_cnt_rx + 8;
+            o_smi_data_out <= r_fifo_pulled_data[int_cnt_rx+7:int_cnt_rx];
+            
+            // update the internal register as soon as we reach the fourth byte
+            if (int_cnt_rx == 5'd24) begin
+                r_fifo_pulled_data <= i_rx_fifo_pulled_data;
             end
-
         end
     end
 
@@ -185,6 +173,7 @@ module smi_ctrl
     assign o_tx_fifo_push = !r_fifo_push_1 && r_fifo_push && !i_tx_fifo_full;
     assign swe_and_reset = i_rst_b & i_smi_swe_srw;
     assign o_tx_fifo_clock = i_sys_clk;
+    assign o_state = tx_reg_state;
 
     always @(negedge swe_and_reset)
     begin

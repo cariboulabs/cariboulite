@@ -254,7 +254,6 @@ static int set_state(smi_stream_state_en new_state)
         return 0;
     }
     
-
     // Only if the new state is not idle (rx0, rx1 ot tx) setup a new transfer
     if(new_state != smi_stream_idle)
     {
@@ -262,7 +261,23 @@ static int set_state(smi_stream_state_en new_state)
 
         if (new_state == smi_stream_tx_channel)
         {
-            ret = transfer_thread_init(inst, DMA_MEM_TO_DEV, stream_smi_write_dma_callback);
+            // remove all data inside the tx_fifo
+            if (mutex_lock_interruptible(&inst->write_lock))
+            {
+                return -EINTR;
+            }
+            kfifo_reset(&inst->tx_fifo);
+            mutex_unlock(&inst->write_lock);
+            
+            inst->writeable = true;
+            wake_up_interruptible(&inst->poll_event);
+            
+            //ret = transfer_thread_init(inst, DMA_MEM_TO_DEV, stream_smi_write_dma_callback);
+            mb();
+            spin_unlock(&inst->state_lock);
+            
+            // return the success
+            return ret;
         }
         else
         {
@@ -734,7 +749,7 @@ int transfer_thread_init(struct bcm2835_smi_dev_instance *inst, enum dma_transfe
         struct dma_async_tx_descriptor *desc = NULL;
         struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
         spin_lock(&smi_inst->transaction_lock);
-        desc = stream_smi_dma_init_cyclic(smi_inst, dir, callback,inst);
+        desc = stream_smi_dma_init_cyclic(smi_inst, dir, callback, inst);
     
         if(desc)
         {
@@ -884,15 +899,6 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
     if (mutex_lock_interruptible(&inst->write_lock))
     {
         return -EAGAIN;
-    }
-    
-    if (kfifo_is_full(&inst->tx_fifo))
-    {
-        if(wait_event_interruptible(inst->poll_event,  !kfifo_is_full(&inst->tx_fifo)))
-        {
-            mutex_unlock(&inst->write_lock);
-            return -EAGAIN;
-        }	
     }
     
     // check how many bytes are available in the tx fifo

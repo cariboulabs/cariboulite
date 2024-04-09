@@ -689,11 +689,18 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
 {
     caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
     uint32_t *samples = (uint32_t*)(data);
-	
+    
+    // Sample Structure
+    // [                 BYTE 0      ] [           BYTE 1     ] [           BYTE 2        ] [          BYTE 3      ]
+    // [SOF TXC CTX I12 I11 I10 I9 I8] [0 I7 I6 I5 I4 I3 I2 I1] [0 I0 Q12 Q11 Q10 Q9 Q8 Q7] [0 Q6 Q5 Q4 Q3 Q2 Q1 Q0]
+	//   1  0/1 0/1
+    
     for (unsigned int i = 0; i < (data_length / CARIBOU_SMI_BYTES_PER_SAMPLE); i++)
     {                    
-        int32_t ii = cmplx_vec[i].i;
-        int32_t qq = cmplx_vec[i].q;
+        int32_t ii = 0xFFFF; //cmplx_vec[i].i;
+        int32_t qq = 0; //cmplx_vec[i].q;
+        ii &= 0x1FFF;
+        qq &= 0x1FFF;
 		
         uint32_t s = SMI_TX_SAMPLE_SOF | SMI_TX_SAMPLE_MODEM_TX_CTRL | SMI_TX_SAMPLE_COND_TX_CTRL; s <<= 5;
         s |= (ii >> 8) & 0x1F; s <<= 8;
@@ -705,6 +712,7 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
 		//if (i < 2) printf("0x%08X\n", s);
 		
         samples[i] = __builtin_bswap32(s);
+        //samples[i] = s;
     }
 }
 

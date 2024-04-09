@@ -37,14 +37,14 @@ set_io i_glob_clock             A29
 set_io i_rst_b                  A43
 
 # PMOD
-set_io io_pmod[0]               B24
-set_io io_pmod[1]               A31
-set_io io_pmod[2]               B23
-set_io io_pmod[3]               B21
-set_io io_pmod[4]               A25
-set_io io_pmod[5]               A26
-set_io io_pmod[6]               A27
-set_io io_pmod[7]               B20
+set_io io_pmod_out[0]           B24
+set_io io_pmod_out[1]           A31
+set_io io_pmod_out[2]           B23
+set_io io_pmod_out[3]           B21
+set_io io_pmod_in[0]            A25
+set_io io_pmod_in[1]            A26
+set_io io_pmod_in[2]            A27
+set_io io_pmod_in[3]            B20
 
 # MIXER
 set_io o_mixer_fm               A32

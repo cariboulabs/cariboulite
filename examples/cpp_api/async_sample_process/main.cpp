@@ -152,12 +152,12 @@ void dataConsumerThread(appContext_st* app)
 // Rx Callback (async)
 void receivedSamples(CaribouLiteRadio* radio, const std::complex<float>* samples, CaribouLiteMeta* sync, size_t num_samples)
 {
-    for (int i = 0; i < 6; i ++)
+    /*for (int i = 0; i < 6; i ++)
     {
         std::cout << "[" << samples[i].real() << ", " << samples[i].imag() << "]";
     }
     std::cout << std::endl;
-
+    */
     // push the received samples in the fifo
     app.rx_fifo->put(samples, num_samples);
 }
