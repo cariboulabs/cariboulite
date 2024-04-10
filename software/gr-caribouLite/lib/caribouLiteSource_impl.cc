@@ -100,22 +100,16 @@ namespace gr {
         {
             auto out_samples = static_cast<gr_complex*>(output_items[0]);
             auto out_meta = _provide_meta == true ? static_cast<uint8_t*>(output_items[1]) : (uint8_t*) NULL ;
-            uint8_t* pps;
-            int read_samples = _radio->ReadSamples(out_samples, static_cast<size_t>(noutput_items), pps);
+            int read_samples = _radio->ReadSamples(out_samples, static_cast<size_t>(noutput_items), out_meta);
+            if (read_samples <= 0) { return 0;}
 
-            const pmt::pmt_t key = pmt::from_bool(true);
             for (int i = 0; i < read_samples; i++)
             {
-                const pmt::pmt_t value = pmt::from_uint64(pps[i]);
-                if (pps[i] == 1) {
-                    add_item_tag(0, i, key, value);
+                if (out_meta[i] == 1) {
+                    add_item_tag(0, i, pmt::string_to_symbol("pps") ,pmt::from_bool(true));
                 }
             }
             
-            if (read_samples <= 0) 
-            {
-                return 0;
-            }
             return read_samples;
         }
 
