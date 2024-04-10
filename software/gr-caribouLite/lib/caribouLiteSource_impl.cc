@@ -100,13 +100,23 @@ namespace gr {
         {
             auto out_samples = static_cast<gr_complex*>(output_items[0]);
             auto out_meta = _provide_meta == true ? static_cast<uint8_t*>(output_items[1]) : (uint8_t*) NULL ;
-            int ret = _radio->ReadSamples(out_samples, static_cast<size_t>(noutput_items), out_meta);
+            uint8_t* pps;
+            int read_samples = _radio->ReadSamples(out_samples, static_cast<size_t>(noutput_items), pps);
+
+            const pmt::pmt_t key = pmt::from_bool(true);
+            for (int i = 0; i < read_samples; i++)
+            {
+                const pmt::pmt_t value = pmt::from_uint64(pps[i]);
+                if (pps[i] == 1) {
+                    add_item_tag(0, i, key, value);
+                }
+            }
             
-            if (ret <= 0) 
+            if (read_samples <= 0) 
             {
                 return 0;
             }
-            return ret;
+            return read_samples;
         }
 
     } /* namespace caribouLite */
