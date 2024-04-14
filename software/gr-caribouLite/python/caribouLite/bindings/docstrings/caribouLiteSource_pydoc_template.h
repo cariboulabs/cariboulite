@@ -22,3 +22,6 @@ static const char* __doc_gr_caribouLite_caribouLiteSource_caribouLiteSource = R"
 
 
 static const char* __doc_gr_caribouLite_caribouLiteSource_make = R"doc()doc";
+
+
+static const char* __doc_gr_caribouLite_caribouLiteSource_getHandle = R"doc()doc";
