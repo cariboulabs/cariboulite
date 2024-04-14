@@ -113,5 +113,11 @@ namespace gr {
             return read_samples;
         }
 
+        //-------------------------------------------------------------------------------------------------------------
+        uint64_t caribouLiteSource_impl::getHandle() const
+        {
+            return (uint64_t)((void*)(_radio));
+        }
+
     } /* namespace caribouLite */
 } /* namespace gr */
