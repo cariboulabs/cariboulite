@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(caribouLiteSource.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(e935c090cd62d0e9d51a441814281997)                     */
+/* BINDTOOL_HEADER_FILE_HASH(2af106876738c9927aadb177d064272d)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -50,8 +50,6 @@ void bind_caribouLiteSource(py::module& m)
              py::arg("provide_meta") = false,
              D(caribouLiteSource, make))
 
-
-        .def("getHandle", &caribouLiteSource::getHandle, D(caribouLiteSource, getHandle))
 
         ;
 }

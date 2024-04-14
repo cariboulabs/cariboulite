@@ -39,8 +39,6 @@ namespace gr {
                       float sample_rate=4000000,
                       float freq=900000000,
                       bool provide_meta = false);
-
-      virtual uint64_t getHandle() = 0;
     };
 
   } // namespace caribouLite
