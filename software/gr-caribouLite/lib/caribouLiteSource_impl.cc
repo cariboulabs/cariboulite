@@ -86,11 +86,6 @@ namespace gr {
             _radio->StartReceiving();
         }
 
-        uint64_t caribouLiteSource_impl::getHandle() const
-        {
-            return (uint64_t)((void*)(_radio));
-        }
-
         // virtual destructor
         //-------------------------------------------------------------------------------------------------------------
         caribouLiteSource_impl::~caribouLiteSource_impl()

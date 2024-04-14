@@ -49,7 +49,10 @@ namespace gr
                 gr_vector_void_star &output_items
             );
 
-            uint64_t caribouLiteSource_impl::getHandle() const;
+            uint64_t getHandle() const
+            {
+                return (uint64_t)((void*)(_radio));
+            }
         };
 
     } // namespace caribouLite
