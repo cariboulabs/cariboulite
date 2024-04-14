@@ -18,7 +18,12 @@
 static const char* __doc_gr_caribouLite_caribouLiteSource = R"doc()doc";
 
 
-static const char* __doc_gr_caribouLite_caribouLiteSource_caribouLiteSource = R"doc()doc";
+static const char* __doc_gr_caribouLite_caribouLiteSource_caribouLiteSource_0 =
+    R"doc()doc";
+
+
+static const char* __doc_gr_caribouLite_caribouLiteSource_caribouLiteSource_1 =
+    R"doc()doc";
 
 
 static const char* __doc_gr_caribouLite_caribouLiteSource_make = R"doc()doc";

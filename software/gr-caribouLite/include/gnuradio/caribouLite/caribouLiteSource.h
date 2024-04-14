@@ -40,7 +40,7 @@ namespace gr {
                       float freq=900000000,
                       bool provide_meta = false);
 
-      int64_t getHandle() const;
+      virtual uint64_t getHandle() = 0;
     };
 
   } // namespace caribouLite

@@ -49,7 +49,7 @@ namespace gr
                 gr_vector_void_star &output_items
             );
 
-            uint64_t getHandle() const;
+            virtual uint64_t getHandle();
         };
 
     } // namespace caribouLite

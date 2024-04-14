@@ -114,7 +114,7 @@ namespace gr {
         }
 
         //-------------------------------------------------------------------------------------------------------------
-        uint64_t caribouLiteSource_impl::getHandle() const
+        uint64_t caribouLiteSource_impl::getHandle()
         {
             return (uint64_t)((void*)(_radio));
         }
