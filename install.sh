@@ -41,61 +41,19 @@ fi
 sudo depmod -a
 
 ## --------------------------------------------------------------------
-## clone SoapySDR dependencies
+## install SoapySDR
 ## --------------------------------------------------------------------
-printf "\n[  3  ] ${GREEN}Checking Soapy SDR installation ($SOAPY_UTILS_EXE)...${NC}\n"
+printf "\n[  3  ] ${GREEN}Installing Soapy SDR...${NC}\n"
 
+sudo apt-get -y install soapysdr-tools soapysdr-module-all soapyremote-server libsoapysdr-dev python3-soapysdr
+
+printf "\n[  4  ] ${GREEN}Checking the installed Soapy utilities...${NC}\n"
 SOAPY_UTIL_PATH=`which $SOAPY_UTILS_EXE`
-
 if test -f "${SOAPY_UTIL_PATH}"; then
     printf "${CYAN}Found SoapySDRUtil at ${SOAPY_UTIL_PATH}${NC}\n"
 else
-    mkdir -p $ROOT_DIR/installations
-
-    printf "${RED}Did not find SoapySDRUtil${NC}. Do you want to clone and install? [Y/n]: "
-    read -s -n1
-    REPLY="${REPLY}Y <- default"
-
-    if [ "$REPLY" == "${REPLY#[Yy]}" ]; then
-        printf "N\n"
-    else
-        printf "Y\n"
-
-        printf "==> ${GREEN}Cloning SoapySDR, and compiling...${NC}\n"
-        cd $ROOT_DIR/installations
-
-        rm -rf SoapySDR
-        git clone https://github.com/pothosware/SoapySDR.git
-
-        # Soapy SDR -- the SDR abstraction library
-        cd SoapySDR
-        mkdir -p build && cd build
-        cmake ../
-        make && sudo make install
-        sudo ldconfig
-
-        printf "==> ${GREEN}Cloning SoapyRemote, and compiling...${NC}\n"
-        cd $ROOT_DIR/installations
-
-        rm -rf SoapyRemote
-        git clone https://github.com/pothosware/SoapyRemote.git
-
-        # Soapy Server -- Use any Soapy SDR remotely
-        cd SoapyRemote
-        mkdir -p build && cd build
-        cmake ../
-        make && sudo make install
-        sudo ldconfig
-    fi
-
-    printf "\n[  4  ] ${GREEN}Checking the installed Soapy utilities...${NC}\n"
-    SOAPY_UTIL_PATH=`which $SOAPY_UTILS_EXE`
-    if test -f "${SOAPY_UTIL_PATH}"; then
-        printf "${CYAN}Found SoapySDRUtil at ${SOAPY_UTIL_PATH}${NC}\n"
-    else
-        printf "\n${RED}Failed installing Soapy. Exiting...${NC}\n\n"
-        exit 1
-    fi
+    printf "\n${RED}Failed installing Soapy. Exiting...${NC}\n\n"
+    exit 1
 fi
 
 ## --------------------------------------------------------------------
