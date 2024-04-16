@@ -57,7 +57,7 @@ namespace gr {
                                                 bool provide_meta)
                         : gr::sync_block("caribouLiteSource",
                           gr::io_signature::make(0, 0, 0),
-                          gr::io_signature::make(1, 2, {sizeof(gr_complex), sizeof(uint8_t)})
+                          gr::io_signature::make(1, 2, sizeof(gr_complex))
                           )
         {
             detectBoard();
