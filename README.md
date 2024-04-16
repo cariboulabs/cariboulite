@@ -41,7 +41,7 @@ cd cariboulite
 
 The setup script **requires internet connection** and it follows the following automatic steps:
 1. **Dependencies** installation (apt)
-2. **Soapy API tools installation** (SoapySDR and SoapyRemote) - only if they are not currently present in the system. Installation from code.
+2. **Soapy API tools installation** (SoapySDR and SoapyRemote)
 3. **Internal dependencies installation**
    1. Utilities and tools
    2. IIR DSP library
