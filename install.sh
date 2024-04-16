@@ -142,10 +142,7 @@ sudo ldconfig
 ## --------------------------------------------------------------------
 ## Configuration File - RPI /boot/config.txt
 ## --------------------------------------------------------------------
-CONFIG_TXT_PATH="/boot/config.txt"
-if grep -iq "NAME=\"Ubuntu\"" /etc/os-release; then
-	CONFIG_TXT_PATH="/boot/firmware/config.txt"
-fi
+CONFIG_TXT_PATH="/boot/firmware/config.txt"
 
 printf "\n[  6  ] ${GREEN}Environmental Settings...${NC}\n"
 printf "${GREEN}1. SPI configuration...  "
