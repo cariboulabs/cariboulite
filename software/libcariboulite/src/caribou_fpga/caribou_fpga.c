@@ -20,6 +20,7 @@
 #define IOC_SYS_CTRL_SYS_SOFT_RST   4
 #define IOC_SYS_CTRL_DEBUG_MODES    5
 #define IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP  6
+#define IOC_SYS_CTRL_SYS_CTRL_WORD   3
 
 #define IOC_IO_CTRL_MODE            1
 #define IOC_IO_CTRL_DIG_PIN         2
@@ -384,6 +385,21 @@ int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map)
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), err_map);
 }
 
+int caribou_fpga_get_debug (caribou_fpga_st* dev, uint8_t *err_map)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_errors");
+    CARIBOU_FPGA_CHECK_PTR_NOT_NULL(err_map,"caribou_fpga_get_errors","err_map");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_read,
+        .mid = caribou_fpga_mid_res,
+        .ioc = IOC_SYS_CTRL_SYS_ERR_STAT
+    };
+
+    *err_map = 0;
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), err_map);
+}
+
 //--------------------------------------------------------------
 int caribou_fpga_set_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t gap)
 {
@@ -395,6 +411,18 @@ int caribou_fpga_set_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t gap)
         .ioc = IOC_SYS_CTRL_SYS_TX_SAMPLE_GAP,
     };
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &gap);
+}
+
+int caribou_fpga_set_sys_ctrl_tx_control_word (caribou_fpga_st* dev, uint8_t word)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_sys_ctrl_tx_control_word");
+    caribou_fpga_opcode_st oc =
+    {
+        .rw  = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_SYS_CTRL_WORD,
+    };
+    return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &word);
 }
 
 //--------------------------------------------------------------

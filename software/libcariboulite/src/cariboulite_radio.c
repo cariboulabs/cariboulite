@@ -25,6 +25,7 @@ static float sample_rate_middles[] = {3000, 1666, 1166, 900, 733, 583, 450};
 static float rx_bandwidth_middles[] = {225, 281, 356, 450, 562, 706, 893, 1125, 1406, 1781, 2250};
 static float tx_bandwidth_middles[] = {90, 112, 142, 180, 225, 282, 357, 450, 562, 712, 900};
 
+int cariboulite_radio_set_modem_state(cariboulite_radio_state_st* radio, cariboulite_radio_state_cmd_en state);
 
 void cariboulite_radio_debug(cariboulite_radio_state_st* radio)
 {
@@ -34,8 +35,8 @@ void cariboulite_radio_debug(cariboulite_radio_state_st* radio)
     at86rf215_iq_interface_config_st cfg;
     at86rf215_get_iq_if_cfg(&radio->sys->modem,&cfg,1);
     
-    uint8_t debug_word = 0;
-    //caribou_fpga_get_debug (&radio->sys->fpga, &debug_word);
+    uint8_t debug_word;
+    caribou_fpga_get_debug (&radio->sys->fpga, &debug_word);
     printf("debug word vale %02X\n",(int)debug_word);
 }
 
@@ -1080,7 +1081,7 @@ static int cariboulite_radio_tx_prep(cariboulite_radio_state_st* radio)
 int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                         cariboulite_channel_dir_en dir,
                                         bool activate)
-{  
+{
     int ret = 0;
     radio->channel_direction = dir;
     radio->active = activate;
@@ -1088,6 +1089,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 	
     ZF_LOGD("Activating channel %d, dir = %s, activate = %d", radio->type, radio->channel_direction==cariboulite_channel_dir_rx?"RX":"TX", activate);
 
+    
     // then deactivate the modem's stream
     cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_trx_off);
    
@@ -1163,8 +1165,9 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             .radio24_mode = at86rf215_iq_if_mode,
             .clock_skew = at86rf215_iq_clock_data_skew_4_906ns,
         };
-        at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);
+        at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);	
 
+        
         // if its an LO frequency output from the mixer - no need for modem output
         // LO applicable only to the channel with the mixer
         if (radio->lo_output && 
@@ -1195,7 +1198,7 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                                 1, 0x3F);
 
             // transition to state TX
-            cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx); 
+            //cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx); 
         }
 		else
         {
@@ -1212,11 +1215,21 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
             
             // apply the state
             caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
+            
+                // ACTIVATION STEPS
+            
+            //caribou_fpga_set_sys_ctrl_tx_control_word(&radio->sys->fpga, 0x0); // send zero frames to the radio
 	    if(cariboulite_radio_tx_prep(radio))
 	    {
+
 		return -1;
 	    }
-        }
+
+ 
+            usleep(100); // wait at least tx_start_delay
+            caribou_fpga_set_sys_ctrl_tx_control_word(&radio->sys->fpga, 0x01);
+            }
+
     }
 
     return 0;
