@@ -6,13 +6,13 @@ module lvds_rx (
     input             i_fifo_full,
     output            o_fifo_write_clk,
     output            o_fifo_push,
-    output reg [31:0] o_fifo_data,
+    output  [15:0] o_fifo_data,
     input             i_sync_input,
     output     [ 1:0] o_debug_state
 );
 
   // Internal FSM States
-  localparam state_idle = 2'b00, state_i_phase = 2'b01, state_q_phase = 2'b11;
+  localparam state_idle = 2'b00, state_i_phase = 2'b01, state_q_sync = 2'b10, state_q_phase = 2'b11;
 
   // Modem sync symbols
   localparam modem_i_sync = 2'b10, modem_q_sync = 2'b01;
@@ -34,52 +34,64 @@ module lvds_rx (
   assign o_fifo_write_clk = i_ddr_clk;
   assign o_debug_state = r_state_if;
 
+  reg [35:0] r_fifo_data;
+  always @(posedge i_ddr_clk) begin
+    r_fifo_data  <= {r_fifo_data[33:0], i_ddr_data};;
+  end
+  assign o_fifo_data  = r_fifo_data[19:4];
+  
+  reg fifo_push2;
   // Main Process
   always @(posedge i_ddr_clk or negedge i_rst_b) begin
     if (i_rst_b == 1'b0) begin
       r_state_if <= state_idle;
       r_fifo_push <= 1'b0;
-      r_phase_count <= 3'b111;
+      r_phase_count <= 3'b000;
       r_sync_input <= 1'b0;
+      fifo_push2 <= 1'b0;
     end else begin
+      r_phase_count <= r_phase_count + 1;
       case (r_state_if)
         state_idle: begin
-          if (i_ddr_data == modem_i_sync) begin
+          if (r_fifo_data[1:0] == modem_i_sync) begin
             r_state_if   <= state_i_phase;
-            o_fifo_data  <= {30'b000000000000000000000000000000, i_ddr_data};
+            
             r_sync_input <= i_sync_input;  // mark the sync input for this sample
-          end
-          r_phase_count <= 3'b111;
+          end 
+          r_phase_count <= 3'b001;
           r_fifo_push   <= 1'b0;
+          
+          if(fifo_push2) begin
+            r_fifo_push   <= 1'b1;
+            fifo_push2 <= 1'b0;
+          end
         end
 
         state_i_phase: begin
-          if (r_phase_count == 3'b000) begin
-            if (i_ddr_data == modem_q_sync) begin
-              r_phase_count <= 3'b110;
-              r_state_if <= state_q_phase;
-            end else begin
-              r_state_if <= state_idle;
-            end
-          end else begin
-          
-          r_phase_count <= r_phase_count - 1;
+          if (r_phase_count == 3'b111) begin
+            r_state_if <= state_q_sync;
           end
           r_fifo_push <= 1'b0;
-          o_fifo_data <= {o_fifo_data[29:0], i_ddr_data};
+          
         end
 
-        state_q_phase: begin
-          if (r_phase_count == 3'b000) begin
-            r_fifo_push <= ~i_fifo_full;
-            r_state_if  <= state_idle;
-            o_fifo_data <= {o_fifo_data[29:0], i_ddr_data[1], r_sync_input};
+        state_q_sync: begin
+          if (r_fifo_data[1:0] == modem_q_sync) begin
+              r_state_if <= state_q_phase;
+              r_fifo_push <= ~i_fifo_full;
+              fifo_push2 <= ~i_fifo_full;
           end else begin
-            r_fifo_push   <= 1'b0;
-            r_phase_count <= r_phase_count - 1;
-            o_fifo_data   <= {o_fifo_data[29:0], i_ddr_data};
+              r_state_if <= state_idle;
           end
-
+        end
+        
+        state_q_phase: begin
+          if (r_phase_count == 3'b111) begin
+            
+            r_state_if  <= state_idle;
+            
+          end
+          r_fifo_push <= 1'b0;
         end
       endcase
     end

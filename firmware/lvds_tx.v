@@ -14,7 +14,7 @@ module lvds_tx (
     input             i_fifo_empty,
     output            o_fifo_read_clk,
     output          o_fifo_pull,
-    input      [31:0] i_fifo_data,
+    input      [15:0] i_fifo_data,
     input [3:0]     i_sample_gap,
     input             i_tx_state,
     input             i_sync_input,
@@ -28,8 +28,10 @@ module lvds_tx (
 
     // STATES and PARAMS
     localparam
+        tx_state_init    = 4'b0000,
         tx_state_sync    = 4'b0001,
         tx_state_pretx   = 4'b0010,
+        tx_state_tx      = 4'b0100,
         tx_state_debugtx = 4'b1000;
         
     localparam sync_duration_frames = 8'd10;   // at least 2.5usec
@@ -116,14 +118,18 @@ module lvds_tx (
     // SYNC AND MANAGEMENT
   always @(posedge i_ddr_clk) begin
     if (lvds_ready_syncd == 1'b0) begin
-            r_state <= tx_state_sync;
-            r_pulled <= !i_fifo_empty;
+            r_state <= tx_state_init;
+            r_pulled <= 1'b0;
             r_fifo_data <= zero_frame;
             r_sync_count <= 8'd200;
     end else begin
         r_pulled <= 1'b0;
         case (r_state)
-        
+            tx_state_init:
+                if( !i_fifo_empty) begin
+                    r_pulled <= i_fifo_data[0];
+                    r_state <= tx_state_sync;
+                end
              tx_state_sync: 
              begin 
                         r_fifo_data <= zero_frame;
@@ -141,10 +147,16 @@ module lvds_tx (
              tx_state_pretx:
              begin
                     
-                            r_state <= tx_state_debugtx;
-                            r_sync_count <= {4'd0,i_sample_gap};
-                            
-                            r_fifo_data <= ( {2'b00, i_fifo_data[31:2]} & data_mask) | (sync_frame);
+                            r_state <= tx_state_tx;
+                            r_fifo_data[31:16] <= ({2'b00, i_fifo_data[15:2]} & data_mask[31:16]) | (sync_frame[31:16]);
+                            r_pulled <= 1'b1;
+             end
+             
+             tx_state_tx:
+             begin
+                    r_state <= tx_state_debugtx;
+                    r_fifo_data[15:0] <= ({2'b00, i_fifo_data[15:2]} & data_mask[15:0]) | (sync_frame[15:0]);
+                    r_pulled <= 1'b0;
              end
              
              tx_state_debugtx:
@@ -154,7 +166,7 @@ module lvds_tx (
                 if (w_data_sbe_ddr) begin
                     r_state <= tx_state_sync;
                 end
-                
+                r_sync_count <= {4'd0,i_sample_gap};
              end
              
                                        

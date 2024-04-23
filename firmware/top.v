@@ -6,6 +6,11 @@
 `include "lvds_tx.v"
 `include "async_fifo_fwft.v"
 
+`include "sync_fifo_fwft.v"
+`include "samples_fifo_fwft.v"
+`include "pin_holder.v"
+`include "smi_rx.v"
+
 module top (
     input i_glob_clock,
     input i_rst_b,
@@ -104,7 +109,10 @@ module top (
   wire [7:0] w_tx_data_sys;
   wire [7:0] w_tx_data_io;
   wire [7:0] w_tx_data_smi;
-
+  wire       debug_led1;
+  wire [7:0] debug_word;
+  wire [7:0] w_tx_control_word;
+  
   //=========================================================================
   // INSTANCES
   //=========================================================================
@@ -154,6 +162,7 @@ module top (
       .o_debug_smi_test(),
       .o_debug_loopback_tx(w_debug_lb_tx),
       .o_tx_sample_gap(tx_sample_gap),
+      .o_tx_control_word(w_tx_control_word),
   );
 
   wire w_debug_fifo_push;
@@ -200,7 +209,12 @@ module top (
     //and requires global buffering. For example, a user‟s logic-generated clock.
     .USER_SIGNAL_TO_GLOBAL_BUFFER (r_counter),
     .GLOBAL_BUFFER_OUTPUT ( w_clock_sys) );
+  /*  sysclock_gen sysclock_gen_inst (
+      .clock_in  (i_glob_clock),
+      .clock_out(w_clock_sys),
+      .locked(),
 
+  );*/
   //=========================================================================
   // CLOCK AND DATA-FLOW
   //=========================================================================
@@ -209,12 +223,17 @@ module top (
       r_counter <= 1'b0;
     end else begin
       r_counter <= !r_counter;
-
+    end
+  end
+      
+      
+  always @(posedge w_clock_sys) begin
+     begin
       case (w_cs)
         4'b0001: r_tx_data <= w_tx_data_sys;
         4'b0010: r_tx_data <= w_tx_data_io;
         4'b0100: r_tx_data <= w_tx_data_smi;
-        4'b1000: r_tx_data <= 8'b10100101;  // 0xA5: reserved
+        4'b1000: r_tx_data <= debug_word;  // 0xA5: reserved
         4'b0000: r_tx_data <= 8'b00000000;  // no module selected
       endcase
     end
@@ -339,11 +358,11 @@ module top (
   // RX FIFO Internals
   wire w_rx_09_fifo_write_clk;
   wire w_rx_09_fifo_push;
-  wire [31:0] w_rx_09_fifo_data;
+  wire [15:0] w_rx_09_fifo_data;
 
   wire w_rx_24_fifo_write_clk;
   wire w_rx_24_fifo_push;
-  wire [31:0] w_rx_24_fifo_data;
+  wire [15:0] w_rx_24_fifo_data;
 
   lvds_rx lvds_rx_09_inst (
       .i_rst_b  (i_rst_b),
@@ -375,31 +394,53 @@ module top (
 
   wire w_rx_fifo_write_clk = lvds_clock_buf; //(channel == 1'b0) ? w_rx_09_fifo_write_clk : w_rx_24_fifo_write_clk;
   wire w_rx_fifo_push = (channel == 1'b0) ? w_rx_09_fifo_push : w_rx_24_fifo_push;
-  wire [31:0] w_rx_fifo_data = (channel == 1'b0) ? w_rx_09_fifo_data : w_rx_24_fifo_data;
+  wire [15:0] w_rx_fifo_data = (channel == 1'b0) ? w_rx_09_fifo_data : w_rx_24_fifo_data;
   wire w_rx_fifo_pull;
-  wire [31:0] w_rx_fifo_pulled_data;
+  wire [15:0] w_rx_fifo_pulled_data;
   wire w_rx_fifo_full;
   wire w_rx_fifo_empty;
   wire channel;
 
   //assign channel = i_smi_a3;
 
-  async_fifo_fwft  #(
-      .ADDR_WIDTH(8),  // 1024 samples
+  wire [15:0] rxbuf_data;
+  wire rxbuf_full;
+  wire rxbuf_empty;
+  
+  wire rxbuf_beat = (~rxbuf_full) & (~rxbuf_empty);
+  
+  samples_fifo_fwft  #(
+      .ADDR_WIDTH(11),  // 1024 samples
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) rx_fifo (
       .wr_rst_b_i(i_rst_b),
       .wr_clk_i(w_rx_fifo_write_clk),
       .wr_en_i(w_rx_fifo_push),
       .wr_data_i(w_rx_fifo_data),
+      .full_o(w_rx_fifo_full),
+      
       .rd_rst_b_i(i_rst_b),
       .rd_clk_i(w_clock_sys),
+/*      .rd_en_i(rxbuf_beat),
+      .rd_data_o(rxbuf_data),
+      .empty_o(rxbuf_empty),
+
+  );
+  
+  sync_fifo_fwft  #(
+      .ADDR_WIDTH(8),  // 1024 samples
+      .DATA_WIDTH(16),  // 2x16 for I and Q 
+  ) sys_rx_fifo (
+      .reset_n(i_rst_b),
+      .clk(w_clock_sys),
+      
+      .wr_en_i(rxbuf_beat),
+      .wr_data_i(rxbuf_data),
+     .full_o(rxbuf_full),
+*/        
       .rd_en_i(w_rx_fifo_pull),
       .rd_data_o(w_rx_fifo_pulled_data),
-      .full_o(w_rx_fifo_full),
-      .empty_o(w_rx_fifo_empty),
-      .debug_pull(1'b0/*w_debug_fifo_pull*/),
-      .debug_push(1'b0/*w_debug_fifo_push*/)
+      .empty_o(w_rx_fifo_empty)
   );
   
   //=========================================================================
@@ -420,9 +461,12 @@ module top (
       .i_sample_gap(tx_sample_gap),
       .i_tx_state(~w_smi_data_direction),
       .i_sync_input(1'b0),
-      .i_debug_lb(w_debug_lb_tx), 
+      .i_debug_lb(1'b1 /*w_debug_lb_tx*/), 
       .o_tx_state_bit(),
       .o_sync_state_bit(),
+      .o_heartbeat(debug_led1),
+      .o_debug_word(debug_word),
+      .i_tx_control_word(w_tx_control_word),
   );
   
   wire w_tx_fifo_full;
@@ -430,12 +474,12 @@ module top (
   wire w_tx_fifo_read_clk;
   wire w_tx_fifo_push;
   wire w_tx_fifo_clock;
-  wire [31:0] w_tx_fifo_data;
+  wire [15:0] w_tx_fifo_data;
   wire w_tx_fifo_pull;
-  wire [31:0] w_tx_fifo_pulled_data;
+  wire [15:0] w_tx_fifo_pulled_data;
   
-  async_fifo_fwft #(
-      .ADDR_WIDTH(8),  // 1024 samples
+  samples_fifo_fwft #(
+      .ADDR_WIDTH(11),  // 1024 samples
       .DATA_WIDTH(16),  // 2x16 for I and Q 
   ) tx_fifo (
       // smi clock is writing
@@ -471,17 +515,17 @@ module top (
       .i_rx_fifo_empty(w_rx_fifo_empty),
       
       // FIFO TX
-      .o_tx_fifo_push(w_tx_fifo_push),
-      .o_tx_fifo_pushed_data(w_tx_fifo_data),
-      .i_tx_fifo_full(w_tx_fifo_full),
-      .o_tx_fifo_clock(w_tx_fifo_clock),
+      .o_tx_fifo_push(),
+      .o_tx_fifo_pushed_data(),
+      .i_tx_fifo_full(1'b1),
+      .o_tx_fifo_clock(),
 
       .i_smi_soe_se(i_smi_soe_se),
-      .i_smi_swe_srw(i_smi_swe_srw),
+      .i_smi_swe_srw(1'b1),
       .o_smi_data_out(w_smi_data_output),
       .i_smi_data_in(w_smi_data_input),
       .o_smi_read_req(w_smi_read_req),
-      .o_smi_write_req(w_smi_write_req),
+      .o_smi_write_req(),
       .o_channel(channel),
       .o_dir (control_smi_data_direction),
       .i_smi_test(1'b0/*w_debug_smi_test*/),
@@ -489,6 +533,21 @@ module top (
       .o_address_error()
   );
 
+    smi_rx smi_rx_ins (
+      .i_rst_b(i_rst_b),
+      .i_sys_clk(w_clock_sys),
+      
+      // FIFO TX
+      .o_tx_fifo_push(w_tx_fifo_push),
+      .o_tx_fifo_pushed_data(w_tx_fifo_data),
+      .i_tx_fifo_full(w_tx_fifo_full),
+      .o_tx_fifo_clock(w_tx_fifo_clock),
+
+      .i_smi_swe_srw(i_smi_swe_srw),
+      .i_smi_data_in(w_smi_data_input),
+      .o_smi_write_req(w_smi_write_req),
+  );
+  
   wire [7:0] w_smi_data_output;
   wire [7:0] w_smi_data_input;
   wire w_smi_read_req;
@@ -496,12 +555,10 @@ module top (
   wire w_smi_data_direction;
   wire w_smi_data_output_enable;
 
-  // the "Writing" flag indicates that the data[7:0] direction (inout)
-  // from the FPGA's SMI module should be "output". This happens when the
-  // SMI is in the READ mode - data flows from the FPGA to the RPI (RX mode)
-  // The address has the MSB '1' when in RX mode. otherwise (when IDLE or TX)
-  // the data is high-z, which is the more "recessive" mode
-
+  
+  /*
+   *   SMI I/O PINS
+   */
   assign w_smi_data_direction = i_smi_a2;
   assign w_smi_data_output_enable = i_smi_a2 & !i_smi_soe_se;
   
@@ -517,7 +574,7 @@ module top (
       .D_OUT_0(w_smi_data_output[k]),
       .D_IN_0(w_smi_data_input[k])
   );
-  
+
   end
   endgenerate
 
@@ -538,7 +595,7 @@ module top (
       .D_IN_0()
   );
 
-  assign o_led0 = w_smi_data_direction;
-  assign o_led1 = channel;
+  assign o_led0 = control_smi_data_direction ^ debug_led1;
+  assign o_led1 = w_smi_data_direction;
 
 endmodule  // top

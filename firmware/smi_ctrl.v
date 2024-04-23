@@ -12,11 +12,11 @@ module smi_ctrl
 
     // FIFO INTERFACE
     output              o_rx_fifo_pull,
-    input [31:0]        i_rx_fifo_pulled_data,
+    input [15:0]        i_rx_fifo_pulled_data,
     input               i_rx_fifo_empty,
     
     output              o_tx_fifo_push,
-    output reg [31:0]   o_tx_fifo_pushed_data,
+    output reg [15:0]   o_tx_fifo_pushed_data,
     input               i_tx_fifo_full,
     output              o_tx_fifo_clock,
 
@@ -111,6 +111,7 @@ module smi_ctrl
     reg [7:0] r_smi_test_count;
     reg r_fifo_pull;
     reg r_fifo_pull_1;
+    reg r_fifo_pull_2;
     reg w_fifo_pull_trigger;
     reg r_channel;
     reg r_dir;
@@ -119,8 +120,10 @@ module smi_ctrl
     wire soe_and_reset;
     assign soe_and_reset = i_rst_b & i_smi_soe_se;
     assign o_smi_read_req = (!i_rx_fifo_empty) || i_smi_test;
-    assign o_rx_fifo_pull = !r_fifo_pull_1 && r_fifo_pull && !i_rx_fifo_empty;
+    assign o_rx_fifo_pull = (r_fifo_pull_1 ^ r_fifo_pull) && !i_rx_fifo_empty;
 
+    reg [7:0]        r_rx_fifo_pulled_data;
+    
     always @(negedge soe_and_reset)
     begin
         if (i_rst_b == 1'b0) begin
@@ -129,9 +132,31 @@ module smi_ctrl
             r_fifo_pulled_data <= 32'h00000000;
         end else begin
             
-            w_fifo_pull_trigger <= (int_cnt_rx == 5'd24) && !i_smi_test;
-            int_cnt_rx <= int_cnt_rx + 8;
-            o_smi_data_out <= i_rx_fifo_pulled_data[int_cnt_rx+7:int_cnt_rx];
+            case (int_cnt_rx[1:0])
+                2'b00: begin
+                    o_smi_data_out <= i_rx_fifo_pulled_data[7:0];
+                    w_fifo_pull_trigger <= 1'b1;
+                    r_rx_fifo_pulled_data <= i_rx_fifo_pulled_data[15:8];
+                end
+                
+                2'b01: begin
+                    o_smi_data_out <= r_rx_fifo_pulled_data;
+                end
+                
+                2'b10: begin
+                    o_smi_data_out <= i_rx_fifo_pulled_data[7:0];
+                    w_fifo_pull_trigger <= 1'b0;
+                    r_rx_fifo_pulled_data <= i_rx_fifo_pulled_data[15:8];
+                end
+                
+                default: begin
+                    o_smi_data_out <= r_rx_fifo_pulled_data;
+                    
+                end
+            
+            endcase
+            int_cnt_rx <= int_cnt_rx + 1;
+            
                 
             
 
@@ -143,9 +168,11 @@ module smi_ctrl
         if (i_rst_b == 1'b0) begin
             r_fifo_pull <= 1'b0;
             r_fifo_pull_1 <= 1'b0;
+            
         end else begin
             r_fifo_pull <= w_fifo_pull_trigger;
             r_fifo_pull_1 <= r_fifo_pull;
+            r_fifo_pull_2 <= r_fifo_pull_1;
         end
     end
 
@@ -159,7 +186,7 @@ module smi_ctrl
         tx_state_fourth = 2'b11;
 
     reg [4:0] int_cnt_tx;
-    reg [31:0] r_fifo_pushed_data;
+    reg [7:0] r_fifo_pushed_data;
     reg [1:0] tx_reg_state;
     reg modem_tx_ctrl;
     reg cond_tx_ctrl;
@@ -169,7 +196,7 @@ module smi_ctrl
     wire swe_and_reset;
     
     assign o_smi_write_req = !i_tx_fifo_full;
-    assign o_tx_fifo_push = !r_fifo_push_1 && r_fifo_push && !i_tx_fifo_full;
+    assign o_tx_fifo_push = (r_fifo_push_1 ^ r_fifo_push) && !i_tx_fifo_full;
     assign swe_and_reset = i_rst_b & i_smi_swe_srw;
     assign o_tx_fifo_clock = i_sys_clk;
 
@@ -192,7 +219,6 @@ module smi_ctrl
                         modem_tx_ctrl <= i_smi_data_in[6];
                         cond_tx_ctrl <= i_smi_data_in[5];
                         tx_reg_state <= tx_state_second;
-                        w_fifo_push_trigger <= 1'b0;
                     end else begin
                         // if from some reason we are in the first byte stage and we got
                         // a byte without '1' on its MSB, that means that we are not synced
@@ -205,32 +231,31 @@ module smi_ctrl
                 tx_state_second: 
                 begin
 
-                        r_fifo_pushed_data[15:8] <= i_smi_data_in[7:0];
+                        o_tx_fifo_pushed_data <= {i_smi_data_in[7:0],r_fifo_pushed_data};
                         tx_reg_state <= tx_state_third;
 
-                    w_fifo_push_trigger <= 1'b0;
+                        w_fifo_push_trigger <= 1'b1;
                 end
                 //----------------------------------------------
                 tx_state_third: 
                 begin
                     if (i_smi_data_in[0] == 1'b0) begin
-                        r_fifo_pushed_data[23:16] <= i_smi_data_in[7:0];
+                        r_fifo_pushed_data <= i_smi_data_in[7:0];
                         tx_reg_state <= tx_state_fourth;
                     end else begin
                         tx_reg_state <= tx_state_first;
+                        w_fifo_push_trigger <= 1'b0;
                     end
-                    w_fifo_push_trigger <= 1'b0;
+                    
                 end
                 //----------------------------------------------
                 tx_state_fourth: 
                 begin
 
-                        o_tx_fifo_pushed_data <= {i_smi_data_in[7:0],r_fifo_pushed_data[23:0] };
-
-                        w_fifo_push_trigger <= 1'b1;
+                        o_tx_fifo_pushed_data <= {i_smi_data_in[7:0],r_fifo_pushed_data};
+                        w_fifo_push_trigger <= 1'b0;
                         o_cond_tx <= cond_tx_ctrl;
-
-                    tx_reg_state <= tx_state_first;
+                        tx_reg_state <= tx_state_first;
                 end
             endcase
         end

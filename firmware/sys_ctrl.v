@@ -16,6 +16,7 @@ module sys_ctrl
         output              o_debug_smi_test,
         output              o_debug_loopback_tx,
         output [3:0]        o_tx_sample_gap,
+        output [7:0]        o_tx_control_word,
     );
 
     // MODULE SPECIFIC IOC LIST
@@ -26,7 +27,8 @@ module sys_ctrl
         ioc_manu_id         = 5'b00010,     // read only
         ioc_error_state     = 5'b00011,     // read only
         ioc_debug_modes     = 5'b00101,     // write only
-        ioc_tx_sample_gap   = 5'b00110;     // read / write
+        ioc_tx_sample_gap   = 5'b00110,     // read / write
+        ioc_tx_control_word = 5'b00011;     // read only
 
     // MODULE SPECIFIC PARAMS
     // ----------------------
@@ -40,14 +42,15 @@ module sys_ctrl
 	reg debug_fifo_push;
 	reg debug_fifo_pull;
 	reg debug_smi_test;
-    	reg debug_loopback_tx;
-    	reg [3:0] tx_sample_gap;
-
+    reg debug_loopback_tx;
+    reg [3:0] tx_sample_gap;
+    reg [7:0] r_tx_control_word;
 	assign o_debug_fifo_push = debug_fifo_push;
 	assign o_debug_fifo_pull = debug_fifo_pull;
 	assign o_debug_smi_test = debug_smi_test;
-        assign o_tx_sample_gap = tx_sample_gap;
-
+    assign o_tx_sample_gap = tx_sample_gap;
+	assign o_tx_control_word = r_tx_control_word;
+	
     // MODULE MAIN PROCESS
     // -------------------
     always @(posedge i_sys_clk or negedge i_rst_b)
@@ -59,6 +62,7 @@ module sys_ctrl
             debug_smi_test <= 1'b0;
             debug_loopback_tx <= 1'b0;
             tx_sample_gap <= 4'd0;
+            r_tx_control_word <=8'd0;
         end else if (i_cs == 1'b1) begin
             //=============================================
             // READ OPERATIONS
@@ -90,6 +94,10 @@ module sys_ctrl
                     //----------------------------------------------
                     ioc_tx_sample_gap: begin
                         tx_sample_gap <= i_data_in[3:0];
+                    end
+                    
+                    ioc_tx_control_word: begin
+                        r_tx_control_word <= i_data_in;
                     end
                 endcase
             end
