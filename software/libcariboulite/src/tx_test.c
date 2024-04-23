@@ -381,10 +381,17 @@ int main(int argc, char *argv[])
             uint8_t* buffer = (uint8_t*) state.buffer;
             for(int i = 0; i < len; i+=4)
             {
-                buffer[i] =   (sample_val>>9) & 0xff;
-                buffer[i+1] = (sample_val>>17) & 0xff;
-                buffer[i+2] = (sample_val>>9) & 0xff;
-                buffer[i+3] = (sample_val>>17) & 0xff;
+                uint32_t val = sample_val % 4;
+                val |= (val << 2);
+                val |= val << 4;
+                val |= val << 8;
+                val |= val << 16;
+                
+                val = 0xAABB99cc;
+                
+                uint32_t* dest = (uint32_t*) &buffer[i];
+                *dest = val;
+                
                 sample_val =  (sample_val + 1) % 4000001;
             }
             sample_val ++;
