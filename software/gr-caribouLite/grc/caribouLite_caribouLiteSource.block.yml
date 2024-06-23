@@ -7,7 +7,7 @@ templates:
   imports: 
     from gnuradio import caribouLite
   make: 
-    caribouLite.caribouLiteSource(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq}, ${provide_meta})
+    caribouLite.caribouLiteSource(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq}, ${provide_meta}, ${pmode_state})
   
 parameters:
 - id: channel
@@ -47,10 +47,15 @@ parameters:
   hide: part
   default: 'False'
 
+- id: pmode_state
+  label: Pmode state
+  dtype: int
+  default: 0
+
 cpp_templates:
     includes: ['#include <gnuradio/caribouLite/caribouLiteSource.h>']
     declarations: 'caribouLite::caribouLiteSource::sptr ${id};'
-    make: 'this->${id} = caribouLite::caribouLiteSource::make(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq}, ${provide_meta});'
+    make: 'this->${id} = caribouLite::caribouLiteSource::make(${channel}, ${enable_agc}, ${rx_gain}, ${rx_bw}, ${sample_rate}, ${freq}, ${provide_meta}, ${pmode_state});'
     packages: ['gnuradio-caribouLite']
     link: ['gnuradio::gnuradio-caribouLite']
     translations:
