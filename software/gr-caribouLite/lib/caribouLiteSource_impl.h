@@ -40,7 +40,8 @@ namespace gr
                                 float rx_bw,
                                 float sample_rate,
                                 float freq,
-                                bool provide_meta);
+                                bool provide_meta,
+                                uint8_t pmod_state);
             ~caribouLiteSource_impl();
 
             int work(

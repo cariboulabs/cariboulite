@@ -19,7 +19,10 @@ namespace gr {
             
             if (CaribouLite::DetectBoard(&ver, name, guid))
             {
-                std::cout << "Detected Version: " << CaribouLite::GetSystemVersionStr(ver) << ", Name: " << name << ", GUID: " << guid << std::endl;
+                std::cout << "Detected Version: " <<  CaribouLite::GetSystemVersionStr(ver) << 
+                ", Name: " << name << 
+                ", GUID: " << guid << 
+                std::endl;
             }
             else
             {
@@ -34,7 +37,8 @@ namespace gr {
                                                     float rx_bw,
                                                     float sample_rate,
                                                     float freq,
-                                                    bool provide_meta)
+                                                    bool provide_meta,
+                                                    uint8_t pmod_state)
         {
             return gnuradio::make_block_sptr<caribouLiteSource_impl>(channel,
                                                                     enable_agc,
@@ -42,7 +46,8 @@ namespace gr {
                                                                     rx_bw,
                                                                     sample_rate,
                                                                     freq,
-                                                                    provide_meta);
+                                                                    provide_meta,
+                                                                    pmod_state);
         }
 
 
@@ -54,7 +59,8 @@ namespace gr {
                                                 float rx_bw,
                                                 float sample_rate,
                                                 float freq,
-                                                bool provide_meta)
+                                                bool provide_meta,
+                                                uint8_t pmod_state)
                         : gr::sync_block("caribouLiteSource",
                           gr::io_signature::make(0, 0, 0),
                           gr::io_signature::make2(1, 2, sizeof(gr_complex), sizeof(uint8_t))
@@ -71,9 +77,10 @@ namespace gr {
             _provide_meta = provide_meta;
 
             CaribouLite &cl = CaribouLite::GetInstance(false);
-            _cl = &cl;
+            cl.SetPmodState(pmod_state);
             _radio = cl.GetRadioChannel(_channel);
             _mtu_size = _radio->GetNativeMtuSample();
+            _cl = &cl;
             
             // setup parameters
             _radio->SetRxGain(rx_gain);
