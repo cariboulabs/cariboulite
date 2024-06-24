@@ -109,14 +109,15 @@ namespace gr {
             auto out_meta = _provide_meta == true ? static_cast<uint8_t*>(output_items[1]) : (uint8_t*) NULL ;
             int read_samples = _radio->ReadSamples(out_samples, static_cast<size_t>(noutput_items), out_meta);
             if (read_samples <= 0) { return 0;}
-
-            for (int i = 0; i < read_samples; i++)
-            {
-                if (out_meta[i] == 1) {
-                    add_item_tag(0, i, pmt::string_to_symbol("pps") ,pmt::from_bool(true));
+            
+            if (_provide_meta) {
+                for (int i = 0; i < read_samples; i++)
+                {
+                    if (out_meta[i] == 1) {
+                        add_item_tag(0, i, pmt::string_to_symbol("pps") ,pmt::from_bool(true));
+                    }
                 }
             }
-            
             return read_samples;
         }
 
