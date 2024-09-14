@@ -105,7 +105,7 @@ This application provides access to low / high level features of the board - boa
 ![Testing App](docs/images/test_app.png)
 
 4. Testing the connection to the SoapySDR API. Use the following command to have the SoapySDR Util interract with the board and show it's information:
-   `SoapySDRUtils --probe`
+   `SoapySDRUtil --probe`
    The expected output shows the insterfacesm configurations and state of the board:
 
    ![Soapy Util](docs/images/soapySDRUtils.png)
