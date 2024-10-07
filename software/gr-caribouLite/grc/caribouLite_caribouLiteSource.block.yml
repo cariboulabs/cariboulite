@@ -28,7 +28,7 @@ parameters:
 - id: rx_bw
   label: Rx bandwidth [Hz]
   dtype: float
-  default: 2500000.0
+  default: 2000000.0
   
 - id: sample_rate
   label: Sample rate [Hz]

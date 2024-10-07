@@ -44,7 +44,7 @@ blocks:
     freq: '905000000.0'
     maxoutbuf: '0'
     minoutbuf: '0'
-    rx_bw: '2500000.0'
+    rx_bw: '2000000.0'
     rx_gain: '40.0'
     sample_rate: '4000000.0'
   states:

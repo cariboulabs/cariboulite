@@ -17,7 +17,7 @@ cariboulite_source_test::cariboulite_source_test ()  {
     this->tb = gr::make_top_block("Cariboulite Source Test");
 
 // Blocks:
-        this->caribouLite_caribouLiteSource_0 = caribouLite::caribouLiteSource::make(0, false, 40.0, 2500000.0, 4000000.0, 900000000.0);
+        this->caribouLite_caribouLiteSource_0 = caribouLite::caribouLiteSource::make(0, false, 40.0, 2000000.0, 4000000.0, 900000000.0);
 
         this->blocks_null_sink_0 = blocks::null_sink::make(sizeof(gr_complex)*1);
 
