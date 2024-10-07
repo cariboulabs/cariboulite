@@ -1,4 +1,4 @@
-#include <math.h>
+#include <cmath>
 #include "Cariboulite.hpp"
 #include "cariboulite_config_default.h"
 
@@ -241,14 +241,24 @@ void Cariboulite::setSampleRate( const int direction, const size_t channel, cons
     cariboulite_radio_f_cut_en rx_cuttof = radio->rx_fcut;
     cariboulite_radio_f_cut_en tx_cuttof = radio->tx_fcut;
 
-    if (fabs(rate - (400000)) < 1) fs = cariboulite_radio_rx_sample_rate_400khz;
-    if (fabs(rate - (500000)) < 1) fs = cariboulite_radio_rx_sample_rate_500khz;
-    if (fabs(rate - (666000)) < 1) fs = cariboulite_radio_rx_sample_rate_666khz;
-    if (fabs(rate - (800000)) < 1) fs = cariboulite_radio_rx_sample_rate_800khz;
-    if (fabs(rate - (1000000)) < 1) fs = cariboulite_radio_rx_sample_rate_1000khz;
-    if (fabs(rate - (1333000)) < 1) fs = cariboulite_radio_rx_sample_rate_1333khz;
-    if (fabs(rate - (2000000)) < 1) fs = cariboulite_radio_rx_sample_rate_2000khz;
-    if (fabs(rate - (4000000)) < 1) fs = cariboulite_radio_rx_sample_rate_4000khz;
+    if (std::fabs(rate - (400000.0)) < 1) fs = cariboulite_radio_rx_sample_rate_400khz;
+    if (std::fabs(rate - (500000.0)) < 1) fs = cariboulite_radio_rx_sample_rate_500khz;
+    if (std::fabs(rate - (666000.0)) < 1)
+    {
+        fs = cariboulite_radio_rx_sample_rate_666khz;
+        SoapySDR::logf(SOAPY_SDR_WARNING, "setSampleRate: using rounded rate 666000 is deprecated; use 2e6/3 or 666666.7.");
+    }
+    if (std::fabs(rate - (2000000.0/3)) < 1) fs = cariboulite_radio_rx_sample_rate_666khz;
+    if (std::fabs(rate - (800000.0)) < 1) fs = cariboulite_radio_rx_sample_rate_800khz;
+    if (std::fabs(rate - (1000000.0)) < 1) fs = cariboulite_radio_rx_sample_rate_1000khz;
+    if (std::fabs(rate - (1333000.0)) < 1) fs = cariboulite_radio_rx_sample_rate_1333khz;
+    {
+        fs = cariboulite_radio_rx_sample_rate_1333khz;
+        SoapySDR::logf(SOAPY_SDR_WARNING, "setSampleRate: using rounded rate 1333000 is deprecated; use 4e6/3 or 1333333.3.");
+    }
+    if (std::fabs(rate - (4000000.0/3)) < 1) fs = cariboulite_radio_rx_sample_rate_1333khz;
+    if (std::fabs(rate - (2000000.0)) < 1) fs = cariboulite_radio_rx_sample_rate_2000khz;
+    if (std::fabs(rate - (4000000.0)) < 1) fs = cariboulite_radio_rx_sample_rate_4000khz;
 
     //printf("setSampleRate dir: %d, channel: %ld, rate: %.2f\n", direction, channel, rate);
     if (direction == SOAPY_SDR_RX)
@@ -277,14 +287,14 @@ double Cariboulite::getSampleRate( const int direction, const size_t channel ) c
     
     switch(fs)
     {
-        case cariboulite_radio_rx_sample_rate_4000khz: return 4000000;
-        case cariboulite_radio_rx_sample_rate_2000khz: return 2000000;
-        case cariboulite_radio_rx_sample_rate_1333khz: return 1333000;
-        case cariboulite_radio_rx_sample_rate_1000khz: return 1000000;
-        case cariboulite_radio_rx_sample_rate_800khz: return 800000;
-        case cariboulite_radio_rx_sample_rate_666khz: return 666000;
-        case cariboulite_radio_rx_sample_rate_500khz: return 500000;
-        case cariboulite_radio_rx_sample_rate_400khz: return 400000;
+        case cariboulite_radio_rx_sample_rate_4000khz: return 4000000.0;
+        case cariboulite_radio_rx_sample_rate_2000khz: return 2000000.0;
+        case cariboulite_radio_rx_sample_rate_1333khz: return 4000000.0/3;
+        case cariboulite_radio_rx_sample_rate_1000khz: return 1000000.0;
+        case cariboulite_radio_rx_sample_rate_800khz: return 800000.0;
+        case cariboulite_radio_rx_sample_rate_666khz: return 2000000.0/3;
+        case cariboulite_radio_rx_sample_rate_500khz: return 500000.0;
+        case cariboulite_radio_rx_sample_rate_400khz: return 400000.0;
     }
     return 4000000;
 }
@@ -294,93 +304,89 @@ std::vector<double> Cariboulite::listSampleRates( const int direction, const siz
 {
     //printf("listSampleRates dir: %d, channel: %ld\n", direction, channel);
     std::vector<double> options;
-	options.push_back( 4000000 );
-    options.push_back( 2000000 );
-    options.push_back( 1333000 );
-    options.push_back( 1000000 );
-    options.push_back( 800000 );
-    options.push_back( 666000 );
-    options.push_back( 500000 );
-    options.push_back( 400000 );
+	options.push_back( 4000000.0 );
+    options.push_back( 2000000.0 );
+    options.push_back( 4000000.0/3 );
+    options.push_back( 1000000.0 );
+    options.push_back( 800000.0 );
+    options.push_back( 2000000.0/3 );
+    options.push_back( 500000.0 );
+    options.push_back( 400000.0 );
 	return(options);
 }
-
-#define BW_SHIFT_FACT   (1.25)
 
 //========================================================
 static cariboulite_radio_rx_bw_en convertRxBandwidth(double bw_numeric)
 {
-    float fact = BW_SHIFT_FACT;
-    if (fabs(bw_numeric - (160000*fact)) < 1) return cariboulite_radio_rx_bw_200KHz;
-    if (fabs(bw_numeric - (200000*fact)) < 1) return cariboulite_radio_rx_bw_250KHz;
-    if (fabs(bw_numeric - (250000*fact)) < 1) return cariboulite_radio_rx_bw_312KHz;
-    if (fabs(bw_numeric - (320000*fact)) < 1) return cariboulite_radio_rx_bw_400KHz;
-    if (fabs(bw_numeric - (400000*fact)) < 1) return cariboulite_radio_rx_bw_500KHz;
-    if (fabs(bw_numeric - (500000*fact)) < 1) return cariboulite_radio_rx_bw_625KHz;
-    if (fabs(bw_numeric - (630000*fact)) < 1) return cariboulite_radio_rx_bw_787KHz;
-    if (fabs(bw_numeric - (800000*fact)) < 1) return cariboulite_radio_rx_bw_1000KHz;
-    if (fabs(bw_numeric - (1000000*fact)) < 1) return cariboulite_radio_rx_bw_1250KHz;
-    if (fabs(bw_numeric - (1250000*fact)) < 1) return cariboulite_radio_rx_bw_1562KHz;
-    if (fabs(bw_numeric - (1600000*fact)) < 1) return cariboulite_radio_rx_bw_2000KHz;
-    if (fabs(bw_numeric - (2000000*fact)) < 1) return cariboulite_radio_rx_bw_2500KHz;
+    if (std::fabs(bw_numeric - 160000.0) < 1) return cariboulite_radio_rx_bw_160KHz;
+    if (std::fabs(bw_numeric - 200000.0) < 1) return cariboulite_radio_rx_bw_200KHz;
+    if (std::fabs(bw_numeric - 250000.0) < 1) return cariboulite_radio_rx_bw_250KHz;
+    if (std::fabs(bw_numeric - 320000.0) < 1) return cariboulite_radio_rx_bw_320KHz;
+    if (std::fabs(bw_numeric - 400000.0) < 1) return cariboulite_radio_rx_bw_400KHz;
+    if (std::fabs(bw_numeric - 500000.0) < 1) return cariboulite_radio_rx_bw_500KHz;
+    if (std::fabs(bw_numeric - 630000.0) < 1) return cariboulite_radio_rx_bw_630KHz;
+    if (std::fabs(bw_numeric - 800000.0) < 1) return cariboulite_radio_rx_bw_800KHz;
+    if (std::fabs(bw_numeric - 1000000.0) < 1) return cariboulite_radio_rx_bw_1000KHz;
+    if (std::fabs(bw_numeric - 1250000.0) < 1) return cariboulite_radio_rx_bw_1250KHz;
+    if (std::fabs(bw_numeric - 1600000.0) < 1) return cariboulite_radio_rx_bw_1600KHz;
+    if (std::fabs(bw_numeric - 2000000.0) < 1) return cariboulite_radio_rx_bw_2000KHz;
    
-    return cariboulite_radio_rx_bw_2500KHz;
+    return cariboulite_radio_rx_bw_2000KHz;
 }
 
 //========================================================
 static double convertRxBandwidth(cariboulite_radio_rx_bw_en bw_en)
 {
-    float fact = BW_SHIFT_FACT;
-    if (cariboulite_radio_rx_bw_200KHz == bw_en) return 160000 * fact;
-    if (cariboulite_radio_rx_bw_250KHz == bw_en) return 200000 * fact;
-    if (cariboulite_radio_rx_bw_312KHz == bw_en) return 250000 * fact;
-    if (cariboulite_radio_rx_bw_400KHz == bw_en) return 320000 * fact;
-    if (cariboulite_radio_rx_bw_500KHz == bw_en) return 400000 * fact;
-    if (cariboulite_radio_rx_bw_625KHz == bw_en) return 500000 * fact;
-    if (cariboulite_radio_rx_bw_787KHz == bw_en) return 630000 * fact;
-    if (cariboulite_radio_rx_bw_1000KHz == bw_en) return 800000 * fact;
-    if (cariboulite_radio_rx_bw_1250KHz == bw_en) return 1000000 * fact;
-    if (cariboulite_radio_rx_bw_1562KHz == bw_en) return 1250000 * fact;
-    if (cariboulite_radio_rx_bw_2000KHz == bw_en) return 1600000 * fact;
-    if (cariboulite_radio_rx_bw_2500KHz == bw_en) return 2000000 * fact;
+    if (cariboulite_radio_rx_bw_160KHz == bw_en) return 160000.0;
+    if (cariboulite_radio_rx_bw_200KHz == bw_en) return 200000.0;
+    if (cariboulite_radio_rx_bw_250KHz == bw_en) return 250000.0;
+    if (cariboulite_radio_rx_bw_320KHz == bw_en) return 320000.0;
+    if (cariboulite_radio_rx_bw_400KHz == bw_en) return 400000.0;
+    if (cariboulite_radio_rx_bw_500KHz == bw_en) return 500000.0;
+    if (cariboulite_radio_rx_bw_630KHz == bw_en) return 630000.0;
+    if (cariboulite_radio_rx_bw_800KHz == bw_en) return 800000.0;
+    if (cariboulite_radio_rx_bw_1000KHz == bw_en) return 1000000.0;
+    if (cariboulite_radio_rx_bw_1250KHz == bw_en) return 1250000.0;
+    if (cariboulite_radio_rx_bw_1600KHz == bw_en) return 1600000.0;
+    if (cariboulite_radio_rx_bw_2000KHz == bw_en) return 2000000.0;
     
-    return 2000000 * fact;
+    return 2000000.0;
 }
 
 //========================================================
 static cariboulite_radio_tx_cut_off_en convertTxBandwidth(double bw_numeric)
 {
-    if (fabs(bw_numeric - 80000) < 1) return cariboulite_radio_tx_cut_off_80khz;
-    if (fabs(bw_numeric - 100000) < 1) return cariboulite_radio_tx_cut_off_100khz;
-    if (fabs(bw_numeric - 125000) < 1) return cariboulite_radio_tx_cut_off_125khz;
-    if (fabs(bw_numeric - 160000) < 1) return cariboulite_radio_tx_cut_off_160khz;
-    if (fabs(bw_numeric - 200000) < 1) return cariboulite_radio_tx_cut_off_200khz;
-    if (fabs(bw_numeric - 250000) < 1) return cariboulite_radio_tx_cut_off_250khz;
-    if (fabs(bw_numeric - 315000) < 1) return cariboulite_radio_tx_cut_off_315khz;
-    if (fabs(bw_numeric - 400000) < 1) return cariboulite_radio_tx_cut_off_400khz;
-    if (fabs(bw_numeric - 500000) < 1) return cariboulite_radio_tx_cut_off_500khz;
-    if (fabs(bw_numeric - 625000) < 1) return cariboulite_radio_tx_cut_off_625khz;
-    if (fabs(bw_numeric - 800000) < 1) return cariboulite_radio_tx_cut_off_800khz;
-    if (fabs(bw_numeric - 1000000) < 1) return cariboulite_radio_tx_cut_off_1000khz;
+    if (std::fabs(bw_numeric - 80000.0) < 1) return cariboulite_radio_tx_cut_off_80khz;
+    if (std::fabs(bw_numeric - 100000.0) < 1) return cariboulite_radio_tx_cut_off_100khz;
+    if (std::fabs(bw_numeric - 125000.0) < 1) return cariboulite_radio_tx_cut_off_125khz;
+    if (std::fabs(bw_numeric - 160000.0) < 1) return cariboulite_radio_tx_cut_off_160khz;
+    if (std::fabs(bw_numeric - 200000.0) < 1) return cariboulite_radio_tx_cut_off_200khz;
+    if (std::fabs(bw_numeric - 250000.0) < 1) return cariboulite_radio_tx_cut_off_250khz;
+    if (std::fabs(bw_numeric - 315000.0) < 1) return cariboulite_radio_tx_cut_off_315khz;
+    if (std::fabs(bw_numeric - 400000.0) < 1) return cariboulite_radio_tx_cut_off_400khz;
+    if (std::fabs(bw_numeric - 500000.0) < 1) return cariboulite_radio_tx_cut_off_500khz;
+    if (std::fabs(bw_numeric - 625000.0) < 1) return cariboulite_radio_tx_cut_off_625khz;
+    if (std::fabs(bw_numeric - 800000.0) < 1) return cariboulite_radio_tx_cut_off_800khz;
+    if (std::fabs(bw_numeric - 1000000.0) < 1) return cariboulite_radio_tx_cut_off_1000khz;
     return cariboulite_radio_tx_cut_off_1000khz;
 }
 
 //========================================================
 static double convertTxBandwidth(cariboulite_radio_tx_cut_off_en bw_en)
 {
-    if (cariboulite_radio_tx_cut_off_80khz == bw_en) return 80000;
-    if (cariboulite_radio_tx_cut_off_100khz == bw_en) return 100000;
-    if (cariboulite_radio_tx_cut_off_125khz == bw_en) return 125000;
-    if (cariboulite_radio_tx_cut_off_160khz == bw_en) return 160000;
-    if (cariboulite_radio_tx_cut_off_200khz == bw_en) return 200000;
-    if (cariboulite_radio_tx_cut_off_250khz == bw_en) return 250000;
-    if (cariboulite_radio_tx_cut_off_315khz == bw_en) return 315000;
-    if (cariboulite_radio_tx_cut_off_400khz == bw_en) return 400000;
-    if (cariboulite_radio_tx_cut_off_500khz == bw_en) return 500000;
-    if (cariboulite_radio_tx_cut_off_625khz == bw_en) return 625000;
-    if (cariboulite_radio_tx_cut_off_800khz == bw_en) return 800000;
-    if (cariboulite_radio_tx_cut_off_1000khz == bw_en) return 1000000;
-    return 1000000;
+    if (cariboulite_radio_tx_cut_off_80khz == bw_en) return 80000.0;
+    if (cariboulite_radio_tx_cut_off_100khz == bw_en) return 100000.0;
+    if (cariboulite_radio_tx_cut_off_125khz == bw_en) return 125000.0;
+    if (cariboulite_radio_tx_cut_off_160khz == bw_en) return 160000.0;
+    if (cariboulite_radio_tx_cut_off_200khz == bw_en) return 200000.0;
+    if (cariboulite_radio_tx_cut_off_250khz == bw_en) return 250000.0;
+    if (cariboulite_radio_tx_cut_off_315khz == bw_en) return 315000.0;
+    if (cariboulite_radio_tx_cut_off_400khz == bw_en) return 400000.0;
+    if (cariboulite_radio_tx_cut_off_500khz == bw_en) return 500000.0;
+    if (cariboulite_radio_tx_cut_off_625khz == bw_en) return 625000.0;
+    if (cariboulite_radio_tx_cut_off_800khz == bw_en) return 800000.0;
+    if (cariboulite_radio_tx_cut_off_1000khz == bw_en) return 1000000.0;
+    return 1000000.0;
 }
 
 
@@ -391,12 +397,12 @@ void Cariboulite::setBandwidth( const int direction, const size_t channel, const
 
     if (direction == SOAPY_SDR_RX)
     {
-		if (modem_bw < (160000*BW_SHIFT_FACT) )
+		if (modem_bw < 160000.0 )
 		{
-			modem_bw = 160000*BW_SHIFT_FACT;
-			if (bw <= 20000.0f) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_20KHz);
-			else if (bw <= 50000.0f) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_50KHz);
-			else if (bw <= 100000.0f) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_100KHz);
+			modem_bw = 160000.0;
+			if (bw <= 20000.0) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_20KHz);
+			else if (bw <= 50000.0) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_50KHz);
+			else if (bw <= 100000.0) stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_100KHz);
 			else stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_None);
 		}
 		else stream->setDigitalFilter(SoapySDR::Stream::DigitalFilter_None);
@@ -418,6 +424,10 @@ double Cariboulite::getBandwidth( const int direction, const size_t channel ) co
     {
         cariboulite_radio_rx_bw_en bw;
         cariboulite_radio_get_rx_bandwidth((cariboulite_radio_state_st*)radio, &bw);
+        auto filter_type = stream->getDigitalFilter();
+        if (filter_type == SoapySDR::Stream::DigitalFilter_20KHz) return 20000.0;
+        else if (filter_type == SoapySDR::Stream::DigitalFilter_50KHz) return 50000.0;
+        else if (filter_type == SoapySDR::Stream::DigitalFilter_100KHz) return 100000.0;
         return convertRxBandwidth(bw);
     }
     else if (direction == SOAPY_SDR_TX)
@@ -436,37 +446,36 @@ std::vector<double> Cariboulite::listBandwidths( const int direction, const size
     std::vector<double> options;
     if (direction == SOAPY_SDR_RX)
     {
-        float fact = BW_SHIFT_FACT;
-		options.push_back( 20000 );
-		options.push_back( 50000 );
-		options.push_back( 100000 );
-        options.push_back( 160000*fact );
-        options.push_back( 200000*fact );
-        options.push_back( 250000*fact );
-        options.push_back( 320000*fact );
-        options.push_back( 400000*fact );
-        options.push_back( 500000*fact );
-        options.push_back( 630000*fact );
-        options.push_back( 800000*fact );
-        options.push_back( 1000000*fact );
-        options.push_back( 1250000*fact );
-        options.push_back( 1600000*fact );
-        options.push_back( 2000000*fact );
+        options.push_back( 20000.0 );
+        options.push_back( 50000.0 );
+        options.push_back( 100000.0 );
+        options.push_back( 160000.0 );
+        options.push_back( 200000.0 );
+        options.push_back( 250000.0 );
+        options.push_back( 320000.0 );
+        options.push_back( 400000.0 );
+        options.push_back( 500000.0 );
+        options.push_back( 630000.0 );
+        options.push_back( 800000.0 );
+        options.push_back( 1000000.0 );
+        options.push_back( 1250000.0 );
+        options.push_back( 1600000.0 );
+        options.push_back( 2000000.0 );
     }
     else
     {
-        options.push_back( 80000 );
-        options.push_back( 100000 );
-        options.push_back( 125000 );
-        options.push_back( 160000 );
-        options.push_back( 200000 );
-        options.push_back( 250000 );
-        options.push_back( 315000 );
-        options.push_back( 400000 );
-        options.push_back( 500000 );
-        options.push_back( 625000 );
-        options.push_back( 800000 );
-        options.push_back( 1000000 );
+        options.push_back( 80000.0 );
+        options.push_back( 100000.0 );
+        options.push_back( 125000.0 );
+        options.push_back( 160000.0 );
+        options.push_back( 200000.0 );
+        options.push_back( 250000.0 );
+        options.push_back( 315000.0 );
+        options.push_back( 400000.0 );
+        options.push_back( 500000.0 );
+        options.push_back( 625000.0 );
+        options.push_back( 800000.0 );
+        options.push_back( 1000000.0 );
     }
     return(options);
 }

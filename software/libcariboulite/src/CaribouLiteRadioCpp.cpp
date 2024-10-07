@@ -333,13 +333,13 @@ float CaribouLiteRadio::GetTxPower()
 //==================================================================
 float CaribouLiteRadio::GetRxBandwidthMin()
 {
-    return 200000.0f;
+    return 160000.0f;
 }
 
 //==================================================================
 float CaribouLiteRadio::GetRxBandwidthMax()
 {
-    return 2500000.0f;
+    return 2000000.0f;
 }
 
 //==================================================================

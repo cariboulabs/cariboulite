@@ -54,18 +54,18 @@ typedef enum
 
 typedef enum
 {
-    cariboulite_radio_rx_bw_200KHz = 0x0,
-    cariboulite_radio_rx_bw_250KHz = 0x1,
-    cariboulite_radio_rx_bw_312KHz = 0x2,
-    cariboulite_radio_rx_bw_400KHz = 0x3,
-    cariboulite_radio_rx_bw_500KHz = 0x4,
-    cariboulite_radio_rx_bw_625KHz = 0x5,
-    cariboulite_radio_rx_bw_787KHz = 0x6,
-    cariboulite_radio_rx_bw_1000KHz = 0x7,
-    cariboulite_radio_rx_bw_1250KHz = 0x8,
-    cariboulite_radio_rx_bw_1562KHz = 0x9,
-    cariboulite_radio_rx_bw_2000KHz = 0xA,
-    cariboulite_radio_rx_bw_2500KHz = 0xB,
+    cariboulite_radio_rx_bw_160KHz = 0x0,
+    cariboulite_radio_rx_bw_200KHz = 0x1,
+    cariboulite_radio_rx_bw_250KHz = 0x2,
+    cariboulite_radio_rx_bw_320KHz = 0x3,
+    cariboulite_radio_rx_bw_400KHz = 0x4,
+    cariboulite_radio_rx_bw_500KHz = 0x5,
+    cariboulite_radio_rx_bw_630KHz = 0x6,
+    cariboulite_radio_rx_bw_800KHz = 0x7,
+    cariboulite_radio_rx_bw_1000KHz = 0x8,
+    cariboulite_radio_rx_bw_1250KHz = 0x9,
+    cariboulite_radio_rx_bw_1600KHz = 0xA,
+    cariboulite_radio_rx_bw_2000KHz = 0xB,
 } cariboulite_radio_rx_bw_en;
 
 typedef enum

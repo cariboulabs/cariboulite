@@ -393,12 +393,12 @@ int cariboulite_init_submodules (sys_st* sys)
 	
 	cariboulite_radio_set_rx_samp_cutoff(&sys->radio_low, cariboulite_radio_rx_sample_rate_4000khz, cariboulite_radio_rx_f_cut_half_fs);
     cariboulite_radio_set_tx_samp_cutoff(&sys->radio_low, cariboulite_radio_rx_sample_rate_4000khz, cariboulite_radio_rx_f_cut_half_fs);
-    cariboulite_radio_set_rx_bandwidth(&sys->radio_low, cariboulite_radio_rx_bw_2500KHz);
+    cariboulite_radio_set_rx_bandwidth(&sys->radio_low, cariboulite_radio_rx_bw_2000KHz);
     cariboulite_radio_set_tx_bandwidth(&sys->radio_low, cariboulite_radio_tx_cut_off_1000khz);
 	
 	cariboulite_radio_set_rx_samp_cutoff(&sys->radio_high, cariboulite_radio_rx_sample_rate_4000khz, cariboulite_radio_rx_f_cut_half_fs);
     cariboulite_radio_set_tx_samp_cutoff(&sys->radio_high, cariboulite_radio_rx_sample_rate_4000khz, cariboulite_radio_rx_f_cut_half_fs);
-    cariboulite_radio_set_rx_bandwidth(&sys->radio_high, cariboulite_radio_rx_bw_2500KHz);
+    cariboulite_radio_set_rx_bandwidth(&sys->radio_high, cariboulite_radio_rx_bw_2000KHz);
     cariboulite_radio_set_tx_bandwidth(&sys->radio_high, cariboulite_radio_tx_cut_off_1000khz);
 	
 	cariboulite_radio_activate_channel(&sys->radio_low, cariboulite_channel_dir_rx, false);
