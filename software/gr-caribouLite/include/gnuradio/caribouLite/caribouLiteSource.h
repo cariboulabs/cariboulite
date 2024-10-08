@@ -35,7 +35,7 @@ namespace gr {
       static sptr make(int channel=0,
                       bool enable_agc=false,
                       float rx_gain=40,
-                      float rx_bw=2500000,
+                      float rx_bw=2000000,
                       float sample_rate=4000000,
                       float freq=900000000,
                       bool provide_meta = false,

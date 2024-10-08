@@ -44,7 +44,7 @@ void bind_caribouLiteSource(py::module& m)
              py::arg("channel") = 0,
              py::arg("enable_agc") = false,
              py::arg("rx_gain") = 40,
-             py::arg("rx_bw") = 2500000,
+             py::arg("rx_bw") = 2000000,
              py::arg("sample_rate") = 4000000,
              py::arg("freq") = 900000000,
              py::arg("provide_meta") = false,
