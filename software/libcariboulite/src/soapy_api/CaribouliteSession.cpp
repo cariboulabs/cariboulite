@@ -49,7 +49,7 @@ SoapyCaribouliteSession::SoapyCaribouliteSession(void)
         int ret = cariboulite_init_driver(&sys, NULL);
         if (ret != 0)
         {
-            SoapySDR::logf(SOAPY_SDR_ERROR, "cariboulite_init_driver() failed");
+            SoapySDR_logf(SOAPY_SDR_ERROR, "cariboulite_init_driver() failed");
         }
 
         // setup the signal handler
