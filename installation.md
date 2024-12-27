@@ -57,7 +57,7 @@ The newly prepared SDCard can be inserted into the Raspberry Pi.
 1. In the terminal (ssh), clone cariboulite repository:
 
    ```bash
-   git clone https://github.com/cariboulabs/cariboulite.git`
+   git clone https://github.com/cariboulabs/cariboulite.git
    git clone https://github.com/pothosware/SoapySDR.git
    ```
 
