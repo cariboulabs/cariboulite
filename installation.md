@@ -1,5 +1,8 @@
 # Installation Details
-**Note**: ***Major issues with the newly published distro `bookworm`*** - the required kernel modules cannot compile agains the latest 6.1.0 'bookworm' distribution. We noticed that the kernel-headers in the latest rapsberry-pi image distributions do not agree with the mainline linux kernel modules compilation process. Same issues exist with other kernel modules compilations in other projects. This issue needs to be further inspected. **Therefore we suggest using the latest bullseye distribution** `bullseye 6.1.21-*`. See details bellow.
+
+
+> [!WARNING]
+> ***Major issues with the newly published distro `bookworm`*** - the required kernel modules cannot compile agains the latest 6.1.0 'bookworm' distribution. We noticed that the kernel-headers in the latest rapsberry-pi image distributions do not agree with the mainline linux kernel modules compilation process. Same issues exist with other kernel modules compilations in other projects. This issue needs to be further inspected. **Therefore we suggest using the latest bullseye distribution** `bullseye 6.1.21-*`. See details bellow.
 
 ## Fresh SDCard preparation
 1. Download and install Raspberry Pi imager:
@@ -8,7 +11,7 @@
    ![Raspberry Pi official imager](docs/images/rpi_imager.png)
 
 2. Insert a micro-SD card for flashing. Note - the process will override the SD's previous contents.
-3. Download the latest bullseye distribution from:
+3. Download this specific bullseye distribution from:
    https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2023-05-03/
 
    ![Bullseye Download](docs/images/distro_download.png)
@@ -17,7 +20,8 @@
    
    ![Choose device](docs/images/imager_choose_device.png)
 
-   Note: Raspberry Pi 5 is not supported due to compatibility issues with the SMI communication.
+> [!CAUTION]
+> Raspberry Pi 5 is not supported due to compatibility issues with the SMI communication.
 
 5. Choosing the OS file downloaded in step (3):
    Click the "CHOOSE OS" button and drag down to "Use Custom". Then select the downloaded file.
@@ -34,7 +38,7 @@
  
    ![Imager progress](docs/images/progress.png)
    
-   **Note**: do not remove the SDCard unless the images approits removel:
+   **Note**: do not remove the SDCard until the process for flashing has finished:
    
    ![Imager finished](docs/images/finished_imager_safe_remove.png)
 
@@ -51,37 +55,50 @@ The newly prepared SDCard can be inserted into the Raspberry Pi.
 
 **Installations**
 1. In the terminal (ssh), clone cariboulite repository:
-   `git clone https://github.com/cariboulabs/cariboulite.git`
-   and:
-   `git clone https://github.com/pothosware/SoapySDR.git`
 
-   **Note**: SoapySDR is useful for interacting with the SDR through its python interface. The aptitude version (0.7) which can be obtained through `sudo apt install soapysdr-tools libsoapysdr libsoapysdr-dev` has API compatibility issues with the the newer version (0.8-3). Thus it is recommanded to compile it from source as follows.
+   ```bash
+   git clone https://github.com/cariboulabs/cariboulite.git`
+   git clone https://github.com/pothosware/SoapySDR.git
+   ```
+
+> [!WARNING]
+> SoapySDR is useful for interacting with the SDR through its python interface. The aptitude version (0.7) has API compatibility issues with the the newer version (0.8-3). Thus it is recommended to compile it from source as follows.
 
 2. Cmake installation and upgrade:
+
    `sudo apt update`
 
    if update is suggested by apt, use:
+
    `sudo apt upgrade` and follow instructions.
 
-   Now CMAKE is installed by:
+   Now CMAKE can be installed by:
+
    `sudo apt install cmake`
 3. Install SoapySDR:
-   ```
+
+   ```bash
    cd SoapySDR
    mkdir build && cd build
    cmake ../
    make -j4
    sudo make install
    ```
-   Soapy SDR is a third party generic SDR API that can interact with CaribouLite (in addition to the native c/c++ APIs)
+
+> [!TIP]
+> Soapy SDR is a third party generic SDR API that can interact with CaribouLite (in addition to the native c/c++ APIs)
    
 4. Install the software using CaribouLite's dedicated install script:
-   ```
+   ```bash
    cd ~/cariboulite       # note: depends on the exact location that was chosen for the package.
    ./install.sh
    ```
 5. During this installation process, dependencies and kernel modules are being build and installed into the Linux system.
-6. As the building process is finalized, the install script checks the `/boot/config.txt` file. **Note**: the exact location of the file varies between systems. In Raspbian this file shall typically be located in `/boot/config.txt`.
+6. As the building process is finalized, the install script checks the `/boot/config.txt` file.
+
+> [!WARNING]
+> the exact location of the file varies between systems. In Bullseye this file shall typically be located in `/boot/config.txt`.
+
 The installer notes on any mismatch between the actual and expected configuration. The configuration should be applied to the config file according to instructions given by the script.
 7. As the building process finished, the APIs are installed into the system, including SoapySDR API, C and C++ API. The build artifacts will be located in the `build` sub-directory. 
 8. After the installation process and the config.txt file editing are finished, reboot the system by:
@@ -105,7 +122,7 @@ This application provides access to low / high level features of the board - boa
 ![Testing App](docs/images/test_app.png)
 
 4. Testing the connection to the SoapySDR API. Use the following command to have the SoapySDR Util interract with the board and show it's information:
-   `SoapySDRUtils --probe`
+   `SoapySDRUtil --probe`
    The expected output shows the insterfacesm configurations and state of the board:
 
    ![Soapy Util](docs/images/soapySDRUtils.png)
