@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <atomic>
+#include <cstdio>
 
 #define IS_POWER_OF_2(x)  	(!((x) == 0) && !((x) & ((x) - 1)))
 #define MIN(x,y)			((x)>(y)?(y):(x))

@@ -103,10 +103,10 @@ public:
 	cariboulite_channel_dir_en getInnerStreamType(void);
     void setInnerStreamType(cariboulite_channel_dir_en dir);
 	void setDigitalFilter(DigitalFilterType type);
-	DigitalFilterType getDigitalFilter() const { return filterType };
+	DigitalFilterType getDigitalFilter() const { return filterType;};
 	int setFormat(const std::string &fmt);
-	inline int readerThreadRunning() {return reader_thread_running;}
-    void activateStream(int active) {stream_active = active;}
+	inline int readerThreadRunning() {return reader_thread_running;};
+    void activateStream(int active) {stream_active = active;};
     
 public:
     cariboulite_radio_state_st *radio;

@@ -143,6 +143,9 @@ sudo ldconfig
 ## Configuration File - RPI /boot/config.txt
 ## --------------------------------------------------------------------
 CONFIG_TXT_PATH="/boot/config.txt"
+if [ -f "/boot/firmware/config.txt" ]; then
+	CONFIG_TXT_PATH="/boot/firmware/config.txt"
+fi
 if grep -iq "NAME=\"Ubuntu\"" /etc/os-release; then
 	CONFIG_TXT_PATH="/boot/firmware/config.txt"
 fi

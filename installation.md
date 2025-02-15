@@ -85,8 +85,10 @@ The newly prepared SDCard can be inserted into the Raspberry Pi.
    sudo make install
    ```
 
+
 > [!TIP]
 > Soapy SDR is a third party generic SDR API that can interact with CaribouLite (in addition to the native c/c++ APIs)
+> note: rpi-zero might struggle with compiling the python swig wrappers that SoapySDR uses. If this occurs, feel free to remove the `add_subdirectory(swig)` from their CMakeLists.txt to remove python support for Soapy.
    
 4. Install the software using CaribouLite's dedicated install script:
    ```bash
