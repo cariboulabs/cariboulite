@@ -681,36 +681,64 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
     return read_so_far;
 }
 
-#define SMI_TX_SAMPLE_SOF               (1<<2)
-#define SMI_TX_SAMPLE_MODEM_TX_CTRL     (1<<1)
-#define SMI_TX_SAMPLE_COND_TX_CTRL      (1<<0)
+#define SMI_TX_SAMPLE_SYNC0_SOF         (1<<31)
+#define SMI_TX_SAMPLE_MODEM_TX_CTRL     (1<<30)
+#define SMI_TX_SAMPLE_COND_TX_CTRL      (1<<29)
+#define SMI_TX_SAMPLE_SYNC1             (0<<23)
+#define SMI_TX_SAMPLE_SYNC2             (0<<15)
+#define SMI_TX_SAMPLE_SYNC3             (0<<7)
+
+#define SMI_TX_SAMPLE_CTRL              (SMI_TX_SAMPLE_MODEM_TX_CTRL | SMI_TX_SAMPLE_COND_TX_CTRL)
+#define SMI_TX_SAMPLE_SYNC              (SMI_TX_SAMPLE_SYNC0_SOF | SMI_TX_SAMPLE_SYNC1 | SMI_TX_SAMPLE_SYNC2 | SMI_TX_SAMPLE_SYNC3)
+#define SMI_TX_SAMPLE_FLAGS             (SMI_TX_SAMPLE_CTRL | SMI_TX_SAMPLE_SYNC)
+
+/*
+ * SMI transmit sample framing
+ *
+ * The FPGA uses flags in the MSB of each byte to perform synchronization on
+ * the SMI byte stream. The MODEM_TX_CTRL flag is used to signal to the modem
+ * that it should control PA ramping in its RF frontend. The COND_TX_CTRL flag
+ * is currently unused in the FPGA.
+ *
+ * The modem requires 13 bits each for the in-phase (I) and quadrature (Q)
+ * components of a complex baseband sample. For each sample, The 13 most
+ * significant bits of the I and Q channels are forwarded, and the 3 least
+ * significant bits are discarded.
+ *
+ * | Name          | Bit Len | Bit Pos | Value     | Comments        |
+ * | ------------- | ------- | ------- | --------- | --------------- |
+ * | SOF/SYNC0     | 1       | 31:31   | 1         |                 |
+ * | MODEM_TX_CTRL | 1       | 30:30   | 1         |                 |
+ * | COND_TX_CTRL  | 1       | 29:29   | 1         |                 |
+ * | I[12:8]       | 5       | 28:24   | ii[15:11] |                 |
+ * | SYNC1         | 1       | 23:23   | 0         |                 |
+ * | I[7:1]        | 7       | 22:16   | ii[10:4]  |                 |
+ * | SYNC2         | 1       | 15:15   | 0         |                 |
+ * | I[0:0]        | 1       | 14:14   | ii[3:3]   | discard ii[2:0] |
+ * | Q[12:7]       | 6       | 13:8    | qq[15:10] |                 |
+ * | SYNC3         | 1       | 7:7     | 0         |                 |
+ * | Q[6:0]        | 7       | 6:0     | qq[9:3]   | discard qq[2:0] |
+ */
+
 //=========================================================================
 static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t data_length, caribou_smi_sample_complex_int16* sample_offset)
 {
     caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
     uint32_t *samples = (uint32_t*)(data);
-    
-    // Sample Structure
-    // [                 BYTE 0      ] [           BYTE 1     ] [           BYTE 2        ] [          BYTE 3      ]
-    // [SOF TXC CTX I12 I11 I10 I9 I8] [0 I7 I6 I5 I4 I3 I2 I1] [0 I0 Q12 Q11 Q10 Q9 Q8 Q7] [0 Q6 Q5 Q4 Q3 Q2 Q1 Q0]
-	//   1  0/1 0/1
-    
+
     for (unsigned int i = 0; i < (data_length / CARIBOU_SMI_BYTES_PER_SAMPLE); i++)
     {                    
-        int32_t ii = 0xFFFF; //cmplx_vec[i].i;
-        int32_t qq = 0; //cmplx_vec[i].q;
-        ii &= 0x1FFF;
-        qq &= 0x1FFF;
-		
-        uint32_t s = SMI_TX_SAMPLE_SOF | SMI_TX_SAMPLE_MODEM_TX_CTRL | SMI_TX_SAMPLE_COND_TX_CTRL; s <<= 5;
-        s |= (ii >> 8) & 0x1F; s <<= 8;
-        s |= (ii >> 1) & 0x7F; s <<= 2;
-        s |= (ii & 0x1); s <<= 6;
-        s |= (qq >> 7) & 0x3F; s <<= 8;
-        s |= (qq & 0x7F);
-		
-		//if (i < 2) printf("0x%08X\n", s);
-		
+    {
+        uint16_t ii = cmplx_vec[i].i;
+        uint16_t qq = cmplx_vec[i].q;
+
+        uint32_t s = (SMI_TX_SAMPLE_FLAGS)       |
+                     (((ii >> 11) & 0x1f) << 24) |  // ii[15:11] -> s[28:24]
+                     (((ii >>  4) & 0x7f) << 16) |  // ii[10:4]  -> s[22:16]
+                     (((ii >>  3) & 0x01) << 14) |  // ii[3:3]   -> s[14:14]
+                     (((qq >> 10) & 0x3f) <<  8) |  // qq[15:10] -> s[13:8]
+                     (((qq >>  3) & 0x7f) <<  0);   // qq[9:3]   -> s[6:0]
+
         samples[i] = __builtin_bswap32(s);
         //samples[i] = s;
     }
