@@ -39,6 +39,7 @@ int cariboulite_radio_init(cariboulite_radio_state_st* radio, sys_st *sys, carib
     radio->cw_output = false;
     radio->lo_output = false;
     radio->tx_loopback_anabled = false;
+    radio->tx_control_with_iq_if = true;
     radio->smi_channel_id = GET_SMI_CH(type);
     
     // activation of the channel
@@ -488,7 +489,7 @@ int cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio,
         .tx_power = 18 + radio->tx_power,     // same as before
         .analog_bw = (at86rf215_radio_tx_cut_off_en)tx_bw,
         .digital_bw = (at86rf215_radio_f_cut_en)radio->tx_fcut,         // same as before
-        .fs = (at86rf215_radio_sample_rate_en)radio->tx_fs,                   // same as before
+        .fs = (at86rf215_radio_sample_rate_en)radio->tx_fs,             // same as before
         .direct_modulation = 0,
     };
 
@@ -1126,13 +1127,15 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
         if (radio->smi_channel_id == caribou_smi_channel_900)
         {
             modem_iq_config.radio09_mode = at86rf215_iq_if_mode;
-            modem_iq_config.radio24_mode = at86rf215_baseband_mode;
+            //modem_iq_config.radio24_mode = at86rf215_baseband_mode; // both radios need to be in iq_if mode
+            modem_iq_config.radio24_mode = at86rf215_iq_if_mode;
             modem_iq_config.clock_skew = at86rf215_iq_clock_data_skew_4_906ns;
             smi_state = smi_stream_rx_channel_0;
         }
         else if (radio->smi_channel_id == caribou_smi_channel_2400)
         {
-            modem_iq_config.radio09_mode = at86rf215_baseband_mode;
+            //modem_iq_config.radio09_mode = at86rf215_baseband_mode;  // both radios need to be in iq_if mode
+            modem_iq_config.radio09_mode = at86rf215_iq_if_mode;
             modem_iq_config.radio24_mode = at86rf215_iq_if_mode;
             modem_iq_config.clock_skew = at86rf215_iq_clock_data_skew_4_906ns;
             smi_state = smi_stream_rx_channel_1;
@@ -1160,15 +1163,29 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
 	//===========================================================
     else if (radio->channel_direction == cariboulite_channel_dir_tx)
     {
+        at86rf215_radio_irq_st int_mask = {
+        .wake_up_por = 1,
+        .trx_ready = 1,
+        .energy_detection_complete = 1,
+        .battery_low = 1,
+        .trx_error = 1,
+        .IQ_if_sync_fail = 1,
+        .res = 0,
+        };
+        at86rf215_radio_setup_interrupt_mask(&radio->sys->modem, GET_MODEM_CH(radio->type), &int_mask);
+        
         at86rf215_iq_interface_config_st modem_iq_config = 
         {
             .loopback_enable = radio->tx_loopback_anabled,
+            //.loopback_enable = 0,
             .drv_strength = at86rf215_iq_drive_current_4ma,
             .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
-            .tx_control_with_iq_if = !radio->cw_output,
+            //.tx_control_with_iq_if = !radio->cw_output,
+            .tx_control_with_iq_if = radio->tx_control_with_iq_if, // we always use the modem tx control
             .radio09_mode = at86rf215_iq_if_mode,
             .radio24_mode = at86rf215_iq_if_mode,
             .clock_skew = at86rf215_iq_clock_data_skew_2_906ns,
+            
         };
         at86rf215_setup_iq_if(&radio->sys->modem, &modem_iq_config);
 
@@ -1218,9 +1235,19 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                                 0, 0x3F);
             
             // apply the state
-            caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
+            //caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel);            
+            // turn on the SMI stream
+            if (caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_tx_channel) != 0)
+            {
+                ZF_LOGD("Failed to configure modem with cmd_tx");
+                return -1;
+            }
             caribou_fpga_set_smi_ctrl_data_direction (&radio->sys->fpga, 0);
-            //cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx); 
+            
+            if(!radio->tx_control_with_iq_if)
+            {
+                cariboulite_radio_set_modem_state(radio, cariboulite_radio_state_cmd_tx);
+            }
         }
     }
 
@@ -1302,7 +1329,10 @@ int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
     {
         ZF_LOGD("SMI writing operation returned timeout");
     }
-    
+    //else if (ret > 0)
+    //{
+    //    ZF_LOGD("SMI writing operation succeeded, %d samples written", ret);
+    //}
     return ret;
 }
 

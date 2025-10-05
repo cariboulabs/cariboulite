@@ -387,39 +387,74 @@ int hat_fill_in(hat_st *hat)
 	strcpy(VENDOR_PSTR_POINT(vinf), hat->product_name);
 
 	// read 128 random bits from /dev/urandom
-	int random_file = open("/dev/urandom", O_RDONLY);
-    void* temp_serial_loc = (void*)&vinf->serial_1;
-	ssize_t result = read(random_file, temp_serial_loc, 16);
-	close(random_file);
+	// int random_file = open("/dev/urandom", O_RDONLY);
+    // void* temp_serial_loc = (void*)&vinf->serial_1;
+	// ssize_t result = read(random_file, temp_serial_loc, 16);
+	// close(random_file);
 
-	if (result <= 0)
-	{
-		printf("Unable to read from /dev/urandom to set up UUID");
+	// if (result <= 0)
+	// {
+	// 	printf("Unable to read from /dev/urandom to set up UUID");
+	// 	return -1;
+	// }
+	// else
+	// {
+	// 	//put in the version
+	// 	vinf->serial_3 = (vinf->serial_3 & 0xffff0fff) | 0x00004000;
+
+	// 	//put in the variant
+	// 	vinf->serial_2 = (vinf->serial_2 & 0x3fffffff) | 0x80000000;
+
+	// 	printf("Gen UUID=%08x-%04x-%04x-%04x-%04x%08x\n", 	vinf->serial_4,
+	// 														vinf->serial_3>>16,
+	// 														vinf->serial_3 & 0xffff,
+	// 														vinf->serial_2>>16,
+	// 														vinf->serial_2 & 0xffff,
+	// 														vinf->serial_1);
+	// 	sprintf(hat->generated_uuid, "%08x-%04x-%04x-%04x-%04x%08x", vinf->serial_4,
+	// 														vinf->serial_3>>16,
+	// 														vinf->serial_3 & 0xffff,
+	// 														vinf->serial_2>>16,
+	// 														vinf->serial_2 & 0xffff,
+	// 														vinf->serial_1);
+	// 	serial_from_uuid(hat->generated_uuid, &hat->generated_serial);
+	// }
+    uint32_t rnd[4];
+	int random_file = open("/dev/urandom", O_RDONLY);
+	ssize_t result = read(random_file, rnd, sizeof(rnd));
+	if (result != sizeof(rnd)) {
+		close(random_file);
+		fprintf(stderr, "Unable to read 16 bytes from /dev/urandom\n");
 		return -1;
 	}
-	else
-	{
-		//put in the version
-		vinf->serial_3 = (vinf->serial_3 & 0xffff0fff) | 0x00004000;
+    
+	close(random_file);
+	
+	vinf->serial_1 = rnd[0];
+	vinf->serial_2 = rnd[1];
+	vinf->serial_3 = rnd[2];
+	vinf->serial_4 = rnd[3];
+    
+	//put in the version
+	vinf->serial_3 = (vinf->serial_3 & 0xffff0fff) | 0x00004000;
 
-		//put in the variant
-		vinf->serial_2 = (vinf->serial_2 & 0x3fffffff) | 0x80000000;
+    //put in the variant
+	vinf->serial_2 = (vinf->serial_2 & 0x3fffffff) | 0x80000000;
 
-		printf("Gen UUID=%08x-%04x-%04x-%04x-%04x%08x\n", 	vinf->serial_4,
-															vinf->serial_3>>16,
-															vinf->serial_3 & 0xffff,
-															vinf->serial_2>>16,
-															vinf->serial_2 & 0xffff,
-															vinf->serial_1);
-		sprintf(hat->generated_uuid, "%08x-%04x-%04x-%04x-%04x%08x", vinf->serial_4,
-															vinf->serial_3>>16,
-															vinf->serial_3 & 0xffff,
-															vinf->serial_2>>16,
-															vinf->serial_2 & 0xffff,
-															vinf->serial_1);
-		serial_from_uuid(hat->generated_uuid, &hat->generated_serial);
-	}
-
+	printf("Gen UUID=%08x-%04x-%04x-%04x-%04x%08x\n", 	vinf->serial_4,
+														vinf->serial_3>>16,
+														vinf->serial_3 & 0xffff,
+														vinf->serial_2>>16,
+														vinf->serial_2 & 0xffff,
+														vinf->serial_1);
+	sprintf(hat->generated_uuid, "%08x-%04x-%04x-%04x-%04x%08x", vinf->serial_4,
+														vinf->serial_3>>16,
+														vinf->serial_3 & 0xffff,
+														vinf->serial_2>>16,
+														vinf->serial_2 & 0xffff,
+														vinf->serial_1);
+	serial_from_uuid(hat->generated_uuid, &hat->generated_serial);
+	
 	atom->type = ATOM_VENDOR_TYPE;
 	atom->count = header->numatoms;
 	atom->dlen = VENDOR_INFO_COMPACT_SIZE(vinf) + 2;

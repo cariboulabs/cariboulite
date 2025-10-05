@@ -117,5 +117,10 @@ inline int io_utils_setup_interrupt(int gpio,
                                     gpioAlertFuncEx_t cb,
                                     void* context)
 {
-   return 0; //gpioSetAlertFuncEx(gpio, cb, context);
+    // surpress 'unused parameter' warnings
+    (void)gpio;
+    (void)cb;
+    (void)context;
+    
+    return 0; //gpioSetAlertFuncEx(gpio, cb, context);
 }

@@ -2,6 +2,14 @@
     #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 #endif
 
+// Enable POSIX/GNU extensions so siginfo_t and SA_SIGINFO are visible
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+
 #define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
 #define ZF_LOG_TAG "CARIBOULITE Test"
 #include "zf_log/zf_log.h"

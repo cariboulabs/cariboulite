@@ -9,13 +9,20 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Bring the headers
 include_directories(./src)
+include_directories(./src/at86rf215) # AT86RF215 headers
 include_directories(${PROJECT_SOURCE_DIR}/src)
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
 # ------------------------------------
 # MAIN - Source files for main library
 # ------------------------------------
-set(SOURCES_LIB src/cariboulite.c src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radio.c)
+set(SOURCES_LIB src/cariboulite.c 
+                src/cariboulite_setup.c 
+                src/cariboulite_events.c 
+                src/cariboulite_radio.c
+                src/cariboulite_sys_storage.c
+                src/cariboulite_sys_accessor.c)
+
 set(TARGET_LINK_LIBS    datatypes
                         production_utils
                         caribou_fpga
@@ -32,6 +39,9 @@ set(TARGET_LINK_LIBS    datatypes
 
 set(SOURCES_CPP_LIB src/CaribouLiteCpp.cpp src/CaribouLiteRadioCpp.cpp)
 
+# Enable POSIX/GNU extensions so siginfo_t and SA_SIGINFO are visible
+add_definitions(-D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE)
+
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
 add_subdirectory(src/caribou_programming EXCLUDE_FROM_ALL)
@@ -47,17 +57,28 @@ add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 
 # Create the library cariboulite
 add_library(cariboulite STATIC ${SOURCES_LIB} ${SOURCES_CPP_LIB})
-target_link_libraries(cariboulite PRIVATE ${TARGET_LINK_LIBS})                                                                  
+target_link_libraries(cariboulite PUBLIC ${TARGET_LINK_LIBS})                                                                  
 set_target_properties(cariboulite PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h;src/CaribouLite.hpp")
-set_target_properties(cariboulite PROPERTIES OUTPUT_NAME cariboulite)
+set_target_properties(cariboulite PROPERTIES OUTPUT_NAME cariboulite_static)
 
 add_library(cariboulite_shared SHARED ${SOURCES_LIB} ${SOURCES_CPP_LIB})
-target_link_libraries(cariboulite_shared PRIVATE ${TARGET_LINK_LIBS})                                                                  
+target_link_libraries(cariboulite_shared PUBLIC ${TARGET_LINK_LIBS})                                                                  
 set_target_properties(cariboulite_shared PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h;src/CaribouLite.hpp")
 set_property(TARGET cariboulite_shared PROPERTY POSITION_INDEPENDENT_CODE 1)
 set_target_properties(cariboulite_shared PROPERTIES OUTPUT_NAME cariboulite)
 
+find_package(Threads REQUIRED)
 
+#--------------------------------------
+# added to support pthread scheduling
+#--------------------------------------
+add_compile_definitions(_GNU_SOURCE)
+
+#--------------------------------------
+# add ncurses support
+#--------------------------------------
+find_package(Curses REQUIRED)
+include_directories(${CURSES_INCLUDE_DIR})
 
 #--------------------------------------
 # create the Soapy shared object
@@ -67,6 +88,12 @@ if (NOT SoapySDR_FOUND)
     message(WARNING "SoapySDR development files not found - skipping support")
     return()
 endif ()
+
+#--------------------------------------
+# add ALSA support
+#--------------------------------------
+find_package(ALSA REQUIRED)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     include(CheckCXXCompilerFlag)
@@ -113,7 +140,12 @@ SOAPY_SDR_MODULE_UTIL(
 # ----------------------------------
 set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
-set(SOURCES_TEST_MAIN src/cariboulite_test_app.c src/app_menu.c)
+set(SOURCES_TEST_MAIN 
+    src/cariboulite_test_app.c 
+    src/app_menu.c 
+    src/tone48k.c
+    src/nbfm4m_mod.c
+    src/alsa48k_source.c)
 set(SOURCES_MAIN src/cariboulite_util.c)
 set(SOURCES_PROD src/cariboulite_production.c)
 
@@ -124,8 +156,14 @@ add_executable(cariboulite_util ${SOURCES_MAIN})
 
 target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
-target_link_libraries(cariboulite_test_app cariboulite)
-target_link_libraries(cariboulite_util cariboulite)
+target_link_libraries(cariboulite_test_app
+    PRIVATE
+        cariboulite_shared
+        ${CURSES_LIBRARIES}
+        m
+        Threads::Threads
+        ALSA::ALSA)
+target_link_libraries(cariboulite_util     cariboulite_shared)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)

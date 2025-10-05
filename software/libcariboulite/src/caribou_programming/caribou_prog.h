@@ -28,7 +28,7 @@ typedef struct
 
 int caribou_prog_init(caribou_prog_st *dev, io_utils_spi_st* io_spi);
 int caribou_prog_release(caribou_prog_st *dev);
-int caribou_prog_configure(caribou_prog_st *dev, char *bitfilename);
+int caribou_prog_configure(caribou_prog_st *dev, const char *bitfilename);
 int caribou_prog_configure_from_buffer(	caribou_prog_st *dev, 
 										uint8_t *buffer, 
 										uint32_t buffer_size);

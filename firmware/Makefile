@@ -6,7 +6,7 @@ top.bin:
 	yosys -p 'synth_ice40 -top top -json $(filename).json -blif $(filename).blif' -p 'ice40_opt' -p 'fsm_opt' $(filename).v
 
 	#nextpnr-ice40 --lp1k --package qn84 --json $(filename).json --pcf $(pcf_file) --asc $(filename).asc
-	nextpnr-ice40 --lp1k --package qn84 --json $(filename).json --pcf $(pcf_file) --asc $(filename).asc --parallel-refine --opt-timing --seed 16 --timing-allow-fail
+	nextpnr-ice40 --lp1k --package qn84 --json $(filename).json --pcf $(pcf_file) --asc $(filename).asc --parallel-refine --opt-timing --seed 16 --timing-allow-fail --no-promote-globals --report nextpnr_timing.json 2>&1 | tee nextpnr.log
 	icepack $(filename).asc $(filename).bin
 
 build: top.bin

@@ -179,7 +179,7 @@ int cariboulite_setup_signal_handler (sys_st *sys,
  *                      NULL should be passed here.
  * @return 0 (success), -1 (fail)
  */
-int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path);
+int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, const char* fpga_bin_path);
 
 /**
  * @brief Release resources
