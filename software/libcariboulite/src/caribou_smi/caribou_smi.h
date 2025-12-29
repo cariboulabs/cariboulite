@@ -54,8 +54,8 @@ typedef enum
 // associated with CS16 - total 4 bytes / element
 typedef struct
 {
-	int16_t i;                      // LSB
-	int16_t q;                      // MSB
+	int16_t i;                      // MSB
+	int16_t q;                      // LSB
 } caribou_smi_sample_complex_int16;
 
 typedef struct
@@ -95,9 +95,19 @@ smi_stream_state_en caribou_smi_get_driver_streaming_state(caribou_smi_st* dev);
 
 int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel, 
                         caribou_smi_sample_complex_int16* buffer, caribou_smi_sample_meta* metadata, size_t length_samples);
-                        
+
+// This version of caribou_smi_writes(...) expects smaples but retruns bytes.						
+// Deprecated: use caribou_smi_write_samples() instead.
 int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel, 
-                        caribou_smi_sample_complex_int16* buffer, size_t length_samples);
+                         caribou_smi_sample_complex_int16* buffer, size_t length_samples);
+
+// Write N *samples* (each sizeof(caribou_smi_sample_complex_int16)).
+// Returns number of *samples* actually accepted, 0 if back-pressured,
+// or -errno on error.
+int caribou_smi_write_samples(caribou_smi_st *smi,
+                      caribou_smi_channel_en ch,
+                      const caribou_smi_sample_complex_int16 *samples,
+                      int n_samples);
 
 size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev);
 

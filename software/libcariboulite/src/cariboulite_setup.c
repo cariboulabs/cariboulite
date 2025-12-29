@@ -5,6 +5,13 @@
 #define ZF_LOG_TAG "CARIBOULITE Setup"
 #include "zf_log/zf_log.h"
 
+// Enable POSIX/GNU extensions so siginfo_t and SA_SIGINFO are visible
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
 
 #include <signal.h>
 #include <stdio.h>
@@ -250,7 +257,7 @@ int cariboulite_release_io (sys_st* sys)
 }
 
 //=======================================================================================
-int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path)
+int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, const char* fpga_bin_path)
 {
     int ret = 0;
  	switch (src)

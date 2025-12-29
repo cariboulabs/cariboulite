@@ -15,7 +15,7 @@ module io_ctrl
 	input [3:0]         i_config,
 	output              o_led0,
 	output              o_led1,
-	output [3:0]        o_pmod,
+	//output [3:0]        o_pmod,
 
 	// Analog interfaces
 	output              o_mixer_fm,
@@ -91,7 +91,7 @@ module io_ctrl
     //=========================================================================
     assign o_led0 = led0_state;
     assign o_led1 = led1_state;
-    assign o_pmod = pmod_state;
+    //assign o_pmod = pmod_state;
 
     // Analog interfaces
     assign o_mixer_fm = 1'b0;
@@ -113,7 +113,7 @@ module io_ctrl
         if (i_rst_b == 1'b0) begin
             debug_mode <= debug_mode_none;
             rf_mode <= rf_mode_low_power;
-            led0_state <= 1'b0;
+            led0_state <= 1'b0; // a marker, to show it is my version of the firmware
             led1_state <= 1'b0;
         end else begin
             if (i_cs == 1'b1) begin

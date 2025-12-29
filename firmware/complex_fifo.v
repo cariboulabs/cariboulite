@@ -14,7 +14,7 @@ module complex_fifo #(
 	output reg [2*DATA_WIDTH-1:0]	rd_data_o,
 
 	output reg 						full_o,
-	output reg 						empty_o,
+	output reg 						empty_o
 );
 
 	reg [ADDR_WIDTH-1:0]	wr_addr;

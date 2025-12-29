@@ -303,7 +303,7 @@ int caribou_prog_configure_from_buffer(	caribou_prog_st *dev,
  * @param bitfilename path to the file containing the fpga bitstream
  * @return int success(0), error (-1)
  */
-int caribou_prog_configure(caribou_prog_st *dev, char *bitfilename)
+int caribou_prog_configure(caribou_prog_st *dev, const char *bitfilename)
 {
 	FILE *fd = NULL;
 	int ct = 0;

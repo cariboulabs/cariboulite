@@ -11,9 +11,9 @@ module sys_ctrl
         input               i_load_cmd,
 
         // controls output
-        output              o_debug_fifo_push,
-        output              o_debug_fifo_pull,
-        output              o_debug_smi_test,
+        //output              o_debug_fifo_push,
+        //output              o_debug_fifo_pull,
+        //output              o_debug_smi_test,
         output              o_debug_loopback_tx,
         output [3:0]        o_tx_sample_gap,
         
@@ -25,7 +25,7 @@ module sys_ctrl
         output              o_rx_sync_09,
         output              o_rx_sync_24,
         output              o_tx_sync_09,
-        output              o_tx_sync_24,
+        output              o_tx_sync_24
     );
 
     // MODULE SPECIFIC IOC LIST
@@ -64,9 +64,9 @@ module sys_ctrl
     reg tx_sync_09;
     reg tx_sync_24;
 
-	assign o_debug_fifo_push = debug_fifo_push;
-	assign o_debug_fifo_pull = debug_fifo_pull;
-	assign o_debug_smi_test = debug_smi_test;
+	//assign o_debug_fifo_push = debug_fifo_push;
+	//assign o_debug_fifo_pull = debug_fifo_pull;
+	//assign o_debug_smi_test = debug_smi_test;
     assign o_rx_sync_type09 = rx_sync_type09;
     assign o_tx_sync_type09 = tx_sync_type09;
     assign o_rx_sync_type24 = rx_sync_type24;

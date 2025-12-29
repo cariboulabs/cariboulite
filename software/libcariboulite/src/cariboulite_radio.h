@@ -174,6 +174,7 @@ typedef struct
     cariboulite_radio_sample_rate_en    tx_fs;
     
     bool                                tx_loopback_anabled;
+    bool                                tx_control_with_iq_if; // if true, the modem will control TX with I/Q data
 
     // at86rf215_radio_energy_detection_st rx_energy_detection;
     float                               rx_energy_detection_value;
