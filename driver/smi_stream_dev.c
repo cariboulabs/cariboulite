@@ -62,6 +62,7 @@
 #include <linux/wait.h>
 #include <linux/poll.h>
 #include <linux/init.h>
+#include <linux/vmalloc.h>
 
 #include "smi_stream_dev.h"
 
@@ -1050,7 +1051,11 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
     }
 
     // Create sysfs entries with "smi-stream-dev"
+#if defined(HAVE_CLASS_WITHOUT_OWNER) && HAVE_CLASS_WITHOUT_OWNER
+    smi_stream_class = class_create(DEVICE_NAME);
+#else
     smi_stream_class = class_create(THIS_MODULE, DEVICE_NAME);
+#endif
     ptr_err = smi_stream_class;
     if (IS_ERR(ptr_err))
     {
@@ -1102,7 +1107,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 *
 ***************************************************************************/
 
-static int smi_stream_dev_remove(struct platform_device *pdev)
+static void smi_stream_dev_remove(struct platform_device *pdev)
 {
     //if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
     //inst->reader_thread = NULL;	
@@ -1113,7 +1118,6 @@ static int smi_stream_dev_remove(struct platform_device *pdev)
     unregister_chrdev_region(smi_stream_devid, 1);
 
     dev_info(inst->dev, DRIVER_NAME": smi-stream dev removed");
-    return 0;
 }
 
 /****************************************************************************

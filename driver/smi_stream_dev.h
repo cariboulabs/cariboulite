@@ -38,6 +38,7 @@
 #define _SMI_STREAM_DEV_H_
 
 #include <linux/ioctl.h>
+#include <linux/version.h>
 
 #ifndef __KERNEL__
 	#include <stdint.h>
@@ -50,6 +51,12 @@
 #define DEVICE_NAME "smi-stream-dev"
 #define DRIVER_NAME "smi-stream-dev"
 #define DEVICE_MINOR 0
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))
+	#define HAVE_CLASS_WITHOUT_OWNER 1
+#else
+	#define HAVE_CLASS_WITHOUT_OWNER 0
+#endif
 
 typedef enum
 {

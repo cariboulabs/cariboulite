@@ -1,5 +1,5 @@
 # Installation Details
-**Note**: ***Major issues with the newly published distro `bookworm`*** - the required kernel modules cannot compile agains the latest 6.1.0 'bookworm' distribution. We noticed that the kernel-headers in the latest rapsberry-pi image distributions do not agree with the mainline linux kernel modules compilation process. Same issues exist with other kernel modules compilations in other projects. This issue needs to be further inspected. **Therefore we suggest using the latest bullseye distribution** `bullseye 6.1.21-*`. See details bellow.
+**Note**: Earlier CaribouLite instructions warned against Raspberry Pi OS `bookworm`. That guidance is stale for this repository snapshot. The main blocker on current Bookworm systems is the `smi_stream_dev` kernel module build against newer Raspberry Pi kernels. This tree includes the required compatibility changes for kernels `>= 6.4`, so Bookworm is now the preferred baseline for supported Raspberry Pi boards other than RPi 5.
 
 ## Fresh SDCard preparation
 1. Download and install Raspberry Pi imager:
@@ -8,8 +8,7 @@
    ![Raspberry Pi official imager](docs/images/rpi_imager.png)
 
 2. Insert a micro-SD card for flashing. Note - the process will override the SD's previous contents.
-3. Download the latest bullseye distribution from:
-   https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2023-05-03/
+3. Download the latest Raspberry Pi OS Bookworm image that matches your board. For headless setups, the Lite image is usually the least painful path.
 
    ![Bullseye Download](docs/images/distro_download.png)
 
@@ -83,10 +82,17 @@ The newly prepared SDCard can be inserted into the Raspberry Pi.
    ./install.sh
    ```
 5. During this installation process, dependencies and kernel modules are being build and installed into the Linux system.
-6. As the building process is finalized, the install script checks the `/boot/config.txt` file. **Note**: the exact location of the file varies between systems. In Raspbian this file shall typically be located in `/boot/config.txt`.
-The installer notes on any mismatch between the actual and expected configuration. The configuration should be applied to the config file according to instructions given by the script.
+6. As the building process is finalized, the install script checks the Raspberry Pi boot config file. Depending on the OS image this will usually be either `/boot/config.txt` or `/boot/firmware/config.txt`.
+The installer notes on any mismatch between the actual and expected configuration. The following settings are required:
+   ```
+   dtparam=i2c_arm=off
+   dtparam=spi=off
+   dtparam=i2c_vc=on
+   dtoverlay=spi1-3cs
+   ```
+   Apply the required changes, save the file, and continue.
 7. As the building process finished, the APIs are installed into the system, including SoapySDR API, C and C++ API. The build artifacts will be located in the `build` sub-directory. 
-8. After the installation process and the config.txt file editing are finished, reboot the system by:
+8. After the installation process and the config file editing are finished, reboot the system by:
 `sudo reboot` and wait for the RPI to restart and initialize.
 
 **Testing and interactions**
@@ -94,7 +100,7 @@ The installer notes on any mismatch between the actual and expected configuratio
    `cat /proc/device-tree/hat/product`
    shiould yield the following output: 
    `CaribouLite RPI Hat`
-2. Testing the `smi_stream` driver insertion:
+2. Testing the `smi_stream` driver insertion after reboot:
    `lsmod | grep smi` should produce the following output:
    ```
    smi_stream_dev         20480  0
