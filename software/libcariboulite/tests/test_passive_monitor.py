@@ -165,8 +165,11 @@ class IQRegisterDisplayTests(unittest.TestCase):
              "EDD", "EDV", "RNDV", "TXCUTC", "TXDFE", "PAC", "PADFE", "PLL",
              "PLLCF", "TXCI", "TXCQ", "TXDACI", "TXDACQ")
     RX_COMMON = ("CFG", "CLKO", "RST", "IQIFC0", "IQIFC1", "IQIFC2")
-    RX_RADIO = ("RSSI", "RXDFE", "RXBWC", "AGCC", "AGCS", "PAC", "PLL",
+    RX_RADIO = ("RSSI", "RXDFE", "RXBWC", "AGCC", "AGCS", "PLL",
                 "PLLCF", "IRQM", "IRQS", "STATE")
+    TX_COMMON = RX_COMMON
+    TX_RADIO = ("TXDFE", "TXCUTC", "PAC", "PADFE", "AUXS", "TXCI", "TXCQ",
+                "TXDACI", "TXDACQ", "PLL", "PLLCF", "IRQM", "IRQS", "STATE")
 
     @staticmethod
     def hardware(common=None, rf09=None, rf24=None):
@@ -228,17 +231,17 @@ class IQRegisterDisplayTests(unittest.TestCase):
                 self.assertEqual(rows, explicit)
                 names = tuple(row.split(" ")[1].split("=")[0] for row in rows)
                 self.assertEqual(names, self.RX_COMMON + self.RX_RADIO)
-                self.assertEqual(len(rows), 17)
+                self.assertEqual(len(rows), 16)
                 self.assertTrue(all(row.startswith("RF ") for row in rows[:6]))
                 self.assertTrue(all(row.startswith(f"{channel} ") for row in rows[6:]))
-                self.assertFalse(any(" TXDFE=" in row or " TXDAC" in row for row in rows))
+                self.assertFalse(any(" PAC=" in row or " TXDFE=" in row or " TXDAC" in row for row in rows))
 
     def test_rx_bit_fields_follow_descending_datasheet_bit_order(self):
         hardware = self.hardware(
             common={"CFG": 0x0D, "CLKO": 0x1A, "RST": 0,
                     "IQIFC0": 0xAB, "IQIFC1": 0xD3, "IQIFC2": 0x80},
             rf24={"AGCC": 0x6B, "AGCS": 0xB6, "RXBWC": 0x26,
-                  "RXDFE": 0x64, "PAC": 0x66, "PLL": 0x12,
+                  "RXDFE": 0x64, "PLL": 0x12,
                   "IRQM": 0x29, "IRQS": 0x12})
         expected = {
             ("RF", "CFG"): "IRQMM=1 IRQP=1 DRV=1(4mA)",
@@ -249,7 +252,6 @@ class IQRegisterDisplayTests(unittest.TestCase):
             ("RF24", "AGCS"): "TGT=5(-36dBFS) GCW=22/22(MAX)",
             ("RF24", "RXDFE"): "RCUT=3(0.75*Fs/2) SR=4(1000kHz)",
             ("RF24", "RXBWC"): "IFI=1 IFS=0 BW=6(630kHz,IFbase=1000kHz)",
-            ("RF24", "PAC"): "PACUR=3(FULL) TXPWR=6",
             ("RF24", "PLL"): "LBW=1(-15%)(RF09-only) LS=1(LOCKED)",
             ("RF24", "IRQM"): "IQIFSF=1 TRXERR=0 BATLOW=1 EDC=0 TRXRDY=0 WAKEUP=1",
             ("RF24", "IRQS"): "IQIFSF=0 TRXERR=1 BATLOW=0 EDC=0 TRXRDY=1 WAKEUP=0 (cached events)",
@@ -259,6 +261,117 @@ class IQRegisterDisplayTests(unittest.TestCase):
             for (bank, name), fields in expected.items():
                 with self.subTest(view=view, bank=bank, name=name):
                     self.assertEqual(self.row(rows, bank, name).split(" ", 2)[2], fields)
+
+    def test_compact_tx_inventory_selects_only_the_requested_radio(self):
+        self.assertEqual(tuple(registers.TX_COMMON_REGISTERS), self.TX_COMMON)
+        self.assertEqual(tuple(registers.TX_RADIO_REGISTERS), self.TX_RADIO)
+        hardware = self.hardware(common={name: 0 for name in self.COMMON},
+                                 rf09={name: 0x01 for name in self.RADIO},
+                                 rf24={name: 0x04 for name in self.RADIO})
+        for channel, selected, suppressed, byte in (
+                ("RF24", "RF24", "RF09", 0x04),
+                ("HiF (RF24)", "RF24", "RF09", 0x04),
+                ("RF09", "RF09", "RF24", 0x01),
+                ("S1G (RF09)", "RF09", "RF24", 0x01)):
+            with self.subTest(channel=channel):
+                rows = registers.format_register_rows(hardware, channel, view="tx")
+                names = tuple(row.split(" ")[1].split("=")[0] for row in rows)
+                self.assertEqual(names, self.TX_COMMON + self.TX_RADIO)
+                self.assertEqual(len(rows), 20)
+                self.assertTrue(all(row.startswith("RF ") for row in rows[:6]))
+                self.assertTrue(all(row.startswith(f"{selected} ") for row in rows[6:]))
+                self.assertTrue(all(f"=0x{byte:02X}" in row for row in rows[6:]))
+                self.assertFalse(any(row.startswith(f"{suppressed} ") for row in rows))
+                self.assertFalse(any(" AGCC=" in row or " RXDFE=" in row for row in rows))
+
+    def test_tx_byte_decodes_follow_descending_datasheet_bit_order(self):
+        # Independent examples from the TX frontend, PA, calibration, PLL and
+        # status register tables. Reserved bits intentionally vary so they
+        # cannot leak into the fields or change their datasheet order.
+        hardware = self.hardware(rf09={
+            "TXDFE": 0x74, "TXCUTC": 0x85, "PAC": 0x66, "PADFE": 0xDF,
+            "AUXS": 0xDD, "TXCI": 0xAF, "TXCQ": 0xE5,
+            "TXDACI": 0xC9, "TXDACQ": 0x56, "PLL": 0x22,
+            "PLLCF": 0xD5, "IRQM": 0x29, "IRQS": 0x12, "STATE": 0xFC})
+        expected = {
+            "TXDFE": "RCUT=3(0.75*Fs/2) DM=1 SR=4(1000kHz)",
+            "TXCUTC": "PARAMP=2(16us) LPFCUT=5(250kHz)",
+            "PAC": "PACUR=3(FULL) TXPWR=6",
+            "PADFE": "PADFE=3(TX/RX+LNA_BYPASS)",
+            "AUXS": "EXTLNABYP=1 AGCMAP=2(LNA12dB) AVEXT=1 AVEN=1 AVS=1 PAVC=1(2.2V)",
+            "TXCI": "DCOI=47", "TXCQ": "DCOQ=37",
+            "TXDACI": "ENTXDACID=1 TXDACID=73",
+            "TXDACQ": "ENTXDACQD=0 TXDACQD=86",
+            "PLL": "LBW=2(+15%) LS=1(LOCKED)", "PLLCF": "CF=21",
+            "IRQM": "IQIFSF=1 TRXERR=0 BATLOW=1 EDC=0 TRXRDY=0 WAKEUP=1",
+            "IRQS": "IQIFSF=0 TRXERR=1 BATLOW=0 EDC=0 TRXRDY=1 WAKEUP=0 (cached events)",
+            "STATE": "STATE=4(TX)",
+        }
+        self.assertEqual(set(expected), set(self.TX_RADIO))
+        for view in ("tx", "all"):
+            rows = registers.format_register_rows(hardware, "RF09", view=view)
+            for name, fields in expected.items():
+                with self.subTest(view=view, name=name):
+                    self.assertEqual(self.row(rows, "RF09", name).split(" ", 2)[2], fields)
+
+    def test_tx_null_bytes_and_invalid_banks_remain_unavailable(self):
+        hardware = self.hardware(rf24={name: 0x04 for name in self.TX_RADIO})
+        for name in self.TX_RADIO:
+            with self.subTest(name=name):
+                hardware["rf24"]["registers"][name] = None
+                # Explicit null in the current register map must suppress a
+                # retained legacy flat byte rather than invent fresh data.
+                hardware["rf24"][name.lower()] = 0x04
+                rows = registers.format_register_rows(hardware, "RF24", view="tx")
+                self.assertEqual(self.row(rows, "RF24", name),
+                                 f"RF24 {name}=0x-- unavailable")
+                hardware["rf24"]["registers"][name] = 0x04
+        for valid in (False, None, "true", 1):
+            with self.subTest(valid=valid):
+                hardware["rf24"]["valid"] = valid
+                rows = registers.format_register_rows(hardware, "RF24", view="tx")
+                for name in self.TX_RADIO:
+                    self.assertEqual(self.row(rows, "RF24", name),
+                                     f"RF24 {name}=0x-- unavailable")
+
+    def test_auto_register_view_follows_effective_control_state_and_rx_fallback(self):
+        hardware = self.hardware(common={name: 0 for name in self.COMMON},
+                                 rf24={name: 0 for name in self.RADIO})
+        cases = [
+            ({"state": state}, "RX", 5, "tx")
+            for state in ("TX_STARTING", "TX", "TX_STOPPING")
+        ] + [
+            ({}, state, 5, "tx")
+            for state in ("TX_STARTING", "TX", "TX_STOPPING")
+        ] + [
+            ({"state": state}, "TX", 4, "rx")
+            for state in ("RX_STARTING", "RX", "RX_STOPPING", "IDLE", "FAULT")
+        ] + [({}, None, 4, "rx"), ({"state": None}, "TX", 5, "tx"),
+             ({"state": ""}, "TX", 5, "tx"), ({}, "DRY_RUN", 4, "rx")]
+        for control, state, modem_state, view in cases:
+            with self.subTest(control=control, state=state, modem_state=modem_state):
+                hardware["rf24"]["registers"]["STATE"] = modem_state
+                value = snapshot(channel="RF24", hardware=hardware,
+                                 control=control, state=state)
+                default = client.format_snapshot(value)
+                self.assertEqual(default, client.format_snapshot(value, register_view="auto"))
+                text = "\n".join(default)
+                self.assertEqual("RF24 TXDFE=" in text, view == "tx")
+                self.assertEqual("RF24 AGCC=" in text, view == "rx")
+                self.assertIn(f"RF24 STATE=0x{modem_state:02X}", text)
+
+    def test_fixed_register_views_override_effective_state(self):
+        hardware = self.hardware(common={name: 0 for name in self.COMMON},
+                                 rf24={name: 0 for name in self.RADIO})
+        for state in ("TX_STARTING", "TX", "TX_STOPPING", "RX", "IDLE"):
+            for view in ("rx", "tx", "all"):
+                with self.subTest(state=state, view=view):
+                    text = "\n".join(client.format_snapshot(
+                        snapshot(channel="RF24", hardware=hardware,
+                                 control={"state": state}), register_view=view))
+                    self.assertEqual("RF24 TXDFE=" in text, view in ("tx", "all"))
+                    self.assertEqual("RF24 AGCC=" in text, view in ("rx", "all"))
+                    self.assertEqual("RF PN=" in text, view == "all")
 
     def test_only_explicit_active_radio_is_shown_and_shared_rows_remain(self):
         hardware = self.hardware(common={"IQIFC0": 0x14},
@@ -282,10 +395,11 @@ class IQRegisterDisplayTests(unittest.TestCase):
         hardware = self.hardware(common={"IQIFC0": 0x14},
                                  rf09={"AGCC": 1}, rf24={"AGCC": 1})
         for channel in (None, "unknown", "RF25", "RF09 and RF24", [], {}):
-            with self.subTest(channel=channel):
-                rows = registers.format_register_rows(hardware, channel)
-                self.assertIn("IQIFC0=0x14", self.row(rows, "RF", "IQIFC0"))
-                self.assertFalse(any(row.startswith(("RF09 ", "RF24 ")) for row in rows))
+            for view in ("rx", "tx", "all"):
+                with self.subTest(channel=channel, view=view):
+                    rows = registers.format_register_rows(hardware, channel, view=view)
+                    self.assertIn("IQIFC0=0x14", self.row(rows, "RF", "IQIFC0"))
+                    self.assertFalse(any(row.startswith(("RF09 ", "RF24 ")) for row in rows))
 
     def test_agcc_masks_are_independent_of_reserved_bit_seven(self):
         for value in range(128):
@@ -613,6 +727,15 @@ class IQRegisterDisplayTests(unittest.TestCase):
                                  "TX rate=2,000,000 S/s source=mic dev=+/-2500 Hz",
                                  "Queue timeouts are wait events; drops are application queue drops."):
                     self.assertIn(expected, text)
+                for name in self.TX_COMMON:
+                    self.assertIn(f"RF {name}=", text)
+                for name in self.TX_RADIO:
+                    self.assertIn(f"RF24 {name}=", text)
+                self.assertEqual(sum(line.startswith("RF24 ") and "=0x" in line
+                                     for line in screen.lines.values()), 14)
+                self.assertNotIn("RF09 ", text)
+                self.assertNotIn("RF24 AGCC=", text)
+                self.assertNotIn("RF24 RXDFE=", text)
                 self.assertNotIn("RX audio FIFO:", text)
                 self.assertEqual(screen.lines[len(body) + 2], body[-1])
 
@@ -726,26 +849,32 @@ class IQRegisterDisplayTests(unittest.TestCase):
         self.assertNotIn("calls=0", text)
         self.assertNotIn("drops=0", text)
 
-    def test_plain_stream_respects_rx_and_all_register_views(self):
-        value = snapshot(channel="RF24", hardware=self.hardware(
+    def test_plain_stream_respects_auto_rx_tx_and_all_register_views(self):
+        hardware = self.hardware(
             common={name: 0 for name in self.COMMON},
-            rf24={name: 0 for name in self.RADIO}))
-        for view in ("rx", "all"):
-            with self.subTest(view=view):
-                connection = mock.Mock(rates={}, status="connected")
-                connection.poll.return_value = value
-                output = io.StringIO()
-                with redirect_stdout(output):
-                    self.assertEqual(client.run_stream(connection, once=True, plain=True,
-                                                       register_view=view), 0)
-                displayed = output.getvalue()
-                self.assertIn("RF24 STATE=", displayed)
-                self.assertEqual("RF24 TXDFE=" in displayed, view == "all")
-                self.assertEqual("RF24 TXDACQ=" in displayed, view == "all")
+            rf24={name: 0 for name in self.RADIO})
+        for state in ("RX", "TX_STARTING", "TX", "TX_STOPPING"):
+            value = snapshot(channel="RF24", hardware=hardware, control={"state": state})
+            for view in (None, "auto", "rx", "tx", "all"):
+                with self.subTest(state=state, view=view):
+                    connection = mock.Mock(rates={}, status="connected")
+                    connection.poll.return_value = value
+                    output = io.StringIO()
+                    options = {} if view is None else {"register_view": view}
+                    with redirect_stdout(output):
+                        self.assertEqual(client.run_stream(connection, once=True, plain=True,
+                                                           **options), 0)
+                    displayed = output.getvalue()
+                    effective = ("rx" if state == "RX" else "tx") if view in (None, "auto") else view
+                    self.assertIn("RF24 STATE=", displayed)
+                    self.assertEqual("RF24 TXDFE=" in displayed, effective in ("tx", "all"))
+                    self.assertEqual("RF24 TXDACQ=" in displayed, effective in ("tx", "all"))
+                    self.assertEqual("RF24 AGCC=" in displayed, effective in ("rx", "all"))
 
     def test_cli_passes_register_view_to_stream_and_interactive_display(self):
-        for view in ("rx", "all"):
-            options = [] if view == "rx" else ["--registers", view]
+        for selected in (None, "auto", "rx", "tx", "all"):
+            view = "auto" if selected is None else selected
+            options = [] if selected is None else ["--registers", selected]
             with self.subTest(view=view, mode="plain"):
                 with mock.patch.object(client, "SnapshotConnection") as connection_type, \
                         mock.patch.object(client, "run_stream", return_value=0) as stream:
@@ -762,6 +891,14 @@ class IQRegisterDisplayTests(unittest.TestCase):
                     wrapped.assert_called_once_with(client.run_interactive,
                                                     connection_type.return_value, view)
                     connection_type.return_value.close.assert_called_once_with()
+
+    def test_cli_rejects_unknown_register_view_before_connecting(self):
+        with mock.patch.object(client, "SnapshotConnection") as connection_type, \
+                mock.patch.object(client.sys, "stderr", new_callable=io.StringIO):
+            with self.assertRaises(SystemExit) as error:
+                client.main(["--registers", "invalid"])
+            self.assertEqual(error.exception.code, 2)
+            connection_type.assert_not_called()
 
 
 class PassiveClientTests(unittest.TestCase):

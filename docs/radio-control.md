@@ -57,6 +57,14 @@ The existing monitor can run in an optional third terminal:
 build/radio-backend/cariboulite_radio_monitor
 ```
 
+Its default `--registers auto` view follows RX/TX state and displays the
+active radio's TX registers during `TX_STARTING`, `TX` and `TX_STOPPING`.
+Use `--registers tx` to inspect those settings while idle or in `FAULT`,
+`--registers rx` for the RX register view, or `--registers all` for the full
+inventory. These options affect only the passive register display; pipeline
+instrumentation still follows radio state, and hardware polling is unchanged.
+See the [register layouts](passive-monitor.md#display-and-protocol).
+
 Omitting `--start-stopped` preserves the backend's automatic RX startup.
 `--seconds N` limits the backend's wall time after initial setup, including
 time spent with RX stopped; it is not accumulated reception time. Ctrl+C in

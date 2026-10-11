@@ -21,13 +21,20 @@ RADIO_REGISTERS = (
     "PLLCF", "TXCI", "TXCQ", "TXDACI", "TXDACQ",
 )
 
-# Compact receive view, ordered to match the receiver monitor layout. The
+# Compact views, ordered to match the receiver/transmitter monitor layout. The
 # complete inventories above also serve register addressing and the full view.
 RX_COMMON_REGISTERS = ("CFG", "CLKO", "RST", "IQIFC0", "IQIFC1", "IQIFC2")
 
 RX_RADIO_REGISTERS = (
-    "RSSI", "RXDFE", "RXBWC", "AGCC", "AGCS", "PAC", "PLL", "PLLCF",
+    "RSSI", "RXDFE", "RXBWC", "AGCC", "AGCS", "PLL", "PLLCF",
     "IRQM", "IRQS", "STATE",
+)
+
+TX_COMMON_REGISTERS = RX_COMMON_REGISTERS
+
+TX_RADIO_REGISTERS = (
+    "TXDFE", "TXCUTC", "PAC", "PADFE", "AUXS", "TXCI", "TXCQ",
+    "TXDACI", "TXDACQ", "PLL", "PLLCF", "IRQM", "IRQS", "STATE",
 )
 
 _RADIO_OFFSETS = (
@@ -304,16 +311,19 @@ def format_register_rows(hardware, channel, view="rx"):
     explicitly invalidated group values display as unavailable, never zero.
     Only the selected radio's rows are returned. Unknown channel selections
     retain common rows and clearly indicate that radio selection is unknown.
-    The default ``rx`` view selects six common and eleven receiver/status
+    The default ``rx`` view selects six common and ten receiver/status
+    registers. ``tx`` selects the same common rows and fourteen TX/status
     registers. ``all`` preserves the complete I/Q-mode inventory. Decoded
     fields follow register bit order from highest to lowest, like the datasheet.
     """
     if view == "rx":
         common_names, radio_names = RX_COMMON_REGISTERS, RX_RADIO_REGISTERS
+    elif view == "tx":
+        common_names, radio_names = TX_COMMON_REGISTERS, TX_RADIO_REGISTERS
     elif view == "all":
         common_names, radio_names = COMMON_REGISTERS, RADIO_REGISTERS
     else:
-        raise ValueError("register view must be 'rx' or 'all'")
+        raise ValueError("register view must be 'rx', 'tx' or 'all'")
     hardware = _mapping(hardware)
     common = _mapping(hardware.get("common"))
     rows = []

@@ -185,16 +185,27 @@ source, and reconnects when a source becomes available again.
 The source defaults to a simulated RF24 radio. Use `--channel RF09` on the
 demo-source command to try the RF09 layout; this changes simulated data only.
 
-The default monitor view is compact for testing in a 57-row terminal: six
-common registers followed by eleven RX/status registers for the selected
-radio. To display the complete register inventory, use:
+The default monitor view, `--registers auto`, is compact for testing in a
+57-row terminal. It shows six common registers followed by the selected
+radio's RX/status registers during reception or idle, and its TX/status
+registers during `TX_STARTING`, `TX` and `TX_STOPPING`. To keep the TX
+registers visible while idle or diagnosing `FAULT`, use:
+
+```sh
+build/radio-backend/cariboulite_radio_monitor --registers tx
+```
+
+To display the complete register inventory, use:
 
 ```sh
 python3 software/libcariboulite/tools/cariboulite_radio_monitor.py --registers all
 ```
 
-`--registers rx` selects the compact view explicitly. The option changes the
-display only; socket snapshots can still carry the full register inventory.
+`--registers rx` selects the compact RX view explicitly; `--registers tx`
+selects the compact TX view. These overrides change only the register rows;
+pipeline instrumentation continues to follow the effective radio state.
+The option changes the display only; socket snapshots still carry the full
+register inventory and no additional hardware reads are needed.
 
 The default socket is `/tmp/cariboulite-monitor-<effective UID>/status.sock`.
 All publishers and the monitor accept `--socket PATH` for an alternative.
@@ -221,12 +232,15 @@ selected RF registers, FPGA status and loopback
 status when supplied. Shared RF registers appear once, followed by only the
 selected RF09 or RF24 radio. Each register has one row containing its name,
 raw hexadecimal byte and decoded fields on that same row. Register order in
-the compact view follows the requested RX/status layout; fields within each
+the compact view follows its RX/status or TX/status layout; fields within each
 register follow datasheet order from the highest bit to the lowest. For example:
 
 ```text
 RF24 AGCC=0x01 AGCI=0(FILT) AVGS=0(8) RST=0 FRZS=0 FRZC=0 EN=1
 RF24 AGCS=0x15 TGT=0(-21dBFS) GCW=21/21(MAX)
+RF24 TXDFE=0x84 RCUT=4(1.0*Fs/2) DM=0 SR=4(1000kHz)
+RF24 TXCUTC=0x40 PARAMP=1(8us) LPFCUT=0(80kHz)
+RF24 PAC=0x60 PACUR=3(FULL) TXPWR=0(MIN)
 ```
 
 The raw byte is retained even when some bits are reserved. Reserved selections
@@ -234,12 +248,25 @@ are labelled, and fields are not decoded from missing or invalid bytes.
 Snapshot and cached hardware ages are
 separate; readings older than one second are marked stale.
 
-The compact view contains these 17 rows, in this order:
+The compact RX view contains these 16 rows, in this order:
 
 | Block | Registers |
 | --- | --- |
 | Common (6) | `CFG`, `CLKO`, `RST`, `IQIFC0`, `IQIFC1`, `IQIFC2` |
-| Active RF09 or RF24 (11) | `RSSI`, `RXDFE`, `RXBWC`, `AGCC`, `AGCS`, `PAC`, `PLL`, `PLLCF`, `IRQM`, `IRQS`, `STATE` |
+| Active RF09 or RF24 (10) | `RSSI`, `RXDFE`, `RXBWC`, `AGCC`, `AGCS`, `PLL`, `PLLCF`, `IRQM`, `IRQS`, `STATE` |
+
+The compact TX view contains these 20 rows, in this order:
+
+| Block | Registers |
+| --- | --- |
+| Common (6) | `CFG`, `CLKO`, `RST`, `IQIFC0`, `IQIFC1`, `IQIFC2` |
+| Active RF09 or RF24 (14) | `TXDFE`, `TXCUTC`, `PAC`, `PADFE`, `AUXS`, `TXCI`, `TXCQ`, `TXDACI`, `TXDACQ`, `PLL`, `PLLCF`, `IRQM`, `IRQS`, `STATE` |
+
+Automatic selection uses the effective state in the control snapshot when
+available, then the top-level radio state. TX transition states retain the
+TX view; other states select RX. An explicit register-view override does
+not change RX/TX operation or its pipeline counters. Both compact views fit
+the 57-row terminal used for testing, with horizontal scrolling for long rows.
 
 The full view's 39 register rows cover the defined shared and active-radio register map
 in the [AT86RF215 datasheet](<datasheet/Atmel-42415-WIRELESS-AT86RF215_Datasheet 2.pdf>),
@@ -311,7 +338,7 @@ Counters from different stages may describe adjacent instants; a snapshot is
 not a globally atomic transaction.
 
 The monitor adds eight compact rows when the new sections are supplied. The
-default 17-register view fits a 57-row terminal; long rows can scroll
+RX view uses 16 register rows, and the TX view uses 20; long rows can scroll
 horizontally. Older publishers keep their previous layout and unsupported
 measurements display as unavailable.
 

@@ -250,7 +250,7 @@ def _format_tx_instrumentation(tx, control):
     return lines
 
 
-def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
+def format_snapshot(snapshot, now=None, rates=None, register_view="auto"):
     """Return readable cached telemetry, tolerating unavailable fields."""
     now = time.monotonic() if now is None else now
     config = _mapping(snapshot.get("config"))
@@ -262,6 +262,7 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
     control = _mapping(snapshot.get("control"))
     state = control.get("state") or snapshot.get("state")
     tx_active = state in ("TX_STARTING", "TX", "TX_STOPPING")
+    effective_register_view = ("tx" if tx_active else "rx") if register_view == "auto" else register_view
     tx_settings = (f"  TX rate={_formatted(config.get('tx_sample_rate_hz'), ',.0f')} S/s"
                    f" source={_label(config.get('tx_source'))}"
                    f" dev=+/-{_formatted(config.get('tx_deviation_hz'), 'g')} Hz") if (
@@ -328,7 +329,7 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
         "",
     ]
     lines.append("AT86RF215 Modem Status Registers:")
-    lines.extend(format_register_rows(hardware, snapshot.get("channel"), view=register_view))
+    lines.extend(format_register_rows(hardware, snapshot.get("channel"), view=effective_register_view))
     fpga = _mapping(hardware.get("fpga"))
     if fpga.get("valid") is True:
         fields = []
@@ -466,7 +467,7 @@ class SnapshotConnection:
         return newest
 
 
-def run_interactive(screen, connection, register_view="rx"):
+def run_interactive(screen, connection, register_view="auto"):
     try:
         curses.curs_set(0)
     except curses.error:
@@ -519,7 +520,7 @@ def run_interactive(screen, connection, register_view="rx"):
             horizontal = max(0, horizontal - 8)
 
 
-def run_stream(connection, once=False, timeout=5.0, plain=False, register_view="rx"):
+def run_stream(connection, once=False, timeout=5.0, plain=False, register_view="auto"):
     deadline = time.monotonic() + timeout if once else None
     previous_status = None
     while deadline is None or time.monotonic() < deadline:
@@ -562,8 +563,8 @@ def main(argv=None):
     output.add_argument("--plain", action="store_true", help="stream readable snapshots without curses")
     parser.add_argument("--timeout", type=positive_seconds, default=5.0, metavar="SECONDS",
                         help="maximum wait with --once (default: %(default)s)")
-    parser.add_argument("--registers", choices=("rx", "all"), default="rx",
-                        help="register display: compact RX/status or full I/Q inventory (default: rx)")
+    parser.add_argument("--registers", choices=("auto", "rx", "tx", "all"), default="auto",
+                        help="register display: follow RX/TX state, compact RX or TX, or full I/Q inventory (default: auto)")
     args = parser.parse_args(argv)
     if not (args.once or args.json or args.plain) and not (sys.stdin.isatty() and sys.stdout.isatty()):
         parser.error("interactive mode needs a terminal; use --once, --json, or --plain")
