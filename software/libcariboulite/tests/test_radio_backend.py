@@ -184,7 +184,7 @@ class RadioBackendTests(unittest.TestCase):
         snapshot = self.once()
         self.assert_transport_only(snapshot)
         self.assertEqual(snapshot["rx_mode"], "WBFM mono")
-        self.assertEqual(snapshot["config"]["rx_bandwidth_hz"], 2000000)
+        self.assertEqual(snapshot["config"]["rx_bandwidth_hz"], 250000)
         self.assertIs(snapshot["rx"]["noise_enabled"], False)
         _, errors = process.communicate(timeout=3)
         self.assertEqual(process.returncode, 0, errors.decode())

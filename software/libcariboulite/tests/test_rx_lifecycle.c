@@ -89,8 +89,8 @@ int __wrap_cariboulite_radio_activate_channel(cariboulite_radio_state_st* r, car
             assert((modem_regs[agc]&0x73)==1 && (modem_regs[agc+1]&0xe0)==0);
             assert(r->rx_agc_on);
         } else {
-            assert(r->rx_bw==cariboulite_radio_rx_bw_2000KHz);
-            assert(r->rx_fcut==cariboulite_radio_rx_f_cut_half_fs);
+            assert(r->rx_bw==cariboulite_radio_rx_bw_250KHz);
+            assert(r->rx_fcut==cariboulite_radio_rx_f_cut_0_25_half_fs);
         }
         ++rx_activations;
     }
@@ -456,8 +456,8 @@ static void stale_nbfm_profile(cariboulite_radio_state_st* radio) {
 static void assert_modem_profile(const rx_pipeline_t* p) {
     const cariboulite_radio_state_st* radio=p->radio;
     bool nbfm=p->demod.mode==AUDIO_DEMOD_NBFM;
-    cariboulite_radio_rx_bw_en bw=nbfm ? cariboulite_radio_rx_bw_160KHz : cariboulite_radio_rx_bw_2000KHz;
-    cariboulite_radio_f_cut_en cutoff=nbfm ? cariboulite_radio_rx_f_cut_0_25_half_fs : cariboulite_radio_rx_f_cut_half_fs;
+    cariboulite_radio_rx_bw_en bw=nbfm ? cariboulite_radio_rx_bw_160KHz : cariboulite_radio_rx_bw_250KHz;
+    cariboulite_radio_f_cut_en cutoff=cariboulite_radio_rx_f_cut_0_25_half_fs;
     cariboulite_radio_sample_rate_en rate=p->demod.fs_rf==1000000 ? cariboulite_radio_rx_sample_rate_1000khz :
         p->demod.fs_rf==2000000 ? cariboulite_radio_rx_sample_rate_2000khz : cariboulite_radio_rx_sample_rate_4000khz;
     uint16_t filter=modem_reg(radio,REG_RF09_RXBWC), agc=modem_reg(radio,REG_RF09_AGCC);
@@ -477,6 +477,11 @@ static void test_modem_policy(void) {
     sys.radio_high.type=cariboulite_channel_hif;
     for(unsigned channel=0;channel<2;++channel) {
         cariboulite_radio_state_st* radio=channel ? &sys.radio_high : &sys.radio_low;
+        const uint16_t other_filter=REG_RF09_RXBWC+0x100*!channel;
+        /* RXBWC, RXDFE, AGCC and AGCS are contiguous. Keep a distinct profile
+         * in the inactive bank so cross-channel configuration is observable. */
+        const uint8_t other_registers[]={0x26,0x61,0x62,0xf7};
+        memcpy(modem_regs+other_filter,other_registers,sizeof(other_registers));
         for(unsigned rate=0;rate<sizeof(monitor_rates)/sizeof(*monitor_rates);++rate) {
             rx_params_t par={.mode=AUDIO_DEMOD_NBFM,.freq_hz=430125000,.pcm_dev="null",
                 .fs_rf=monitor_rates[rate].fs,.fs_audio=48000};
@@ -488,58 +493,71 @@ static void test_modem_policy(void) {
                 unsigned before=agc_writes[channel];
                 assert(rx_pipeline_start(&rx)==0);
                 assert_modem_profile(&rx);
+                assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
                 assert(agc_writes[channel]==before+1 && agc_writes[!channel]==other_agc);
                 assert(last_stream==(channel ? smi_stream_rx_channel_1 : smi_stream_rx_channel_0));
                 rx_pipeline_stop(&rx);
             }
             assert(monitor_cycle_rx_mode(&tx,&rx,&loopback,&sys,&par)==0 && par.mode==AUDIO_DEMOD_WBFM);
-            /* WBFM restores its wide filters without changing gain policy. */
+            /* WBFM restores its 250 kHz profile without changing gain policy. */
             stale_nbfm_profile(radio);
             unsigned before=agc_writes[channel];
             uint16_t agc=modem_reg(radio,REG_RF09_AGCC);
             uint8_t saved_agc=modem_regs[agc], saved_gain=modem_regs[agc+1];
             assert(rx_pipeline_start(&rx)==0);
             assert_modem_profile(&rx);
+            assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
             assert(agc_writes[channel]==before && modem_regs[agc]==saved_agc &&
                    modem_regs[agc+1]==saved_gain && !radio->rx_agc_on);
             rx_pipeline_stop(&rx);
             assert(monitor_cycle_rx_mode(&tx,&rx,&loopback,&sys,&par)==0 && par.mode==AUDIO_DEMOD_NBFM);
             assert(rx_pipeline_start(&rx)==0);
             assert_modem_profile(&rx);
+            assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
             assert(agc_writes[channel]==before+1);
             rx_pipeline_destroy(&rx); check_clean(&rx);
         }
-        rx_params_t par={.mode=AUDIO_DEMOD_NBFM,.freq_hz=430125000,.pcm_dev="null",
-            .fs_rf=1000000,.fs_audio=48000};
-        rx_pipeline_t rx={0};
-        assert(rx_pipeline_init(&rx,&sys,radio,&par)==0);
-        for(enum modem_fault fault=MODEM_DEACTIVATE;fault<=MODEM_AGC_TARGET_MISMATCH;++fault) {
-            unsigned variants=fault==MODEM_FILTER_MISMATCH || fault==MODEM_AGC_CONTROL_MISMATCH ? 5 : 1;
-            for(unsigned variant=0;variant<variants;++variant) {
-                static const uint8_t filter_xors[]={1,0x10,0x20,0x20,1};
-                static const uint8_t agc_xors[]={1,2,0x10,0x20,0x40};
-                filter_readback_byte=variant>=3;
-                filter_readback_xor=filter_xors[variant];
-                agc_readback_xor=agc_xors[variant];
-                stale_nbfm_profile(radio);
-                unsigned before_activations=rx_activations, before_streams=stream_activations;
-                int before_creates=creates;
-                modem_fault=fault;
-                assert(rx_pipeline_start(&rx)==-4);
-                assert(!rx.running && !rx.rx_thread_created && !rx.rx_ctrl.active && !hardware_active);
-                assert(rx_activations==before_activations && stream_activations==before_streams && creates==before_creates);
-                assert(!radio->rx_agc_on); /* Only verified readback may update this cache. */
-                assert(pthread_mutex_trylock(&g_hw_lock)==0);
-                pthread_mutex_unlock(&g_hw_lock);
-                modem_fault=MODEM_OK;
-                assert(rx_pipeline_start(&rx)==0);
-                assert_modem_profile(&rx);
-                rx_pipeline_stop(&rx);
+        const audio_demod_mode_t modes[]={AUDIO_DEMOD_NBFM,AUDIO_DEMOD_WBFM};
+        for(unsigned mode=0;mode<sizeof(modes)/sizeof(*modes);++mode) {
+            const bool nbfm=modes[mode]==AUDIO_DEMOD_NBFM;
+            rx_params_t par={.mode=modes[mode],.freq_hz=430125000,.pcm_dev="null",
+                .fs_rf=1000000,.fs_audio=48000};
+            rx_pipeline_t rx={0};
+            assert(rx_pipeline_init(&rx,&sys,radio,&par)==0);
+            const enum modem_fault last_fault=nbfm ? MODEM_AGC_TARGET_MISMATCH : MODEM_FILTER_MISMATCH;
+            for(enum modem_fault fault=MODEM_DEACTIVATE;fault<=last_fault;++fault) {
+                unsigned variants=fault==MODEM_FILTER_MISMATCH || fault==MODEM_AGC_CONTROL_MISMATCH ? 5 : 1;
+                for(unsigned variant=0;variant<variants;++variant) {
+                    static const uint8_t filter_xors[]={1,0x10,0x20,0x20,1};
+                    static const uint8_t agc_xors[]={1,2,0x10,0x20,0x40};
+                    filter_readback_byte=variant>=3;
+                    filter_readback_xor=filter_xors[variant];
+                    agc_readback_xor=agc_xors[variant];
+                    stale_nbfm_profile(radio);
+                    uint16_t agc=modem_reg(radio,REG_RF09_AGCC);
+                    uint8_t saved_agc=modem_regs[agc], saved_gain=modem_regs[agc+1];
+                    unsigned before_activations=rx_activations, before_streams=stream_activations;
+                    int before_creates=creates;
+                    modem_fault=fault;
+                    assert(rx_pipeline_start(&rx)==-4);
+                    assert(!rx.running && !rx.rx_thread_created && !rx.rx_ctrl.active && !hardware_active);
+                    assert(rx_activations==before_activations && stream_activations==before_streams && creates==before_creates);
+                    assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
+                    assert(!radio->rx_agc_on); /* Only verified readback may update this cache. */
+                    assert(pthread_mutex_trylock(&g_hw_lock)==0);
+                    pthread_mutex_unlock(&g_hw_lock);
+                    modem_fault=MODEM_OK;
+                    assert(rx_pipeline_start(&rx)==0);
+                    assert_modem_profile(&rx);
+                    assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
+                    if(!nbfm) assert(modem_regs[agc]==saved_agc && modem_regs[agc+1]==saved_gain && !radio->rx_agc_on);
+                    rx_pipeline_stop(&rx);
+                }
             }
+            rx_pipeline_destroy(&rx); check_clean(&rx);
         }
-        rx_pipeline_destroy(&rx); check_clean(&rx);
     }
-    puts("PASS: RF09/RF24 NBFM AGC/filter restoration at 1/2/4 MS/s, WBFM transitions, failed configuration blocks RX and retries cleanly");
+    puts("PASS: RF09/RF24 NBFM/WBFM filter restoration at 1/2/4 MS/s, isolated registers, mode transitions, failed configuration blocks RX and retries cleanly");
 }
 static void test_noise_level_controls(void) {
     float opening=0, closing=0;

@@ -1074,7 +1074,7 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
             r->calls, r->samples, r->short_reads, r->zero_reads, r->errors, r->last_error);
     }
     const bool noise_enabled = o->rx.mode == AUDIO_DEMOD_NBFM && !o->rx.noise_squelch_disabled;
-    const double bandwidth = o->rx.mode == AUDIO_DEMOD_NBFM ? 160000 : 2000000;
+    const double bandwidth = o->rx.mode == AUDIO_DEMOD_NBFM ? 160000 : 250000;
     const double actual_freq = o->actual_rx_frequency ? o->actual_rx_frequency
         : radio ? radio->actual_rf_frequency : o->frequency;
     char tx_actual_freq[64] = "null", tx_actual_power[48] = "null";
@@ -1218,7 +1218,7 @@ int main(int argc, char **argv)
     uint64_t published_config_generation = options.config_generation;
     uint64_t sequence = 0;
     char session[80], packet[8192];
-    snprintf(session, sizeof(session), "rx-%ld-%" PRIu64, (long)getpid(), mono_ns());
+    snprintf(session, sizeof(session), "radio-%ld-%" PRIu64, (long)getpid(), mono_ns());
     fprintf(stderr, "%s: %s %.6f MHz, %.0f S/s, %s. Ctrl+C stops the backend.\n",
         options.dry_run ? "SIMULATED TRANSPORT ONLY" : options.start_stopped ? "RX idle" : "RX started", options.channel,
         options.frequency / 1e6, (double)options.rx.fs_rf,

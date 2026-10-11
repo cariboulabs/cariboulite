@@ -279,9 +279,11 @@ static int configure_rx_modem(rx_pipeline_t* p)
         default: return -1;
     }
     const cariboulite_radio_rx_bw_en bw = nbfm ?
-        cariboulite_radio_rx_bw_160KHz : cariboulite_radio_rx_bw_2000KHz;
-    const cariboulite_radio_f_cut_en cutoff = nbfm ?
-        cariboulite_radio_rx_f_cut_0_25_half_fs : cariboulite_radio_rx_f_cut_half_fs;
+        cariboulite_radio_rx_bw_160KHz : cariboulite_radio_rx_bw_250KHz;
+    // WBFM's software channel filter cuts at +/-100 kHz. The 250 kHz analog
+    // bandwidth and minimum digital cutoff (Fs/8: +/-125 kHz at 1 MS/s)
+    // leave margin around it without changing IQ rate or DSP processing.
+    const cariboulite_radio_f_cut_en cutoff = cariboulite_radio_rx_f_cut_0_25_half_fs;
 
     // Frontend configuration requires TRXOFF. Tuning can leave TXPREP active,
     // and the modem's TRXOFF command has an erratum, so confirm actual state.

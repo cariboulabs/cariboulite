@@ -86,8 +86,8 @@ Before configuring the frontend, the pipeline stops the modem and confirms
 **TRXOFF**. It then reads back the bandwidth, cutoff, sample rate and AGC
 controls before enabling RX. A configuration or readback failure prevents RX
 startup and permits retry. The profile is reapplied after rate changes,
-TX/RX switches and interface loopback. WBFM RX restores the previous wide
-2 MHz analog filter and `fS / 2` digital cutoff when it starts.
+TX/RX switches and interface loopback. WBFM RX now uses a separate
+250 kHz analog filter and `fS / 8` digital cutoff; see the WBFM profile below.
 
 The policy is local to the app's
 [RX pipeline](../software/libcariboulite/src/rx_pipeline.c); generic radio API
@@ -595,3 +595,45 @@ and radio/DSP behavior remain unchanged by this interface cleanup. See the
 Validation passed four C suites and 108 Python checks, including the named
 monitor launcher, controller-to-backend RX commands and partial squelch edits
 that preserve the other fields. These checks used isolated simulated sessions.
+
+## WBFM modem RX bandwidth (2026-10-11)
+
+The shared RX pipeline now selects **250 kHz analog bandwidth** for WBFM
+and the minimum modem digital cutoff, **`fS / 8`**, instead of the previous
+2 MHz analog bandwidth and `fS / 2` cutoff. This applies to both menu 14 in
+`cariboulite_test_app` and `cariboulite_radio_backend`, on RF09 and RF24.
+The backend also publishes the updated 250000 Hz bandwidth to the monitor.
+
+| IQ rate | Analog bandwidth | Digital cutoff | RXBWC / RXDFE |
+| --- | --- | --- | --- |
+| 1 MS/s | 250 kHz | ±125 kHz | `0x12` / `0x04` |
+| 2 MS/s | 250 kHz | ±250 kHz | `0x12` / `0x02` |
+| 4 MS/s | 250 kHz | ±500 kHz | `0x12` / `0x01` |
+
+250 kHz is the starting point for listening tests. Its nominal analog
+half-bandwidth is 125 kHz, leaving more margin around the existing software
+channel filter's ±100 kHz cutoff than the supported 200 kHz setting would.
+With the existing IF shift enabled (`IFS=1`, `IFI=0`), the modem's nominal
+internal IF becomes **320 kHz**. Its digital mixer converts this to
+zero-centered IQ; this IF is not a tuning error or an extra frequency offset.
+See the [AT86RF215 datasheet](<datasheet/Atmel-42415-WIRELESS-AT86RF215_Datasheet 2.pdf>),
+receiver frontend and RXBWC/RXDFE descriptions (pages 52–59).
+
+The selected sample rate, WBFM DSP and existing AGC policy remain in use.
+Narrowing the modem filter therefore does not reduce SMI traffic or DSP CPU
+work by itself. The current WBFM output is mono. Stereo and RDS still require
+additional DSP and a fresh review of the RF filter widths.
+
+Hardware-free lifecycle checks passed for both channels at 1/2/4 MS/s,
+including NBFM/WBFM transitions, inactive-register-bank protection, injected
+WBFM configuration/readback failures and successful retries. WBFM DSP checks
+also passed at all three rates, including ±75 kHz modulation, streaming/reset
+behavior and audio filter checks. Both applications built successfully, and
+the backend's four C suites and 58 Python checks passed using simulated
+sessions. Physical listening confirmation with this modem profile is pending.
+Reproduce the shared-pipeline checks with:
+
+```sh
+python3 software/libcariboulite/tests/test_rx_lifecycle.py
+python3 software/libcariboulite/tests/test_wbfm_demod.py
+```

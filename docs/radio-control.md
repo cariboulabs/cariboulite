@@ -113,6 +113,13 @@ sample-rate changes update saved settings; their DSP and hardware profiles
 are applied at the next `rx start`. Every restart creates a fresh pipeline, so
 old IQ or PCM frames cannot carry across a retune or mode change.
 
+At RX start, NBFM selects 160 kHz modem analog bandwidth and WBFM selects
+250 kHz. Both select the minimum digital cutoff, `fS / 8` (±125 kHz at
+1 MS/s), and verify the filter register readback before receiving. WBFM's
+internal shifted IF is 320 kHz nominal; the modem delivers zero-centered IQ.
+See the [WBFM modem profile](nbfm-rx-sensitivity-context.md#wbfm-modem-rx-bandwidth-2026-10-11)
+for the per-rate settings and listening-test status.
+
 Squelch controls work during reception and while stopped. Noise thresholds
 use 0.001 RMS resolution and must satisfy `0 < open < close <= 8.0` after
 rounding. A pair that collapses to the same rounded value is rejected.
