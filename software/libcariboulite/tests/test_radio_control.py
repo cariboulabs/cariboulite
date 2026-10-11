@@ -225,7 +225,14 @@ class RadioControlTests(unittest.TestCase):
                         "squelch noise", "squelch noise maybe", "squelch noise on extra",
                         "squelch carrier true", "squelch levels .3 .2", "squelch levels .2",
                         "rx squelch noise maybe", "rx squelch carrier off extra",
-                        "rx squelch levels .2 .3 extra", "rx squelch levels nan .3", ""):
+                        "rx squelch levels .2 .3 extra", "rx squelch levels nan .3",
+                        "fpga", "fpga reset", "fpga Program", "fpga program top.bin",
+                        "fpga program extra words", "rx fpga program", "tx fpga program",
+                        "squelch fpga program", "rx squelch fpga program", "fpga tx start",
+                        "fpga soft", "fpga hard", "fpga Soft reset",
+                        "fpga soft reset extra", "fpga hard reset top.bin", "fpga hard reset extra",
+                        "rx fpga soft reset", "tx fpga hard reset", "squelch fpga hard reset",
+                        "rx squelch fpga soft reset", "fpga soft program", ""):
             with self.subTest(command=command):
                 result = self.once(command)
                 self.assertEqual(result.returncode, 2)
@@ -343,9 +350,16 @@ class RadioControlTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         for command in ("rx start", "rx stop", "rx frequency", "rx mode", "rx rate",
                         "squelch noise", "squelch carrier", "squelch levels",
-                        "tx start", "tx stop", "tx frequency", "tx rate"):
+                        "tx start", "tx stop", "tx frequency", "tx rate", "fpga program",
+                        "fpga soft reset", "fpga hard reset"):
             with self.subTest(command=command):
                 self.assertIn(command, result.stdout)
+        self.assertIn("firmware/top.bin", result.stdout)
+        self.assertIn("requires stopped RX/TX", result.stdout)
+        self.assertIn("continues after disconnect", result.stdout)
+        self.assertIn("keep the loaded firmware", result.stdout)
+        self.assertIn("hardware reset", result.stdout)
+        self.assertIn("run fpga program afterwards", result.stdout)
         result = subprocess.run([str(self.binary), "--help"], capture_output=True,
                                 text=True, timeout=3)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -357,6 +371,145 @@ class RadioControlTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("requires an interactive controller session", result.stderr)
         self.assertNotIn("Cannot connect", result.stderr)
+
+    def test_one_shot_fpga_program_sends_once_and_accepts_async_transition(self):
+        def handler(number, packet):
+            if packet.decode().split()[2] == "fpga_program":
+                return reply(packet, version=2, state="FPGA_PROGRAMMING", code="ACCEPTED",
+                             transition=1)
+            return reply(packet, version=2, state="IDLE")
+
+        owner = self.owner(handler)
+        result = self.once("fpga program")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(owner.packets, [["v2", "1", "get"], ["v2", "2", "fpga_program"]])
+        self.assertIn("Transition accepted", result.stdout)
+        self.assertIn("SIMULATED RF24 FPGA_PROGRAMMING", result.stdout)
+        self.assertNotIn("uncertain", result.stderr)
+
+    def test_fpga_program_rejection_displays_busy_radio_state(self):
+        for code, state in (("RX_RUNNING", "RX"), ("TX_RUNNING", "TX"),
+                            ("TRANSITION", "FPGA_PROGRAMMING"), ("HARDWARE", "IDLE"),
+                            ("FIRMWARE_FILE", "IDLE")):
+            with self.subTest(code=code):
+                def handler(number, packet):
+                    if packet.decode().split()[2] == "fpga_program":
+                        return reply(packet, version=2, state=state, result="ERROR", code=code)
+                    return reply(packet, version=2, state=state)
+
+                owner = self.owner(handler)
+                result = self.once("fpga program")
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(f"Command rejected: {code}", result.stderr)
+                self.assertIn(f"SIMULATED RF24 {state}", result.stdout)
+                self.assertEqual([packet[2] for packet in owner.packets], ["get", "fpga_program"])
+                owner.close()
+                self.path.unlink()
+
+    def test_uncertain_fpga_program_is_not_retried(self):
+        def handler(number, packet):
+            return reply(packet, version=2, state="IDLE") if packet.decode().split()[2] == "get" else None
+
+        owner = self.owner(handler)
+        result = self.once("fpga program", timeout=".1")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("outcome is uncertain", result.stderr)
+        self.assertIn("was not retried", result.stderr)
+        self.assertEqual([packet[2] for packet in owner.packets], ["get", "fpga_program"])
+
+    def test_interactive_fpga_program_completion_requires_explicit_status(self):
+        programmed = False
+
+        def handler(number, packet):
+            nonlocal programmed
+            if packet.decode().split()[2] == "fpga_program":
+                programmed = True
+                return reply(packet, version=2, state="FPGA_PROGRAMMING", code="ACCEPTED",
+                             transition=1)
+            return reply(packet, version=2, state="IDLE" if programmed else "FAULT")
+
+        owner = self.owner(handler)
+        result = subprocess.run([str(self.binary), "--socket", str(self.path), "--timeout", ".2"],
+                                input="fpga program\nstatus\nq\n", capture_output=True,
+                                text=True, timeout=3)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([packet[2] for packet in owner.packets], ["get", "fpga_program", "get"])
+        self.assertIn("SIMULATED RF24 FPGA_PROGRAMMING", result.stdout)
+        self.assertIn("SIMULATED RF24 IDLE", result.stdout)
+
+    def test_one_shot_fpga_resets_use_exact_packets_and_accept_transition(self):
+        for command, wire in (("fpga soft reset", "fpga_soft_reset"),
+                              ("fpga hard reset", "fpga_hard_reset")):
+            with self.subTest(command=command):
+                def handler(number, packet):
+                    if packet.decode().split()[2] == wire:
+                        return reply(packet, version=2, state="FPGA_RESETTING", code="ACCEPTED",
+                                     transition=1)
+                    return reply(packet, version=2, state="IDLE")
+
+                owner = self.owner(handler)
+                result = self.once(command)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(owner.packets, [["v2", "1", "get"], ["v2", "2", wire]])
+                self.assertIn("Transition accepted", result.stdout)
+                self.assertIn("SIMULATED RF24 FPGA_RESETTING", result.stdout)
+                owner.close()
+                self.path.unlink()
+
+    def test_uncertain_fpga_resets_are_never_retried(self):
+        for command, wire in (("fpga soft reset", "fpga_soft_reset"),
+                              ("fpga hard reset", "fpga_hard_reset")):
+            with self.subTest(command=command):
+                owner = self.owner(lambda number, packet:
+                    reply(packet, version=2, state="IDLE")
+                    if packet.decode().split()[2] == "get" else None)
+                result = self.once(command, timeout=".1")
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn("outcome is uncertain", result.stderr)
+                self.assertIn("was not retried", result.stderr)
+                self.assertEqual([packet[2] for packet in owner.packets], ["get", wire])
+                owner.close()
+                self.path.unlink()
+
+    def test_reset_completion_states_are_displayed_only_on_explicit_status(self):
+        for command, wire, completed in (("fpga soft reset", "fpga_soft_reset", "IDLE"),
+                                          ("fpga hard reset", "fpga_hard_reset", "FPGA_NEEDS_PROGRAM")):
+            with self.subTest(command=command):
+                reset = False
+
+                def handler(number, packet):
+                    nonlocal reset
+                    if packet.decode().split()[2] == wire:
+                        reset = True
+                        return reply(packet, version=2, state="FPGA_RESETTING", code="ACCEPTED",
+                                     transition=1)
+                    return reply(packet, version=2, state=completed if reset else "IDLE")
+
+                owner = self.owner(handler)
+                result = subprocess.run([str(self.binary), "--socket", str(self.path), "--timeout", ".2"],
+                                        input=f"{command}\nstatus\nq\n", capture_output=True,
+                                        text=True, timeout=3)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual([packet[2] for packet in owner.packets], ["get", wire, "get"])
+                self.assertIn("SIMULATED RF24 FPGA_RESETTING", result.stdout)
+                self.assertIn(f"SIMULATED RF24 {completed}", result.stdout)
+                owner.close()
+                self.path.unlink()
+
+    def test_post_hard_reset_rejection_explains_programming_required(self):
+        def handler(number, packet):
+            if packet.decode().split()[2] == "start":
+                return reply(packet, version=2, state="FPGA_NEEDS_PROGRAM", result="ERROR",
+                             code="FPGA_REQUIRED")
+            return reply(packet, version=2, state="FPGA_NEEDS_PROGRAM")
+
+        owner = self.owner(handler)
+        result = self.once("rx start")
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("Command rejected: FPGA_REQUIRED", result.stderr)
+        self.assertIn("Run fpga program", result.stderr)
+        self.assertIn("SIMULATED RF24 FPGA_NEEDS_PROGRAM", result.stdout)
+        self.assertEqual([packet[2] for packet in owner.packets], ["get", "start"])
 
     def test_tx_configuration_commands_use_exact_v2_fields(self):
         for command, expected in (

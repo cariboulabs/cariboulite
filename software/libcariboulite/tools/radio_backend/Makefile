@@ -63,5 +63,6 @@ test: all $(OUT)/test_status_publisher $(OUT)/test_modem_snapshot $(OUT)/test_co
 	python3 "$(ROOT)/software/libcariboulite/tests/test_rx_control_backend.py"
 	python3 "$(ROOT)/software/libcariboulite/tests/test_radio_control.py"
 	python3 "$(ROOT)/software/libcariboulite/tests/test_tx_control_backend.py"
+	python3 "$(ROOT)/software/libcariboulite/tests/test_fpga_control_backend.py"
 
 -include $(OBJECTS:.o=.d)

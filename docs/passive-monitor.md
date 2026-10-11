@@ -638,3 +638,18 @@ RX → TX → RX transitions and that disconnecting the controller during TX
 stops transmission and restores RX. Failed startup logs now capture
 IQ-interface synchronization and FPGA readbacks before cleanup. No new
 whole-application CPU measurement was performed.
+
+### FPGA programming
+
+The controller's [`fpga program`](radio-control.md#fpga-programming-after-reboot)
+command loads the same `firmware/top.bin` as test-app menu option 3. Start
+the backend from the repository root with `--start-stopped` after reboot,
+program, and wait for `IDLE` before starting RX. The monitor displays
+`FPGA_PROGRAMMING` while the lifecycle worker performs the reset/load sequence.
+During that job the backend suspends hardware register polling and reports
+pipeline measurements as unavailable. Programming leaves both RX and TX stopped.
+
+Standalone `fpga soft reset` and `fpga hard reset` expose `FPGA_RESETTING`
+through the same lifecycle worker. Soft reset preserves the firmware and
+returns to `IDLE`; hard reset reports `FPGA_NEEDS_PROGRAM` and requires
+`fpga program` before RX/TX can resume. Both leave the radio stopped.

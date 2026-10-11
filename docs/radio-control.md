@@ -92,6 +92,9 @@ effective squelch settings, and configuration and pipeline generations.
 | `tx rate 1`, `tx rate 2` or `tx rate 4` | Select TX sample rate in MS/s. |
 | `tx source mic` or `tx source tone` | Select microphone input or synthesized audio. |
 | `tx tone 600 0.4` | Set tone frequency in Hz and normalized audio amplitude. |
+| `fpga program` | Load `firmware/top.bin` using the menu-3 sequence; requires stopped RX and TX. |
+| `fpga soft reset` | Reset FPGA runtime logic while preserving the loaded firmware; requires stopped RX and TX. |
+| `fpga hard reset` | Pulse FPGA configuration reset; requires stopped RX/TX and subsequent `fpga program`. |
 | `help` or `?` | Show available commands. |
 | `q` or `quit` | Disconnect; RX continues, while active TX is stopped. |
 
@@ -158,6 +161,93 @@ is refused locally before connection: transmission requires an interactive
 controller to remain connected. Controller options are
 `--socket PATH`, `--timeout SECONDS` and `--command 'COMMAND'`. The default
 reply timeout is 2 seconds; the accepted range is greater than 0 through 60.
+
+## FPGA programming after reboot
+
+Start the backend from the repository root with `--start-stopped`, as shown
+above. In the controller, use:
+
+```text
+fpga program
+status
+```
+
+The command loads **`firmware/top.bin` relative to the backend's working
+directory**, exactly like menu option 3 in `cariboulite_test_app`. It checks
+that the file is readable, regular and nonempty before resetting. A missing
+or unsuitable file returns `FIRMWARE_FILE` without resetting the FPGA.
+If reception is already running, issue `rx stop` first. Active TX and other
+lifecycle transitions also block programming.
+
+The backend preserves the menu sequence: hard reset, force reprogramming
+from the file, soft reset, wait 100 ms, read versions, then select debug mode
+0 and low-power frontend mode. `cariboulite_configure_fpga` also restores
+the SMI GPIO setup and performs its existing programming/status operations.
+Checked SPI reads additionally confirm communication, the manufacturer ID
+and final low-power mode. Version numbers alone cannot distinguish this
+file from the older embedded firmware.
+
+`ACCEPTED` acknowledges the request. Programming then runs asynchronously
+in state `FPGA_PROGRAMMING`; use `status` or the monitor to wait for `IDLE`
+before `rx start`. Hardware register polling pauses during the operation;
+pipeline measurements are unavailable and register snapshots retain their
+last sampling time. Saved RX/TX settings remain, and both pipelines stay
+stopped. A programming failure leaves `FAULT` and logs its stage in the backend
+terminal. `fpga program` can be retried from that state without requiring
+communication with the failed FPGA beforehand.
+
+After a known configuration reset, the backend relies on the modem-idle proof
+obtained before that reset, joins any retained workers and checks SMI idle
+again. It defers modem SPI verification until the firmware has been loaded.
+The FPGA and modem share SPI clock/data pins, and the FPGA may use them during
+configuration; requiring a modem read beforehand can block the operation
+needed to restore communication. The final programming check explicitly
+commands modem TRXOFF and verifies it, allowing up to 50 ms to settle, before
+clearing the programming requirement. A failed final check logs `FINAL_IDLE`
+with component return codes and the observed modem `STATE`.
+
+Both resets are part of this programming command. The hard reset prepares
+the FPGA for loading its configuration; the subsequent soft reset initializes
+its running logic. This loads the FPGA's volatile configuration and does
+not replace the boot firmware. Repeat after a reboot when the default firmware
+does not match the software.
+
+The controller can disconnect while programming continues, including with
+`--command 'fpga program'`. A disconnected controller does not resume RX or
+cancel programming. Backend shutdown waits for an accepted programming job
+to finish before releasing hardware.
+
+### Standalone FPGA resets
+
+`fpga soft reset` and `fpga hard reset` use the same GPIO reset calls as the
+test app's reset options. Both require stopped RX/TX and no active lifecycle
+transition. They do not need a firmware file. The backend destroys retained
+pipeline resources, confirms modem/SMI idle, and performs the reset on its
+lifecycle worker. `ACCEPTED` acknowledges the request; `FPGA_RESETTING`
+indicates work in progress. Status IPC remains available, hardware polling
+pauses, and controller disconnection does not cancel the reset or start RX.
+
+Soft reset preserves the loaded firmware and clears runtime interface/FIFO
+state, including the TX sample gap. The backend selects low-power mode and
+checks SPI communication afterward. Successful completion returns `IDLE`;
+the next RX/TX start rebuilds the pipeline and reapplies routing and sample-rate
+settings. A failed reset or verification leaves `FAULT`.
+
+Hard reset discards the running configuration. Any default firmware loaded
+afterward is not proof that it matches this software. Successful completion
+reports `FPGA_NEEDS_PROGRAM`; run `fpga program`, wait for `IDLE`, then start
+RX or TX. Other setting changes and soft reset return `FPGA_REQUIRED` until
+programming succeeds. `rx stop` and `tx stop` remain harmless, idempotent
+commands and cannot clear this requirement. A hard-reset failure reports
+`FAULT` and also requires programming if the configuration reset was attempted.
+
+The programming operation also records this requirement when it hard-resets
+the FPGA. Failed programming cannot be bypassed with `rx stop` or a soft
+reset; only successful programming clears it. Another hard reset is still
+allowed while programming is required, without requiring a modem SPI read.
+Both resets can be issued through `--command`, for example
+`--command 'fpga soft reset'`; check
+completion through a subsequent `status` command or the passive monitor.
 
 ## Half-duplex NBFM transmission
 
@@ -265,6 +355,10 @@ retains `IDLE` and still reports the failed command; a failed rollback reports
 `FAULT`. Hardware stop failures are also reported explicitly.
 
 In `FAULT`, `status` remains available and `rx stop` attempts checked cleanup.
+`fpga program` also remains available with both pipelines stopped, allowing
+recovery when the FPGA is not communicating after a failed programming job.
+When a configuration reset has been attempted, `rx stop` leaves the programming
+requirement and fault state intact; use `fpga program` for that recovery.
 After `rx stop` successfully returns `IDLE`, settings can be changed and RX
 started again. The accepted frequency, mode, rate and squelch configuration
 remain available after a failed start or tune.
@@ -352,16 +446,18 @@ the unsolicited competing-controller `BUSY` reply also uses ID `0`.
 | `ACCEPTED` | Asynchronous transition accepted; check status for completion. |
 | `BUSY` | Another controller owns the command connection. |
 | `PROTOCOL` | Malformed or unsupported packet. |
-| `RX_RUNNING` | Stop RX before changing frequency, mode or sample rate. |
+| `RX_RUNNING` | Stop RX before changing frequency, mode or sample rate, or programming/resetting the FPGA. |
 | `TX_RUNNING` | Stop TX before changing active-radio or TX settings. |
 | `TRANSITION` | Wait for the ongoing lifecycle transition to complete. |
 | `INVALID` | Invalid supported-control value or threshold pair. |
 | `FREQ_RANGE` | Frequency outside the active board/channel range. |
 | `HARDWARE` | Tuning, pipeline, verification or control application failed. |
-| `FAULT` | Recover the existing fault with `rx stop` before making changes. |
+| `FAULT` | Recover pipeline faults with `rx stop`; after a configuration reset, use `fpga program`. |
 | `WBFM_NOISE` | Noise squelch was requested in WBFM. |
 | `LOOPBACK` | The modem's IQ loopback mode prevents starting RF transmission. |
 | `TX_FAILED` | TX setup or readiness verification failed. |
+| `FIRMWARE_FILE` | `firmware/top.bin` is missing, unreadable, empty or not a regular file; no reset performed. |
+| `FPGA_REQUIRED` | Program the current firmware with `fpga program` before operating the radio or changing settings. |
 
 Version 2 retains the first 17 reply fields and appends 13 TX fields in this
 order:
@@ -382,11 +478,19 @@ v2 ID tx_power DBM
 v2 ID tx_sample_rate 1000000|2000000|4000000
 v2 ID tx_source mic|tone
 v2 ID tx_tone HZ AMPLITUDE
+v2 ID fpga_program
+v2 ID fpga_soft_reset
+v2 ID fpga_hard_reset
 ```
 
 The boolean suffix fields use `0` or `1`; `TX_TONE_MODE=1` selects the tone
 source. `TX_REQUESTED` describes requested TX state, `RX_RESUME` records prior
 RX restoration intent, and `TRANSITION` marks an unfinished lifecycle job.
+FPGA programming reports `STATE=FPGA_PROGRAMMING` and `TRANSITION=1` until
+completion. It accepts no firmware path argument. Version-1 replies map
+version-2-only states, including programming, to `FAULT` as before.
+Reset requests use `STATE=FPGA_RESETTING` and `TRANSITION=1`; a successful
+hard reset completes in `FPGA_NEEDS_PROGRAM` until programming succeeds.
 TX settings in an error reply remain the accepted settings, so rejection
 does not overwrite configuration with the attempted values.
 
@@ -406,6 +510,8 @@ physical reception. Status snapshots retain `state: "DRY_RUN"`,
 register values. Their optional `control` section reports requested state
 and generations. Dry-run simulates a new pipeline generation for each
 stopped-to-started transition without creating a real pipeline.
+`fpga program` in dry-run simulates acceptance and completion without reading
+a firmware file or resetting/programming any device.
 
 Run the test target after building:
 

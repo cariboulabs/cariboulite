@@ -22,6 +22,9 @@ typedef enum control_command {
     CONTROL_TX_SAMPLE_RATE,
     CONTROL_TX_SOURCE,
     CONTROL_TX_TONE,
+    CONTROL_FPGA_PROGRAM,
+    CONTROL_FPGA_SOFT_RESET,
+    CONTROL_FPGA_HARD_RESET,
     /* These are transport-generated requests, never valid wire commands. */
     CONTROL_INVALID,
     CONTROL_BUSY
@@ -81,7 +84,7 @@ typedef struct control_reply {
 } control_reply_t;
 
 /* Strict ASCII protocol-v1/v2 packets. v1 carries RX commands/settings; v2
- * extends them with TX controls and transition states. Parsers accept ASCII whitespace between
+ * extends them with TX controls, FPGA programming and transition states. Parsers accept ASCII whitespace between
  * tokens, reject embedded NULs, nonfinite/overflowed numbers and trailing
  * tokens. They return 0 on success or -1 with errno on failure. A failed
  * request parse retains a syntactically valid request ID when available. */

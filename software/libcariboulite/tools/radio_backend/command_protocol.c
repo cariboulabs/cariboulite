@@ -238,6 +238,12 @@ int control_request_parse(const char *packet, size_t bytes,
         request->command = CONTROL_TX_START;
     else if (request->protocol_version == 2 && !strcmp(tokens[2], "tx_stop") && count == 3)
         request->command = CONTROL_TX_STOP;
+    else if (request->protocol_version == 2 && !strcmp(tokens[2], "fpga_program") && count == 3)
+        request->command = CONTROL_FPGA_PROGRAM;
+    else if (request->protocol_version == 2 && !strcmp(tokens[2], "fpga_soft_reset") && count == 3)
+        request->command = CONTROL_FPGA_SOFT_RESET;
+    else if (request->protocol_version == 2 && !strcmp(tokens[2], "fpga_hard_reset") && count == 3)
+        request->command = CONTROL_FPGA_HARD_RESET;
     else if (request->protocol_version == 2 && !strcmp(tokens[2], "tx_frequency") && count == 4 &&
              !parse_double(tokens[3], &request->tx_frequency_hz))
         request->command = CONTROL_TX_FREQUENCY;
@@ -265,7 +271,7 @@ static int valid_code(const char *code)
     static const char *const codes[] = {
         "OK", "BUSY", "PROTOCOL", "RX_RUNNING", "INVALID", "FREQ_RANGE",
         "HARDWARE", "FAULT", "WBFM_NOISE", "ACCEPTED", "TRANSITION",
-        "TX_RUNNING", "LOOPBACK", "TX_FAILED"
+        "TX_RUNNING", "LOOPBACK", "TX_FAILED", "FIRMWARE_FILE", "FPGA_REQUIRED"
     };
     size_t i;
     for (i = 0; i < sizeof(codes) / sizeof(codes[0]); ++i)
@@ -278,7 +284,9 @@ static int valid_state(const char *state, unsigned version)
 {
     if (!strcmp(state, "IDLE") || !strcmp(state, "RX") || !strcmp(state, "FAULT")) return 1;
     return version == 2 && (!strcmp(state, "TX_STARTING") || !strcmp(state, "TX") ||
-        !strcmp(state, "TX_STOPPING") || !strcmp(state, "RX_STARTING"));
+        !strcmp(state, "TX_STOPPING") || !strcmp(state, "RX_STARTING") ||
+        !strcmp(state, "FPGA_PROGRAMMING") || !strcmp(state, "FPGA_RESETTING") ||
+        !strcmp(state, "FPGA_NEEDS_PROGRAM"));
 }
 
 int control_reply_parse(const char *packet, size_t bytes, control_reply_t *reply)
@@ -410,6 +418,14 @@ int control_request_format(const control_request_t *request,
     case CONTROL_TX_STOP:
         bytes = snprintf(packet, capacity, "v%u %" PRIu64 " %s\n", version, request->id,
                          request->command == CONTROL_TX_START ? "tx_start" : "tx_stop");
+        break;
+    case CONTROL_FPGA_PROGRAM:
+    case CONTROL_FPGA_SOFT_RESET:
+    case CONTROL_FPGA_HARD_RESET:
+        bytes = snprintf(packet, capacity, "v%u %" PRIu64 " %s\n", version, request->id,
+                         request->command == CONTROL_FPGA_PROGRAM ? "fpga_program" :
+                         request->command == CONTROL_FPGA_SOFT_RESET ? "fpga_soft_reset" :
+                         "fpga_hard_reset");
         break;
     case CONTROL_TX_FREQUENCY:
         bytes = snprintf(packet, capacity, "v%u %" PRIu64 " tx_frequency %.17g\n",

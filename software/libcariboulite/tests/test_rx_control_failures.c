@@ -7,6 +7,8 @@
 #include "main.c"
 #undef main
 #include <assert.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 pthread_mutex_t g_hw_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -31,6 +33,30 @@ static unsigned modem_state = cariboulite_radio_state_cmd_trx_off;
 static const double accepted_frequency = 430125000;
 static const double rejected_frequency = 430130000;
 
+enum fpga_event {
+    FPGA_RADIO_IDLE, FPGA_SMI_IDLE, FPGA_MODEM_OFF, FPGA_HARD_RESET,
+    FPGA_CONFIGURE, FPGA_SOFT_RESET, FPGA_WAIT, FPGA_VERSIONS, FPGA_LOW_POWER,
+    FPGA_SPI_VERSION_0, FPGA_SPI_VERSION_1, FPGA_SPI_VERSION_2,
+    FPGA_SPI_VERSION_3, FPGA_SPI_VERSION_4, FPGA_SPI_MODE,
+    FPGA_FINAL_RADIO_IDLE, FPGA_FINAL_SMI_IDLE, FPGA_FINAL_MODEM_OFF
+};
+static bool fpga_test_active;
+static int fpga_failure_event = -1;
+static bool fpga_bad_manufacturer, fpga_bad_mode;
+static bool fpga_reset_breaks_modem, fpga_modem_unavailable;
+static bool fpga_modem_state_error, fpga_modem_stays_unavailable;
+static bool fpga_configure_seen, fpga_program_readback_done;
+static unsigned fpga_modem_transient_reads;
+static unsigned fpga_events[1024], fpga_event_count;
+static atomic_bool fpga_hold_reset, fpga_reset_entered;
+
+static int fpga_record(unsigned event)
+{
+    assert(fpga_event_count < sizeof(fpga_events) / sizeof(fpga_events[0]));
+    fpga_events[fpga_event_count++] = event;
+    return fpga_failure_event == (int)event ? -1 : 0;
+}
+
 int cariboulite_radio_set_frequency(cariboulite_radio_state_st *radio,
                                     bool break_before_make, double *frequency)
 {
@@ -49,6 +75,12 @@ int cariboulite_radio_activate_channel(cariboulite_radio_state_st *radio,
     (void)radio;
     assert((direction == cariboulite_channel_dir_rx || direction == cariboulite_channel_dir_tx)
            && !active);
+    if (fpga_test_active) {
+        /* The production deactivation wrapper discards modem command errors.
+         * Shared SPI can remain unavailable despite its successful return. */
+        if (!fpga_modem_unavailable) modem_state = cariboulite_radio_state_cmd_trx_off;
+        return fpga_record(fpga_program_readback_done ? FPGA_FINAL_RADIO_IDLE : FPGA_RADIO_IDLE);
+    }
     modem_state = cariboulite_radio_state_cmd_trx_off;
     return fail_idle ? -1 : 0;
 }
@@ -58,6 +90,10 @@ int caribou_smi_set_driver_streaming_state(caribou_smi_st *device, smi_stream_st
     (void)device;
     assert(state == smi_stream_idle || state == smi_stream_rx_channel_0
            || state == smi_stream_rx_channel_1 || state == smi_stream_tx_channel);
+    if (fpga_test_active) {
+        assert(state == smi_stream_idle);
+        return fpga_record(fpga_program_readback_done ? FPGA_FINAL_SMI_IDLE : FPGA_SMI_IDLE);
+    }
     return state == smi_stream_tx_channel ? (tx_fail_stream ? -1 : 0)
         : state != smi_stream_idle && fail_stream ? -1 : 0;
 }
@@ -67,6 +103,7 @@ int caribou_fpga_set_io_ctrl_mode(caribou_fpga_st *device, uint8_t debug,
 {
     (void)device;
     assert(debug == 0 && mode == caribou_fpga_io_ctrl_rfm_low_power);
+    if (fpga_test_active) return fpga_record(FPGA_LOW_POWER);
     return 0;
 }
 
@@ -76,7 +113,79 @@ int caribou_fpga_soft_reset(caribou_fpga_st *device)
     assert(mock_rx_pipeline && !mock_rx_pipeline->inited && !mock_rx_pipeline->running);
     assert(!mock_tx_pipeline.inited && !mock_tx_pipeline.running);
     ++tx_reset_calls;
+    if (fpga_test_active) {
+        atomic_store_explicit(&fpga_reset_entered, true, memory_order_release);
+        while (atomic_load_explicit(&fpga_hold_reset, memory_order_acquire)) {
+            struct timespec delay = {.tv_nsec=1000000};
+            nanosleep(&delay, NULL);
+        }
+        return fpga_record(FPGA_SOFT_RESET);
+    }
     return tx_fail_reset ? -1 : 0;
+}
+
+int caribou_fpga_hard_reset(caribou_fpga_st *device)
+{
+    (void)device;
+    assert(fpga_test_active);
+    assert(!mock_rx_pipeline->inited && !mock_rx_pipeline->running);
+    assert(!mock_tx_pipeline.inited && !mock_tx_pipeline.running);
+    atomic_store_explicit(&fpga_reset_entered, true, memory_order_release);
+    while (atomic_load_explicit(&fpga_hold_reset, memory_order_acquire)) {
+        struct timespec delay = {.tv_nsec=1000000};
+        nanosleep(&delay, NULL);
+    }
+    if (fpga_reset_breaks_modem) fpga_modem_unavailable = true;
+    return fpga_record(FPGA_HARD_RESET);
+}
+
+int cariboulite_configure_fpga(sys_st *sys, cariboulite_firmware_source_en source,
+                              const char *path)
+{
+    assert(fpga_test_active && sys->force_fpga_reprogramming == 1);
+    assert(source == cariboulite_firmware_source_file);
+    assert(!strcmp(path, "firmware/top.bin"));
+    int rc = fpga_record(FPGA_CONFIGURE);
+    if (rc == 0) {
+        fpga_configure_seen = true;
+        if (!fpga_modem_stays_unavailable) fpga_modem_unavailable = false;
+    }
+    return rc;
+}
+
+void io_utils_usleep(int usec)
+{
+    assert(fpga_test_active && usec == 100000);
+    assert(fpga_record(FPGA_WAIT) == 0);
+}
+
+int caribou_fpga_get_versions(caribou_fpga_st *device, caribou_fpga_versions_st *versions)
+{
+    assert(fpga_test_active && versions == NULL);
+    device->versions = (caribou_fpga_versions_st){.sys_ver=2,
+        .sys_manu_id=CARIBOU_SDR_MANU_CODE, .sys_ctrl_mod_ver=1,
+        .io_ctrl_mod_ver=1, .smi_ctrl_mod_ver=1};
+    return fpga_record(FPGA_VERSIONS);
+}
+
+int io_utils_spi_transmit(io_utils_spi_st *device, int handle,
+                         const unsigned char *tx, unsigned char *rx, size_t length,
+                         io_utils_spi_dir_en direction)
+{
+    (void)device; (void)handle;
+    static const unsigned char opcodes[] = {0x01, 0x02, 0x00, 0x20, 0x40, 0x21};
+    unsigned index = 0;
+    assert(fpga_test_active && length == 2 && direction == io_utils_spi_read_write);
+    assert(tx[1] == 0);
+    while (index < sizeof(opcodes) && opcodes[index] != tx[0]) ++index;
+    assert(index < sizeof(opcodes));
+    rx[0] = 0;
+    rx[1] = index == 0 ? 2 : index == 1 ? (fpga_bad_manufacturer ? 0 : CARIBOU_SDR_MANU_CODE)
+        : index == 5 ? (fpga_bad_mode ? caribou_fpga_io_ctrl_rfm_tx_lowpass : 0) : 1;
+    int rc = fpga_record(FPGA_SPI_VERSION_0 + index);
+    if (rc == 0 && index == sizeof(opcodes) - 1 && fpga_configure_seen)
+        fpga_program_readback_done = true;
+    return rc;
 }
 
 static int diagnostic_read(unsigned index)
@@ -127,6 +236,20 @@ int at86rf215_read_buffer(at86rf215_st *device, uint16_t reg, uint8_t *buffer, u
         return diagnostic_read(0);
     }
     assert(size == 1);
+    if (fpga_test_active && (reg == REG_RF24_STATE || reg == REG_RF09_STATE)) {
+        int rc = fpga_record(fpga_program_readback_done ? FPGA_FINAL_MODEM_OFF : FPGA_MODEM_OFF);
+        if (fpga_modem_unavailable) {
+            *buffer = cariboulite_radio_state_cmd_reset;
+            return rc ? rc : fpga_modem_state_error ? -1 : 0;
+        }
+        if (fpga_modem_transient_reads) {
+            --fpga_modem_transient_reads;
+            *buffer = cariboulite_radio_state_transition;
+            return rc;
+        }
+        *buffer = cariboulite_radio_state_cmd_trx_off;
+        return rc;
+    }
     if (reg == REG_RF_IQIFC0) { *buffer = modem_loopback ? 0x80 : 0; return 0; }
     if (reg == REG_RF24_PAC || reg == REG_RF09_PAC) {
         *buffer = tx_bad_pac ? 1 : 0; return 0;
@@ -301,6 +424,15 @@ static void reset_faults(void)
     memset(&mock_tx_pipeline, 0, sizeof(mock_tx_pipeline));
     modem_state = cariboulite_radio_state_cmd_trx_off;
     stop_requested = 0;
+    fpga_test_active = fpga_bad_manufacturer = fpga_bad_mode = false;
+    fpga_reset_breaks_modem = fpga_modem_unavailable = false;
+    fpga_modem_state_error = fpga_modem_stays_unavailable = false;
+    fpga_configure_seen = fpga_program_readback_done = false;
+    fpga_modem_transient_reads = 0;
+    fpga_failure_event = -1;
+    fpga_event_count = 0;
+    atomic_init(&fpga_hold_reset, false);
+    atomic_init(&fpga_reset_entered, false);
 }
 
 static backend_control_t context(options_t *options, sys_st *sys,
@@ -329,6 +461,13 @@ static control_reply_t tx_command(backend_control_t *owner, control_command_t re
 {
     control_reply_t reply;
     control_request_t request = {.id=43, .protocol_version=2, .command=requested};
+    if (!owner->lifecycle_active && !strcmp(code, "ACCEPTED")
+        && (requested == CONTROL_FPGA_PROGRAM || requested == CONTROL_FPGA_SOFT_RESET
+            || requested == CONTROL_FPGA_HARD_RESET)) {
+        /* Instrumentation phases start afresh; the modeled lost modem access
+         * persists across jobs until the bitstream is successfully loaded. */
+        fpga_configure_seen = fpga_program_readback_done = false;
+    }
     backend_control_command(owner, &request, &reply);
     assert(reply.id == request.id && !strcmp(reply.code, code) && !strcmp(reply.state, state));
     assert(reply.ok == (!strcmp(code, "OK") || !strcmp(code, "ACCEPTED")));
@@ -362,6 +501,517 @@ static control_reply_t command(backend_control_t *owner, control_request_t reque
     assert(reply.noise_enabled && !reply.carrier_enabled);
     assert(reply.noise_open_rms == .20f && reply.noise_close_rms == .30f);
     return reply;
+}
+
+static void write_test_firmware(void)
+{
+    FILE *file = fopen("firmware/top.bin", "wb");
+    assert(file && fwrite("mock-only-bitstream", 1, 19, file) == 19);
+    assert(fclose(file) == 0);
+}
+
+static void assert_fpga_sequence(bool recovery, bool final_idle)
+{
+    unsigned offset = 0;
+    if (recovery) assert(fpga_events[offset++] == FPGA_SMI_IDLE);
+    else for (unsigned i = FPGA_RADIO_IDLE; i <= FPGA_MODEM_OFF; ++i)
+        assert(fpga_events[offset++] == i);
+    for (unsigned i = FPGA_HARD_RESET; i <= FPGA_SPI_MODE; ++i)
+        assert(fpga_events[offset++] == i);
+    if (final_idle) for (unsigned i = FPGA_FINAL_RADIO_IDLE; i <= FPGA_FINAL_MODEM_OFF; ++i)
+        assert(fpga_events[offset++] == i);
+    assert(fpga_event_count == offset);
+}
+
+static void assert_fpga_reset_sequence(bool hard, bool recovery)
+{
+    static const unsigned soft[] = {FPGA_RADIO_IDLE, FPGA_SMI_IDLE, FPGA_MODEM_OFF,
+        FPGA_SOFT_RESET, FPGA_LOW_POWER, FPGA_SPI_VERSION_0, FPGA_SPI_VERSION_1,
+        FPGA_SPI_VERSION_2, FPGA_SPI_VERSION_3, FPGA_SPI_VERSION_4, FPGA_SPI_MODE};
+    static const unsigned hard_events[] = {FPGA_RADIO_IDLE, FPGA_SMI_IDLE,
+        FPGA_MODEM_OFF, FPGA_HARD_RESET};
+    const unsigned *events = hard ? hard_events : soft;
+    unsigned count = hard ? sizeof(hard_events) / sizeof(hard_events[0])
+        : sizeof(soft) / sizeof(soft[0]);
+    unsigned offset = 0;
+    if (recovery) {
+        assert(hard && fpga_events[offset++] == FPGA_SMI_IDLE);
+        assert(fpga_events[offset++] == FPGA_HARD_RESET);
+    } else for (unsigned i = 0; i < count; ++i) assert(fpga_events[offset++] == events[i]);
+    assert(fpga_event_count == offset);
+}
+
+static void test_fpga_resets(void)
+{
+    options_t options;
+    sys_st sys;
+    cariboulite_radio_state_st radio;
+    rx_pipeline_t pipeline;
+    int previous_directory = open(".", O_RDONLY | O_DIRECTORY);
+    char directory[] = "/tmp/cl-fpga-resets-XXXXXX";
+    assert(previous_directory >= 0 && mkdtemp(directory));
+    assert(chdir(directory) == 0); /* Neither reset depends on a firmware file. */
+
+    for (unsigned hard = 0; hard < 2; ++hard) {
+        control_command_t reset = hard ? CONTROL_FPGA_HARD_RESET : CONTROL_FPGA_SOFT_RESET;
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        options.rx_requested = true;
+        tx_command(&owner, reset, "RX_RUNNING", "RX");
+        options.rx_requested = false;
+        pipeline.running = true;
+        tx_command(&owner, reset, "RX_RUNNING", "IDLE");
+        pipeline.running = false;
+        options.tx_requested = true;
+        tx_command(&owner, reset, "TX_RUNNING", "TX");
+        options.tx_requested = false;
+        mock_tx_pipeline.running = true;
+        tx_command(&owner, reset, "TX_RUNNING", "IDLE");
+        mock_tx_pipeline.running = false;
+        assert(fpga_event_count == 0 && !owner.lifecycle_active);
+
+        /* Parked pipelines must be destroyed before either hardware reset. */
+        pipeline.inited = mock_tx_pipeline.inited = true;
+        options.tx_initialized = true;
+        sys.fpga.versions = (caribou_fpga_versions_st){.sys_ver=9,
+            .sys_manu_id=CARIBOU_SDR_MANU_CODE, .sys_ctrl_mod_ver=9,
+            .io_ctrl_mod_ver=9, .smi_ctrl_mod_ver=9};
+        sys.fpga.status = caribou_fpga_status_operational;
+        tx_command(&owner, reset, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", hard ? "FPGA_NEEDS_PROGRAM" : "IDLE");
+        assert_fpga_reset_sequence(hard, false);
+        assert(!options.control_fault && options.fpga_needs_programming == (bool)hard);
+        assert(!options.rx_requested && !options.tx_requested && !options.rx_resume);
+        assert(!options.tx_initialized && !pipeline.inited && !mock_tx_pipeline.inited);
+        assert(options.pipeline_generation == 3 && options.tx_pipeline_generation == 0);
+        assert(stop_calls == 1 && destroy_calls == 1 && tx_destroy_calls == 1);
+        assert(sys.force_fpga_reprogramming == 0 && !options.tx_error);
+        if (hard) {
+            caribou_fpga_versions_st zero = {0};
+            assert(!memcmp(&sys.fpga.versions, &zero, sizeof(zero)));
+            assert(sys.fpga.status == caribou_fpga_status_not_programmed);
+        } else {
+            assert(sys.fpga.versions.sys_ver == 2);
+            assert(sys.fpga.versions.sys_manu_id == CARIBOU_SDR_MANU_CODE);
+        }
+    }
+
+    /* Every soft-reset/verification failure reports FAULT; an explicitly
+     * retried soft reset recovers without reading or loading any file. */
+    static const unsigned soft_failures[] = {FPGA_RADIO_IDLE, FPGA_SMI_IDLE,
+        FPGA_MODEM_OFF, FPGA_SOFT_RESET, FPGA_LOW_POWER, FPGA_SPI_VERSION_0,
+        FPGA_SPI_VERSION_1, FPGA_SPI_VERSION_2, FPGA_SPI_VERSION_3,
+        FPGA_SPI_VERSION_4, FPGA_SPI_MODE};
+    for (unsigned i = 0; i < sizeof(soft_failures) / sizeof(soft_failures[0]); ++i) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        fpga_failure_event = (int)soft_failures[i];
+        tx_command(&owner, CONTROL_FPGA_SOFT_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert(!options.fpga_needs_programming && !options.rx_requested && !options.tx_requested);
+        assert(fpga_event_count == (i < 3 ? 3 : i + 1));
+        fpga_failure_event = -1;
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_SOFT_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+        assert_fpga_reset_sequence(false, false);
+        assert(!options.control_fault);
+    }
+    for (unsigned bad = 0; bad < 2; ++bad) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        fpga_bad_manufacturer = bad == 0;
+        fpga_bad_mode = bad == 1;
+        tx_command(&owner, CONTROL_FPGA_SOFT_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert_fpga_reset_sequence(false, false);
+    }
+
+    /* Hard reset only attempts the hardware reset after idle verification.
+     * Once attempted, its uncertain configuration cannot be recovered by STOP. */
+    for (unsigned failure = FPGA_RADIO_IDLE; failure <= FPGA_HARD_RESET; ++failure) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        fpga_failure_event = (int)failure;
+        tx_command(&owner, CONTROL_FPGA_HARD_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert(options.fpga_needs_programming == (failure == FPGA_HARD_RESET));
+        assert(fpga_event_count == (failure < FPGA_HARD_RESET ? 3u : 4u));
+        fpga_failure_event = -1;
+        fpga_event_count = 0;
+        if (failure == FPGA_HARD_RESET) {
+            unsigned generation = options.config_generation;
+            tx_command(&owner, CONTROL_STOP, "OK", "FAULT");
+            tx_command(&owner, CONTROL_TX_STOP, "OK", "FAULT");
+            assert(options.config_generation == generation && fpga_event_count == 0);
+        }
+        tx_command(&owner, CONTROL_FPGA_HARD_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FPGA_NEEDS_PROGRAM");
+        assert_fpga_reset_sequence(true, failure == FPGA_HARD_RESET);
+    }
+
+    /* Both reset jobs block every edit while held inside the actual reset
+     * mock. Controller loss or shutdown cannot make them start or abort TX. */
+    for (unsigned hard = 0; hard < 2; ++hard) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        atomic_store(&fpga_hold_reset, true);
+        tx_command(&owner, hard ? CONTROL_FPGA_HARD_RESET : CONTROL_FPGA_SOFT_RESET,
+            "ACCEPTED", "FPGA_RESETTING");
+        const double deadline = clock_seconds(CLOCK_MONOTONIC) + 2;
+        while (!atomic_load_explicit(&fpga_reset_entered, memory_order_acquire)
+            && clock_seconds(CLOCK_MONOTONIC) < deadline) {
+            struct timespec delay = {.tv_nsec=1000000};
+            nanosleep(&delay, NULL);
+        }
+        assert(atomic_load(&fpga_reset_entered));
+        static const control_command_t edits[] = {CONTROL_FPGA_PROGRAM,
+            CONTROL_FPGA_SOFT_RESET, CONTROL_FPGA_HARD_RESET, CONTROL_START,
+            CONTROL_STOP, CONTROL_FREQUENCY, CONTROL_MODE, CONTROL_SAMPLE_RATE,
+            CONTROL_SQUELCH, CONTROL_TX_START, CONTROL_TX_STOP, CONTROL_TX_POWER};
+        for (unsigned i = 0; i < sizeof(edits) / sizeof(edits[0]); ++i)
+            tx_command(&owner, edits[i], "TRANSITION", "FPGA_RESETTING");
+        tx_command(&owner, CONTROL_GET, "OK", "FPGA_RESETTING");
+        assert(!owner.stop_after_start && !atomic_load(&owner.lifecycle_tx_ready));
+        owner.shutdown = true;
+        atomic_store(&owner.lifecycle_no_resume, true);
+        atomic_store_explicit(&fpga_hold_reset, false, memory_order_release);
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", hard ? "FPGA_NEEDS_PROGRAM" : "IDLE");
+        assert_fpga_reset_sequence(hard, false);
+        assert(tx_abort_calls == 0 && !options.rx_requested && !options.tx_requested);
+    }
+
+    /* A hard reset conservatively requires the approved bitstream, even if
+     * the board's flash automatically supplies an operational older image. */
+    backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+    fpga_test_active = true;
+    tx_command(&owner, CONTROL_FPGA_HARD_RESET, "ACCEPTED", "FPGA_RESETTING");
+    finish_lifecycle(&owner);
+    unsigned event_count = fpga_event_count;
+    unsigned generation = options.config_generation;
+    static const control_command_t blocked[] = {CONTROL_FPGA_SOFT_RESET, CONTROL_START,
+        CONTROL_FREQUENCY, CONTROL_MODE, CONTROL_SAMPLE_RATE, CONTROL_SQUELCH,
+        CONTROL_TX_START, CONTROL_TX_FREQUENCY, CONTROL_TX_POWER, CONTROL_TX_SAMPLE_RATE,
+        CONTROL_TX_SOURCE, CONTROL_TX_TONE};
+    for (unsigned i = 0; i < sizeof(blocked) / sizeof(blocked[0]); ++i)
+        tx_command(&owner, blocked[i], "FPGA_REQUIRED", "FPGA_NEEDS_PROGRAM");
+    tx_command(&owner, CONTROL_STOP, "OK", "FPGA_NEEDS_PROGRAM");
+    tx_command(&owner, CONTROL_TX_STOP, "OK", "FPGA_NEEDS_PROGRAM");
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "FIRMWARE_FILE", "FPGA_NEEDS_PROGRAM");
+    assert(fpga_event_count == event_count && options.config_generation == generation);
+    assert(options.fpga_needs_programming && !options.control_fault);
+    assert(mkdir("firmware", 0700) == 0);
+    write_test_firmware();
+    fpga_failure_event = FPGA_CONFIGURE;
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+    finish_lifecycle(&owner);
+    tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+    assert(options.fpga_needs_programming);
+    fpga_failure_event = -1;
+    fpga_event_count = 0;
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+    finish_lifecycle(&owner);
+    tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+    assert_fpga_sequence(true, true);
+    assert(!options.fpga_needs_programming && !options.control_fault);
+    fpga_test_active = false;
+    tx_command(&owner, CONTROL_START, "OK", "RX");
+    tx_command(&owner, CONTROL_TX_START, "ACCEPTED", "TX_STARTING");
+    finish_lifecycle(&owner);
+    tx_command(&owner, CONTROL_GET, "OK", "TX");
+    tx_command(&owner, CONTROL_TX_STOP, "ACCEPTED", "TX_STOPPING");
+    finish_lifecycle(&owner);
+    tx_command(&owner, CONTROL_GET, "OK", "RX");
+    tx_command(&owner, CONTROL_STOP, "OK", "IDLE");
+
+    assert(unlink("firmware/top.bin") == 0 && rmdir("firmware") == 0);
+    assert(fchdir(previous_directory) == 0 && close(previous_directory) == 0);
+    assert(rmdir(directory) == 0);
+    puts("FPGA reset sequences, guards, stage faults and programming recovery passed");
+}
+
+static void test_fpga_programming(void)
+{
+    options_t options;
+    sys_st sys;
+    cariboulite_radio_state_st radio;
+    rx_pipeline_t pipeline;
+    int previous_directory = open(".", O_RDONLY | O_DIRECTORY);
+    char directory[] = "/tmp/cl-fpga-faults-XXXXXX";
+    assert(previous_directory >= 0 && mkdtemp(directory));
+    assert(chdir(directory) == 0 && mkdir("firmware", 0700) == 0);
+    backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+    fpga_test_active = true;
+
+    /* Missing, empty and nonregular firmware must leave hardware untouched. */
+    assert(backend_fpga_firmware_ready() == -1);
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "FIRMWARE_FILE", "IDLE");
+    assert(options.config_generation == 7 && !owner.lifecycle_active);
+    assert(backend_fpga_program(&owner) == -1 && fpga_event_count == 0);
+    assert(destroy_calls == 0 && tx_destroy_calls == 0 && stop_calls == 0);
+    FILE *file = fopen("firmware/top.bin", "wb");
+    assert(file && fclose(file) == 0);
+    assert(backend_fpga_firmware_ready() == -1);
+    assert(unlink("firmware/top.bin") == 0 && mkdir("firmware/top.bin", 0700) == 0);
+    assert(backend_fpga_firmware_ready() == -1);
+    assert(rmdir("firmware/top.bin") == 0 && mkfifo("firmware/top.bin", 0600) == 0);
+    /* A FIFO with no writer must be rejected immediately, without blocking. */
+    assert(backend_fpga_firmware_ready() == -1);
+    assert(unlink("firmware/top.bin") == 0);
+    write_test_firmware();
+    assert(backend_fpga_firmware_ready() == 0);
+
+    /* Both requested intent and actual live pipelines forbid reset. */
+    options.rx_requested = true;
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "RX_RUNNING", "RX");
+    options.rx_requested = false;
+    pipeline.running = true;
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "RX_RUNNING", "IDLE");
+    pipeline.running = false;
+    options.tx_requested = true;
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "TX_RUNNING", "TX");
+    options.tx_requested = false;
+    mock_tx_pipeline.running = true;
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "TX_RUNNING", "IDLE");
+    mock_tx_pipeline.running = false;
+    assert(fpga_event_count == 0 && !owner.lifecycle_active);
+
+    /* Parked workers are joined before the exact menu-3 firmware sequence. */
+    pipeline.inited = mock_tx_pipeline.inited = true;
+    options.tx_initialized = true;
+    assert(backend_fpga_program(&owner) == 0);
+    assert_fpga_sequence(false, true);
+    assert(sys.force_fpga_reprogramming == 1 && !options.tx_initialized);
+    assert(!pipeline.inited && !mock_tx_pipeline.inited);
+    assert(stop_calls == 1 && destroy_calls == 1 && tx_destroy_calls == 1);
+    assert(sys.fpga.versions.sys_ver == 2 && sys.fpga.versions.sys_manu_id == CARIBOU_SDR_MANU_CODE);
+
+    /* Every checked stage fails visibly and permits an explicit fresh retry. */
+    for (unsigned failure = FPGA_RADIO_IDLE; failure <= FPGA_SPI_MODE; ++failure) {
+        if (failure == FPGA_WAIT) continue; /* The menu's delay returns void. */
+        owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        fpga_failure_event = (int)failure;
+        pipeline.inited = mock_tx_pipeline.inited = true;
+        options.tx_initialized = true;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert(!options.rx_requested && !options.tx_requested && !options.rx_resume);
+        assert(!options.tx_initialized && !pipeline.inited && !mock_tx_pipeline.inited);
+        assert(!options.tx_error && owner.tx_configuration_dirty);
+        assert(options.fpga_needs_programming == (failure >= FPGA_HARD_RESET));
+        assert(stop_calls == 1 && destroy_calls == 1 && tx_destroy_calls == 1);
+        if (failure < FPGA_HARD_RESET) assert(fpga_event_count == FPGA_HARD_RESET);
+        else assert(fpga_event_count == failure + 1);
+        fpga_failure_event = -1;
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+        assert_fpga_sequence(failure >= FPGA_HARD_RESET, true);
+        assert(!options.control_fault && !options.rx_requested && !options.tx_requested);
+        assert(!options.fpga_needs_programming);
+        assert(options.pipeline_generation == 3 && options.tx_pipeline_generation == 0);
+    }
+
+    /* Successful legacy getters cannot hide bad checked completion data. */
+    for (unsigned corrupt = 0; corrupt < 2; ++corrupt) {
+        owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        fpga_bad_manufacturer = corrupt == 0;
+        fpga_bad_mode = corrupt == 1;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert_fpga_sequence(false, false);
+    }
+
+    /* Hold the actual reset mock to prove all edits are blocked during work. */
+    owner = context(&options, &sys, &radio, &pipeline);
+    fpga_test_active = true;
+    options.control_fault = true; /* Programming itself is an explicit recovery. */
+    atomic_store(&fpga_hold_reset, true);
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+    const double deadline = clock_seconds(CLOCK_MONOTONIC) + 2;
+    while (!atomic_load_explicit(&fpga_reset_entered, memory_order_acquire)
+        && clock_seconds(CLOCK_MONOTONIC) < deadline) {
+        struct timespec delay = {.tv_nsec=1000000};
+        nanosleep(&delay, NULL);
+    }
+    assert(atomic_load(&fpga_reset_entered));
+    static const control_command_t edits[] = {CONTROL_FPGA_PROGRAM, CONTROL_START,
+        CONTROL_STOP, CONTROL_FREQUENCY, CONTROL_SQUELCH, CONTROL_TX_START,
+        CONTROL_TX_STOP, CONTROL_TX_POWER};
+    for (unsigned i = 0; i < sizeof(edits) / sizeof(edits[0]); ++i)
+        tx_command(&owner, edits[i], "TRANSITION", "FPGA_PROGRAMMING");
+    tx_command(&owner, CONTROL_GET, "OK", "FPGA_PROGRAMMING");
+    assert(!owner.stop_after_start && !atomic_load(&owner.lifecycle_tx_ready));
+    atomic_store_explicit(&fpga_hold_reset, false, memory_order_release);
+    finish_lifecycle(&owner);
+    tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+    assert_fpga_sequence(false, true);
+    assert(!options.control_fault && !options.rx_requested && !options.tx_requested);
+
+    assert(unlink("firmware/top.bin") == 0 && rmdir("firmware") == 0);
+    assert(fchdir(previous_directory) == 0 && close(previous_directory) == 0);
+    assert(rmdir(directory) == 0);
+    fpga_test_active = false;
+    puts("FPGA programming sequence, preflight, stage faults and recovery passed");
+}
+
+static void test_fpga_modem_recovery(void)
+{
+    options_t options;
+    sys_st sys;
+    cariboulite_radio_state_st radio;
+    rx_pipeline_t pipeline;
+    int previous_directory = open(".", O_RDONLY | O_DIRECTORY);
+    char directory[] = "/tmp/cl-fpga-modem-XXXXXX";
+    assert(previous_directory >= 0 && mkdtemp(directory));
+    assert(chdir(directory) == 0 && mkdir("firmware", 0700) == 0);
+    write_test_firmware();
+
+    /* Match the observed soft -> hard -> program sequence. After CRESET the
+     * shared bus can yield a non-TRXOFF STATE or fail the read entirely. The
+     * deactivation wrapper still reports success in both cases. */
+    for (unsigned read_error = 0; read_error < 2; ++read_error) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = fpga_reset_breaks_modem = true;
+        fpga_modem_state_error = read_error;
+        tx_command(&owner, CONTROL_FPGA_SOFT_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+        assert_fpga_reset_sequence(false, false);
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_HARD_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FPGA_NEEDS_PROGRAM");
+        assert_fpga_reset_sequence(true, false);
+        assert(fpga_modem_unavailable && options.fpga_needs_programming);
+        assert(backend_modem_state(&owner, cariboulite_radio_state_cmd_trx_off) == -1);
+
+        /* A repeated hard reset checks SMI, without relying on modem reads
+         * while the configuration and shared bus are unavailable. */
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_HARD_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FPGA_NEEDS_PROGRAM");
+        assert_fpga_reset_sequence(true, true);
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+        assert_fpga_sequence(true, true);
+        assert(!fpga_modem_unavailable && !options.fpga_needs_programming);
+        assert(!options.rx_requested && !options.tx_requested);
+    }
+
+    /* The recovery exemption only covers inaccessible modem preconditions;
+     * a genuine SMI idle failure must still block every destructive action. */
+    for (unsigned hard = 0; hard < 2; ++hard) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = fpga_reset_breaks_modem = true;
+        tx_command(&owner, CONTROL_FPGA_HARD_RESET, "ACCEPTED", "FPGA_RESETTING");
+        finish_lifecycle(&owner);
+        fpga_event_count = 0;
+        fpga_failure_event = FPGA_SMI_IDLE;
+        tx_command(&owner, hard ? CONTROL_FPGA_HARD_RESET : CONTROL_FPGA_PROGRAM,
+            "ACCEPTED", hard ? "FPGA_RESETTING" : "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert(options.fpga_needs_programming && fpga_modem_unavailable);
+        assert(fpga_event_count == 1 && fpga_events[0] == FPGA_SMI_IDLE);
+        fpga_failure_event = -1;
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+        assert_fpga_sequence(true, true);
+    }
+
+    /* Checked FPGA readback alone cannot release the programming requirement
+     * if modem SPI is still broken or the modem has not reached TRXOFF. */
+    for (unsigned read_error = 0; read_error < 2; ++read_error) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = fpga_reset_breaks_modem = true;
+        fpga_modem_state_error = read_error;
+        fpga_modem_stays_unavailable = true;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert(options.fpga_needs_programming && fpga_modem_unavailable);
+        assert(fpga_program_readback_done);
+        assert(fpga_events[FPGA_SPI_MODE + 1] == FPGA_FINAL_RADIO_IDLE);
+        assert(fpga_events[FPGA_SPI_MODE + 2] == FPGA_FINAL_SMI_IDLE);
+        assert(fpga_event_count > FPGA_SPI_MODE + 3);
+        for (unsigned i = FPGA_SPI_MODE + 3; i < fpga_event_count; ++i)
+            assert(fpga_events[i] == FPGA_FINAL_MODEM_OFF);
+        tx_command(&owner, CONTROL_START, "FPGA_REQUIRED", "FAULT");
+        tx_command(&owner, CONTROL_TX_START, "FPGA_REQUIRED", "FAULT");
+        fpga_modem_stays_unavailable = false;
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+        assert_fpga_sequence(true, true);
+        assert(!options.fpga_needs_programming);
+    }
+
+    /* Inject each final-idle component failure independently, preserving
+     * the programming requirement until a later complete verified attempt. */
+    for (unsigned failure = FPGA_FINAL_RADIO_IDLE; failure <= FPGA_FINAL_MODEM_OFF; ++failure) {
+        backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+        fpga_test_active = true;
+        fpga_failure_event = (int)failure;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "FAULT");
+        assert(options.fpga_needs_programming && fpga_program_readback_done);
+        assert(!options.rx_requested && !options.tx_requested);
+        assert(fpga_event_count >= FPGA_FINAL_MODEM_OFF + 1);
+        fpga_failure_event = -1;
+        fpga_event_count = 0;
+        tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+        finish_lifecycle(&owner);
+        tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+        assert_fpga_sequence(true, true);
+    }
+
+    /* Allow a short modem transition after restored configuration, while
+     * leaving persistent failures bounded by the real helper deadline. */
+    backend_control_t owner = context(&options, &sys, &radio, &pipeline);
+    fpga_test_active = fpga_reset_breaks_modem = true;
+    tx_command(&owner, CONTROL_FPGA_HARD_RESET, "ACCEPTED", "FPGA_RESETTING");
+    finish_lifecycle(&owner);
+    fpga_event_count = 0;
+    fpga_modem_transient_reads = 3;
+    tx_command(&owner, CONTROL_FPGA_PROGRAM, "ACCEPTED", "FPGA_PROGRAMMING");
+    finish_lifecycle(&owner);
+    tx_command(&owner, CONTROL_GET, "OK", "IDLE");
+    unsigned final_begin = 1 + FPGA_SPI_MODE - FPGA_HARD_RESET + 1;
+    assert(fpga_events[0] == FPGA_SMI_IDLE);
+    for (unsigned i = FPGA_HARD_RESET; i <= FPGA_SPI_MODE; ++i)
+        assert(fpga_events[1 + i - FPGA_HARD_RESET] == i);
+    assert(fpga_events[final_begin] == FPGA_FINAL_RADIO_IDLE);
+    assert(fpga_events[final_begin + 1] == FPGA_FINAL_SMI_IDLE);
+    assert(fpga_event_count == final_begin + 6 && fpga_modem_transient_reads == 0);
+    for (unsigned i = final_begin + 2; i < fpga_event_count; ++i)
+        assert(fpga_events[i] == FPGA_FINAL_MODEM_OFF);
+    assert(!options.fpga_needs_programming && !options.control_fault);
+
+    assert(unlink("firmware/top.bin") == 0 && rmdir("firmware") == 0);
+    assert(fchdir(previous_directory) == 0 && close(previous_directory) == 0);
+    assert(rmdir(directory) == 0);
+    fpga_test_active = false;
+    puts("FPGA recovery from unavailable modem SPI and final idle verification passed");
 }
 
 int main(void)
@@ -713,6 +1363,9 @@ int main(void)
     tx_command(&owner, CONTROL_GET, "OK", "FAULT");
     assert(!options.rx_requested && !options.tx_requested && !mock_tx_pipeline.running);
     assert(options.tx_error && !strcmp(options.tx_error, "RX_RESUME_FAILED"));
+    test_fpga_programming();
+    test_fpga_resets();
+    test_fpga_modem_recovery();
     puts("TX control fault injection passed");
     puts("RX control fault injection passed");
     return 0;

@@ -10,6 +10,7 @@
 #include "control_server.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -18,8 +19,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+
+/* Match menu option 3: resolve the file from the radio owner's working directory. */
+#define BACKEND_FPGA_FIRMWARE "firmware/top.bin"
 
 typedef struct {
     const char *channel, *playback, *microphone, *socket_path, *control_socket_path;
@@ -27,7 +32,7 @@ typedef struct {
     rx_params_t rx;
     tx_params_t tx;
     bool dry_run, start_stopped;
-    bool rx_requested, control_fault;
+    bool rx_requested, control_fault, fpga_needs_programming;
     uint64_t config_generation, pipeline_generation;
     bool tx_requested, rx_resume, tx_initialized;
     unsigned transition;
@@ -278,7 +283,15 @@ static const char *backend_control_state(const options_t *o)
     if (o->transition == 1) return "TX_STARTING";
     if (o->transition == 2) return "TX_STOPPING";
     if (o->transition == 3) return "RX_STARTING";
-    return o->control_fault ? "FAULT" : o->tx_requested ? "TX" : o->rx_requested ? "RX" : "IDLE";
+    if (o->transition == 4) return "FPGA_PROGRAMMING";
+    if (o->transition == 5) return "FPGA_RESETTING";
+    return o->control_fault ? "FAULT" : o->fpga_needs_programming ? "FPGA_NEEDS_PROGRAM"
+        : o->tx_requested ? "TX" : o->rx_requested ? "RX" : "IDLE";
+}
+
+static bool backend_lifecycle_fpga(unsigned action)
+{
+    return action >= 4 && action <= 6;
 }
 
 /* Match the driver's double-precision limits before any register is touched.
@@ -398,6 +411,171 @@ static int backend_tx_idle(backend_control_t *c, bool abort)
     int state_rc = backend_modem_state(c, cariboulite_radio_state_cmd_trx_off);
     HW_UNLOCK();
     return pipeline_rc || radio_rc || smi_rc || fpga_rc || state_rc ? -1 : 0;
+}
+
+static int backend_fpga_firmware_ready(void)
+{
+    int fd = open(BACKEND_FPGA_FIRMWARE, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0) return -1;
+    struct stat info;
+    bool ready = fstat(fd, &info) == 0 && S_ISREG(info.st_mode) && info.st_size > 0;
+    close(fd);
+    return ready ? 0 : -1;
+}
+
+/* Legacy version/mode getters discard SPI errors. Check communication and the
+ * final low-power mode directly before reporting programming completion.
+ * Read opcodes match caribou_fpga.c: system/version, manufacturer, module
+ * versions (system, IO, SMI), then IO mode. Version numbers alone do not
+ * distinguish this bitstream from older firmware. Caller holds HW_LOCK. */
+static int backend_fpga_readback(caribou_fpga_st *fpga)
+{
+    static const uint8_t opcodes[] = {0x01, 0x02, 0x00, 0x20, 0x40, 0x21};
+    uint8_t values[sizeof(opcodes)];
+    for (size_t i = 0; i < sizeof(opcodes); ++i) {
+        uint8_t tx[2] = {opcodes[i], 0}, rx[2] = {0};
+        if (io_utils_spi_transmit(fpga->io_spi, fpga->io_spi_handle,
+                tx, rx, sizeof(tx), io_utils_spi_read_write) != 0) return -1;
+        values[i] = rx[1];
+    }
+    if (values[1] != CARIBOU_SDR_MANU_CODE || values[5] != 0) return -1;
+    fpga->versions = (caribou_fpga_versions_st){.sys_ver = values[0],
+        .sys_manu_id = values[1], .sys_ctrl_mod_ver = values[2],
+        .io_ctrl_mod_ver = values[3], .smi_ctrl_mod_ver = values[4]};
+    return 0;
+}
+
+/* Caller holds HW_LOCK. Programming can restore a shared SPI bus that was
+ * unavailable after CRESET; give the final TRXOFF command a bounded settling
+ * window, and log the actual component instead of only the IDLE stage. */
+static int backend_fpga_modem_idle(backend_control_t *c, bool settle)
+{
+    int radio_rc = cariboulite_radio_activate_channel(c->radio, cariboulite_channel_dir_rx, false);
+    int smi_rc = caribou_smi_set_driver_streaming_state(&c->sys->smi, smi_stream_idle);
+    uint8_t state = 0;
+    int state_rc;
+    double deadline = clock_seconds(CLOCK_MONOTONIC) + (settle ? .05 : 0);
+    do {
+        state_rc = backend_read_modem_state(c, &state);
+        if (!radio_rc && !smi_rc && !state_rc
+            && (state & 7) == cariboulite_radio_state_cmd_trx_off) return 0;
+        if (radio_rc || smi_rc || clock_seconds(CLOCK_MONOTONIC) >= deadline) break;
+        struct timespec delay = {.tv_nsec = 1000000};
+        nanosleep(&delay, NULL);
+    } while (true);
+    fprintf(stderr, "[radio_backend] FPGA modem/SMI idle check failed: "
+        "radio_rc=%d smi_rc=%d state_rc=%d STATE=0x%02X\n",
+        radio_rc, smi_rc, state_rc, state);
+    return -1;
+}
+
+/* Join workers before acquiring HW_LOCK: parked TX workers can still own
+ * allocated queues, and destroying them while holding their lock can deadlock.
+ * No FPGA commands here, so recovery also works after configuration is lost. */
+static int backend_fpga_quiesce(backend_control_t *c)
+{
+    rx_pipeline_stop(c->pipeline);
+    rx_pipeline_destroy(c->pipeline);
+    tx_pipeline_destroy(c->tx_pipeline);
+    c->options->tx_initialized = false;
+    HW_LOCK();
+    int rc;
+    if (c->options->fpga_needs_programming) {
+        /* Every path setting this flag confirmed idle before CRESET. No
+         * radio start is accepted afterward. An unconfigured FPGA may use
+         * the shared SPI pins for boot/configuration, so modem reads cannot
+         * be a prerequisite for restoring it. Check them after programming. */
+        rc = caribou_smi_set_driver_streaming_state(&c->sys->smi, smi_stream_idle);
+        if (rc) fprintf(stderr, "[radio_backend] FPGA recovery SMI idle failed: rc=%d\n", rc);
+    } else rc = backend_fpga_modem_idle(c, false);
+    HW_UNLOCK();
+    return rc ? -1 : 0;
+}
+
+static int backend_fpga_program(backend_control_t *c)
+{
+    if (c->options->dry_run) {
+        c->options->tx_initialized = c->options->fpga_needs_programming = false;
+        return 0;
+    }
+    /* Repeat the preflight in the job before touching hardware. */
+    if (backend_fpga_firmware_ready() != 0) {
+        fprintf(stderr, "[radio_backend] FPGA programming failed: FIRMWARE_FILE (%s)\n",
+            BACKEND_FPGA_FIRMWARE);
+        return -1;
+    }
+    const char *failure = "IDLE";
+    if (backend_fpga_quiesce(c) != 0) goto idle_fail;
+    HW_LOCK();
+    /* Preserve app_fpga_programming/menu 3, including its additional soft
+     * reset after configure_fpga's own programming/reset/status operations. */
+    failure = "HARD_RESET";
+    c->options->fpga_needs_programming = true;
+    if (caribou_fpga_hard_reset(&c->sys->fpga) != 0) goto fail;
+    c->sys->force_fpga_reprogramming = true;
+    failure = "CONFIGURE";
+    if (cariboulite_configure_fpga(c->sys, cariboulite_firmware_source_file,
+            BACKEND_FPGA_FIRMWARE) < 0) goto fail;
+    failure = "SOFT_RESET";
+    if (caribou_fpga_soft_reset(&c->sys->fpga) != 0) goto fail;
+    io_utils_usleep(100000);
+    failure = "VERSIONS";
+    if (caribou_fpga_get_versions(&c->sys->fpga, NULL) != 0) goto fail;
+    failure = "LOW_POWER";
+    if (caribou_fpga_set_io_ctrl_mode(&c->sys->fpga, 0,
+            caribou_fpga_io_ctrl_rfm_low_power) != 0) goto fail;
+    failure = "READBACK";
+    if (backend_fpga_readback(&c->sys->fpga) != 0) goto fail;
+    failure = "FINAL_IDLE";
+    if (backend_fpga_modem_idle(c, true) != 0) goto fail;
+    c->options->fpga_needs_programming = false;
+    HW_UNLOCK();
+    fprintf(stderr, "[radio_backend] FPGA programmed from %s; RX/TX remain stopped.\n",
+        BACKEND_FPGA_FIRMWARE);
+    return 0;
+fail:
+    HW_UNLOCK();
+idle_fail:
+    fprintf(stderr, "[radio_backend] FPGA programming failed: %s\n", failure);
+    return -1;
+}
+
+static int backend_fpga_reset(backend_control_t *c, bool hard)
+{
+    if (c->options->dry_run) {
+        c->options->tx_initialized = false;
+        if (hard) c->options->fpga_needs_programming = true;
+        return 0;
+    }
+    const char *failure = "IDLE";
+    if (backend_fpga_quiesce(c) != 0) goto idle_fail;
+    HW_LOCK();
+    if (hard) {
+        /* CRESET discards the running configuration; any boot image it reloads
+         * is not proof that it matches this software. Only program clears this. */
+        c->options->fpga_needs_programming = true;
+        c->sys->fpga.versions = (caribou_fpga_versions_st){0};
+        c->sys->fpga.status = caribou_fpga_status_not_programmed;
+        failure = "HARD_RESET";
+        if (caribou_fpga_hard_reset(&c->sys->fpga) != 0) goto fail;
+    } else {
+        failure = "SOFT_RESET";
+        if (caribou_fpga_soft_reset(&c->sys->fpga) != 0) goto fail;
+        failure = "LOW_POWER";
+        if (caribou_fpga_set_io_ctrl_mode(&c->sys->fpga, 0,
+                caribou_fpga_io_ctrl_rfm_low_power) != 0) goto fail;
+        failure = "READBACK";
+        if (backend_fpga_readback(&c->sys->fpga) != 0) goto fail;
+    }
+    HW_UNLOCK();
+    fprintf(stderr, "[radio_backend] FPGA %s reset completed; %s\n", hard ? "hard" : "soft",
+        hard ? "run fpga program before RX/TX." : "RX/TX remain stopped.");
+    return 0;
+fail:
+    HW_UNLOCK();
+idle_fail:
+    fprintf(stderr, "[radio_backend] FPGA %s reset failed: %s\n", hard ? "hard" : "soft", failure);
+    return -1;
 }
 
 /* Capture the link before TRXOFF clears its synchronization status. These
@@ -573,6 +751,10 @@ static void *backend_lifecycle_worker(void *opaque)
     }
     if (owner->lifecycle_action == 1)
         result = backend_tx_start(&worker, owner->tx_configuration_dirty, &owner->lifecycle_tx_ready);
+    else if (owner->lifecycle_action == 4)
+        result = backend_fpga_program(&worker);
+    else if (owner->lifecycle_action == 5 || owner->lifecycle_action == 6)
+        result = backend_fpga_reset(&worker, owner->lifecycle_action == 6);
     else
         result = backend_tx_idle(&worker, owner->lifecycle_action == 3);
     /* Restore accepted RX settings after a normal stop.
@@ -602,14 +784,15 @@ static int backend_launch_lifecycle(backend_control_t *c, unsigned action)
     c->lifecycle_result = -1;
     c->lifecycle_started = clock_seconds(CLOCK_MONOTONIC);
     atomic_init(&c->lifecycle_done, false);
-    atomic_init(&c->lifecycle_phase, action == 1 ? 1 : 2);
+    unsigned phase = action == 4 ? 4 : action == 5 || action == 6 ? 5 : action == 1 ? 1 : 2;
+    atomic_init(&c->lifecycle_phase, phase);
     atomic_init(&c->lifecycle_no_resume, c->shutdown);
-    atomic_init(&c->lifecycle_tx_ready, action != 1 && !c->options->dry_run);
+    atomic_init(&c->lifecycle_tx_ready, (action == 2 || action == 3) && !c->options->dry_run);
     int rc = pthread_create(&c->lifecycle_thread, NULL, backend_lifecycle_worker, c);
     if (rc) return -1;
     c->lifecycle_active = true;
     c->tx_state_deadline = c->tx_state_next_check = 0;
-    c->options->transition = action == 1 ? 1 : 2;
+    c->options->transition = phase;
     return 0;
 }
 
@@ -683,10 +866,17 @@ static void backend_poll_lifecycle(backend_control_t *c)
     o->pipeline_generation = c->lifecycle_options.pipeline_generation;
     o->tx_pipeline_generation = c->lifecycle_options.tx_pipeline_generation;
     o->tx_initialized = c->lifecycle_options.tx_initialized;
+    o->fpga_needs_programming = c->lifecycle_options.fpga_needs_programming;
     o->actual_rx_frequency = c->lifecycle_options.actual_rx_frequency;
     o->actual_tx_frequency = c->lifecycle_options.actual_tx_frequency;
     o->actual_tx_power = c->lifecycle_options.actual_tx_power;
-    if (c->lifecycle_action == 1 && !c->lifecycle_result) {
+    if (backend_lifecycle_fpga(c->lifecycle_action)) {
+        o->tx_requested = o->rx_requested = o->rx_resume = false;
+        o->control_fault = c->lifecycle_result != 0;
+        o->tx_error = NULL;
+        c->tx_configuration_dirty = true;
+        c->tx_controller_generation = 0;
+    } else if (c->lifecycle_action == 1 && !c->lifecycle_result) {
         o->tx_requested = true;
         o->rx_requested = false;
         o->tx_error = NULL;
@@ -728,20 +918,42 @@ static void backend_control_command(void *opaque, const control_request_t *reque
     if (request->command == CONTROL_INVALID) code = "PROTOCOL";
     else if (request->command == CONTROL_BUSY) code = "BUSY";
     else if (c->lifecycle_active && request->command != CONTROL_GET) {
-        if (request->command == CONTROL_TX_STOP) {
+        if (request->command == CONTROL_TX_STOP && !backend_lifecycle_fpga(c->lifecycle_action)) {
             if (c->lifecycle_action == 1) c->stop_after_start = true;
             code = "ACCEPTED";
         } else if (request->command == CONTROL_TX_START && c->lifecycle_action == 1)
             code = "ACCEPTED";
         else code = "TRANSITION";
     }
+    else if (o->fpga_needs_programming && request->command != CONTROL_GET
+             && request->command != CONTROL_FPGA_PROGRAM && request->command != CONTROL_FPGA_HARD_RESET
+             && request->command != CONTROL_STOP && request->command != CONTROL_TX_STOP) code = "FPGA_REQUIRED";
     else if (o->control_fault && request->command != CONTROL_GET
-             && request->command != CONTROL_STOP && request->command != CONTROL_TX_STOP) code = "FAULT";
+             && request->command != CONTROL_STOP && request->command != CONTROL_TX_STOP
+             && request->command != CONTROL_FPGA_PROGRAM && request->command != CONTROL_FPGA_SOFT_RESET
+             && request->command != CONTROL_FPGA_HARD_RESET) code = "FAULT";
     else if (o->tx_requested && request->command != CONTROL_GET
              && request->command != CONTROL_TX_START && request->command != CONTROL_TX_STOP
              && request->command != CONTROL_SQUELCH) code = "TX_RUNNING";
     else switch (request->command) {
     case CONTROL_GET: break;
+    case CONTROL_FPGA_PROGRAM:
+    case CONTROL_FPGA_SOFT_RESET:
+    case CONTROL_FPGA_HARD_RESET:
+        if (o->rx_requested || (!o->dry_run && c->pipeline->running)) code = "RX_RUNNING";
+        else if (o->tx_requested || (!o->dry_run && c->tx_pipeline->running)) code = "TX_RUNNING";
+        else if (request->command == CONTROL_FPGA_PROGRAM
+            && !o->dry_run && backend_fpga_firmware_ready() != 0) {
+            code = "FIRMWARE_FILE";
+            fprintf(stderr, "[radio_backend] FPGA programming requires readable, nonempty %s\n",
+                BACKEND_FPGA_FIRMWARE);
+        } else {
+            unsigned action = request->command == CONTROL_FPGA_PROGRAM ? 4
+                : request->command == CONTROL_FPGA_SOFT_RESET ? 5 : 6;
+            if (backend_launch_lifecycle(c, action) != 0) code = "HARDWARE";
+            else { code = "ACCEPTED"; changed = true; }
+        }
+        break;
     case CONTROL_START:
         if (!o->rx_requested) {
             if (backend_start(c) != 0) { code = "HARDWARE"; o->control_fault = true; }
@@ -750,6 +962,7 @@ static void backend_control_command(void *opaque, const control_request_t *reque
         }
         break;
     case CONTROL_STOP:
+        if (o->fpga_needs_programming) break; /* Already stopped; this cannot restore firmware. */
         if (o->rx_requested || o->control_fault) {
             int rc = c->tx_pipeline && c->tx_pipeline->inited
                 ? backend_tx_idle(c, true) : 0;
@@ -1261,8 +1474,8 @@ int main(int argc, char **argv)
             tx_pipeline_stats_t txstats = {0};
             bool txstats_valid = false;
             if (!options.dry_run) {
-                modem_snapshot_refresh(&modem, &sys.modem, channel, &g_hw_lock);
                 if (!control.lifecycle_active) {
+                    modem_snapshot_refresh(&modem, &sys.modem, channel, &g_hw_lock);
                     rx_pipeline_get_stats(&pipeline, &stats);
                     if (tx_pipeline.inited) {
                         tx_pipeline_get_stats(&tx_pipeline, &txstats);

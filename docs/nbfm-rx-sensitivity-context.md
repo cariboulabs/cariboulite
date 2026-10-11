@@ -664,3 +664,69 @@ Validation passed the `cariboulite_test_app` build, hardware-free RX/TX
 lifecycle and loopback checks, and 27 comparison parser/collector checks.
 Replaying one archived instrumented comparison also reproduced its 433
 snapshots and original IQ/audio/playback/reader counter deltas.
+
+## Controller FPGA programming (2026-10-11)
+
+The radio controller adds `fpga program` for restoring the current FPGA
+configuration after a reboot. It uses `firmware/top.bin` from the backend's
+working directory and preserves test-app menu option 3's hard reset, forced
+file programming, soft reset, 100 ms wait, version read and low-power mode.
+The command requires stopped RX/TX, preflights the file and checks SPI
+communication and final mode before completing. No test-app UI changes are
+needed. See [startup and command behavior](radio-control.md#fpga-programming-after-reboot).
+
+Programming uses the existing lifecycle worker, exposes `FPGA_PROGRAMMING`
+and pauses hardware register polling while keeping status IPC available.
+Success returns to `IDLE`; failure leaves `FAULT` with a stage logged in the
+backend, and retry remains available. Both pipelines stay stopped and retain
+their saved settings. The loaded FPGA configuration is volatile; this does
+not change the boot firmware. Physical programming validation is pending.
+
+The applications build successfully. All four C suites, 69 Python application
+checks and 56 passive-monitor checks passed without radio hardware access.
+The mocked backend verifies the exact reset/load sequence, firmware preflight,
+14 injected stage failures and retries, checked completion readbacks and
+command blocking during programming. Simulated IPC checks confirm status
+transitions and continued programming after controller disconnection.
+
+The controller also provides independent `fpga soft reset` and `fpga hard
+reset` commands using the test app's reset GPIO calls. Both require stopped
+RX/TX, release retained pipelines and expose `FPGA_RESETTING` asynchronously.
+Soft reset preserves the loaded firmware and verifies final low-power mode.
+Hard reset leaves `FPGA_NEEDS_PROGRAM`; only successful `fpga program`
+clears that requirement. Ordinary stop or soft reset cannot bypass it,
+including after a failed programming attempt. Reset commands do not read a
+firmware file and leave RX/TX stopped. Physical reset validation is pending.
+
+After adding the standalone resets, the build, all four C suites and all 77
+Python application checks passed. The mocked backend covers reset order,
+checked failures, retained-resource invalidation and programming-required
+guards. Simulated sessions cover both reset commands, status transitions,
+disconnect behavior and programming recovery.
+
+### Recovery after hard-reset IDLE failure
+
+The user reported successful soft and hard resets followed by repeated
+`[radio_backend] FPGA programming failed: IDLE` errors. That stage runs before
+the bitstream is loaded. The backend was requiring a fresh modem-state read
+after the configuration reset, even though it had already confirmed idle
+before resetting and blocked subsequent radio starts.
+
+Recovery now retains that pre-reset idle proof, checks SMI idle again and
+defers modem SPI verification until after programming and FPGA readback.
+Completion additionally commands modem TRXOFF and checks it with a bounded
+50 ms settling window. Failure logs include radio, SMI and state-read return
+codes plus the observed state; a failed final proof retains `FAULT` and the
+programming requirement.
+
+Shared SPI configuration is a possible reason the pre-program modem read
+failed: the [board schematic](../hardware/rev2/schematics/CaribouLite.PDF#page=4)
+describes SPI-master boot when reset is released with SS high. This hardware
+mechanism has not been confirmed by a physical readback. The GPIO reset calls
+and menu-3 file-programming sequence remain unchanged. Physical recovery
+confirmation with this correction is pending.
+
+The rebuilt backend passed all four C suites and 77 Python application checks.
+The expanded mock fixture covers soft → hard → program with modem reads
+unavailable until programming, repeated resets, recovery SMI failures,
+persistent final verification failures and transient states that settle.

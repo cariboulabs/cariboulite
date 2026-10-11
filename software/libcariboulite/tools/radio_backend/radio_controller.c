@@ -80,11 +80,18 @@ static void command_help(void)
          "  tx rate 1|2|4         saved TX sample rate in MS/s\n"
          "  tx source mic|tone    saved TX audio source\n"
          "  tx tone HZ AMP        0 < HZ <= 3000, 0 < AMP <= 1\n"
+         "  fpga program          load firmware/top.bin, as test_app menu 3 does\n"
+         "  fpga soft reset       reset FPGA logic and FIFOs; keep the loaded firmware\n"
+         "  fpga hard reset       hardware reset; run fpga program afterwards\n"
          "  help                  show commands\n"
          "  q | quit              disconnect; unkey owned TX and resume prior RX\n"
          "Squelch commands also accept the rx prefix. Legacy unprefixed RX commands still work.\n"
          "RX frequency/mode/rate changes require stopped RX.\n"
          "TX settings can be saved during RX; changes require stopped TX.\n"
+         "FPGA programming requires stopped RX/TX and no active transition.\n"
+         "Programming continues after disconnect; use status to confirm IDLE or FAULT.\n"
+         "FPGA resets also require stopped RX/TX and no active transition.\n"
+         "Resets continue after disconnect; hard reset leaves FPGA_NEEDS_PROGRAM.\n"
          "Start/stop acknowledgements can precede completion: use status or the monitor.");
 }
 
@@ -162,6 +169,12 @@ static int parse_command(const char *input, ui_command_t *command)
         command->request.command = CONTROL_GET;
     } else if (count == 1 && (!strcmp(name, "start") || !strcmp(name, "stop"))) {
         command->request.command = !strcmp(name, "start") ? CONTROL_START : CONTROL_STOP;
+    } else if (count == 2 && !strcmp(name, "fpga") && !strcmp(tokens[1], "program")) {
+        command->request.command = CONTROL_FPGA_PROGRAM;
+    } else if (count == 3 && !strcmp(name, "fpga") && !strcmp(tokens[2], "reset") &&
+               (!strcmp(tokens[1], "soft") || !strcmp(tokens[1], "hard"))) {
+        command->request.command = !strcmp(tokens[1], "soft") ? CONTROL_FPGA_SOFT_RESET
+                                                              : CONTROL_FPGA_HARD_RESET;
     } else if (count == 2 && (!strcmp(name, "frequency") || !strcmp(name, "freq"))) {
         double value;
         if (parse_number(tokens[1], &value) || value <= 0 ||
@@ -355,6 +368,8 @@ static int exchange(controller_t *controller, control_request_t *request)
     controller->state_valid = true;
     if (!reply.ok) {
         fprintf(stderr, "Command rejected: %s. Current settings follow.\n", reply.code);
+        if (!strcmp(reply.code, "FPGA_REQUIRED"))
+            fprintf(stderr, "Run fpga program before operating the radio.\n");
         return 1;
     }
     if (!strcmp(reply.code, "ACCEPTED"))

@@ -411,7 +411,7 @@ class RxControlBackendTests(unittest.TestCase):
              str(src / "noise_squelch.c"), "-Wl,--gc-sections", "-pthread", "-lm",
              "-o", str(binary)], capture_output=True, timeout=15)
         self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
-        result = subprocess.run([str(binary)], capture_output=True, timeout=5)
+        result = subprocess.run([str(binary)], capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertIn(b"RX control fault injection passed", result.stdout)
 

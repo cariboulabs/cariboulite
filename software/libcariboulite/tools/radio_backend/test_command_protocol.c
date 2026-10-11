@@ -41,7 +41,11 @@ static void test_requests(void)
         { "v2 21 tx_sample_rate 2000000", CONTROL_TX_SAMPLE_RATE },
         { "v2 22 tx_source mic", CONTROL_TX_SOURCE },
         { "v2 22 tx_source tone", CONTROL_TX_SOURCE },
-        { "v2 23 tx_tone 1000 .5", CONTROL_TX_TONE }
+        { "v2 23 tx_tone 1000 .5", CONTROL_TX_TONE },
+        { "v2 24 fpga_program", CONTROL_FPGA_PROGRAM },
+        { "\tv2 25\r fpga_program\n", CONTROL_FPGA_PROGRAM },
+        { "v2 26 fpga_soft_reset", CONTROL_FPGA_SOFT_RESET },
+        { "\t v2 27\r fpga_hard_reset\n", CONTROL_FPGA_HARD_RESET }
     };
     static const char *const bad[] = {
         "", "v1", "v1 1", "v3 1 get", "v1 0 get", "v1 -1 get",
@@ -66,7 +70,12 @@ static void test_requests(void)
         "v2 1 tx_power 1.0", "v2 1 tx_power 2147483648", "v2 1 tx_power -2147483649",
         "v2 1 tx_sample_rate 3000000", "v2 1 tx_source file", "v2 1 tx_source tone extra",
         "v2 1 tx_tone 1000", "v2 1 tx_tone 1000 nan", "v2 1 tx_tone inf .5",
-        "v2 1 tx_tone 1000 .5 extra"
+        "v2 1 tx_tone 1000 .5 extra", "v1 1 fpga_program",
+        "v2 1 fpga_program firmware/top.bin", "v2 1 fpga_program extra",
+        "v2 1 fpga program", "v2 1 FPGA_PROGRAM", "v2 1 fpga_program\x80",
+        "v1 1 fpga_soft_reset", "v1 1 fpga_hard_reset",
+        "v2 1 fpga_soft_reset extra", "v2 1 fpga_hard_reset firmware/top.bin",
+        "v2 1 fpga_soft reset", "v2 1 fpga_hard reset", "v2 1 FPGA_SOFT_RESET"
     };
     char packet[CONTROL_PROTOCOL_MAX_PACKET_BYTES + 1];
     control_request_t request, decoded;
@@ -116,6 +125,33 @@ static void test_requests(void)
     request.command = CONTROL_FREQUENCY;
     request.frequency_hz = NAN;
     CHECK(control_request_format(&request, packet, sizeof(packet)) == -1);
+    request.command = CONTROL_FPGA_PROGRAM;
+    request.protocol_version = 1;
+    CHECK(control_request_format(&request, packet, sizeof(packet)) == -1);
+    request.protocol_version = 0; /* Existing callers default to v1. */
+    CHECK(control_request_format(&request, packet, sizeof(packet)) == -1);
+    request.protocol_version = 2;
+    CHECK(control_request_format(&request, packet, sizeof(packet)) > 0);
+    CHECK(!strcmp(packet, "v2 1 fpga_program\n"));
+    CHECK(control_request_parse("v2 77 fpga_program\0extra", 24, &request) == -1);
+    static const struct {
+        control_command_t command;
+        const char *packet;
+    } resets[] = {
+        {CONTROL_FPGA_SOFT_RESET, "v2 1 fpga_soft_reset\n"},
+        {CONTROL_FPGA_HARD_RESET, "v2 1 fpga_hard_reset\n"}
+    };
+    for (unsigned i = 0; i < sizeof(resets) / sizeof(resets[0]); ++i) {
+        request.id = 1;
+        request.command = resets[i].command;
+        for (unsigned version = 0; version < 2; ++version) {
+            request.protocol_version = version;
+            CHECK(control_request_format(&request, packet, sizeof(packet)) == -1);
+        }
+        request.protocol_version = 2;
+        CHECK(control_request_format(&request, packet, sizeof(packet)) > 0);
+        CHECK(!strcmp(packet, resets[i].packet));
+    }
 }
 
 static void test_v2_replies(void)
@@ -135,17 +171,23 @@ static void test_v2_replies(void)
     int bytes = control_reply_format(&reply, formatted, sizeof(formatted));
     CHECK(bytes > 0 && !control_reply_parse(formatted, (size_t)bytes, &decoded));
     CHECK(decoded.tx_tone_amp == reply.tx_tone_amp && decoded.protocol_version == 2);
-    static const char *states[] = {"IDLE", "RX", "TX_STARTING", "TX", "TX_STOPPING", "RX_STARTING", "FAULT"};
+    static const char *states[] = {"IDLE", "RX", "TX_STARTING", "TX", "TX_STOPPING", "RX_STARTING",
+        "FPGA_PROGRAMMING", "FPGA_RESETTING", "FPGA_NEEDS_PROGRAM", "FAULT"};
     for (unsigned i = 0; i < sizeof(states) / sizeof(states[0]); ++i) {
         strcpy(reply.state, states[i]);
-        CHECK(control_reply_format(&reply, formatted, sizeof(formatted)) > 0);
+        bytes = control_reply_format(&reply, formatted, sizeof(formatted));
+        CHECK(bytes > 0 && !control_reply_parse(formatted, (size_t)bytes, &decoded));
+        CHECK(!strcmp(decoded.state, states[i]));
     }
-    strcpy(reply.state, "TX");
     reply.protocol_version = 1;
-    bytes = control_reply_format(&reply, formatted, sizeof(formatted));
-    CHECK(bytes > 0 && !control_reply_parse(formatted, (size_t)bytes, &decoded));
-    CHECK(decoded.protocol_version == 1 && !strcmp(decoded.state, "FAULT"));
-    CHECK(!strcmp(decoded.code, "OK") && !decoded.tx_pipeline_generation);
+    static const char *v2_states[] = {"TX", "FPGA_PROGRAMMING", "FPGA_RESETTING", "FPGA_NEEDS_PROGRAM"};
+    for (unsigned i = 0; i < sizeof(v2_states) / sizeof(v2_states[0]); ++i) {
+        strcpy(reply.state, v2_states[i]);
+        bytes = control_reply_format(&reply, formatted, sizeof(formatted));
+        CHECK(bytes > 0 && !control_reply_parse(formatted, (size_t)bytes, &decoded));
+        CHECK(decoded.protocol_version == 1 && !strcmp(decoded.state, "FAULT"));
+        CHECK(!strcmp(decoded.code, "OK") && !decoded.tx_pipeline_generation);
+    }
     reply.protocol_version = 2;
     reply.tx_tone_amp = NAN;
     CHECK(control_reply_format(&reply, formatted, sizeof(formatted)) == -1);
@@ -155,7 +197,7 @@ static void test_v2_replies(void)
     reply.tx_sample_rate_hz = 1000000;
     reply.ok = false;
     CHECK(control_reply_format(&reply, formatted, sizeof(formatted)) == -1); /* ERROR ACCEPTED */
-    static const char *errors[] = {"TRANSITION", "TX_RUNNING", "LOOPBACK", "TX_FAILED"};
+    static const char *errors[] = {"TRANSITION", "TX_RUNNING", "LOOPBACK", "TX_FAILED", "FIRMWARE_FILE", "FPGA_REQUIRED"};
     for (unsigned i = 0; i < sizeof(errors) / sizeof(errors[0]); ++i) {
         strcpy(reply.code, errors[i]);
         CHECK(control_reply_format(&reply, formatted, sizeof(formatted)) > 0);
@@ -184,6 +226,9 @@ static void test_replies(void)
         "v1 1 OK OK 2 18446744073709551616 simulated RX RF24 430125000 430125000 1000000 nbfm 1 0 .2 .3",
         "v1 1 OK OK 2 3 MOCK RX RF24 430125000 430125000 1000000 nbfm 1 0 .2 .3",
         "v1 1 OK OK 2 3 simulated TX RF24 430125000 430125000 1000000 nbfm 1 0 .2 .3",
+        "v1 1 OK OK 2 3 simulated FPGA_PROGRAMMING RF24 430125000 430125000 1000000 nbfm 1 0 .2 .3",
+        "v1 1 OK OK 2 3 simulated FPGA_RESETTING RF24 430125000 430125000 1000000 nbfm 1 0 .2 .3",
+        "v1 1 OK OK 2 3 simulated FPGA_NEEDS_PROGRAM RF24 430125000 430125000 1000000 nbfm 1 0 .2 .3",
         "v1 1 OK OK 2 3 simulated RX RFXX 430125000 430125000 1000000 nbfm 1 0 .2 .3",
         "v1 1 OK OK 2 3 simulated RX RF24 NaN 430125000 1000000 nbfm 1 0 .2 .3",
         "v1 1 OK OK 2 3 simulated RX RF24 430125000 inf 1000000 nbfm 1 0 .2 .3",
