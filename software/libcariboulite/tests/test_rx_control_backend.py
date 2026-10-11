@@ -20,8 +20,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 TOOLS = ROOT / "software/libcariboulite/tools"
-BACKEND = ROOT / "build/radio-backend/cariboulite_rx_backend"
-MONITOR = TOOLS / "cariboulite_monitor.py"
+BACKEND = ROOT / "build/radio-backend/cariboulite_radio_backend"
+CONTROLLER = BACKEND.with_name("cariboulite_radio_controller")
+MONITOR = TOOLS / "cariboulite_radio_monitor.py"
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(TOOLS))
 spec = importlib.util.spec_from_file_location("rx_control_monitor_test", MONITOR)
@@ -168,6 +169,34 @@ class RxControlBackendTests(unittest.TestCase):
         self.assertFalse(self.status_path.exists())
         self.assertFalse(self.control_path.exists())
         self.assertNotIn(b"ALSA: opened", errors)
+
+    def test_built_controller_canonical_rx_commands_change_real_dry_run_status(self):
+        self.assertTrue(CONTROLLER.is_file(), "Build the C controller before running this test")
+        backend = self.start_backend("--start-stopped", "--status-hz", "20")
+        status = self.connect(self.status_path)
+        initial = self.snapshot_matching(status)
+        result = subprocess.run(
+            [str(CONTROLLER), "--socket", str(self.control_path)],
+            input=("rx frequency 430.225\nrx rate 2\nrx mode wbfm\nrx mode nbfm\n"
+                   "squelch noise off\nrx squelch carrier on\nsquelch levels .18 .28\n"
+                   "rx start\nrx stop\nq\n"),
+            capture_output=True, text=True, timeout=3, env=ENVIRONMENT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertIn("SIMULATED RF24 RX |", result.stdout)
+        self.assertIn("SIMULATED RF24 IDLE |", result.stdout)
+        latest = self.snapshot_matching(status, lambda snapshot:
+            snapshot["control"]["state"] == "IDLE" and
+            snapshot["control"]["pipeline_generation"] >
+            initial["control"]["pipeline_generation"])
+        self.assertEqual(latest["config"]["rx_frequency_hz"], 430225000)
+        self.assertEqual(latest["config"]["sample_rate_hz"], 2000000)
+        self.assertEqual(latest["rx_mode"], "NBFM")
+        self.assertIs(latest["rx"]["noise_enabled"], False)
+        self.assertIs(latest["rx"]["carrier_enabled"], True)
+        self.assertAlmostEqual(latest["rx"]["noise"]["open_rms"], .18)
+        self.assertAlmostEqual(latest["rx"]["noise"]["close_rms"], .28)
+        self.assertIsNone(backend.poll(), "Controller disconnect stopped the backend")
 
     def test_start_stop_are_idempotent_and_identify_new_pipeline_lifetimes(self):
         self.start_backend("--start-stopped")

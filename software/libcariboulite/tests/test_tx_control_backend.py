@@ -19,7 +19,7 @@ spec = importlib.util.spec_from_file_location(
     "tx_backend_rx_helpers", Path(__file__).with_name("test_rx_control_backend.py"))
 helpers = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helpers)
-CONTROLLER = helpers.BACKEND.with_name("cariboulite_radio_control")
+CONTROLLER = helpers.BACKEND.with_name("cariboulite_radio_controller")
 
 
 def parse_reply(packet):

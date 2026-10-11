@@ -1,4 +1,4 @@
-# Independent executable using the same instrumented RX workers as test_app.
+# Independent radio applications sharing the instrumented workers with test_app.
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../../../..)
 SRC := $(ROOT)/software/libcariboulite/src
 HERE := $(ROOT)/software/libcariboulite/tools/radio_backend
@@ -13,17 +13,22 @@ OWN_NAMES := main modem_snapshot status_publisher command_protocol control_serve
 OBJECTS := $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES) $(OWN_NAMES)))
 
 .PHONY: all clean test
-all: $(OUT)/cariboulite_rx_backend $(OUT)/cariboulite_radio_control
+all: $(OUT)/cariboulite_radio_backend $(OUT)/cariboulite_radio_controller $(OUT)/cariboulite_radio_monitor
 
 $(OUT):
 	mkdir -p "$@"
 
-$(OUT)/cariboulite_rx_backend: $(OBJECTS) $(LIBDIR)/libcariboulite.so
+$(OUT)/cariboulite_radio_backend: $(OBJECTS) $(LIBDIR)/libcariboulite.so
 	$(CC) $(OBJECTS) -L$(LIBDIR) -Wl,-rpath,$(LIBDIR) -lcariboulite -lasound -lpthread -lm -o "$@.tmp"
 	mv "$@.tmp" "$@"
 
-$(OUT)/cariboulite_radio_control: $(HERE)/radio_control.c $(HERE)/command_protocol.c $(HERE)/command_protocol.h | $(OUT)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(HERE)/radio_control.c $(HERE)/command_protocol.c -lm -o "$@.tmp"
+$(OUT)/cariboulite_radio_controller: $(HERE)/radio_controller.c $(HERE)/command_protocol.c $(HERE)/command_protocol.h | $(OUT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(HERE)/radio_controller.c $(HERE)/command_protocol.c -lm -o "$@.tmp"
+	mv "$@.tmp" "$@"
+
+# Python resolves the source symlink before importing the adjacent register decoder.
+$(OUT)/cariboulite_radio_monitor: $(HERE)/../cariboulite_radio_monitor.py | $(OUT)
+	ln -sf "$<" "$@.tmp"
 	mv "$@.tmp" "$@"
 
 $(addprefix $(OUT)/,$(addsuffix .o,$(OWN_NAMES))): $(OUT)/%.o: $(HERE)/%.c | $(OUT)
@@ -33,8 +38,9 @@ $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES))): $(OUT)/%.o: $(SRC)/%.c | $(O
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DSPFLAGS) -MMD -MP -c "$<" -o "$@"
 
 clean:
-	rm -f $(OBJECTS) $(OBJECTS:.o=.d) "$(OUT)/cariboulite_rx_backend" "$(OUT)/cariboulite_rx_backend.tmp" "$(OUT)/demod_worker_backend.c" "$(OUT)/test_status_publisher" "$(OUT)/test_modem_snapshot"
-	rm -f "$(OUT)/cariboulite_radio_control" "$(OUT)/cariboulite_radio_control.tmp" "$(OUT)/test_command_protocol" "$(OUT)/test_control_server"
+	rm -f $(OBJECTS) $(OBJECTS:.o=.d) "$(OUT)/cariboulite_radio_backend" "$(OUT)/cariboulite_radio_backend.tmp" "$(OUT)/demod_worker_backend.c" "$(OUT)/test_status_publisher" "$(OUT)/test_modem_snapshot"
+	rm -f "$(OUT)/cariboulite_radio_controller" "$(OUT)/cariboulite_radio_controller.tmp" "$(OUT)/cariboulite_radio_monitor" "$(OUT)/cariboulite_radio_monitor.tmp" "$(OUT)/test_command_protocol" "$(OUT)/test_control_server"
+	rm -f "$(OUT)/cariboulite_rx_backend" "$(OUT)/cariboulite_rx_backend.tmp" "$(OUT)/cariboulite_radio_control" "$(OUT)/cariboulite_radio_control.tmp"
 
 $(OUT)/test_status_publisher: $(HERE)/status_publisher.c $(HERE)/status_publisher.h $(HERE)/test_status_publisher.c | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -Werror $(HERE)/status_publisher.c $(HERE)/test_status_publisher.c -o "$@"

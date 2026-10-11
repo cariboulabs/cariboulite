@@ -489,7 +489,7 @@ def run_interactive(screen, connection, register_view="rx"):
         scroll = min(scroll, max(0, len(body) - available))
         widest = max((len(_label(line, "")) for line in body), default=0)
         horizontal = min(horizontal, max(0, widest - max(1, width - 1)))
-        lines = ["CaribouLite passive monitor | q: quit | arrows: scroll",
+        lines = ["CaribouLite radio monitor (passive) | q: quit | arrows: scroll",
                  connection.status, ""] + body[scroll:scroll + available]
         for row, line in enumerate(lines[:height]):
             if width <= 1:
@@ -553,7 +553,7 @@ def positive_seconds(value):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(prog="cariboulite_radio_monitor", description=__doc__)
     parser.add_argument("--socket", default=default_socket_path(), metavar="PATH",
                         help="local status socket (default: %(default)s)")
     output = parser.add_mutually_exclusive_group()

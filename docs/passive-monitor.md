@@ -28,7 +28,7 @@ Use `--start-stopped` to wait for the controller before starting reception. The
 `test_app` displays the shared counters in menu 14 and does not publish socket telemetry. The included Python
 demo publisher remains available for explicitly simulated data.
 
-## Build the independent RX backend
+## Build the radio applications
 
 Run from the repository root:
 
@@ -36,7 +36,9 @@ Run from the repository root:
 make -C software/libcariboulite/tools/radio_backend
 ```
 
-This creates `build/radio-backend/cariboulite_rx_backend`. The separate build
+This creates `build/radio-backend/cariboulite_radio_backend`,
+`build/radio-backend/cariboulite_radio_controller` and
+`build/radio-backend/cariboulite_radio_monitor`. The separate build
 reuses the existing `build/libcariboulite.so` and compiles the shared RX
 pipeline, workers, DSP and ALSA adapter into the new executable. It does not
 modify the existing CMake configuration or rebuild or replace `test_app`.
@@ -47,6 +49,11 @@ a running instance. New instrumentation appears after restarting each app.
 The existing radio library build and C/ALSA development dependencies must be
 available before building the backend.
 
+The backend was originally named `cariboulite_rx_backend` because its first
+version only received. It now owns both RX and TX. The monitor remains Python 3;
+its build executable uses the same application naming scheme and runs the
+source client in `software/libcariboulite/tools/cariboulite_radio_monitor.py`.
+
 ## Receive with a monitor in another terminal
 
 Close `test_app` and any other radio-owning application first. Use the same
@@ -56,7 +63,7 @@ both. The backend requires the same hardware permissions as `test_app`.
 In terminal 1:
 
 ```sh
-build/radio-backend/cariboulite_rx_backend \
+build/radio-backend/cariboulite_radio_backend \
   --channel RF24 --frequency 430125000 --sample-rate 1000000 \
   --mode nbfm --playback plughw:Loopback,0,0
 ```
@@ -64,7 +71,7 @@ build/radio-backend/cariboulite_rx_backend \
 In terminal 2:
 
 ```sh
-python3 software/libcariboulite/tools/cariboulite_monitor.py
+build/radio-backend/cariboulite_radio_monitor
 ```
 
 These launch settings select HiF/RF24 at 430.125 MHz and 1 MS/s. The playback
@@ -79,11 +86,13 @@ audio continue. Monitor connections do not trigger additional hardware reads
 and cannot control the radio.
 
 For radio controls, open another terminal and run
-`build/radio-backend/cariboulite_radio_control`. The monitor stays optional;
-Closing the monitor leaves radio operation unchanged. Closing the controller
-leaves RX in its current state, but releases its TX and restores previously
-running RX. Frequency, mode and
-sample-rate edits require stopped RX. Squelch edits work during reception.
+`build/radio-backend/cariboulite_radio_controller`. Use `rx frequency`,
+`rx mode` and `rx rate` for receiver settings, with `squelch noise`,
+`squelch carrier` and `squelch levels` for its squelch controls. The monitor stays
+optional. Closing the monitor leaves radio operation unchanged. Closing the
+controller leaves RX in its current state, but releases its TX and restores
+previously running RX. Frequency, mode and sample-rate edits require stopped RX.
+Squelch edits work during reception.
 See [controller commands, validation and restart behavior](radio-control.md).
 
 Launch options:
@@ -160,7 +169,7 @@ python3 software/libcariboulite/tools/monitor_demo_source.py
 In terminal 2, start the monitor:
 
 ```sh
-python3 software/libcariboulite/tools/cariboulite_monitor.py
+python3 software/libcariboulite/tools/cariboulite_radio_monitor.py
 ```
 
 The display labels these readings **SIMULATED DATA**. Press `q` to close the
@@ -177,7 +186,7 @@ common registers followed by eleven RX/status registers for the selected
 radio. To display the complete register inventory, use:
 
 ```sh
-python3 software/libcariboulite/tools/cariboulite_monitor.py --registers all
+python3 software/libcariboulite/tools/cariboulite_radio_monitor.py --registers all
 ```
 
 `--registers rx` selects the compact view explicitly. The option changes the
@@ -193,7 +202,7 @@ remove the old socket after confirming its publisher has exited.
 For a terminal-independent check:
 
 ```sh
-python3 software/libcariboulite/tools/cariboulite_monitor.py --once --timeout 5
+python3 software/libcariboulite/tools/cariboulite_radio_monitor.py --once --timeout 5
 ```
 
 `--once` prints one valid JSON snapshot and exits, returning a failure if none

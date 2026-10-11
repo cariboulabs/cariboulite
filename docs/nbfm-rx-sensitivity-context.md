@@ -575,3 +575,23 @@ correction resolved the reported failure on the tested setup. The user also
 confirmed RX → TX → RX transitions and controller disconnect during TX:
 transmission stops and the backend returns to RX. No new CPU,
 carrier-release timing or sample-continuity measurements were supplied.
+
+## Radio application naming and command cleanup (2026-10-11)
+
+The current executables under `build/radio-backend/` are
+`cariboulite_radio_backend`, `cariboulite_radio_controller` and
+`cariboulite_radio_monitor`. The backend's former RX-only name reflected its
+initial scope. Backend and controller remain C applications; the monitor remains
+a Python 3 client.
+
+Receiver commands now use `rx start`, `rx stop`, `rx frequency`, `rx mode` and
+`rx rate`, matching the TX command prefix. Squelch controls use
+`squelch noise on|off`, `squelch carrier on|off` and
+`squelch levels OPEN CLOSE`; an explicit `rx squelch` prefix is also accepted.
+Original unprefixed commands remain aliases. Socket paths, protocol versions
+and radio/DSP behavior remain unchanged by this interface cleanup. See the
+[current command examples](radio-control.md#use-the-controller).
+
+Validation passed four C suites and 108 Python checks, including the named
+monitor launcher, controller-to-backend RX commands and partial squelch edits
+that preserve the other fields. These checks used isolated simulated sessions.

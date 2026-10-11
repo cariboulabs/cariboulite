@@ -9,6 +9,13 @@ current checkout already contains them. For recorded development state, see the
 [software baseline](docs/software-baseline-2026-09-13.md) and
 [FPGA study](docs/fpga-gap-study-2026-09-13.md); neither certifies the current setup.
 
+The standalone radio applications are `cariboulite_radio_backend`,
+`cariboulite_radio_controller` and `cariboulite_radio_monitor`, built under
+`build/radio-backend/`. See [radio controls](docs/radio-control.md) for building
+and launching them, including symmetric `rx frequency` / `tx frequency`
+commands and grouped squelch controls. The [passive monitor](docs/passive-monitor.md)
+remains optional and runs in its own terminal.
+
 # Install CaribouLite with Raspberry pi OS Trixie (64bit) [WIP]
 These Trixie notes are a historical workaround and need revalidation against the
 current kernel, login/session limits and driver permissions. A Debian-wide policy

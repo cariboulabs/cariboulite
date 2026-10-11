@@ -26,10 +26,9 @@ import time
 
 sys.dont_write_bytecode = True
 from rx_comparison_screen import TerminalScreen, IncompleteScreenError, parse_test_app_screen
-from cariboulite_monitor import parse_snapshot
+from cariboulite_radio_monitor import parse_snapshot
 
 ROOT = Path(__file__).resolve().parents[3]
-TOOLS = Path(__file__).resolve().parent
 TICKS = os.sysconf("SC_CLK_TCK")
 ANSI = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\)|[()][A-Z0-9]|[=>])")
 
@@ -178,7 +177,8 @@ def assert_radio_idle():
         if not directory.name.isdigit(): continue
         try: arguments = (directory / "cmdline").read_bytes().split(b"\0")
         except (OSError, PermissionError): continue
-        if arguments and Path(os.fsdecode(arguments[0])).name in ("cariboulite_test_app", "cariboulite_rx_backend"):
+        if arguments and Path(os.fsdecode(arguments[0])).name in (
+                "cariboulite_test_app", "cariboulite_radio_backend", "cariboulite_rx_backend"):
             raise RuntimeError(f"Radio owner PID {directory.name} already running; it was left untouched")
 
 
@@ -307,12 +307,12 @@ def trial(kind, index, args, output):
                 owner.send("R"); owner.expect("RX running at the saved RX frequency.")
             else:
                 socket_path = str(Path(socket_dir)/"status.sock")
-                owner = TerminalProcess([str(ROOT/"build/radio-backend/cariboulite_rx_backend"),
+                owner = TerminalProcess([str(ROOT/"build/radio-backend/cariboulite_radio_backend"),
                     "--channel", "RF24", "--frequency", str(args.frequency), "--sample-rate", str(args.sample_rate),
                     "--mode", "nbfm", "--status-hz", "5", "--socket", socket_path], directory/"owner.ansi.log", args.rows, args.columns)
                 terms.append(owner)
                 owner.expect("RX started", 45)
-                monitor = TerminalProcess([sys.executable, str(TOOLS/"cariboulite_monitor.py"), "--socket", socket_path],
+                monitor = TerminalProcess([str(ROOT/"build/radio-backend/cariboulite_radio_monitor"), "--socket", socket_path],
                     directory/"monitor.ansi.log", args.rows, args.columns)
                 terms.append(monitor)
                 connection = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
@@ -468,7 +468,7 @@ def main():
     plan["revision"] = subprocess.check_output(["git","rev-parse","HEAD"], cwd=ROOT, text=True).strip()
     plan["throttling_before"] = throttling()
     plan["binaries"] = {str(path.relative_to(ROOT)):hashlib.sha256(path.read_bytes()).hexdigest() for path in
-        (ROOT/"build/cariboulite_test_app",ROOT/"build/radio-backend/cariboulite_rx_backend")}
+        (ROOT/"build/cariboulite_test_app",ROOT/"build/radio-backend/cariboulite_radio_backend")}
     write_json(args.output/"plan.json", plan)
     reports = []
     for index, kind in enumerate(order, 1):

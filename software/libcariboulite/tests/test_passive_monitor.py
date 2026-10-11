@@ -23,14 +23,14 @@ from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[3]
-CLIENT = ROOT / "software/libcariboulite/tools/cariboulite_monitor.py"
+CLIENT = ROOT / "software/libcariboulite/tools/cariboulite_radio_monitor.py"
 DEMO = CLIENT.with_name("monitor_demo_source.py")
 MAX_PACKET = 8192
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(CLIENT.parent))
 import at86rf215_monitor as registers
 
-spec = importlib.util.spec_from_file_location("cariboulite_monitor_test", CLIENT)
+spec = importlib.util.spec_from_file_location("cariboulite_radio_monitor_test", CLIENT)
 client = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(client)
 
@@ -482,7 +482,7 @@ class IQRegisterDisplayTests(unittest.TestCase):
         self.assertNotIn("RF24 TXDACQ=", initial)
         self.assertIn("RF24 TXDACQ=0x00", paged)
         self.assertNotIn("RF09 AGCC", paged)
-        self.assertTrue(all(frame[0].startswith("CaribouLite passive monitor")
+        self.assertTrue(all(frame[0].startswith("CaribouLite radio monitor (passive)")
                             for frame in screen.frames))
 
     def test_default_rx_view_fits_57_rows_with_both_rate_panels_and_footer(self):
@@ -1097,10 +1097,10 @@ class PassiveClientTests(unittest.TestCase):
         try:
             self.assertTrue(publisher.connected.wait(2), "Interactive client did not attach")
             deadline = time.monotonic() + 2
-            while time.monotonic() < deadline and b"passive monitor" not in output.lower():
+            while time.monotonic() < deadline and b"radio monitor (passive)" not in output.lower():
                 if select.select([master], [], [], .1)[0]:
                     output.extend(os.read(master, 65536))
-            self.assertIn(b"passive monitor", output.lower())
+            self.assertIn(b"radio monitor (passive)", output.lower())
             os.write(master, b"q")
             self.assertEqual(process.wait(timeout=3), 0)
             self.assertEqual(publisher.received, [])

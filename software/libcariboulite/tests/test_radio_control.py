@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the C receiver controller against isolated mock seqpacket peers.
+"""Exercise the C radio controller against isolated mock seqpacket peers.
 
 These tests never launch a hardware backend or open a radio/audio device.
 """
@@ -100,11 +100,11 @@ class RadioControlTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.build = tempfile.TemporaryDirectory(prefix="cl-control-build-")
-        cls.binary = Path(cls.build.name) / "radio_control"
+        cls.binary = Path(cls.build.name) / "cariboulite_radio_controller"
         subprocess.run([
             "cc", "-D_GNU_SOURCE", "-D_POSIX_C_SOURCE=200809L", "-std=c11",
             "-O2", "-Wall", "-Wextra", "-Werror", "-I", str(SOURCE),
-            str(SOURCE / "radio_control.c"), str(SOURCE / "command_protocol.c"),
+            str(SOURCE / "radio_controller.c"), str(SOURCE / "command_protocol.c"),
             "-lm", "-o", str(cls.binary),
         ], check=True)
 
@@ -146,10 +146,22 @@ class RadioControlTests(unittest.TestCase):
 
     def test_frequency_mode_rate_and_stop_send_exact_units(self):
         for command, expected in (
+            ("rx frequency 430.125", ["frequency", "430125000"]),
+            ("rx freq 430.125", ["frequency", "430125000"]),
             ("frequency 430.125", ["frequency", "430125000"]),
+            ("freq 430.125", ["frequency", "430125000"]),
+            ("rx mode nbfm", ["mode", "nbfm"]),
+            ("rx mode wbfm", ["mode", "wbfm"]),
             ("mode wbfm", ["mode", "wbfm"]),
+            ("rx rate 1", ["sample_rate", "1000000"]),
+            ("rx rate 2", ["sample_rate", "2000000"]),
+            ("rx rate 4", ["sample_rate", "4000000"]),
+            ("rx sample-rate 2", ["sample_rate", "2000000"]),
             ("rate 2", ["sample_rate", "2000000"]),
+            ("sample-rate 2", ["sample_rate", "2000000"]),
             ("rx stop", ["stop"]),
+            ("stop", ["stop"]),
+            ("rx start", ["start"]),
             ("start", ["start"]),
         ):
             with self.subTest(command=command):
@@ -162,17 +174,40 @@ class RadioControlTests(unittest.TestCase):
                 owner.close()
                 self.path.unlink()
 
-    def test_partial_squelch_edit_refreshes_and_preserves_other_fields(self):
-        def handler(number, packet):
-            return reply(packet, noise=0, carrier=1, opening=.18, closing=.28)
-        owner = self.owner(handler)
-        result = self.once("noise on")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.wait_for_packets(owner, 3)
-        self.assertEqual([packet[2] for packet in owner.packets], ["get", "get", "squelch"])
-        self.assertEqual(owner.packets[-1][3:5], ["1", "1"])
-        self.assertAlmostEqual(float(owner.packets[-1][5]), .18, places=6)
-        self.assertAlmostEqual(float(owner.packets[-1][6]), .28, places=6)
+    def test_partial_squelch_edits_refresh_and_preserve_other_fields(self):
+        for prefix in ("", "squelch ", "rx squelch "):
+            for edit, expected in (
+                ("noise on", (1, 1, .18, .28)),
+                ("noise off", (0, 1, .18, .28)),
+                ("carrier on", (0, 1, .18, .28)),
+                ("carrier off", (0, 0, .18, .28)),
+                ("levels .21 .31", (0, 1, .21, .31)),
+            ):
+                command = prefix + edit
+                with self.subTest(command=command):
+                    gets = 0
+
+                    def handler(number, packet):
+                        nonlocal gets
+                        if packet.decode().split()[2] == "get":
+                            gets += 1
+                        # Force the edit to use the second, refreshed GET,
+                        # rather than the initial controller snapshot.
+                        if gets == 1:
+                            return reply(packet, noise=1, carrier=0, opening=.4, closing=.5)
+                        return reply(packet, noise=0, carrier=1, opening=.18, closing=.28)
+
+                    owner = self.owner(handler)
+                    result = self.once(command)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.wait_for_packets(owner, 3)
+                    self.assertEqual([packet[2] for packet in owner.packets],
+                                     ["get", "get", "squelch"])
+                    self.assertEqual(owner.packets[-1][3:5], [str(value) for value in expected[:2]])
+                    self.assertAlmostEqual(float(owner.packets[-1][5]), expected[2], places=6)
+                    self.assertAlmostEqual(float(owner.packets[-1][6]), expected[3], places=6)
+                    owner.close()
+                    self.path.unlink()
 
     def test_invalid_values_are_rejected_before_any_connection(self):
         for command in ("frequency nan", "frequency inf", "frequency -1",
@@ -184,7 +219,13 @@ class RadioControlTests(unittest.TestCase):
                         "tx power 15", "tx power -15", "tx rate 3", "tx source file",
                         "tx tone 0 .5", "tx tone 3001 .5", "tx tone 1000 0",
                         "tx tone 1000 1.1", "tx tone 1000 1e-50", "tx tone 1e-50 .5",
-                        "tx tone 0x1 .5", ""):
+                        "tx tone 0x1 .5", "tx sample-rate 3", "rx", "rx frequency",
+                        "rx frequency nan", "rx frequency 430.125 extra", "rx mode am",
+                        "rx rate 3", "rx sample-rate 1.5", "rx start extra", "squelch",
+                        "squelch noise", "squelch noise maybe", "squelch noise on extra",
+                        "squelch carrier true", "squelch levels .3 .2", "squelch levels .2",
+                        "rx squelch noise maybe", "rx squelch carrier off extra",
+                        "rx squelch levels .2 .3 extra", "rx squelch levels nan .3", ""):
             with self.subTest(command=command):
                 result = self.once(command)
                 self.assertEqual(result.returncode, 2)
@@ -297,6 +338,20 @@ class RadioControlTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertNotIn("Cannot connect", result.stderr)
 
+    def test_help_displays_symmetric_radio_commands_and_application_name(self):
+        result = self.once("help")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for command in ("rx start", "rx stop", "rx frequency", "rx mode", "rx rate",
+                        "squelch noise", "squelch carrier", "squelch levels",
+                        "tx start", "tx stop", "tx frequency", "tx rate"):
+            with self.subTest(command=command):
+                self.assertIn(command, result.stdout)
+        result = subprocess.run([str(self.binary), "--help"], capture_output=True,
+                                text=True, timeout=3)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("cariboulite_radio_controller", result.stdout)
+        self.assertNotIn("cariboulite_radio_control ", result.stdout)
+
     def test_one_shot_tx_start_requires_interactive_session(self):
         result = self.once("tx start")
         self.assertEqual(result.returncode, 2)
@@ -308,6 +363,7 @@ class RadioControlTests(unittest.TestCase):
             ("tx frequency 430.225", ["tx_frequency", "430225000"]),
             ("tx power -12", ["tx_power", "-12"]),
             ("tx rate 2", ["tx_sample_rate", "2000000"]),
+            ("tx sample-rate 2", ["tx_sample_rate", "2000000"]),
             ("tx source tone", ["tx_source", "tone"]),
             ("tx source mic", ["tx_source", "mic"]),
             ("tx tone 1000 .5", ["tx_tone", "1000", "0.5"]),

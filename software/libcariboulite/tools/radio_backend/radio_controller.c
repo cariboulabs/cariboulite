@@ -67,13 +67,13 @@ static void command_help(void)
 {
     puts("Commands:\n"
          "  status | get          read current settings\n"
-         "  rx start | rx stop    start/stop reception (start/stop also work)\n"
-         "  frequency MHz         for example: frequency 430.125\n"
-         "  mode nbfm|wbfm        WBFM is mono\n"
-         "  rate 1|2|4            sample rate in MS/s\n"
-         "  noise on|off          noise squelch enable\n"
-         "  carrier on|off        carrier squelch enable\n"
-         "  levels OPEN CLOSE     noise RMS thresholds: 0 < OPEN < CLOSE <= 8\n"
+         "  rx start | rx stop    start/stop reception\n"
+         "  rx frequency MHz      saved RX frequency, for example 430.125\n"
+         "  rx mode nbfm|wbfm     WBFM is mono\n"
+         "  rx rate 1|2|4         saved RX sample rate in MS/s\n"
+         "  squelch noise on|off  noise squelch enable\n"
+         "  squelch carrier on|off  carrier squelch enable\n"
+         "  squelch levels OPEN CLOSE  noise RMS thresholds: 0 < OPEN < CLOSE <= 8\n"
          "  tx start | tx stop    key/unkey NBFM TX; keep this controller connected\n"
          "  tx frequency MHz      saved TX frequency, for example 430.125\n"
          "  tx power DBM          integer -14..14; backend applies channel limits\n"
@@ -82,6 +82,7 @@ static void command_help(void)
          "  tx tone HZ AMP        0 < HZ <= 3000, 0 < AMP <= 1\n"
          "  help                  show commands\n"
          "  q | quit              disconnect; unkey owned TX and resume prior RX\n"
+         "Squelch commands also accept the rx prefix. Legacy unprefixed RX commands still work.\n"
          "RX frequency/mode/rate changes require stopped RX.\n"
          "TX settings can be saved during RX; changes require stopped TX.\n"
          "Start/stop acknowledgements can precede completion: use status or the monitor.");
@@ -120,17 +121,38 @@ static int parse_command(const char *input, ui_command_t *command)
     if (strlen(input) >= 512) return -1;
     char text[512];
     strcpy(text, input);
-    char *tokens[5], *save = NULL;
+    char *words[5], *save = NULL;
     size_t count = 0;
     for (char *word = strtok_r(text, " \t\r\n", &save); word;
          word = strtok_r(NULL, " \t\r\n", &save)) {
-        if (count == sizeof(tokens) / sizeof(tokens[0])) return -1;
-        tokens[count++] = word;
+        if (count == sizeof(words) / sizeof(words[0])) return -1;
+        words[count++] = word;
     }
     memset(command, 0, sizeof(*command));
     command->kind = UI_REQUEST;
     if (!count) return 1;
+    char **tokens = words;
     const char *name = tokens[0];
+    /* Normalize RX and squelch groups to the existing request mapping.
+     * Only RX settings can follow rx; a nested tx/help/quit is invalid. */
+    if (!strcmp(name, "rx")) {
+        if (count < 2) return -1;
+        ++tokens;
+        --count;
+        name = tokens[0];
+        if (strcmp(name, "start") && strcmp(name, "stop")
+            && strcmp(name, "frequency") && strcmp(name, "freq")
+            && strcmp(name, "mode") && strcmp(name, "rate")
+            && strcmp(name, "sample-rate") && strcmp(name, "squelch")) return -1;
+    }
+    if (!strcmp(name, "squelch")) {
+        if (count < 2) return -1;
+        ++tokens;
+        --count;
+        name = tokens[0];
+        if (strcmp(name, "noise") && strcmp(name, "carrier") && strcmp(name, "levels"))
+            return -1;
+    }
     if (count == 1 && (!strcmp(name, "q") || !strcmp(name, "quit"))) {
         command->kind = UI_QUIT;
     } else if (count == 1 && (!strcmp(name, "help") || !strcmp(name, "?"))) {
@@ -140,9 +162,6 @@ static int parse_command(const char *input, ui_command_t *command)
         command->request.command = CONTROL_GET;
     } else if (count == 1 && (!strcmp(name, "start") || !strcmp(name, "stop"))) {
         command->request.command = !strcmp(name, "start") ? CONTROL_START : CONTROL_STOP;
-    } else if (count == 2 && !strcmp(name, "rx") &&
-               (!strcmp(tokens[1], "start") || !strcmp(tokens[1], "stop"))) {
-        command->request.command = !strcmp(tokens[1], "start") ? CONTROL_START : CONTROL_STOP;
     } else if (count == 2 && (!strcmp(name, "frequency") || !strcmp(name, "freq"))) {
         double value;
         if (parse_number(tokens[1], &value) || value <= 0 ||
@@ -189,7 +208,8 @@ static int parse_command(const char *input, ui_command_t *command)
         if (parse_number(tokens[2], &power) || power < -14 || power > 14) return -1;
         command->request.command = CONTROL_TX_POWER;
         command->request.tx_power_dbm = (int)power;
-    } else if (count == 3 && !strcmp(name, "tx") && !strcmp(tokens[1], "rate")) {
+    } else if (count == 3 && !strcmp(name, "tx") &&
+               (!strcmp(tokens[1], "rate") || !strcmp(tokens[1], "sample-rate"))) {
         double rate;
         if (parse_number(tokens[2], &rate) || (rate != 1 && rate != 2 && rate != 4)) return -1;
         command->request.command = CONTROL_TX_SAMPLE_RATE;
@@ -486,7 +506,7 @@ int main(int argc, char **argv)
     setvbuf(stdin, NULL, _IONBF, 0);
     bool terminal = isatty(STDIN_FILENO);
     if (!once) {
-        puts("CaribouLite radio control. Type help for commands; q disconnects and unkeys any owned TX.");
+        puts("CaribouLite radio controller. Type help for commands; q disconnects and unkeys any owned TX.");
     }
     int startup = refresh_state(&controller);
     if (once) {

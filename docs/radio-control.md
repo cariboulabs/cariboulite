@@ -1,6 +1,6 @@
 # Separate radio control
 
-`cariboulite_radio_control` is a C terminal client for the independent C radio
+`cariboulite_radio_controller` is a C terminal client for the independent C radio
 backend. It controls RX and half-duplex NBFM TX through a Unix-domain command socket. The
 backend remains the sole owner of the radio, SPI, SMI, DSP workers and audio
 device. The [passive monitor](passive-monitor.md) uses its separate status
@@ -23,18 +23,24 @@ Run from the repository root:
 make -C software/libcariboulite/tools/radio_backend
 ```
 
-This builds `build/radio-backend/cariboulite_rx_backend` and
-`build/radio-backend/cariboulite_radio_control`, using the existing
+This builds `build/radio-backend/cariboulite_radio_backend`,
+`build/radio-backend/cariboulite_radio_controller` and
+`build/radio-backend/cariboulite_radio_monitor`, using the existing
 `build/libcariboulite.so` and C/ALSA development dependencies. The controller
 links only its command protocol and system libraries; it does not initialize
 the radio library or subscribe to periodic monitoring. While idle, it waits
 for terminal or socket events.
 
+The backend and controller are C applications; the monitor is still a Python 3
+client, exposed under the same executable naming scheme by the build. The earlier
+`cariboulite_rx_backend` name reflected the first RX-only implementation. The
+current names describe the combined RX/TX radio applications.
+
 Close other radio-owning applications first. Run all clients and the backend
 as the same user. In terminal 1, initialize the backend with RX stopped:
 
 ```sh
-build/radio-backend/cariboulite_rx_backend \
+build/radio-backend/cariboulite_radio_backend \
   --channel RF24 --frequency 430125000 --sample-rate 1000000 \
   --mode nbfm --playback plughw:Loopback,0,0 --start-stopped
 ```
@@ -42,13 +48,13 @@ build/radio-backend/cariboulite_rx_backend \
 In terminal 2, open the controller:
 
 ```sh
-build/radio-backend/cariboulite_radio_control
+build/radio-backend/cariboulite_radio_controller
 ```
 
 The existing monitor can run in an optional third terminal:
 
 ```sh
-python3 software/libcariboulite/tools/cariboulite_monitor.py
+build/radio-backend/cariboulite_radio_monitor
 ```
 
 Omitting `--start-stopped` preserves the backend's automatic RX startup.
@@ -65,14 +71,13 @@ effective squelch settings, and configuration and pipeline generations.
 | Command | Meaning |
 | --- | --- |
 | `status` or `get` | Request current settings; also reconnect after a lost connection. |
-| `start` or `rx start` | Start reception with the saved configuration. |
-| `stop` or `rx stop` | Stop reception and release the RX pipeline. |
-| `frequency 430.125` | Set receive frequency in MHz; `freq` is an alias. |
-| `mode nbfm` or `mode wbfm` | Select NBFM or mono WBFM. |
-| `rate 1`, `rate 2` or `rate 4` | Select RF sample rate in MS/s; `sample-rate` is an alias. |
-| `noise on` or `noise off` | Enable or bypass NBFM noise squelch. |
-| `carrier on` or `carrier off` | Enable or bypass carrier squelch. |
-| `levels 0.20 0.30` | Set noise opening and closing RMS thresholds together. |
+| `rx start` or `rx stop` | Start reception with the saved configuration, or stop and release the RX pipeline. |
+| `rx frequency 430.125` | Set receive frequency in MHz. |
+| `rx mode nbfm` or `rx mode wbfm` | Select NBFM or mono WBFM. |
+| `rx rate 1`, `rx rate 2` or `rx rate 4` | Select RF sample rate in MS/s. |
+| `squelch noise on` or `squelch noise off` | Enable or bypass NBFM noise squelch. |
+| `squelch carrier on` or `squelch carrier off` | Enable or bypass carrier squelch. |
+| `squelch levels 0.20 0.30` | Set noise opening and closing RMS thresholds together, in that order. |
 | `tx start` or `tx stop` | Start or stop half-duplex NBFM transmission. |
 | `tx frequency 430.125` | Set the separate TX frequency in MHz. |
 | `tx power -12` | Set requested output power in integer dBm. |
@@ -82,17 +87,22 @@ effective squelch settings, and configuration and pipeline generations.
 | `help` or `?` | Show available commands. |
 | `q` or `quit` | Disconnect; RX continues, while active TX is stopped. |
 
+Squelch commands also accept an explicit RX prefix, for example
+`rx squelch noise on`. The original unprefixed RX and squelch commands remain
+accepted as compatibility aliases. `freq` and `sample-rate` also remain aliases
+for `frequency` and `rate`.
+
 For example:
 
 ```text
-stop
-frequency 430.125
-mode nbfm
-rate 1
-levels 0.20 0.30
-noise on
-carrier off
-start
+rx stop
+rx frequency 430.125
+rx mode nbfm
+rx rate 1
+squelch levels 0.20 0.30
+squelch noise on
+squelch carrier off
+rx start
 status
 q
 ```
@@ -100,7 +110,7 @@ q
 Frequency, mode and sample-rate commands require stopped RX. A stopped
 frequency change tunes the radio and verifies that it remains idle. Mode and
 sample-rate changes update saved settings; their DSP and hardware profiles
-are applied at the next `start`. Every restart creates a fresh pipeline, so
+are applied at the next `rx start`. Every restart creates a fresh pipeline, so
 old IQ or PCM frames cannot carry across a retune or mode change.
 
 Squelch controls work during reception and while stopped. Noise thresholds
@@ -109,7 +119,7 @@ rounding. A pair that collapses to the same rounded value is rejected.
 Noise thresholds are independent of audio volume.
 
 WBFM has no noise-squelch detector: its effective noise flag is off and
-`noise on` returns `WBFM_NOISE`. Switching to WBFM preserves the saved NBFM
+`squelch noise on` returns `WBFM_NOISE`. Switching to WBFM preserves the saved NBFM
 noise-enable preference; switching back restores it. Carrier squelch remains
 available in both modes. Its existing fixed thresholds open at −97 dBm and
 close at −102 dBm, using modem RSSI rather than calibrated connector power.
@@ -124,8 +134,8 @@ controller slot.
 A single command can also be issued from the shell:
 
 ```sh
-build/radio-backend/cariboulite_radio_control --command 'status'
-build/radio-backend/cariboulite_radio_control --command 'stop'
+build/radio-backend/cariboulite_radio_controller --command 'status'
+build/radio-backend/cariboulite_radio_controller --command 'rx stop'
 ```
 
 These commands connect, execute once and disconnect. `--command 'tx start'`
@@ -202,7 +212,7 @@ Initialization reapplies the requested sample rate and FPGA gap after reset.
 The TX pipeline generation advances on each successful initialization;
 counter comparisons must stay within one generation.
 A failed TX transition leaves `FAULT` and suppresses automatic RX restoration.
-Use `stop` to attempt checked cleanup; after successful recovery, the next
+Use `rx stop` to attempt checked cleanup; after successful recovery, the next
 TX start rebuilds any faulted retained pipeline. Closing-cue or drain failures
 remain visible in worker diagnostics rather than being reported as normal stops.
 TX startup failures print a stage name and observed values in the backend
@@ -231,7 +241,7 @@ frequency. Unsupported rates, malformed values, nonfinite numbers and
 out-of-range settings are rejected. An invalid command retains the accepted
 configuration and does not restart the pipeline.
 
-Before acknowledging `start`, the backend checks pipeline setup/tuning,
+Before acknowledging `rx start`, the backend checks pipeline setup/tuning,
 modem RX state, the SMI streaming operation, positive reader sample progress
 and all three RX workers. A failed start releases the pipeline and reports
 `HARDWARE` with state `FAULT`. A failed frequency change attempts to restore
@@ -239,14 +249,14 @@ the accepted frequency and confirmed idle hardware. A successful rollback
 retains `IDLE` and still reports the failed command; a failed rollback reports
 `FAULT`. Hardware stop failures are also reported explicitly.
 
-In `FAULT`, `status` remains available and `stop` attempts checked cleanup.
-After `stop` successfully returns `IDLE`, settings can be changed and RX
+In `FAULT`, `status` remains available and `rx stop` attempts checked cleanup.
+After `rx stop` successfully returns `IDLE`, settings can be changed and RX
 started again. The accepted frequency, mode, rate and squelch configuration
 remain available after a failed start or tune.
 
 `config_generation` advances when accepted configuration or requested RX
 state changes, and on a fault-state transition. `get`, unchanged settings
-while idle, and repeated successful `start`/`stop` commands leave it
+while idle, and repeated successful `rx start`/`rx stop` commands leave it
 unchanged. Frequency/mode/rate commands while RX is running are rejected,
 including requests for the existing value.
 
@@ -272,6 +282,9 @@ Default socket paths are:
 /tmp/cariboulite-monitor-<effective UID>/status.sock
 /tmp/cariboulite-monitor-<effective UID>/control.sock
 ```
+
+These executable and terminal-command names do not change the existing socket
+paths, status schema or wire protocol.
 
 The backend's `--socket PATH` selects its status socket. Unless overridden
 with `--control-socket PATH`, its command socket is named `control.sock` in
@@ -303,7 +316,7 @@ v1 ID squelch NOISE CARRIER OPEN_RMS CLOSE_RMS
 ```
 
 `NOISE` and `CARRIER` are `0` or `1`. A squelch request carries both flags
-and both thresholds. For a partial terminal edit such as `carrier on`, the
+and both thresholds. For a partial terminal edit such as `squelch carrier on`, the
 controller first requests current settings and preserves the other fields.
 
 Each reply has 17 fields in this order:
@@ -330,7 +343,7 @@ the unsolicited competing-controller `BUSY` reply also uses ID `0`.
 | `INVALID` | Invalid supported-control value or threshold pair. |
 | `FREQ_RANGE` | Frequency outside the active board/channel range. |
 | `HARDWARE` | Tuning, pipeline, verification or control application failed. |
-| `FAULT` | Recover the existing fault with `stop` before making changes. |
+| `FAULT` | Recover the existing fault with `rx stop` before making changes. |
 | `WBFM_NOISE` | Noise squelch was requested in WBFM. |
 | `LOOPBACK` | The modem's IQ loopback mode prevents starting RF transmission. |
 | `TX_FAILED` | TX setup or readiness verification failed. |
@@ -367,7 +380,7 @@ does not overwrite configuration with the attempted values.
 Use a dry-run backend with the same controller and optional monitor:
 
 ```sh
-build/radio-backend/cariboulite_rx_backend \
+build/radio-backend/cariboulite_radio_backend \
   --dry-run --start-stopped --seconds 60
 ```
 
@@ -410,8 +423,8 @@ stops transmission and restores RX. This validates the audible TX path and
 half-duplex handoff on the tested setup; no new CPU or sample-continuity measurement
 accompanied this listening test.
 
-The final TX build passed the four C transport/register/protocol suites and
-104 Python checks: 10 backend, 12 RX-control, 19 controller, 13 TX-control and
+The current build passed the four C transport/register/protocol suites and
+108 Python checks: 12 backend, 13 RX-control, 20 controller, 13 TX-control and
 50 passive-monitor checks. Separate production-worker, audio-adapter,
 Quindar/drain and menu-14 lifecycle fixtures also passed. The actual C
 controller was exercised against the dry-run backend, including disconnect

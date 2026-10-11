@@ -16,7 +16,7 @@ import stat
 import sys
 import time
 
-from cariboulite_monitor import MAX_PACKET_BYTES, default_socket_path, positive_seconds
+from cariboulite_radio_monitor import MAX_PACKET_BYTES, default_socket_path, positive_seconds
 from at86rf215_monitor import COMMON_REGISTERS, RADIO_REGISTERS
 
 

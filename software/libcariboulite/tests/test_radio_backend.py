@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the compiled RX backend and real monitor without radio hardware.
+"""Exercise the compiled radio backend and real monitor without radio hardware.
 
 Build first with make -C software/libcariboulite/tools/radio_backend.
 Every backend launch uses --dry-run, including invalid-argument checks.
@@ -25,8 +25,9 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[3]
-BACKEND = ROOT / "build/radio-backend/cariboulite_rx_backend"
-CLIENT = ROOT / "software/libcariboulite/tools/cariboulite_monitor.py"
+BACKEND = ROOT / "build/radio-backend/cariboulite_radio_backend"
+CLIENT = ROOT / "software/libcariboulite/tools/cariboulite_radio_monitor.py"
+MONITOR = BACKEND.with_name("cariboulite_radio_monitor")
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(CLIENT.parent))
 import at86rf215_monitor as registers
@@ -130,6 +131,29 @@ class RadioBackendTests(unittest.TestCase):
         self.assertIn(b"SIMULATED TRANSPORT ONLY", errors)
         self.assertNotIn(b"ALSA: opened", errors)
         self.assertFalse(self.path.exists(), "Timed stop left the owned socket behind")
+
+    def test_named_monitor_launcher_reads_dry_run_snapshot(self):
+        process = self.start_backend()
+        self.assertTrue(MONITOR.is_file(), "Build the named monitor launcher first")
+        self.assertTrue(os.access(MONITOR, os.X_OK), "Monitor launcher is not executable")
+        result = subprocess.run(
+            [str(MONITOR), "--socket", str(self.path), "--once", "--timeout", "2"],
+            capture_output=True, timeout=3, env=ENVIRONMENT)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        snapshot = client.parse_snapshot(result.stdout.strip())
+        self.assert_transport_only(snapshot)
+        self.assertEqual(snapshot["owner_pid"], process.pid)
+
+    def test_named_application_help_identifies_backend_and_monitor(self):
+        for application in (BACKEND, MONITOR):
+            with self.subTest(application=application.name):
+                arguments = [str(application)]
+                if application == BACKEND:
+                    arguments.append("--dry-run")
+                result = subprocess.run([*arguments, "--help"], capture_output=True,
+                                        timeout=3, env=ENVIRONMENT)
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                self.assertIn(application.name, result.stdout.decode())
 
     def test_rf09_settings_and_escaped_playback_survive_transport(self):
         # A nonexistent, unusual device name must not be opened in dry-run.
