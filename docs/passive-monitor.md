@@ -19,8 +19,10 @@ now measures both instrumented applications, including the Python monitor.
 
 The backend runs **instead of `test_app`** and owns the hardware and receive
 pipeline. It automatically starts RX using launch settings, demodulates NBFM
-or mono WBFM, plays audio, and publishes status. This first backend has no TX
-or interactive radio controls; restart it to change launch settings. The
+or mono WBFM, plays audio, and publishes status. A separate C
+[receiver controller](radio-control.md) now provides RX start/stop, frequency,
+mode, sample rate and squelch commands through a second Unix socket.
+Use `--start-stopped` to wait for the controller before starting reception. The
 `test_app` displays the shared counters in menu 14 and does not publish socket telemetry. The included Python
 demo publisher remains available for explicitly simulated data.
 
@@ -74,6 +76,12 @@ radio. Pressing `q` in the monitor closes only that monitor; reception and
 audio continue. Monitor connections do not trigger additional hardware reads
 and cannot control the radio.
 
+For receiver controls, open another terminal and run
+`build/radio-backend/cariboulite_radio_control`. The monitor stays optional;
+closing either client leaves RX in its current state. Frequency, mode and
+sample-rate edits require stopped RX. Squelch edits work during reception.
+See [controller commands, validation and restart behavior](radio-control.md).
+
 Launch options:
 
 | Option | Meaning/default |
@@ -84,7 +92,9 @@ Launch options:
 | `--mode nbfm\|wbfm` | Demodulation; default `nbfm`. WBFM audio is mono. |
 | `--playback DEVICE` | ALSA device; default `plughw:Loopback,0,0`. |
 | `--socket PATH` | Status socket; default path described below. |
-| `--seconds N` | Stop automatically after the requested duration. |
+| `--control-socket PATH` | Command socket; default `control.sock` beside the status socket. |
+| `--start-stopped` | Initialize/tune hardware and wait for an RX start command. |
+| `--seconds N` | Exit after this wall time after initial setup, including time with RX stopped. |
 | `--status-hz HZ` | Hardware/status update frequency; default `5`. |
 | `--no-noise-squelch` | Bypass NBFM noise squelch, enabled by default. |
 | `--carrier-squelch` | Enable carrier squelch, disabled by default. |
@@ -355,8 +365,9 @@ now been [compared with menu 14](rx-application-comparison.md); calibrated RF
 sensitivity remains unmeasured.
 
 The backend is the sole hardware owner, identifies live versus simulated
-measurements and publishes bounded snapshots. Radio control through another
-terminal remains a later step. No socket publisher or other integration has
+measurements and publishes bounded snapshots. A separate RX controller now
+operates through a command socket while the status socket stays passive.
+No socket publisher or other integration has
 been added to `test_app`.
 
 Hardware-free client checks:
@@ -502,3 +513,26 @@ This fixed-frequency comparison is separate from the historical 20-second
 sample above. It does not measure instrumentation overhead in isolation,
 RF sensitivity or the CPU budget for future decoders. See the
 [full report, artifacts and reusable runner](rx-application-comparison.md).
+
+### Receiver control milestone (2026-10-11)
+
+The [C receiver controller](radio-control.md) adds interactive RX start/stop,
+frequency, NBFM/mono WBFM, 1/2/4 MS/s and squelch controls. The backend
+serializes commands and snapshots on its owner thread; it verifies hardware
+before acknowledging start/stop and attempts rollback after failed tuning.
+The existing shared DSP and `test_app` are unchanged by this addition.
+
+Stopping now releases the backend's entire pipeline. A subsequent start
+creates fresh queues, workers and audio playback; telemetry includes
+`control.config_generation` and `control.pipeline_generation`. The monitor
+shows these generations on its existing session row and avoids calculating
+RX queue rates across different pipeline lifetimes.
+
+A physical check exercised 28 controller commands across five RX sessions:
+NBFM at 1/2/4 MS/s on RF24 near 430.125 MHz and WBFM mono at 2 MS/s at
+100.1 MHz. The actual passive monitor remained connected. The 170 snapshots
+recorded zero application IQ/audio queue drops, ALSA underruns/write errors
+and reader errors. Controller disconnection left RX running, and final
+shutdown removed both owned sockets. This was a short control/lifecycle
+check; the earlier CPU comparison describes the preceding instrumented build.
+See [artifacts and limitations](radio-control.md#physical-control-check-2026-10-11).

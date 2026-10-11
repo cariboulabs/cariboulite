@@ -1,10 +1,11 @@
-/* One radio owner, shared instrumented RX workers, receive-only status clients. */
+/* One radio owner, passive status clients and a separate RX command socket. */
 #include "cariboulite_setup.h"
 #include "rx_pipeline.h"
 #include "pipeline_runtime.h"
 #include "noise_squelch.h"
 #include "modem_snapshot.h"
 #include "status_publisher.h"
+#include "control_server.h"
 
 #include <errno.h>
 #include <getopt.h>
@@ -18,10 +19,12 @@
 #include <unistd.h>
 
 typedef struct {
-    const char *channel, *playback, *socket_path;
+    const char *channel, *playback, *socket_path, *control_socket_path;
     double frequency, seconds, status_hz;
     rx_params_t rx;
-    bool dry_run;
+    bool dry_run, start_stopped;
+    bool rx_requested, control_fault;
+    uint64_t config_generation, pipeline_generation;
 } options_t;
 
 static volatile sig_atomic_t stop_requested;
@@ -65,14 +68,16 @@ static void usage(FILE *out, const char *program)
 {
     fprintf(out,
         "Usage: %s [options]\n"
-        "Separate RX-only radio owner; starts reception automatically.\n"
+        "Separate RX-only radio owner; starts RX unless --start-stopped.\n"
         "  --channel RF24|RF09       default RF24 (HiF)\n"
         "  --frequency HZ            default 430125000\n"
         "  --sample-rate HZ          1000000, 2000000 or 4000000 (default 1000000)\n"
         "  --mode nbfm|wbfm          default nbfm; WBFM is mono\n"
         "  --playback DEVICE         default plughw:Loopback,0,0\n"
         "  --socket PATH             default /tmp/cariboulite-monitor-<UID>/status.sock\n"
-        "  --seconds SECONDS         stop after this RX duration (default until Ctrl+C)\n"
+        "  --control-socket PATH     default control.sock beside the status socket\n"
+        "  --start-stopped            initialize hardware and wait for RX start\n"
+        "  --seconds SECONDS         exit after this wall time (default until Ctrl+C)\n"
         "  --status-hz HZ            0.5..20, default 5\n"
         "  --no-noise-squelch         bypass noise squelch\n"
         "  --carrier-squelch          enable carrier squelch (default off)\n"
@@ -100,7 +105,7 @@ static int parse_options(int argc, char **argv, options_t *o)
 {
     *o = (options_t){
         .channel = "RF24", .playback = "plughw:Loopback,0,0",
-        .frequency = 430125000, .status_hz = 5,
+        .frequency = 430125000, .status_hz = 5, .config_generation = 1,
         .rx = {.freq_hz = 430125000, .fs_rf = 1000000, .fs_audio = 48000,
             .deemph_tau_s = 50e-6f, .pcm_gain = 8000,
             .noise_squelch_open_rms = NOISE_SQUELCH_OPEN_RMS,
@@ -108,7 +113,8 @@ static int parse_options(int argc, char **argv, options_t *o)
             .mode = AUDIO_DEMOD_NBFM},
     };
     enum { CHANNEL = 1000, FREQ, RATE, MODE, PLAYBACK, SOCKET, SECONDS,
-        STATUS_HZ, NO_NOISE, CARRIER, NOISE_OPEN, NOISE_CLOSE, GAIN, DEEMPH, DRY_RUN };
+        STATUS_HZ, NO_NOISE, CARRIER, NOISE_OPEN, NOISE_CLOSE, GAIN, DEEMPH, DRY_RUN,
+        CONTROL_SOCKET, START_STOPPED };
     static const struct option long_options[] = {
         {"channel", required_argument, NULL, CHANNEL},
         {"frequency", required_argument, NULL, FREQ},
@@ -116,6 +122,8 @@ static int parse_options(int argc, char **argv, options_t *o)
         {"mode", required_argument, NULL, MODE},
         {"playback", required_argument, NULL, PLAYBACK},
         {"socket", required_argument, NULL, SOCKET},
+        {"control-socket", required_argument, NULL, CONTROL_SOCKET},
+        {"start-stopped", no_argument, NULL, START_STOPPED},
         {"seconds", required_argument, NULL, SECONDS},
         {"status-hz", required_argument, NULL, STATUS_HZ},
         {"no-noise-squelch", no_argument, NULL, NO_NOISE},
@@ -150,6 +158,8 @@ static int parse_options(int argc, char **argv, options_t *o)
             if (!*optarg || strlen(optarg) > 255) return -1;
             o->playback = optarg; break;
         case SOCKET: o->socket_path = optarg; break;
+        case CONTROL_SOCKET: o->control_socket_path = optarg; break;
+        case START_STOPPED: o->start_stopped = true; break;
         case SECONDS:
             if (number(optarg, &o->seconds, 0.1, 86400)) return -1;
             break;
@@ -177,6 +187,8 @@ static int parse_options(int argc, char **argv, options_t *o)
     uint32_t levels;
     if (optind != argc || !noise_squelch_pack_levels(o->rx.noise_squelch_open_rms,
         o->rx.noise_squelch_close_rms, &levels)) return -1;
+    noise_squelch_unpack_levels(levels, &o->rx.noise_squelch_open_rms,
+                               &o->rx.noise_squelch_close_rms);
     if (!strcmp(o->channel, "RF09")
         && !((o->frequency >= CARIBOULITE_S1G_MIN1 && o->frequency <= CARIBOULITE_S1G_MAX1)
         || (o->frequency >= CARIBOULITE_S1G_MIN2 && o->frequency <= CARIBOULITE_S1G_MAX2)))
@@ -184,6 +196,208 @@ static int parse_options(int argc, char **argv, options_t *o)
     o->rx.freq_hz = o->frequency;
     o->rx.pcm_dev = o->playback;
     return 0;
+}
+
+typedef struct {
+    options_t *options;
+    sys_st *sys;
+    cariboulite_radio_state_st *radio;
+    rx_pipeline_t *pipeline;
+} backend_control_t;
+
+static const char *backend_control_state(const options_t *o)
+{
+    return o->control_fault ? "FAULT" : o->rx_requested ? "RX" : "IDLE";
+}
+
+/* Match the driver's double-precision limits before any register is touched.
+ * Its full-board upper endpoint is exclusive; the general availability API
+ * uses float and includes that endpoint, so cannot validate this command. */
+static bool control_frequency_valid(const options_t *o, const sys_st *sys, double hz)
+{
+    if (!isfinite(hz)) return false;
+    if (!strcmp(o->channel, "RF09"))
+        return (hz >= CARIBOULITE_S1G_MIN1 && hz <= CARIBOULITE_S1G_MAX1)
+            || (hz >= CARIBOULITE_S1G_MIN2 && hz <= CARIBOULITE_S1G_MAX2);
+    if (o->dry_run || sys->board_info.numeric_product_id == system_type_cariboulite_full)
+        return hz >= CARIBOULITE_6G_MIN && hz < CARIBOULITE_6G_MAX;
+    if (sys->board_info.numeric_product_id == system_type_cariboulite_ism)
+        return hz >= CARIBOULITE_2G4_MIN && hz <= CARIBOULITE_2G4_MAX;
+    return false;
+}
+
+static int backend_modem_state(backend_control_t *c, unsigned wanted)
+{
+    uint8_t state = 0;
+    uint16_t reg = !strcmp(c->options->channel, "RF09") ? REG_RF09_STATE : REG_RF24_STATE;
+    int rc = at86rf215_read_buffer(&c->sys->modem, reg, &state, 1);
+    return rc == 0 && (state & 7) == wanted ? 0 : -1;
+}
+
+/* Fully release queues/audio on stop so a later retune cannot play old PCM.
+ * The shared pipeline is unchanged; these extra checked hardware operations
+ * belong solely to this backend's command boundary. */
+static int backend_force_idle(backend_control_t *c)
+{
+    if (c->options->dry_run) return 0;
+    rx_pipeline_stop(c->pipeline);
+    rx_pipeline_destroy(c->pipeline);
+    HW_LOCK();
+    int radio_rc = cariboulite_radio_activate_channel(c->radio, cariboulite_channel_dir_rx, false);
+    int smi_rc = caribou_smi_set_driver_streaming_state(&c->sys->smi, smi_stream_idle);
+    int fpga_rc = caribou_fpga_set_io_ctrl_mode(&c->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
+    int state_rc = backend_modem_state(c, cariboulite_radio_state_cmd_trx_off);
+    HW_UNLOCK();
+    return radio_rc || smi_rc || fpga_rc || state_rc ? -1 : 0;
+}
+
+static int backend_tune(backend_control_t *c, double hz)
+{
+    if (c->options->dry_run) return 0;
+    HW_LOCK();
+    int rc = cariboulite_radio_set_frequency(c->radio, true, &hz);
+    HW_UNLOCK();
+    /* Tuning must leave confirmed idle hardware even if the tuner failed. */
+    int idle_rc = backend_force_idle(c);
+    return rc || idle_rc || !isfinite(hz) || hz <= 0 ? -1 : 0;
+}
+
+static int backend_start(backend_control_t *c)
+{
+    options_t *o = c->options;
+    if (o->dry_run) { ++o->pipeline_generation; return 0; }
+    if (!control_frequency_valid(o, c->sys, o->frequency)) return -1;
+    if (backend_force_idle(c) != 0) return -1;
+    if (rx_pipeline_init(c->pipeline, c->sys, c->radio, &o->rx) != 0) goto fail;
+    ++o->pipeline_generation;
+    /* init's internal tune and start's SMI operation have unchecked results.
+     * Verify them here without changing the accepted shared implementation. */
+    if (rx_pipeline_set_freq(c->pipeline, o->frequency) != 0
+        || rx_pipeline_start(c->pipeline) != 0) goto fail;
+    HW_LOCK();
+    int state_rc = backend_modem_state(c, cariboulite_radio_state_cmd_rx);
+    int smi_rc = caribou_smi_set_driver_streaming_state(&c->sys->smi,
+        !strcmp(o->channel, "RF09") ? smi_stream_rx_channel_0 : smi_stream_rx_channel_1);
+    HW_UNLOCK();
+    if (state_rc || smi_rc) goto fail;
+    double deadline = clock_seconds(CLOCK_MONOTONIC) + 0.5;
+    do {
+        rx_pipeline_stats_t stats;
+        rx_pipeline_get_stats(c->pipeline, &stats);
+        if (stats.reader.errors || stats.reader_worker.last_error
+            || stats.demod_worker.last_error || stats.audio_worker.last_error) goto fail;
+        if (stats.reader.samples && stats.reader_worker.alive
+            && stats.demod_worker.alive && stats.audio_worker.alive) return 0;
+        if (stop_requested) goto fail;
+        struct timespec delay = {.tv_nsec = 10000000};
+        nanosleep(&delay, NULL);
+    } while (clock_seconds(CLOCK_MONOTONIC) < deadline);
+fail:
+    backend_force_idle(c);
+    return -1;
+}
+
+static void backend_control_command(void *opaque, const control_request_t *request,
+                                    control_reply_t *reply)
+{
+    backend_control_t *c = opaque;
+    options_t *o = c->options;
+    const char *code = "OK";
+    bool changed = false;
+    if (request->command == CONTROL_INVALID) code = "PROTOCOL";
+    else if (request->command == CONTROL_BUSY) code = "BUSY";
+    else if (o->control_fault && request->command != CONTROL_GET
+             && request->command != CONTROL_STOP) code = "FAULT";
+    else switch (request->command) {
+    case CONTROL_GET: break;
+    case CONTROL_START:
+        if (!o->rx_requested) {
+            if (backend_start(c) != 0) { code = "HARDWARE"; o->control_fault = true; }
+            else o->rx_requested = true;
+            changed = true;
+        }
+        break;
+    case CONTROL_STOP:
+        if (o->rx_requested || o->control_fault) {
+            int rc = backend_force_idle(c);
+            o->rx_requested = false;
+            o->control_fault = rc != 0;
+            if (rc) code = "HARDWARE";
+            changed = true;
+        }
+        break;
+    case CONTROL_FREQUENCY:
+        if (!control_frequency_valid(o, c->sys, request->frequency_hz)) code = "FREQ_RANGE";
+        else if (o->rx_requested) code = "RX_RUNNING";
+        else if (o->frequency != request->frequency_hz) {
+            if (backend_tune(c, request->frequency_hz) != 0) {
+                code = "HARDWARE";
+                /* Preserve accepted configuration and attempt its checked
+                 * restoration. An unsuccessful rollback is explicit FAULT. */
+                if (backend_tune(c, o->frequency) != 0) {
+                    o->control_fault = true;
+                    changed = true;
+                }
+            } else { o->frequency = o->rx.freq_hz = request->frequency_hz; changed = true; }
+        }
+        break;
+    case CONTROL_MODE: {
+        audio_demod_mode_t mode = request->wbfm ? AUDIO_DEMOD_WBFM : AUDIO_DEMOD_NBFM;
+        if (o->rx_requested) code = "RX_RUNNING";
+        else if (mode != o->rx.mode) { o->rx.mode = mode; changed = true; }
+        break;
+    }
+    case CONTROL_SAMPLE_RATE:
+        if (request->sample_rate_hz != 1000000 && request->sample_rate_hz != 2000000
+            && request->sample_rate_hz != 4000000) code = "INVALID";
+        else if (o->rx_requested) code = "RX_RUNNING";
+        else if (o->rx.fs_rf != request->sample_rate_hz) {
+            o->rx.fs_rf = (float)request->sample_rate_hz; changed = true;
+        }
+        break;
+    case CONTROL_SQUELCH: {
+        uint32_t levels;
+        if (!noise_squelch_pack_levels(request->noise_open_rms, request->noise_close_rms, &levels))
+            code = "INVALID";
+        else if (o->rx.mode == AUDIO_DEMOD_WBFM && request->noise_enabled) code = "WBFM_NOISE";
+        else {
+            /* WBFM has no noise detector. Its disabled effective flag must
+             * not discard the user's saved NBFM noise-squelch preference. */
+            bool disabled = o->rx.mode == AUDIO_DEMOD_NBFM
+                ? !request->noise_enabled : o->rx.noise_squelch_disabled;
+            float open, close;
+            noise_squelch_unpack_levels(levels, &open, &close);
+            if (!o->dry_run && c->pipeline->inited
+                && rx_pipeline_set_noise_squelch_levels(c->pipeline, open, close) != 0) code = "HARDWARE";
+            else {
+                changed = disabled != o->rx.noise_squelch_disabled
+                    || request->carrier_enabled != o->rx.carrier_squelch_enabled
+                    || open != o->rx.noise_squelch_open_rms || close != o->rx.noise_squelch_close_rms;
+                o->rx.noise_squelch_disabled = disabled;
+                o->rx.carrier_squelch_enabled = request->carrier_enabled;
+                o->rx.noise_squelch_open_rms = open; o->rx.noise_squelch_close_rms = close;
+                if (!o->dry_run && c->pipeline->inited)
+                    rx_pipeline_set_squelch(c->pipeline, request->noise_enabled, request->carrier_enabled);
+            }
+        }
+        break;
+    }
+    default: code = "PROTOCOL"; break;
+    }
+    if (changed) ++o->config_generation;
+    *reply = (control_reply_t){.id = request->id, .ok = !strcmp(code, "OK"),
+        .config_generation = o->config_generation, .pipeline_generation = o->pipeline_generation,
+        .simulated = o->dry_run, .requested_frequency_hz = o->frequency,
+        .actual_frequency_hz = c->radio ? c->radio->actual_rf_frequency : o->frequency,
+        .sample_rate_hz = (unsigned)o->rx.fs_rf, .wbfm = o->rx.mode == AUDIO_DEMOD_WBFM,
+        .noise_enabled = o->rx.mode == AUDIO_DEMOD_NBFM && !o->rx.noise_squelch_disabled,
+        .carrier_enabled = o->rx.carrier_squelch_enabled,
+        .noise_open_rms = o->rx.noise_squelch_open_rms, .noise_close_rms = o->rx.noise_squelch_close_rms};
+    snprintf(reply->code, sizeof(reply->code), "%s", code);
+    if (!isfinite(reply->actual_frequency_hz) || reply->actual_frequency_hz < 0)
+        reply->actual_frequency_hz = 0; /* Unknown after a hardware failure. */
+    snprintf(reply->state, sizeof(reply->state), "%s", backend_control_state(o));
+    snprintf(reply->channel, sizeof(reply->channel), "%s", o->channel);
 }
 
 /* JSON string encoding also makes unusual ALSA device names safe. */
@@ -319,6 +533,8 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         "\"workers\":{\"reader\":%s,\"demod\":%s,\"audio\":%s}},"
         "\"tx\":{\"running\":false},\"hardware\":%s,"
         "\"loopback\":{\"armed\":false,\"active\":false,\"samples\":0,\"timeouts\":0},"
+        "\"control\":{\"config_generation\":%" PRIu64 ",\"pipeline_generation\":%" PRIu64 ","
+        "\"rx_requested\":%s,\"state\":\"%s\"},"
         "\"publisher\":{\"status_hz\":%.3f,\"spi_blocks\":%u,\"spi_failed_blocks\":%u,"
         "\"spi_read_ms\":%.6f,\"spi_transactions\":%" PRIu64 ",\"spi_failures\":%" PRIu64 ","
         "\"clients\":%u,\"packets_sent\":%" PRIu64 ",\"packets_skipped\":%" PRIu64 ","
@@ -334,7 +550,9 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         noise.valid ? "true" : "false", noise.valid ? (noise.detector_open ? "true" : "false") : "null",
         rms, (double)noise.open_rms, (double)noise.close_rms, audio_queue, playback_stats, reader,
         reader_worker, demod_worker, audio_worker,
-        hardware, o->status_hz, modem->read_blocks, modem->failed_blocks,
+        hardware, o->config_generation, o->pipeline_generation,
+        o->rx_requested ? "true" : "false", backend_control_state(o),
+        o->status_hz, modem->read_blocks, modem->failed_blocks,
         modem->read_duration_s * 1e3, modem->spi_transactions, modem->spi_failures,
         publisher->clients_count, publisher->packets_sent, publisher->packets_skipped,
         publisher->clients_rejected);
@@ -354,9 +572,28 @@ int main(int argc, char **argv)
         perror("status socket"); return 1;
     }
     fprintf(stderr, "Status socket: %s\n", publisher.socket_path);
+    char control_path[STATUS_PUBLISHER_SOCKET_PATH_BYTES];
+    if (!options.control_socket_path) {
+        const char *separator = strrchr(publisher.socket_path, '/');
+        size_t prefix = separator ? (size_t)(separator - publisher.socket_path + 1) : 0;
+        if (prefix + sizeof("control.sock") > sizeof(control_path)) {
+            fprintf(stderr, "Default control socket path is too long; use --control-socket.\n");
+            status_publisher_close(&publisher); return 1;
+        }
+        memcpy(control_path, publisher.socket_path, prefix);
+        strcpy(control_path + prefix, "control.sock");
+    }
+    control_server_t control_server;
+    if (control_server_init(&control_server, options.control_socket_path
+        ? options.control_socket_path : control_path)) {
+        perror("control socket"); status_publisher_close(&publisher); return 1;
+    }
+    fprintf(stderr, "Control socket: %s\n", control_server.listener_anchor.socket_path);
     CARIBOULITE_CONFIG_DEFAULT(sys);
     rx_pipeline_t pipeline = {0};
     cariboulite_radio_state_st *radio = NULL;
+    backend_control_t control = {.options = &options, .sys = &sys,
+        .pipeline = &pipeline};
     modem_snapshot modem;
     const at86rf215_rf_channel_en channel = !strcmp(options.channel, "RF09")
         ? at86rf215_rf_channel_900mhz : at86rf215_rf_channel_2400mhz;
@@ -386,46 +623,67 @@ int main(int argc, char **argv)
         driver_ready = true;
         if (stop_requested) { result = 0; goto cleanup; }
         radio = channel == at86rf215_rf_channel_900mhz ? &sys.radio_low : &sys.radio_high;
-        if (rx_pipeline_init(&pipeline, &sys, radio, &options.rx) != 0
-            || rx_pipeline_set_freq(&pipeline, options.frequency) != 0
-            || rx_pipeline_start(&pipeline) != 0) {
-            fprintf(stderr, "RX pipeline initialization/tuning/start failed.\n"); goto cleanup;
+        control.radio = radio;
+        if (!control_frequency_valid(&options, &sys, options.frequency)) {
+            fprintf(stderr, "Frequency is outside this board/channel's range.\n"); goto cleanup;
         }
-        modem_snapshot_refresh(&modem, &sys.modem, channel, &g_hw_lock);
-        /* STATE is radio[3] in the defined register inventory. */
-        if (modem.radio[3] < 0 || (modem.radio[3] & 7) != 5) {
-            fprintf(stderr, "Modem did not confirm RX state; stopping.\n"); goto cleanup;
+    }
+    if (options.start_stopped) {
+        if (backend_tune(&control, options.frequency) != 0) {
+            fprintf(stderr, "Initial tuning/idle verification failed.\n"); goto cleanup;
         }
+    } else {
+        if (backend_start(&control) != 0) {
+            fprintf(stderr, "RX pipeline initialization/tuning/start verification failed.\n"); goto cleanup;
+        }
+        options.rx_requested = true;
     }
 
     const double started = clock_seconds(CLOCK_MONOTONIC);
     double next_update = started, last_put_progress = started, last_get_progress = started;
     size_t previous_puts = 0, previous_gets = 0;
+    uint64_t progress_generation = options.pipeline_generation;
+    uint64_t published_config_generation = options.config_generation;
     uint64_t sequence = 0;
     char session[80], packet[8192];
     snprintf(session, sizeof(session), "rx-%ld-%" PRIu64, (long)getpid(), mono_ns());
     fprintf(stderr, "%s: %s %.6f MHz, %.0f S/s, %s. Ctrl+C stops the backend.\n",
-        options.dry_run ? "SIMULATED TRANSPORT ONLY" : "RX started", options.channel,
+        options.dry_run ? "SIMULATED TRANSPORT ONLY" : options.start_stopped ? "RX idle" : "RX started", options.channel,
         options.frequency / 1e6, (double)options.rx.fs_rf,
         options.rx.mode == AUDIO_DEMOD_NBFM ? "NBFM" : "WBFM mono");
     result = 0;
     while (!stop_requested) {
         double now = clock_seconds(CLOCK_MONOTONIC);
         if (options.seconds && now - started >= options.seconds) break;
+        if (control_server_service(&control_server, backend_control_command, &control) != 0) {
+            fprintf(stderr, "Control socket service failed.\n"); result = 1; break;
+        }
+        if (options.config_generation != published_config_generation) next_update = now;
         if (now >= next_update) {
-            const char *state = options.dry_run ? "DRY_RUN" : "RX";
+            const char *state = options.dry_run ? "DRY_RUN" : backend_control_state(&options);
             rx_pipeline_stats_t stats = {0};
             if (!options.dry_run) {
                 modem_snapshot_refresh(&modem, &sys.modem, channel, &g_hw_lock);
                 rx_pipeline_get_stats(&pipeline, &stats);
+                if (!options.rx_requested || progress_generation != options.pipeline_generation) {
+                    last_put_progress = last_get_progress = now;
+                    progress_generation = options.pipeline_generation;
+                }
                 if (stats.rxq.puts != previous_puts) last_put_progress = now;
                 if (stats.rxq.gets != previous_gets) last_get_progress = now;
                 previous_puts = stats.rxq.puts; previous_gets = stats.rxq.gets;
-                if (now - last_put_progress > 2 || now - last_get_progress > 2)
-                    state = "RX_STALLED";
-                if (modem.radio[3] < 0) state = "RX_UNCONFIRMED";
-                else if ((modem.radio[3] & 7) != 5) state = "RX_STATE_ERROR";
+                if (options.rx_requested) {
+                    if (now - last_put_progress > 2 || now - last_get_progress > 2) state = "RX_STALLED";
+                    if (modem.radio[3] < 0) state = "RX_UNCONFIRMED";
+                    else if ((modem.radio[3] & 7) != 5) state = "RX_STATE_ERROR";
+                    if (!stats.reader_worker.alive || !stats.demod_worker.alive || !stats.audio_worker.alive)
+                        state = "RX_WORKER_ERROR";
+                    if (strcmp(state, "RX") && !options.control_fault) {
+                        options.control_fault = true; ++options.config_generation;
+                    }
+                }
             }
+            published_config_generation = options.config_generation;
             int length = make_snapshot(packet, sizeof(packet), &options, session, ++sequence,
                 state, options.dry_run ? NULL : &pipeline, options.dry_run ? NULL : &stats,
                 &modem, &publisher, radio);
@@ -442,6 +700,7 @@ int main(int argc, char **argv)
         rx_pipeline_stop(&pipeline);
         modem_snapshot_refresh(&modem, &sys.modem, channel, &g_hw_lock);
     }
+    options.rx_requested = false;
     rx_pipeline_stats_t final_stats = {0};
     if (pipeline.inited) rx_pipeline_get_stats(&pipeline, &final_stats);
     int length = make_snapshot(packet, sizeof(packet), &options, session, ++sequence,
@@ -457,6 +716,7 @@ int main(int argc, char **argv)
 cleanup:
     rx_pipeline_destroy(&pipeline);
     if (driver_ready || sys.ownership_claimed) cariboulite_release_driver(&sys);
+    control_server_close(&control_server);
     status_publisher_close(&publisher);
     return result;
 }

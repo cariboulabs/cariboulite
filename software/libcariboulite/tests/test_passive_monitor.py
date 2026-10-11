@@ -711,6 +711,17 @@ class PassiveClientTests(unittest.TestCase):
         self.assertEqual(client.queue_rates(dict(old, monotonic_s=-1e308),
                                            dict(extreme, monotonic_s=1e308)), {})
 
+    def test_pipeline_generation_prevents_rates_across_receiver_restart(self):
+        old = snapshot(monotonic_s=10, control={"pipeline_generation": 1},
+                       rx={"queue": {"puts": 10, "gets": 9}})
+        new = snapshot(2, monotonic_s=12, control={"config_generation": 4,
+                       "pipeline_generation": 2},
+                       rx={"queue": {"puts": 210, "gets": 209}})
+        self.assertEqual(client.queue_rates(old, new), {})
+        self.assertEqual(client.queue_rates(dict(old, control={"pipeline_generation": 2}), new),
+                         {"rx": (100, 100)})
+        self.assertIn("config=4  pipeline=2", "\n".join(client.format_snapshot(new)))
+
     def test_formatting_marks_stale_cache_and_safe_labels(self):
         value = snapshot(monotonic_s=10, hardware_monotonic_s=8,
                          channel="HiF\x1b[2J\n", config={"sample_rate_hz": 1000000})

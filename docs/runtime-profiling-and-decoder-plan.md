@@ -66,8 +66,13 @@ and menu 14. Startup reports actual policy/priority/affinity and scheduling,
 memory-lock and query failures. See [counter definitions and comparison procedure](passive-monitor.md#shared-rx-instrumentation-2026-10-11).
 The table above records the original review: source discontinuity metadata,
 kernel overflow telemetry, detailed stage latency, capture-side ALSA counters
-and coordinated fault recovery remain open work. A separate control client
-has not been implemented.
+and coordinated fault recovery remain open work. A
+[separate C receiver controller](radio-control.md) now implements RX
+start/stop, frequency, mode, sample rate and squelch commands. Commands use a
+second Unix socket and execute on the backend owner thread. Frequency/mode/rate
+edits require stopped RX; squelch edits reuse atomic controls. Checked startup,
+stop and tune rollback report failures with the retained configuration.
+The accepted `test_app` and shared DSP are unchanged by this milestone.
 
 A [physical NBFM application comparison](rx-application-comparison.md) now
 provides a 1 MS/s baseline for both instrumented applications. Menu 14 used

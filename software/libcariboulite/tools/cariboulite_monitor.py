@@ -219,6 +219,9 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
     noise = _mapping(rx.get("noise"))
     hardware = _mapping(snapshot.get("hardware"))
     loopback = _mapping(snapshot.get("loopback"))
+    control = _mapping(snapshot.get("control"))
+    generations = (f"  config={_label(control.get('config_generation'))}"
+                   f"  pipeline={_label(control.get('pipeline_generation'))}") if control else ""
     rates = rates or {}
     noise_valid = noise.get("valid") is True
     lines = [
@@ -233,7 +236,7 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
         f"  TX bandwidth={_bandwidth(config.get('tx_bandwidth_hz'))}",
         f"Session={_label(snapshot.get('session'))}"
         f"  PID={_label(snapshot.get('owner_pid'))}"
-        f"  sequence={_label(snapshot.get('sequence'))}",
+        f"  sequence={_label(snapshot.get('sequence'))}{generations}",
         f"Snapshot age={_age_label(_age(snapshot, 'monotonic_s', now))}"
         f"  hardware age={_age_label(_age(snapshot, 'hardware_monotonic_s', now))}",
         "",
@@ -294,6 +297,11 @@ def queue_rates(previous, current):
         return {}
     result = {}
     for name in ("rx", "tx"):
+        if name == "rx":
+            old_generation = _mapping(previous.get("control")).get("pipeline_generation")
+            new_generation = _mapping(current.get("control")).get("pipeline_generation")
+            if old_generation != new_generation:
+                continue
         old = _mapping(_mapping(previous.get(name)).get("queue"))
         new = _mapping(_mapping(current.get(name)).get("queue"))
         values = [old.get("puts"), old.get("gets"), new.get("puts"), new.get("gets")]

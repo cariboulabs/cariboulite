@@ -477,3 +477,23 @@ See [the passive monitor documentation](passive-monitor.md#shared-rx-instrumenta
 for counter definitions, reset/lifetime rules, build commands and comparison
 procedure. Application counters cannot prove kernel/FPGA sample continuity;
 upstream loss metadata and stage latency profiling remain roadmap items.
+
+## Separate receiver controls (2026-10-11)
+
+The [standalone C receiver controller](radio-control.md) now controls the RX
+backend through a separate Unix-domain command socket. It supports RX
+start/stop, frequency, NBFM/mono WBFM, 1/2/4 MS/s and noise/carrier squelch,
+including noise opening/closing thresholds. The monitor remains passive and
+optional; the controller waits for input while idle. Frequency/mode/rate
+changes require stopped RX, while atomic squelch changes work during reception.
+
+The backend validates settings, confirms RX startup and checked idle state,
+and reports failed commands with the retained configuration. Stop releases
+the entire pipeline; restart creates fresh queues with an explicit pipeline
+generation. Shared DSP and `test_app` remain unchanged by this addition.
+
+A short physical RF24 check exercised five RX sessions across NBFM at
+1/2/4 MS/s and WBFM mono at 2 MS/s, including frequency and live squelch
+changes. Application queue drops, ALSA underruns/write errors and RX read
+errors stayed zero. It validates control/lifecycle behavior; reception
+quality and CPU overhead of this new build still need separate measurements.
