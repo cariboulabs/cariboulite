@@ -233,6 +233,12 @@ and WBFM listening is reported free of obvious gaps or pops. The
 records instrumentation gaps and proposed sequencing; these features are
 not yet implemented.
 
+- [ ] **Separate control and instrumentation terminals (added 2026-10-11).**
+  Extract one radio-owning session with serialized commands and cached status;
+  retain menu 14 as a frontend, then add a local read-only monitor and separate
+  control client. Use bounded nonblocking telemetry, validate effective settings
+  and measure combined backend/client CPU and latency, including slow-client
+  and disconnect behavior. See the [two-terminal design](docs/runtime-profiling-and-decoder-plan.md#separate-control-and-instrumentation-terminals-2026-10-11).
 - [ ] Complete loss/recovery counters, actual scheduling reports, RX
   discontinuity metadata and worker-health reporting. Profile whole-app CPU,
   stage service/wait latency and queues at 1/2/4 MS/s, with recording off/on.

@@ -392,3 +392,10 @@ The detailed [runtime review and decoder plan](runtime-profiling-and-decoder-pla
 records the evidence, a hardware-free WBFM timing check, instrumentation gaps,
 optimization candidates and proposed acceptance criteria. Stereo/RDS, DAB+
 and CTCSS remain planned capabilities; this review did not change runtime code.
+
+On 2026-10-11, the user proposed separate terminals for instrumentation and
+radio controls. The [two-terminal design](runtime-profiling-and-decoder-plan.md#separate-control-and-instrumentation-terminals-2026-10-11)
+keeps one process in charge of the radio and pipelines, with serialized control
+commands and cached, nonblocking status for observers. This is feasible with
+modest expected IPC/display overhead, pending measurement; it is recorded as
+a proposed roadmap item rather than an implemented feature.

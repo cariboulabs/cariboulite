@@ -56,6 +56,104 @@ they cannot establish continuity before the reader. Discontinuities need an
 explicit DSP policy: clear invalid history or reacquire synchronization, with
 audio fading and an event indicating what happened.
 
+## Separate control and instrumentation terminals (2026-10-11)
+
+The user proposes operating TX/RX, mode, squelch, frequencies, sample rate and
+bandwidth in one terminal while watching menu-14-style instrumentation in
+another. This is feasible with one radio-owning process and separate local
+clients. It is a proposed application/control refactor; it does not require
+moving the DSP or IQ stream between processes.
+
+```mermaid
+flowchart LR
+    C["Terminal 1: radio controls"] <-->|"Commands and replies"| B["Radio session backend<br/>Hardware, TX/RX pipelines, settings"]
+    B -->|"Cached status and events"| M["Terminal 2: instrumentation"]
+    B <-->|"SPI / SMI"| H["CaribouLite"]
+```
+
+Only the backend opens the hardware and owns configuration changes, streaming
+and audio. Initially allow one active controller and multiple read-only
+observers. Both clients can run in separate SSH terminals on the same Pi. A
+local Unix-domain socket suits the small command/status messages; see the
+[Linux IPC reference](https://www.man7.org/linux/man-pages/man7/unix.7.html).
+
+### Current coupling and reusable code
+
+The RX/TX pipeline APIs already provide start/stop, lifecycle, frequency and
+statistics operations. However, `monitor_modem_status()` in
+[app_menu.c](../software/libcariboulite/src/app_menu.c) owns those objects and
+saved settings alongside ncurses, extensive hardware polling, rendering and
+keyboard handling. Frequency and squelch entry switch to a blocking prompt,
+which pauses the current monitor loop while the user types; streaming workers
+continue independently. Extract a UI-independent session with commands and
+synchronized snapshots, then adapt menu 14 to that interface.
+
+Commands must be serialized by one session owner. A socket reader should
+queue validated requests rather than reconfigure or destroy pipelines while
+another thread reads them. Replies should identify the command, success/error,
+effective settings and current session state. Preserve accepted TX/RX handoff,
+Quindar/tail behavior and loopback exclusions.
+
+For the first version, preserve current stop-before-change rules for frequency,
+sample rate and receive mode. Live squelch flags and threshold updates can reuse
+the existing atomic controls. Bandwidth needs an explicit validated mode
+configuration: RX startup currently selects 160 kHz / Fs÷8 for NBFM and
+2 MHz / Fs÷2 for WBFM. A one-off register write would be overwritten on start.
+Keep modem bandwidth and software channel-filter bandwidth distinct, and show
+requested and effective settings in both clients.
+
+### Cost and monitoring behavior
+
+Exchange status/settings, not IQ or PCM. For an illustrative message budget,
+a 4 KiB snapshot at 5 Hz is 20 KiB/s per observer. This is a design example,
+not a measured message size or CPU result. Extra serialization, socket I/O
+and terminal rendering should be small compared with RF DSP at these update
+rates, but whole-system CPU and latency must be measured with the actual
+prototype. A second process alone does not guarantee an efficiency gain.
+
+Use a configurable status cadence, initially around 2–5 Hz. Sample software
+counters separately from modem/mixer registers; extensive hardware diagnostics
+can refresh more slowly or on request. Cache one hardware snapshot for all
+observers rather than polling the hardware once per terminal. Include monotonic
+timestamp, session/configuration generation and freshness/error indicators so
+old readings cannot be mistaken for current settings.
+
+Publishing must use bounded, nonblocking queues. A slow observer may miss
+display updates while cumulative loss/error counters remain available in the
+next snapshot. It must never hold up IQ processing, radio commands or TX stop.
+Keep formatting, socket writes and display work outside streaming threads and
+hardware locks. Logs should use an aggregated event path with explicit loss
+accounting if its bounded queue fills; optional file recording belongs outside
+the streaming path. See [Linux socket behavior](https://www.man7.org/linux/man-pages/man7/socket.7.html).
+
+Define disconnect semantics: closing an observer leaves the radio session
+running; loss of the active controller during TX should invoke the existing
+orderly TX stop. RX persistence and explicit shutdown should be specified by
+the session interface. A persistent system daemon is optional; the first
+backend can be an ordinary manually launched process.
+
+### Incremental delivery and acceptance
+
+1. Extract the session/command/snapshot interface while retaining menu 14 as
+   its frontend. Complete the missing loss, scheduling and worker-health
+   counters at this boundary.
+2. Add a read-only instrumentation client. Verify attach/detach, status
+   freshness and slow-client behavior while the existing frontend controls
+   the radio.
+3. Add the separate control client and terminal-free backend. Keep one active
+   controller initially, with validated settings and acknowledged transitions.
+
+Measure backend and client CPU together, recording monitor disconnected versus
+connected, different refresh rates and deliberately stalled clients. Verify
+that typing, reconnecting and observer failure do not disturb reception or
+delay commands. Exercise command ordering, failed configuration, mode/rate
+changes, controller disconnect during simulated TX, repeated start/stop and
+the accepted physical TX tail before declaring the separation complete.
+
+This boundary also gives later CTCSS, stereo/RDS and DAB+ decoders a common
+place to publish tone/pilot lock, decoded metadata and synchronization/error
+metrics without adding hardware ownership to each display.
+
 ## Profiling pass
 
 1. Add the missing counters and actual startup configuration first. Rename the
