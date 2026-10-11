@@ -4,7 +4,9 @@ This development branch adds a separate terminal monitor and an independent
 C radio backend using local Unix-domain sockets. The accepted radio behavior
 and performance remain the baseline. Following the user's request for a fair
 comparison, both the backend and `test_app` now use shared RX instrumentation.
-The RX DSP and modem profile remain the accepted baseline. Shared TX workers
+Menu 14 keeps the `main` UI layout; the additional instrumentation rows are
+shown only by the separate monitor. The RX DSP and modem profile remain the
+accepted baseline. Shared TX workers
 now park efficiently while stopped and report writer/capture diagnostics.
 
 The monitor is a Python 3 client with no radio-library dependency. It receives
@@ -16,7 +18,8 @@ Python remains suitable for this prototype and can also serve as the final
 passive monitor if measured CPU/memory cost is acceptable.
 The status protocol is independent of language, so a native C/C++ monitor can
 replace this client later. A [physical comparison with menu 14](rx-application-comparison.md)
-now measures both instrumented applications, including the Python monitor.
+records both instrumented applications, including the Python monitor, before
+the menu-14 layout was restored.
 
 The backend runs **instead of `test_app`** and owns the hardware and radio
 pipeline. It automatically starts RX using launch settings, demodulates NBFM
@@ -25,7 +28,9 @@ or mono WBFM, plays audio, and publishes status. A separate C
 mode, sample rate and squelch, plus half-duplex NBFM TX with separate frequency,
 power, rate and microphone/test-tone source, through a second Unix socket.
 Use `--start-stopped` to wait for the controller before starting reception. The
-`test_app` displays the shared counters in menu 14 and does not publish socket telemetry. The included Python
+`test_app` retains its original menu-14 display and does not publish socket
+telemetry. Shared audio/playback/reader/worker counters remain collected, but
+their added display rows have been removed from menu 14. The included Python
 demo publisher remains available for explicitly simulated data.
 
 ## Build the radio applications
@@ -298,7 +303,10 @@ The backend supplies separate measured playback counters and worker status.
 
 ### Shared RX instrumentation (2026-10-11)
 
-The backend and menu 14 obtain the same `rx_pipeline_get_stats()` snapshot:
+The backend and menu 14 obtain the same `rx_pipeline_get_stats()` snapshot.
+The backend publishes all the measurements below to the passive monitor.
+Menu 14 displays its original IQ FIFO statistics; its restored layout does
+not expose the additional audio FIFO, playback, reader or worker rows:
 
 | Measurement | Meaning |
 | --- | --- |
@@ -408,7 +416,10 @@ when disconnected. No IQ or PCM data travels through this protocol.
 
 The original standalone-monitor milestone retained the existing radio app
 unchanged. Shared instrumentation was subsequently authorized for both apps;
-the backend retains its own lifecycle and status publisher. The user has confirmed good audio and
+the backend retains its own lifecycle and status publisher. The menu-14 layout
+has since been restored to `main`, retaining the rate-counter reset guards
+and removal of misleading empty-FIFO underrun warnings. Shared counters and
+radio behavior remain in place. The user has confirmed good audio and
 normal squelch with both applications running. CPU and pipeline counters have
 now been [compared with menu 14](rx-application-comparison.md); calibrated RF
 sensitivity remains unmeasured.
@@ -435,7 +446,7 @@ The tests cover both radio register maps, partial SPI failures, exclusion of
 read-to-clear addresses, bounded clients, slow readers, permissions, cleanup,
 CLI validation, monitor quit/reconnect independence and transport-only mode.
 
-Build menu 14 with the same shared instrumentation:
+Build menu 14 with the original layout and the same shared instrumentation:
 
 ```sh
 cmake --build build --target cariboulite_test_app -j3
@@ -465,8 +476,14 @@ For a physical comparison, run the applications sequentially with RF24,
 select **1**, save the RX frequency with **G**, then start RX with **R**.
 Compare steady-state counter deltas over equal intervals, separating startup
 from reception; measure backend plus monitor CPU together. Never run both
-radio owners concurrently. A successful listening test and zero measured
-audio errors complement CPU measurements; they do not prove source continuity.
+radio owners concurrently. The comparison runner accepts both the original
+and expanded menu-14 layouts. With the restored layout, menu-14 audio FIFO,
+ALSA playback, reader and worker measurements are reported as unavailable;
+they cannot support a like-for-like health verdict. IQ queue counters, CPU,
+memory, configuration and register observations remain comparable. The backend
+continues to supply its complete instrumentation. A successful listening test
+and zero measured audio errors complement CPU measurements; they do not prove
+source continuity. See the [comparison report and reproduction limits](rx-application-comparison.md#artifacts-and-reproduction).
 
 On 2026-10-11, a 12-second live RF24/NBFM run at 430.125 MHz and 1 MS/s
 produced 60 live snapshots and confirmed the RX modem profile: `STATE=5`,

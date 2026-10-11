@@ -7,6 +7,12 @@ monitor uses 22.4% more CPU** than menu 14. The absolute difference is small:
 memory use is about **24.5% lower**. Both setups passed the measured pipeline
 health checks.
 
+These are historical measurements of the builds used for this comparison.
+The menu-14 UI included the added audio FIFO, playback, reader and worker rows
+at measurement time. Its layout has since been restored to `main`, while
+shared instrumentation remains collected. The CPU and health results below
+are unchanged; they are not measurements of the restored UI build.
+
 ## Results
 
 Means of two 90-second measurements per setup on a Raspberry Pi 4:
@@ -127,7 +133,8 @@ Matched receive settings were:
 - Noise squelch enabled, open/close RMS 0.20/0.30; carrier squelch disabled.
 - Status refresh approximately 5 Hz; both pseudo-terminals 120 rows × 240 columns.
 
-The larger terminal made every menu-14 counter visible to the recorder. The
+The larger terminal made every counter in the then-expanded menu-14 display
+visible to the recorder. The
 measured rendering workload may differ from a 57-row laptop terminal. PTY
 output was continuously drained to raw logs; terminal emulation and menu
 parsing ran after the CPU window and application shutdown. Linux process and
@@ -202,7 +209,13 @@ python3 software/libcariboulite/tools/compare_rx_applications.py \
 ```
 
 Use a fresh output directory. `--dry-run` prints the plan without starting
-hardware. The exact temporary
+hardware. The runner now also accepts the restored menu-14 layout. Its reports
+mark audio FIFO, ALSA playback, reader and worker measurements unavailable
+when those display rows are absent, rather than treating missing counters as
+zero. Such a run can compare IQ queue counters, CPU, memory, configuration and
+register observations, but cannot repeat the full menu-14 health comparison
+above. Backend snapshots still include the complete shared instrumentation.
+The exact temporary
 [clock wrapper](../build/radio-backend/comparison-20261011/clock-wrapper.py)
 used for this run is retained with the artifacts; it uses the host's existing
 `sudo` permission to set `performance` and restores the original governor in

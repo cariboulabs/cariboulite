@@ -3,8 +3,9 @@
 The comparison runner gives test_app a sufficiently large pseudo-terminal and
 feeds its output here. This small terminal canvas handles the ANSI operations
 used by ncurses, including updates split across reads. It is not a general
-terminal implementation. A missing or truncated instrumentation row rejects
-the snapshot instead of silently combining partial counters.
+terminal implementation. The original menu layout omits detailed RX counters;
+those measurements remain unavailable. Historical instrumented layouts must
+contain every instrumentation row, so partial counters are never combined.
 """
 
 import codecs
@@ -216,25 +217,8 @@ def _integers(match, names):
     return dict(zip(names, (int(value) for value in match.groups())))
 
 
-def parse_test_app_screen(text):
-    """Return backend-shaped RX statistics from a complete menu 14 screen.
-
-    Frequency values are the requested settings shown by test_app, rounded to
-    one Hz. Register observations are included separately; they are not an
-    atomic hardware snapshot. applied_cpu is unavailable from this display.
-    """
-    header = _match(r"^(HiF/RF24|S1G/RF09) \[T\] TX \[R\] RX", text, "menu 14 header")
-    channel = "RF24" if header[1] == "HiF/RF24" else "RF09"
-    rate = _match(r"^TX Power: (-?\d+) dBm  TX/RX (\d+) MS/s", text, "sample rate")
-    frequency = _match(r"^\[F\] TX ([\d.]+) MHz  \[G\] RX ([\d.]+) MHz", text, "frequency")
-    queue = _match(r"^Linux RX FIFO: (\d+) samples/frame \(10 ms\)\n"
-                   r"\s+depth: (\d+)/(\d+) \([\d.]+%\), min:(\d+) max:(\d+)\n"
-                   r"\s+puts:(\d+) gets:(\d+) drops:(\d+) tO_put:(\d+) tO_get:(\d+)\n"
-                   r"\s+rate: puts ([\d.]+)/s, gets ([\d.]+)/s", text, "RX FIFO")
-    q = dict(zip(("frame_samples", "depth", "capacity", "min_depth", "max_depth",
-                  "puts", "gets", "drops", "timeouts_put", "timeouts_get"),
-                 (int(queue[index]) for index in range(1, 11))))
-    q["rate_puts_s"], q["rate_gets_s"] = float(queue[11]), float(queue[12])
+def _parse_rx_diagnostics(text):
+    """Read the complete diagnostics block used by historical menu 14 builds."""
     audio = _match(r"^audio_fifo: (\d+)/(\d+) \([\d.]+%\) min:(\d+) max:(\d+) puts:(\d+) gets:(\d+) drops:(\d+)\n"
                    r"\s+timeouts put:(\d+) get:(\d+) shutdown put:(\d+) get:(\d+) \(FIFO counters reset by X\)",
                    text, "audio FIFO")
@@ -276,6 +260,42 @@ def parse_test_app_screen(text):
                 "mlock_error": int(schedule[10]), "query_error": int(schedule[11]),
             }
         workers[name] = worker
+    return {"audio_queue": aq, "playback": playback, "reader": reader,
+            "workers": workers, "instrumentation_available": True}
+
+
+def parse_test_app_screen(text):
+    """Return backend-shaped RX statistics from a complete menu 14 screen.
+
+    Frequency values are the requested settings shown by test_app, rounded to
+    one Hz. Register observations are included separately; they are not an
+    atomic hardware snapshot. applied_cpu is unavailable from this display.
+    Detailed RX diagnostics are unavailable in the original menu layout.
+    """
+    header = _match(r"^(HiF/RF24|S1G/RF09) \[T\] TX \[R\] RX", text, "menu 14 header")
+    channel = "RF24" if header[1] == "HiF/RF24" else "RF09"
+    rate = _match(r"^TX Power: (-?\d+) dBm  TX/RX (\d+) MS/s", text, "sample rate")
+    frequency = _match(r"^\[F\] TX ([\d.]+) MHz  \[G\] RX ([\d.]+) MHz", text, "frequency")
+    queue = _match(r"^Linux RX FIFO: (\d+) samples/frame \(10 ms\)\n"
+                   r"\s+depth: (\d+)/(\d+) \([\d.]+%\), min:(\d+) max:(\d+)\n"
+                   r"\s+puts:(\d+) gets:(\d+) drops:(\d+) tO_put:(\d+) tO_get:(\d+)\n"
+                   r"\s+rate: puts ([\d.]+)/s, gets ([\d.]+)/s", text, "RX FIFO")
+    q = dict(zip(("frame_samples", "depth", "capacity", "min_depth", "max_depth",
+                  "puts", "gets", "drops", "timeouts_put", "timeouts_get"),
+                 (int(queue[index]) for index in range(1, 11))))
+    q["rate_puts_s"], q["rate_gets_s"] = float(queue[11]), float(queue[12])
+    # A single extension marker requires the entire historical diagnostics
+    # block. Missing all markers identifies the original menu layout; it does
+    # not establish healthy playback or worker operation.
+    extended = re.search(r"^(?:audio_fifo\b|ALSA\b|RX reads\b|\s+(?:reader|demod|audio)\s+created\b)",
+                         text, re.MULTILINE)
+    if extended:
+        diagnostics = _parse_rx_diagnostics(text)
+    else:
+        diagnostics = {"audio_queue": {"valid": False}, "playback": {"valid": False},
+                       "reader": {"valid": False},
+                       "workers": {name: {"valid": False} for name in ("reader", "demod", "audio")},
+                       "instrumentation_available": False}
     mode = _match(r"^RX mode: (NBFM|WBFM mono)  \[M\] cycle", text, "RX mode")
     squelch = _match(r"^Squelch: \[N\] noise (ON|OFF|N/A \(WBFM\))  \[C\] carrier (ON|OFF)  audio (IDLE|OPEN|MUTED)$",
                      text, "squelch status")
@@ -304,8 +324,7 @@ def parse_test_app_screen(text):
         "config": {"sample_rate_hz": int(rate[2]) * 1000000,
                    "requested_frequency_hz": round(float(frequency[2]) * 1000000),
                    "tx_frequency_hz": round(float(frequency[1]) * 1000000), "tx_power_dbm": int(rate[1])},
-        "rx": {"running": squelch[3] != "IDLE", "queue": q, "audio_queue": aq,
-               "playback": playback, "reader": reader, "workers": workers,
+        "rx": {"running": squelch[3] != "IDLE", "queue": q, **diagnostics,
                "noise_enabled": squelch[1] == "ON", "carrier_enabled": squelch[2] == "ON",
                "gate_open": squelch[3] == "OPEN", "noise": noise},
         "terminal_observations": {"fpga_rx_source": int(source[1]), "smi_direction": int(direction[1]),

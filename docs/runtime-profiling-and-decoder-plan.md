@@ -63,7 +63,12 @@ are available and have passed a user listening test. Shared instrumentation
 now counts successful/failed audio enqueues, ALSA playback underruns and
 recovery, completed radio reads and worker lifetime/errors in both the backend
 and menu 14. Startup reports actual policy/priority/affinity and scheduling,
-memory-lock and query failures. See [counter definitions and comparison procedure](passive-monitor.md#shared-rx-instrumentation-2026-10-11).
+memory-lock and query failures. The menu-14 UI has since been restored to the
+`main` layout: its additional audio FIFO, playback, reader and worker rows
+have been removed, while the shared counters remain collected and the backend
+continues to publish them to the passive monitor. Counter-reset rate guards
+and corrected empty-FIFO diagnostics remain in menu 14.
+See [counter definitions and comparison procedure](passive-monitor.md#shared-rx-instrumentation-2026-10-11).
 The table above records the original review: source discontinuity metadata,
 kernel overflow telemetry, detailed stage latency, capture-side ALSA counters
 and coordinated fault recovery remain open work. A
@@ -101,6 +106,9 @@ RX DSP cost was essentially unchanged. All four measurement windows had
 zero recorded application queue drops, ALSA underruns and RX errors, with
 kernel `missed:0` observations. These short, fixed-frequency measurements do
 not establish worst-case latency, FPGA continuity or future decoder budgets.
+These historical results used the expanded menu-14 instrumentation display.
+A new comparison with the restored UI must report its undisplayed audio,
+reader and worker measurements as unavailable and measure CPU again.
 
 The user proposes operating TX/RX, mode, squelch, frequencies, sample rate and
 bandwidth in one terminal while watching menu-14-style instrumentation in

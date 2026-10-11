@@ -19,7 +19,6 @@
 #include <assert.h>
 #include <stddef.h>   // if you want offsetof
 #include <stdint.h>
-#include <inttypes.h>
 #include "alsa_sink.h"
 
 _Static_assert(sizeof(caribou_smi_sample_complex_int16) == 4,
@@ -54,21 +53,6 @@ _Static_assert(CARIBOU_SMI_BYTES_PER_SAMPLE == sizeof(caribou_smi_sample_complex
 #include <sched.h>
 #include <sys/mman.h>
 #include <sys/select.h> 
-
-static void print_rx_worker_status(const char* name, const rx_worker_status_t* worker)
-{
-    const pipeline_thread_status_t* s = &worker->scheduling;
-    printw("    %-6s created:%d alive:%d last:%d ", name, worker->created, worker->alive, worker->last_error);
-    if (!s->valid) {
-        printw("scheduling:unavailable\n");
-        return;
-    }
-    printw("%s/%d cpu:%s%s req:FIFO/%d cpu:%d err RT:%d fallback:%d affinity:%d mlock:%s/%d query:%d\n",
-        pipeline_scheduler_policy_name(s->policy), s->priority,
-        s->affinity[0] ? s->affinity : "?", s->affinity_truncated ? ",..." : "",
-        s->requested_priority, s->requested_cpu, s->rt_error, s->fallback_error,
-        s->affinity_error, s->mlock_attempted ? "tried" : "skipped", s->mlock_error, s->query_error);
-}
 
 //=================================================
 typedef enum
@@ -1571,28 +1555,6 @@ void monitor_modem_status(sys_st *sys)
         if (srx.drops > 0)               printw("    NOTE: Overwrites occurred (demod slower than reader)\n");
         if (srx.timeouts_put > 0)        printw("    NOTE: Reader timed out waiting to enqueue\n");
         if (srx.timeouts_get > 0)        printw("    NOTE: Demod timed out waiting for frames\n");
-
-        const aud10_stats_t* aq = &rst.audioq;
-        printw("audio_fifo: %zu/%zu (%.0f%%) min:%zu max:%zu puts:%zu gets:%zu drops:%zu\n",
-            aq->count, aq->cap, aq->cap ? 100.0 * aq->count / aq->cap : 0.0,
-            aq->min_depth, aq->max_depth, aq->puts, aq->gets, aq->drops);
-        printw("    timeouts put:%zu get:%zu shutdown put:%zu get:%zu (FIFO counters reset by X)\n",
-            aq->timeouts_put, aq->timeouts_get, aq->shutdown_puts, aq->shutdown_gets);
-        if (rst.playback_valid) {
-            const audio_sink_stats_t* a = &rst.playback;
-            printw("ALSA: written:%" PRIu64 " submitted:%" PRIu64 " calls:%" PRIu64 " partial:%" PRIu64 " again:%" PRIu64 " zero:%" PRIu64 "\n",
-                a->frames_written, a->frames_requested, a->write_calls,
-                a->partial_writes, a->would_block, a->zero_writes);
-            printw("    underruns:%" PRIu64 " recovery:%" PRIu64 "/%" PRIu64 " failed:%" PRIu64 " write_errors:%" PRIu64 " last:%d (lifetime)\n",
-                a->underruns, a->recovery_successes, a->recovery_attempts,
-                a->recovery_failures, a->write_errors, a->last_error);
-        } else printw("ALSA playback counters: unavailable\n");
-        printw("RX reads: calls:%" PRIu64 " samples:%" PRIu64 " short:%" PRIu64 " zero:%" PRIu64 " errors:%" PRIu64 " last:%d (lifetime)\n",
-            rst.reader.calls, rst.reader.samples, rst.reader.short_reads,
-            rst.reader.zero_reads, rst.reader.errors, rst.reader.last_error);
-        print_rx_worker_status("reader", &rst.reader_worker);
-        print_rx_worker_status("demod", &rst.demod_worker);
-        print_rx_worker_status("audio", &rst.audio_worker);
 
         printw("RX mode: %s  [M] cycle (TX/RX/loopback stopped); TX mode: NBFM\n",
             rxpar.mode == AUDIO_DEMOD_WBFM ? "WBFM mono" : "NBFM");

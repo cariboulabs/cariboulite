@@ -637,3 +637,30 @@ Reproduce the shared-pipeline checks with:
 python3 software/libcariboulite/tests/test_rx_lifecycle.py
 python3 software/libcariboulite/tests/test_wbfm_demod.py
 ```
+
+## Restore the menu-14 UI baseline (2026-10-11)
+
+For merging this branch into `main`, the user requested the original
+`app_menu` screen layout. The added audio FIFO, ALSA playback, RX reader and
+worker/scheduling rows have been removed from menu 14. The existing rate
+counter guards remain so resetting counters does not produce invalid rates;
+an empty FIFO is no longer labelled as proof of an underrun. Apart from these
+diagnostic corrections, the menu layout matches `main`.
+
+Shared RX/TX instrumentation, modem and DSP improvements, Quindar behavior
+and the separate backend/controller/monitor remain in place. The backend
+continues to publish full instrumentation to the passive monitor. Menu 14
+still obtains the shared snapshot, but only displays its original IQ FIFO
+statistics and status rows.
+
+The [application comparison](rx-application-comparison.md) remains a record
+of its instrumented builds and expanded menu-14 display. Its measurements
+have not been repeated for the restored UI. The comparison tools accept the
+original layout and explicitly report its undisplayed audio FIFO, playback,
+reader and worker measurements as unavailable. No new physical listening,
+CPU or pipeline-health results are established by this UI restoration.
+
+Validation passed the `cariboulite_test_app` build, hardware-free RX/TX
+lifecycle and loopback checks, and 27 comparison parser/collector checks.
+Replaying one archived instrumented comparison also reproduced its 433
+snapshots and original IQ/audio/playback/reader counter deltas.

@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import compare_rx_applications as runner
-from test_rx_comparison_screen import SCREEN, paint
+from test_rx_comparison_screen import BASELINE_SCREEN, SCREEN, paint
 
 
 def stat_line(name="radio (receiver)", ticks=100, start=77):
@@ -118,6 +118,106 @@ class ComparisonRunnerTests(unittest.TestCase):
         broken = SCREEN.replace("calls:1010", "calls:1011").replace("reader created:1 alive:1", "reader created:1 alive:0")
         with self.assertRaisesRegex(RuntimeError, "worker exited"):
             self.replay([(1, paint(SCREEN)), (2, paint(broken))])
+
+    def test_original_layout_checks_settings_and_routing_without_audio_diagnostics(self):
+        original = runner.parse_test_app_screen(BASELINE_SCREEN)
+        runner.check_settings(original, self.args)
+        changes = (("frequency", lambda r: r["config"].update(requested_frequency_hz=430100000)),
+                   ("rate", lambda r: r["config"].update(sample_rate_hz=2000000)),
+                   ("channel", lambda r: r.update(channel="RF09")),
+                   ("mode", lambda r: r.update(rx_mode="WBFM mono")),
+                   ("idle", lambda r: r["rx"].update(running=False)),
+                   ("noise disabled", lambda r: r["rx"].update(noise_enabled=False)),
+                   ("carrier enabled", lambda r: r["rx"].update(carrier_enabled=True)),
+                   ("thresholds", lambda r: r["rx"]["noise"].update(open_rms=.25)),
+                   ("radio state", lambda r: r["terminal_observations"]["registers"].update(STATE=2)),
+                   ("analog bandwidth", lambda r: r["terminal_observations"]["registers"].update(RXBWC=0x1b)),
+                   ("digital cutoff", lambda r: r["terminal_observations"]["registers"].update(RXDFE=0x84)),
+                   ("AGC", lambda r: r["terminal_observations"]["registers"].update(AGCC=0)),
+                   ("RX source", lambda r: r["terminal_observations"].update(fpga_rx_source=0)),
+                   ("direction", lambda r: r["terminal_observations"].update(smi_direction=0)))
+        for name, change in changes:
+            with self.subTest(change=name), self.assertRaises(RuntimeError):
+                record = copy.deepcopy(original)
+                change(record)
+                runner.check_settings(record, self.args)
+
+    def test_missing_playback_and_worker_exit_remain_faults_for_instrumented_sources(self):
+        instrumented = runner.parse_test_app_screen(SCREEN)
+        instrumented["rx"]["playback"] = {"valid": False}
+        with self.assertRaisesRegex(RuntimeError, "Playback instrumentation unavailable"):
+            runner.check_settings(instrumented, self.args)
+        # A backend cannot opt out of health checks using the menu-only flag.
+        backend = runner.parse_test_app_screen(SCREEN)
+        observations = backend.pop("terminal_observations")
+        backend["hardware"] = {"rf24": {"registers": observations["registers"]}}
+        backend["rx"]["instrumentation_available"] = False
+        backend["rx"]["playback"] = {"valid": False}
+        with self.assertRaisesRegex(RuntimeError, "Playback instrumentation unavailable"):
+            runner.check_settings(backend, self.args)
+        backend["rx"]["playback"] = {"valid": True}
+        backend["rx"]["workers"]["reader"]["alive"] = False
+        with self.assertRaisesRegex(RuntimeError, "worker exited"):
+            runner.check_settings(backend, self.args)
+
+    def test_original_layout_offline_freshness_uses_iq_puts_and_seeds_before_window(self):
+        second = BASELINE_SCREEN.replace("puts:1007 gets:1006", "puts:1008 gets:1007")
+        third = second.replace("puts:1008 gets:1007", "puts:1009 gets:1008")
+        partial = paint(third)
+        split = partial.index("RX mode:")
+        records, screens = self.replay([(1, paint(BASELINE_SCREEN)), (2, paint(BASELINE_SCREEN)),
+            (3, paint(second)), (4, partial[:split]), (4.1, partial[split:]),
+            (5, paint(third.replace("puts:1009 gets:1008", "puts:1010 gets:1009")))])
+        self.assertEqual([row["monotonic_s"] for row in records], [3, 4.1])
+        self.assertEqual([row["rx"]["queue"]["puts"] for row in records], [1008, 1009])
+        self.assertTrue(all(row["rx"]["reader"] == {"valid": False} for row in records))
+        self.assertTrue(all(1.5 <= row["monotonic_s"] <= 4.5 for row in screens))
+
+    def test_original_layout_offline_routing_fault_is_rejected(self):
+        broken = BASELINE_SCREEN.replace("puts:1007 gets:1006", "puts:1008 gets:1007")
+        broken = broken.replace("SMI DIRECTION: 1", "SMI DIRECTION: 0")
+        with self.assertRaisesRegex(RuntimeError, "FPGA RX source/direction"):
+            self.replay([(1, paint(BASELINE_SCREEN)), (2, paint(broken))])
+
+    def test_original_layout_summary_preserves_unavailable_measurements(self):
+        first = runner.parse_test_app_screen(BASELINE_SCREEN)
+        first["monotonic_s"] = 1
+        last = copy.deepcopy(first)
+        last["monotonic_s"] = 2
+        last["rx"]["queue"].update(puts=1012, gets=1011, drops=3)
+        summary = runner.summarize_records([first, last])
+        self.assertEqual(summary["queue"]["delta"]["puts"], 5)
+        self.assertEqual(summary["queue"]["delta"]["drops"], 1)
+        for name in ("audio_queue", "playback", "reader"):
+            self.assertEqual(summary[name], {"valid": False})
+            self.assertNotIn("delta", summary[name])
+        self.assertEqual(summary["workers"], first["rx"]["workers"])
+
+    def test_mixed_availability_summary_cannot_claim_full_window_audio_health(self):
+        first = runner.parse_test_app_screen(BASELINE_SCREEN)
+        first["monotonic_s"] = 1
+        last = runner.parse_test_app_screen(SCREEN)
+        last["monotonic_s"] = 2
+        summary = runner.summarize_records([first, last])
+        for name in ("audio_queue", "playback", "reader"):
+            self.assertEqual(summary[name], {"valid": False})
+        self.assertTrue(all(worker == {"valid": False} for worker in summary["workers"].values()))
+
+    def test_instrumented_summary_keeps_real_deltas_and_rejects_counter_resets(self):
+        first = runner.parse_test_app_screen(SCREEN)
+        first["monotonic_s"] = 1
+        last = copy.deepcopy(first)
+        last["monotonic_s"] = 2
+        last["rx"]["audio_queue"]["drops"] += 2
+        last["rx"]["playback"]["underruns"] += 3
+        last["rx"]["reader"]["errors"] += 4
+        summary = runner.summarize_records([first, last])
+        self.assertEqual(summary["audio_queue"]["delta"]["drops"], 2)
+        self.assertEqual(summary["playback"]["delta"]["underruns"], 3)
+        self.assertEqual(summary["reader"]["delta"]["errors"], 4)
+        last["rx"]["queue"]["puts"] = 0
+        with self.assertRaisesRegex(RuntimeError, "Counters reset"):
+            runner.summarize_records([first, last])
 
     def test_truncated_capture_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:

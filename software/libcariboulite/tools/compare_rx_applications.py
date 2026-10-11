@@ -3,6 +3,8 @@
 
 Uses real radio hardware sequentially, never starts TX, and records no IQ.
 The existing audio bridges remain in place. Run only after stopping radio apps.
+The original menu layout exposes IQ FIFO counters; detailed audio and worker
+measurements are unavailable there, and remain fully checked for the backend.
 """
 import argparse
 from datetime import datetime
@@ -184,6 +186,8 @@ def assert_radio_idle():
 
 def check_settings(record, args, health=True):
     config, rx = record["config"], record["rx"]
+    observations = record.get("terminal_observations")
+    baseline_menu = observations is not None and rx.get("instrumentation_available") is False
     if record["channel"] != "RF24" or config["sample_rate_hz"] != args.sample_rate:
         raise RuntimeError("Unexpected radio channel/sample rate")
     frequency = config.get("rx_frequency_hz", config.get("requested_frequency_hz"))
@@ -191,11 +195,11 @@ def check_settings(record, args, health=True):
         raise RuntimeError("Unexpected RX frequency/mode")
     if not rx["running"] or not rx["noise_enabled"] or rx["carrier_enabled"]:
         raise RuntimeError("Unexpected RX or squelch state")
-    if not rx["playback"]["valid"]: raise RuntimeError("Playback instrumentation unavailable")
+    if not baseline_menu and not rx["playback"]["valid"]:
+        raise RuntimeError("Playback instrumentation unavailable")
     noise = rx["noise"]
     if abs(noise["open_rms"]-.20) > .001 or abs(noise["close_rms"]-.30) > .001:
         raise RuntimeError("Unexpected noise squelch thresholds")
-    observations = record.get("terminal_observations")
     registers = observations["registers"] if observations else record["hardware"]["rf24"]["registers"]
     expected_rx_dfe = {1000000:4, 2000000:2, 4000000:1}[args.sample_rate]
     if (registers["STATE"] & 7 != 5 or registers["RXBWC"] & 0x3f != 0x10
@@ -206,7 +210,7 @@ def check_settings(record, args, health=True):
         raise RuntimeError("Unexpected FPGA RX source/direction")
     if health:
         if record.get("state", "RX") != "RX": raise RuntimeError("Backend reported a receive fault")
-        if any(not w["created"] or not w["alive"] for w in rx["workers"].values()):
+        if not baseline_menu and any(not w["created"] or not w["alive"] for w in rx["workers"].values()):
             raise RuntimeError("A receive worker exited during comparison")
 
 
@@ -233,12 +237,18 @@ def summarize_records(records):
     seconds = last["monotonic_s"]-first["monotonic_s"]
     result = dict(snapshots=len(records), snapshot_interval_s=seconds, settings=last["config"],
                   workers=last["rx"]["workers"], gate_open_snapshots=sum(bool(r["rx"]["gate_open"]) for r in records))
+    result["workers"] = {name: ({"valid": False} if any(
+        r["rx"]["workers"][name].get("valid") is False for r in records) else worker)
+        for name, worker in last["rx"]["workers"].items()}
     for section, keys in (
         ("queue", ("puts", "gets", "drops", "timeouts_put", "timeouts_get")),
         ("audio_queue", ("puts", "gets", "drops", "timeouts_put", "timeouts_get", "shutdown_puts", "shutdown_gets")),
         ("playback", ("write_calls", "frames_requested", "frames_written", "partial_writes", "would_block", "zero_writes", "underruns", "recovery_attempts", "recovery_successes", "recovery_failures", "write_errors")),
         ("reader", ("calls", "samples", "short_reads", "zero_reads", "errors"))):
         begin, end = first["rx"][section], last["rx"][section]
+        if any(r["rx"][section].get("valid") is False for r in records):
+            result[section] = {"valid": False}
+            continue
         delta = {key:end[key]-begin[key] for key in keys}
         if any(value < 0 for value in delta.values()): raise RuntimeError("Counters reset during measurement")
         result[section] = dict(delta=delta, first=begin, last=end)
@@ -253,14 +263,15 @@ def summarize_records(records):
 def reconstruct_terminal(path, chunks, rows, columns, start, stop, args=None):
     """Decode already-drained logs after CPU sampling and radio cleanup.
 
-    Pre-window chunks establish the canvas and last reader count, but cannot
+    Pre-window chunks establish the canvas and last progress count, but cannot
     become measured snapshots. Each measured snapshot must contain a fresh
-    reader count and uses its PTY read timestamp. Menu 14 still describes
+    reader count, or IQ FIFO put count for the original layout, and uses its
+    PTY read timestamp. Menu 14 still describes
     adjacent instants, rather than an atomic pipeline transaction.
     """
     screen = TerminalScreen(rows=rows, columns=columns)
     records, screenshots = [], []
-    last_calls = None
+    last_progress = None
     next_screen = start
     with path.open("rb") as log:
         for chunk in chunks:
@@ -278,9 +289,12 @@ def reconstruct_terminal(path, chunks, rows, columns, start, stop, args=None):
             if args is None: continue
             try: record = parse_test_app_screen(text)
             except IncompleteScreenError: continue
-            calls = record["rx"]["reader"]["calls"]
-            fresh = last_calls is None or calls != last_calls
-            last_calls = calls
+            rx = record["rx"]
+            progress = (("queue.puts", rx["queue"]["puts"])
+                        if rx["instrumentation_available"] is False
+                        else ("reader.calls", rx["reader"]["calls"]))
+            fresh = last_progress is None or progress != last_progress
+            last_progress = progress
             if stamp < start or not fresh: continue
             check_settings(record, args)
             record["monotonic_s"] = stamp
@@ -460,6 +474,7 @@ def main():
         terminal=dict(rows=args.rows, columns=args.columns), logical_cpus=os.cpu_count(),
         extra_backend_status_client=True, IQ_capture=False,
         terminal_decoding="offline after CPU snapshots and application exit",
+        menu14_diagnostics="IQ FIFO counters; audio/playback/reader/worker measurements unavailable in the original layout",
         note="Live RF is uncontrolled. CPU excludes the measured profiler process; both PTYs are continuously drained and timestamped without terminal emulation during measurement.")
     print(json.dumps(plan, indent=2), flush=True)
     if args.dry_run: return 0

@@ -46,18 +46,54 @@ Higher noise thresholds admit noisier signals; levels can change during RX.
 TX/RX rate selected. [T] starts TX; [R] starts RX.
 """
 
+# The restored layout differs only by removing the added diagnostics block.
+BASELINE_SCREEN = SCREEN[:SCREEN.index("audio_fifo:")] + SCREEN[SCREEN.index("RX mode:"):]
+
 
 def paint(text):
     return "\x1b[H\x1b[2J" + text.replace("\n", "\r\n")
 
 
 class ComparisonScreenTests(unittest.TestCase):
+    def test_original_layout_marks_omitted_measurements_unavailable(self):
+        value = parse_test_app_screen(BASELINE_SCREEN)
+        self.assertEqual(value["channel"], "RF24")
+        self.assertEqual(value["config"]["requested_frequency_hz"], 430125000)
+        rx = value["rx"]
+        self.assertTrue(rx["running"])
+        self.assertEqual(rx["queue"]["puts"], 1007)
+        self.assertEqual(rx["queue"]["drops"], 2)
+        self.assertFalse(rx["instrumentation_available"])
+        for name in ("audio_queue", "playback", "reader"):
+            self.assertEqual(rx[name], {"valid": False})
+        self.assertEqual(rx["workers"], {name: {"valid": False}
+                                        for name in ("reader", "demod", "audio")})
+
+    def test_any_extension_marker_requires_the_complete_diagnostics_block(self):
+        markers = (next(row for row in SCREEN.splitlines() if row.startswith("audio_fifo:")),
+                   "ALSA playback counters: unavailable",
+                   next(row for row in SCREEN.splitlines() if row.startswith("RX reads:")),
+                   next(row for row in SCREEN.splitlines() if "reader created:" in row),
+                   next(row for row in SCREEN.splitlines() if "demod  created:" in row),
+                   next(row for row in SCREEN.splitlines() if "audio  created:" in row))
+        for marker in markers:
+            with self.subTest(marker=marker), self.assertRaises(IncompleteScreenError):
+                parse_test_app_screen(BASELINE_SCREEN.replace("RX mode:", marker + "\nRX mode:"))
+
+    def test_original_layout_still_rejects_missing_or_truncated_status(self):
+        for value in (BASELINE_SCREEN.split("Noise RMS")[0],
+                      BASELINE_SCREEN.replace("tO_get:5", "tO_get:", 1),
+                      BASELINE_SCREEN.replace("RF24-STATE :0x05", "RF24-STATE :")):
+            with self.subTest(value=value), self.assertRaises(IncompleteScreenError):
+                parse_test_app_screen(value)
+
     def test_parse_nonzero_counters_and_settings(self):
         value = parse_test_app_screen(SCREEN)
         self.assertEqual(value["channel"], "RF24")
         self.assertEqual(value["config"]["sample_rate_hz"], 1000000)
         self.assertEqual(value["config"]["requested_frequency_hz"], 430125000)
         rx = value["rx"]
+        self.assertTrue(rx["instrumentation_available"])
         self.assertTrue(rx["running"])
         self.assertFalse(rx["gate_open"])
         self.assertEqual(rx["queue"]["puts"], 1007)
