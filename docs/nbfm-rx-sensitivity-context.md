@@ -399,3 +399,55 @@ keeps one process in charge of the radio and pipelines, with serialized control
 commands and cached, nonblocking status for observers. This is feasible with
 modest expected IPC/display overhead, pending measurement; it is recorded as
 a proposed roadmap item rather than an implemented feature.
+
+## AGCC/AGCS interpretation and proposed display (2026-10-11)
+
+`AGCS.TGT` is an unsigned three-bit selection code. Its engineering value is
+`target_dBFS = -21 - 3 * TGT`, giving −21 through −42 dB relative to ADC full
+scale. The negative sign means below the converter reference. This is distinct
+from antenna-port RSSI in dBm and from the receiver gain code. For the same
+input, changing −30 to −21 dB requests a 9 dB higher internal signal level;
+finite gain and 3 dB steps prevent exact regulation in all conditions.
+
+The datasheet describes the target as a tradeoff between interferer headroom
+and data-path SNR/fade margin. Refer to §§6.2.3 and 6.2.5.3–4 of the
+[AT86RF215 datasheet](https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/DataSheets/Atmel-42415-WIRELESS-AT86RF215_Datasheet.pdf).
+
+Compact bit layouts, most significant bit first:
+
+```text
+AGCC [7..0]: reserved | AGCI | AVGS[1:0] | RST | FRZS | FRZC | EN
+AGCS [7..0]: TGT[2:0] | GCW[4:0]
+```
+
+`EN` selects automatic/manual gain; `FRZC` requests hold and `FRZS` reports
+actual hold. `RST` is a self-clearing reset command. `AGCI=0/1` selects
+filtered/unfiltered measurement; `AVGS=0/1/2/3` selects 8/16/32/64 samples.
+With AGC enabled, `GCW` reports current gain; each step changes gain by 3 dB.
+Its bandwidth-dependent maximum is 21/22/23 for BW codes 0–5/6–8/9–11.
+
+A proposed two-line display, using the fresh capture's RF24 register values:
+
+```text
+RF24 AGCC=0x01 EN=1 FRZC=0 FRZS=0 RST=0 AVGS=0(8) AGCI=0(FILT)
+     AGCS=0x15 TGT=0(-21dBFS) GCW=21/21(MAX)
+```
+
+Retain raw bytes and decode existing readings; no extra register polling is
+needed. `GCW=21/21` identifies maximum gain for the 160 kHz NBFM profile and
+does not label a calibrated absolute gain. Invalid register reads should show
+unavailable fields rather than decoded zero values. This remains a display
+proposal; the menu display has not been changed.
+
+The AGC decoder corrections are implemented: AGCI uses its one-bit mask,
+AVGS preserves both bits with `& 3`, and RST uses `& 1` to exclude AVGS.
+The final target enum is now `at86rf215_radio_agc_relative_atten_42_db = 7`,
+matching the −42 dB selection. These correct readback interpretation and
+naming; configured AGC targets and gain settings are unchanged. Menu 14's
+existing raw-byte display does not use the helper.
+
+Hardware-free verification of the actual getter passed 131,088 cases across
+RF09 and RF24, including every two-byte register combination, targeted field
+isolation checks and a compile-time assertion that the renamed enum is code 7.
+The same register cases exposed failures in the previous decoder. The app and
+shared library rebuilt successfully; no physical RX/TX test was performed.

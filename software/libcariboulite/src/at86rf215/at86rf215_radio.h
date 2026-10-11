@@ -131,7 +131,7 @@ typedef enum
     at86rf215_radio_agc_relative_atten_33_db = 4,
     at86rf215_radio_agc_relative_atten_36_db = 5,
     at86rf215_radio_agc_relative_atten_39_db = 6,
-    at86rf215_radio_agc_relative_atten_41_db = 7,
+    at86rf215_radio_agc_relative_atten_42_db = 7,
 } at86rf215_radio_agc_relative_atten_en;
 
 typedef struct
