@@ -58,6 +58,25 @@ audio fading and an event indicating what happened.
 
 ## Separate control and instrumentation terminals (2026-10-11)
 
+Implementation update: the separate C RX-only backend and passive monitor
+are available and have passed a user listening test. Shared instrumentation
+now counts successful/failed audio enqueues, ALSA playback underruns and
+recovery, completed radio reads and worker lifetime/errors in both the backend
+and menu 14. Startup reports actual policy/priority/affinity and scheduling,
+memory-lock and query failures. See [counter definitions and comparison procedure](passive-monitor.md#shared-rx-instrumentation-2026-10-11).
+The table above records the original review: source discontinuity metadata,
+kernel overflow telemetry, detailed stage latency, capture-side ALSA counters
+and coordinated fault recovery remain open work. A separate control client
+has not been implemented.
+
+A [physical NBFM application comparison](rx-application-comparison.md) now
+provides a 1 MS/s baseline for both instrumented applications. Menu 14 used
+7.90% of one core; backend plus monitor used 9.66% (6.14% + 3.53%). The shared
+RX DSP cost was essentially unchanged. All four measurement windows had
+zero recorded application queue drops, ALSA underruns and RX errors, with
+kernel `missed:0` observations. These short, fixed-frequency measurements do
+not establish worst-case latency, FPGA continuity or future decoder budgets.
+
 The user proposes operating TX/RX, mode, squelch, frequencies, sample rate and
 bandwidth in one terminal while watching menu-14-style instrumentation in
 another. This is feasible with one radio-owning process and separate local

@@ -135,6 +135,81 @@ def source_label(snapshot):
     return source
 
 
+def _integer(value, nonnegative=False):
+    if type(value) is int and (not nonnegative or value >= 0):
+        return str(value)
+    return "unavailable"
+
+
+def _counter(section, key):
+    return _integer(section.get(key), nonnegative=True)
+
+
+def _format_rx_instrumentation(rx):
+    """Optional version 1 extensions; absent counters never imply zero errors."""
+    lines = []
+    if "audio_queue" in rx:
+        queue = _mapping(rx["audio_queue"])
+        lines += [
+            f"RX audio FIFO: {_counter(queue, 'depth')}/{_counter(queue, 'capacity')}"
+            f"  min/max={_counter(queue, 'min_depth')}/{_counter(queue, 'max_depth')}"
+            f"  puts/gets={_counter(queue, 'puts')}/{_counter(queue, 'gets')}",
+            f"  drops={_counter(queue, 'drops')}"
+            f"  put/get timeouts={_counter(queue, 'timeouts_put')}/{_counter(queue, 'timeouts_get')}"
+            f"  shutdown put/get={_counter(queue, 'shutdown_puts')}/{_counter(queue, 'shutdown_gets')}",
+        ]
+    if "playback" in rx:
+        playback = _mapping(rx["playback"])
+        if playback.get("valid") is True:
+            lines += [
+                f"Playback: calls={_counter(playback, 'write_calls')}"
+                f"  frames(req/written)={_counter(playback, 'frames_requested')}/"
+                f"{_counter(playback, 'frames_written')}"
+                f"  partial={_counter(playback, 'partial_writes')}"
+                f"  would_block={_counter(playback, 'would_block')}"
+                f"  zero={_counter(playback, 'zero_writes')}",
+                f"  underruns={_counter(playback, 'underruns')}"
+                f"  recovery(attempt/ok/fail)={_counter(playback, 'recovery_attempts')}/"
+                f"{_counter(playback, 'recovery_successes')}/{_counter(playback, 'recovery_failures')}"
+                f"  errors={_counter(playback, 'write_errors')}"
+                f"  last_error={_integer(playback.get('last_error'))}",
+            ]
+        else:
+            lines += ["Playback: unavailable", "  ALSA counters unavailable"]
+    if "reader" in rx:
+        reader = _mapping(rx["reader"])
+        lines.append(
+            f"RX reader: calls={_counter(reader, 'calls')}"
+            f"  samples={_counter(reader, 'samples')}"
+            f"  short/zero reads={_counter(reader, 'short_reads')}/{_counter(reader, 'zero_reads')}"
+            f"  errors={_counter(reader, 'errors')}"
+            f"  last_error={_integer(reader.get('last_error'))}"
+        )
+    if "workers" in rx:
+        workers = _mapping(rx["workers"])
+        for name in ("reader", "demod", "audio"):
+            worker = _mapping(workers.get(name))
+            scheduling = _mapping(worker.get("scheduling"))
+            valid = scheduling.get("valid") is True
+            policy = _label(scheduling.get("policy_name"), "unavailable") if valid else "unavailable"
+            priority = _integer(scheduling.get("priority")) if valid else "unavailable"
+            affinity = _label(scheduling.get("affinity"), "unavailable") if valid else "unavailable"
+            errors = "/".join(_integer(scheduling.get(key)) for key in
+                              ("rt_error", "fallback_error", "affinity_error", "mlock_error", "query_error"))
+            lines.append(
+                f"{name} worker: alive={_on(worker.get('alive'))}"
+                f" created={_on(worker.get('created'))}"
+                f" last_error={_integer(worker.get('last_error'))}"
+                f" sched={policy}/{priority}"
+                f" req={_integer(scheduling.get('requested_priority'))}"
+                f" cpu(req/applied)={_integer(scheduling.get('requested_cpu'))}/"
+                f"{_integer(scheduling.get('applied_cpu'))} affinity={affinity}"
+                f" errors(rt/fb/cpu/lock/query)={errors}"
+                f" mlock={_on(scheduling.get('mlock_attempted'))}"
+            )
+    return lines
+
+
 def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
     """Return readable cached telemetry, tolerating unavailable fields."""
     now = time.monotonic() if now is None else now
@@ -179,6 +254,7 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
         rate = rates.get(name.lower())
         if rate:
             lines.append(f"  put/get rate={rate[0]:.1f}/{rate[1]:.1f} frames/s")
+    lines.extend(_format_rx_instrumentation(rx))
     lines += [
         "",
         f"Squelch: noise={_on(rx.get('noise_enabled'))}"

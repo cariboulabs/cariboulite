@@ -19,9 +19,19 @@ static double phase;
 static const char* test_sink_state(audio_sink_t* sink) { (void)sink; return "TEST"; }
 static const audio_sink_ops_t test_sink_ops = {.state=test_sink_state};
 int set_rt_and_affinity_prio(int prio, int cpu) { (void)prio; (void)cpu; return 0; }
+int set_rt_and_affinity_prio_record(int prio, int cpu, pipeline_thread_diagnostics_t* d)
+{
+    if (d) {
+        d->status=(pipeline_thread_status_t){.valid=true,.requested_priority=prio,
+            .requested_cpu=cpu,.applied_cpu=cpu,.policy=SCHED_OTHER,.priority=0};
+        atomic_store_explicit(&d->ready,true,memory_order_release);
+    }
+    return set_rt_and_affinity_prio(prio,cpu);
+}
 bool rf10_fifo_get(rf10_fifo_t* f, rf10_frame_t* frame, int timeout)
 {
     (void)f; (void)timeout;
+    assert(worker && atomic_load(&worker->alive));
     if (block == 240) { worker->active = false; return false; }
     unsigned stage = block / 60;
     if (block % 60 == 59) {
@@ -190,6 +200,9 @@ static void integration(void)
         .pcm_gain=8000,.deemph_tau=50e-6f};
     unsigned flags = mode == 4 ? 0 : mode == 0 || mode == 5 || mode == 6 ? RX_SQUELCH_NOISE :
         mode == 1 ? RX_SQUELCH_CARRIER : RX_SQUELCH_NOISE|RX_SQUELCH_CARRIER;
+    atomic_init(&c.alive,false);
+    atomic_init(&c.last_error,0);
+    atomic_init(&c.scheduling.ready,false);
     atomic_init(&c.squelch_flags, flags);
     atomic_init(&c.squelch_open, 0);
     atomic_init(&c.noise_squelch_levels, 0); // existing/offline callers retain defaults
@@ -204,6 +217,7 @@ static void integration(void)
     memset(rms, 0, sizeof(rms)); memset(detector_open, 0, sizeof(detector_open));
     memset(metric_valid, 0, sizeof(metric_valid)); memset(effective_open, 0, sizeof(effective_open));
     nbfm_demod_thread(&c);
+    assert(!atomic_load(&c.alive) && atomic_load(&c.scheduling.ready));
     assert(out_block>=239); // closed squelch must still enqueue audio on time
     if (mode < 4 || mode == 6) {
         assert(energy[0]>1e8 && energy[1]==0 && energy[2]>1e8);

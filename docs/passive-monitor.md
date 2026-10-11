@@ -1,10 +1,10 @@
 # Standalone passive monitor
 
 This development branch adds a separate terminal monitor and an independent
-C RX backend using a local Unix-domain socket. The existing `test_app`, menu 14,
-radio controls, DSP, hardware polling, scheduling and build configuration
-remain unchanged.
-Their current behavior and performance are the baseline.
+C RX backend using a local Unix-domain socket. The accepted radio behavior
+and performance remain the baseline. Following the user's request for a fair
+comparison, both the backend and `test_app` now use shared RX instrumentation.
+DSP, radio settings, scheduling requests and recovery behavior are unchanged.
 
 The monitor is a Python 3 client with no radio-library dependency. It receives
 status snapshots and displays them; it sends no commands and never opens SPI,
@@ -14,14 +14,14 @@ The radio-owning backend uses C and the existing radio library and RX DSP.
 Python remains suitable for this prototype and can also serve as the final
 passive monitor if measured CPU/memory cost is acceptable.
 The status protocol is independent of language, so a native C/C++ monitor can
-replace this client later. CPU overhead relative to the baseline has not yet
-been profiled.
+replace this client later. A [physical comparison with menu 14](rx-application-comparison.md)
+now measures both instrumented applications, including the Python monitor.
 
 The backend runs **instead of `test_app`** and owns the hardware and receive
 pipeline. It automatically starts RX using launch settings, demodulates NBFM
 or mono WBFM, plays audio, and publishes status. This first backend has no TX
 or interactive radio controls; restart it to change launch settings. The
-unchanged `test_app` does not publish socket telemetry. The included Python
+`test_app` displays the shared counters in menu 14 and does not publish socket telemetry. The included Python
 demo publisher remains available for explicitly simulated data.
 
 ## Build the independent RX backend
@@ -33,14 +33,13 @@ make -C software/libcariboulite/tools/radio_backend
 ```
 
 This creates `build/radio-backend/cariboulite_rx_backend`. The separate build
-reuses the existing `build/libcariboulite.so` and compiles the unchanged RX
+reuses the existing `build/libcariboulite.so` and compiles the shared RX
 pipeline, workers, DSP and ALSA adapter into the new executable. It does not
 modify the existing CMake configuration or rebuild or replace `test_app`.
-For the backend only, a generated compilation copy of the demodulator worker
-expands the diagnostic label `aud_fifo` to `audio_fifo`; its processing and
-rate controller are unchanged. Rebuilding replaces the backend executable
-atomically and does not restart a running instance. Label changes appear
-after the next backend restart.
+The shared worker now spells its diagnostic label `audio_fifo` in both apps
+and labels its PCM count `produced_frames`, distinct from accepted playback.
+Rebuilding replaces the backend executable atomically and does not restart
+a running instance. New instrumentation appears after restarting each app.
 The existing radio library build and C/ALSA development dependencies must be
 available before building the backend.
 
@@ -123,8 +122,9 @@ globally atomic hardware sample.
 `IRQS` and `IQIFC2` are left unavailable. The existing modem interrupt handler
 owns read-to-clear interrupt status and supplies no monitor cache, and reading
 `IQIFC2.SYNC` also clears it. The backend avoids consuming these fields for
-display. Fewer SPI transactions are a design benefit; actual CPU cost and
-reception behavior still require comparison with the accepted baseline.
+display. The [physical comparison](rx-application-comparison.md) confirms a
+lighter backend process; the Python monitor makes combined CPU use slightly
+higher than menu 14. RF sensitivity still requires calibrated comparison.
 
 ## Try the two-terminal demo
 
@@ -235,6 +235,60 @@ does not require changing the receiver's bandwidth.
 Queue drops refer to the application's queue counters. Queue timeouts are
 wait events, and an empty queue alone does not establish a dropped frame.
 The client does not infer kernel/DMA loss or ALSA underruns from these values.
+The backend supplies separate measured playback counters and worker status.
+
+### Shared RX instrumentation (2026-10-11)
+
+The backend and menu 14 obtain the same `rx_pipeline_get_stats()` snapshot:
+
+| Measurement | Meaning |
+| --- | --- |
+| `audio_fifo` puts/gets | Successfully enqueued/dequeued 480-frame, 10 ms PCM blocks. |
+| Audio drops / put timeouts | Blocks rejected when the full FIFO's enqueue wait expires; one event increments both counters. |
+| Audio get timeouts | Empty-FIFO waits that expire; not proof of lost samples. |
+| Audio shutdown puts/gets | Operations interrupted by FIFO shutdown; kept separate from drops. |
+| Audio min/max/depth | Queue occupancy; extrema start at zero and reset to current depth. |
+| ALSA calls/submitted/written | Device submissions and accepted PCM frames; submissions include retries and can exceed written frames. Stereo duplication still counts PCM frames, not individual channel samples. |
+| ALSA partial/again/zero | Short accepted writes, `-EAGAIN`, and zero-progress returns. |
+| ALSA underruns/recovery | `-EPIPE` events and existing `snd_pcm_prepare()` attempts, successes and failures. |
+| ALSA write errors/last error | Fatal write or recovery failures; last error persists after later successful writes. |
+| RX calls/samples/short/zero/errors | Completed radio API calls, returned IQ samples, positive partial returns, zero returns and negative returns. A short or zero return does not establish upstream sample loss. |
+| Worker created/alive/last error | Thread handle ownership, worker lifetime including cancellation, and retained worker errors. A created thread can have exited. |
+| Worker scheduling | Actual startup policy, priority and affinity, separate from requested FIFO priority/CPU; RT/fallback/affinity/memory-lock/query error codes. |
+
+`last_error` starts at zero. Playback/DSP errors use negative errno-style
+codes; RX errors retain the negative radio API result, and metadata allocation
+failure records `-ENOMEM` in reader status. Scheduling operation errors use
+positive errno values. `mlock_attempted=false` means affinity failure skipped
+the existing memory-lock call. Query failures are reported explicitly; unknown
+scheduler values are not evidence of successful realtime scheduling. These are
+cached startup observations, not continuous detection of external scheduling changes.
+
+RF/audio FIFO counters can be reset by menu 14's **X** key without clearing
+queued samples. Reader, playback and worker errors remain cumulative until
+pipeline destruction/reinitialization. Menu 14 recreates pipelines for some
+mode/rate and TX/RX transitions, so a new pipeline starts a new counter lifetime.
+For comparisons, use fresh pipelines or deltas within one lifetime; do not
+compare raw totals across restarts or resets.
+
+FIFO counters update under existing transfer locks. Playback and reader
+counters use relaxed atomics per API call, not per sample. Scheduling is
+queried once by each worker and published as an immutable snapshot. The
+control owner serializes snapshot reads with lifecycle/reset operations.
+Counters from different stages may describe adjacent instants; a snapshot is
+not a globally atomic transaction.
+
+The monitor adds eight compact rows when the new sections are supplied. The
+default 17-register view fits a 57-row terminal; long rows can scroll
+horizontally. Older publishers keep their previous layout and unsupported
+measurements display as unavailable.
+
+This closes the application audio-loss, playback-error and requested-versus-
+actual scheduling gaps. Kernel DMA overflow remains available only through
+kernel diagnostics, and FPGA/upstream sample continuity remains unknown.
+Stage latency distributions, hardware sequence metadata and automatic worker
+fault recovery are further roadmap work; this instrumentation does not add
+new recovery or scheduling policies.
 
 The transport is `AF_UNIX` / `SOCK_SEQPACKET`, with one UTF-8 JSON object per
 packet and an 8192-byte maximum. Version 1 requires:
@@ -251,12 +305,22 @@ Optional sections are `config`, `rx`, `tx`, `hardware`, `loopback` and
 string or an object with `kind` and `label`. Without it the display reports
 an unknown source, rather than assuming live radio data. Optional
 `hardware_monotonic_s` dates the cached hardware sample; `realtime_s` dates
-the snapshot in wall-clock seconds. The demo source is the complete example
-of the current display fields.
+the snapshot in wall-clock seconds. The demo source illustrates the basic
+display fields; the C backend also supplies the shared RX instrumentation.
 
 Within `rx.queue` and `tx.queue`, the fields are `capacity`, `depth`, `puts`,
 `gets`, `drops`, `timeouts_put`, `timeouts_get`, `min_depth` and `max_depth`.
 Counter rates reset when the session changes or counters decrease.
+
+New optional RX fields are `audio_queue` (the same queue fields plus
+`shutdown_puts` and `shutdown_gets`), `playback` (`valid` and the playback
+counters above), `reader` (`calls`, `samples`, `short_reads`, `zero_reads`,
+`errors`, `last_error`) and `workers` (`reader`, `demod`, `audio`). Each worker
+has `created`, `alive`, `last_error` and `scheduling`; scheduling carries
+`valid`, requested/applied CPU, requested/actual priority, numeric policy and
+`policy_name`, affinity text/truncation, operation errors and `mlock_attempted`.
+Dry-run queues/readers are `null`, playback is `valid:false`, and workers
+are uncreated with unavailable scheduling.
 
 Registers are supplied in `hardware.common.registers` and the active
 `hardware.rf09.registers` or `hardware.rf24.registers` map. Keys are short
@@ -283,11 +347,12 @@ when disconnected. No IQ or PCM data travels through this protocol.
 
 ## Baseline and validation
 
-All runtime files in the existing radio app remain identical to the branch
-baseline. The backend reuses their source without changing it and adds its
-own lifecycle and status publisher. The user has confirmed good audio and
-normal squelch with both applications running. RF sensitivity and CPU cost
-still need comparison with the accepted baseline.
+The original standalone-monitor milestone retained the existing radio app
+unchanged. Shared instrumentation was subsequently authorized for both apps;
+the backend retains its own lifecycle and status publisher. The user has confirmed good audio and
+normal squelch with both applications running. CPU and pipeline counters have
+now been [compared with menu 14](rx-application-comparison.md); calibrated RF
+sensitivity remains unmeasured.
 
 The backend is the sole hardware owner, identifies live versus simulated
 measurements and publishes bounded snapshots. Radio control through another
@@ -310,11 +375,44 @@ The tests cover both radio register maps, partial SPI failures, exclusion of
 read-to-clear addresses, bounded clients, slow readers, permissions, cleanup,
 CLI validation, monitor quit/reconnect independence and transport-only mode.
 
+Build menu 14 with the same shared instrumentation:
+
+```sh
+cmake --build build --target cariboulite_test_app -j3
+```
+
+Counter and lifecycle checks:
+
+```sh
+python3 software/libcariboulite/tests/test_audio_fifo_stats.py
+python3 software/libcariboulite/tests/test_audio_sink.py
+python3 software/libcariboulite/tests/test_pipeline_runtime.py
+python3 software/libcariboulite/tests/test_rx_lifecycle.py
+```
+
+The instrumentation changes passed both application builds, 44 monitor tests,
+10 backend integration tests, mock register/publisher checks, FIFO concurrency
+and timeout/stop races, ALSA fault injection, scheduling failure injection and
+RX worker lifecycle/cancellation checks. NBFM framing, squelch, WBFM DSP,
+memory audio and TX-tail regressions also passed. These are hardware-free
+checks. After the instrumentation update, the user confirmed on 2026-10-11
+that everything was working as expected. This records functional acceptance;
+the report supplied no new CPU measurements or counter totals. The subsequent
+[physical A/B comparison](rx-application-comparison.md) supplies that baseline.
+
+For a physical comparison, run the applications sequentially with RF24,
+430.125 MHz, 1 MS/s, NBFM and matching audio/squelch settings. In menu 14,
+select **1**, save the RX frequency with **G**, then start RX with **R**.
+Compare steady-state counter deltas over equal intervals, separating startup
+from reception; measure backend plus monitor CPU together. Never run both
+radio owners concurrently. A successful listening test and zero measured
+audio errors complement CPU measurements; they do not prove source continuity.
+
 On 2026-10-11, a 12-second live RF24/NBFM run at 430.125 MHz and 1 MS/s
 produced 60 live snapshots and confirmed the RX modem profile: `STATE=5`,
 `RXBWC=0x10`, `RXDFE=0x04`, AGC enabled. The application RF queue recorded
 1202 puts and gets by shutdown, zero drops and zero wait timeouts; the audio queue
-reported a zero `drops` field. That audio-queue field is not maintained by
+reported a zero `drops` field. At the time, that audio-queue field was not maintained by
 the shared queue implementation and cannot establish that no audio enqueue
 loss or ALSA underrun occurred. SPI reported zero failures. The six-block register scan
 averaged 0.323 ms and peaked at 1.200 ms, including lock time. Shutdown
@@ -336,3 +434,71 @@ correspond to about 100–120 ms queued before ALSA buffering. Each slot changes
 the displayed fill by roughly four percentage points. This steady range is
 consistent with the controller's intended operation. Squelch continues to
 produce timed silence while closed, so the queue remains active.
+
+### Live CPU and FIFO sample (2026-10-11)
+
+A later read-only, 20.03-second measurement of the user's running RF24/NBFM
+session at 1 MS/s collected 100 status snapshots. On the four-core Raspberry
+Pi 4, the backend used 7.64% of one CPU core and the monitor 2.40%. Together
+that is about 2.51% of total four-core CPU capacity. Resident memory was
+41.7 MiB and 14.0 MiB respectively. Whole-host CPU busy time was 7.76%,
+including other processes and kernel work; it is a different measurement
+from the two process totals. One extra passive status client was connected
+for this measurement, without increasing hardware polling.
+
+The demodulator used about 4.99% of one core, the RX reader 2.00%, the audio
+writer 0.35%, and the control/status thread 0.20%. Worker affinity was applied
+to CPUs 1, 2 and 0 respectively. However, actual scheduling policy was
+`SCHED_OTHER` with priority zero for all three workers: the requested
+`SCHED_FIFO` priorities were not active. This was verified with Linux's
+`sched_getscheduler`, `sched_getparam` and `sched_getaffinity` APIs. The
+then-existing startup log printed requested priorities, so it could not establish
+the actual scheduler policy.
+
+The application RF queue sustained 99.93 puts and gets per second, with
+sampled depth 0–2 of 64, a lifetime high-water mark of 4, and zero overwrite
+drops. Its final sampled totals were 146971 puts and gets, with zero wait
+timeouts. An empty RF queue is consistent with the demodulator keeping up;
+it does not by itself indicate an underrun. Audio FIFO occupancy ranged
+from 9–14 of 24 and was 12 at both the beginning and end of the sample,
+remaining near its 50% target rather than continually accumulating audio.
+
+The six-block modem scan averaged 0.217 ms and peaked at 0.419 ms, with
+zero failures in 43962 accumulated SPI transactions. The publisher reported
+zero skipped status packets. Nearby SMI kernel messages reported `missed:0`;
+this counter detects DMA quarters discarded when the kernel RX FIFO cannot
+accept them, and resets when a stream starts. These observations support
+healthy operation for the measured session. They do not establish FPGA
+sample continuity or count audio enqueue failures and ALSA underruns.
+Those application counters were added after this baseline measurement.
+
+This is a measured baseline for the standalone receiver, not an A/B CPU
+comparison with `test_app` or a load test for stereo, RDS or DAB+. The raw
+report and snapshots are in `build/radio-backend/runtime-profile/`.
+
+### Instrumented application comparison (2026-10-11)
+
+After the user stopped both applications, four sequential trials compared
+menu 14 and backend plus monitor at RF24, 430.125 MHz, 1 MS/s NBFM. Each had
+30 seconds warmup and 90 seconds measured reception, with a controlled
+1.8 GHz CPU frequency. The original `ondemand` governor was restored afterward.
+
+Mean CPU was **7.90% of one core for menu 14**, **6.14% for the backend** and
+**3.53% for the monitor**. Backend plus monitor totaled **9.66% of one core**,
+or **2.42% of the four-core Pi's capacity**, compared with **1.97%** for menu
+14. The backend itself saves 22.3%; the combined setup costs 22.4% more CPU,
+an absolute increase of 0.44 percentage points of whole-machine capacity.
+Combined PSS memory was 48.33 MiB versus 64.01 MiB for menu 14.
+
+All four windows recorded zero IQ/audio queue drops or timeouts, zero ALSA
+underruns/recoveries/write errors, and zero RX errors or worker exits. The
+kernel supplied 28 `missed:0` observations per window. Short/zero radio reads
+were present but do not establish sample loss. RX workers used `SCHED_OTHER`
+priority 0 in both apps, with the requested CPU affinity applied.
+
+The audio FIFO was still filling gradually at 0–5 of 24 sampled slots; these
+two-minute sessions did not reach the earlier long-running 50% equilibrium.
+This fixed-frequency comparison is separate from the historical 20-second
+sample above. It does not measure instrumentation overhead in isolation,
+RF sensitivity or the CPU budget for future decoders. See the
+[full report, artifacts and reusable runner](rx-application-comparison.md).

@@ -1,4 +1,4 @@
-# Independent executable: leave the baseline CMake graph and test_app untouched.
+# Independent executable using the same instrumented RX workers as test_app.
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../../../..)
 SRC := $(ROOT)/software/libcariboulite/src
 HERE := $(ROOT)/software/libcariboulite/tools/radio_backend
@@ -8,9 +8,9 @@ CC ?= cc
 CPPFLAGS += -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -I$(SRC) -I$(HERE)
 CFLAGS := -std=c11 -O3 -g -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces
 DSPFLAGS := -ffast-math -fno-math-errno -funroll-loops
-BASE_NAMES := rx_pipeline pipeline_transport pipeline_runtime nbfm_demod nbfm_demod_dsp wbfm_demod noise_squelch carrier_squelch alsa_sink
+BASE_NAMES := rx_pipeline pipeline_transport pipeline_runtime nbfm_demod nbfm_demod_dsp demod_worker wbfm_demod noise_squelch carrier_squelch alsa_sink
 OWN_NAMES := main modem_snapshot status_publisher
-OBJECTS := $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES) $(OWN_NAMES))) $(OUT)/demod_worker.o
+OBJECTS := $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES) $(OWN_NAMES)))
 
 .PHONY: all clean test
 all: $(OUT)/cariboulite_rx_backend
@@ -21,14 +21,6 @@ $(OUT):
 $(OUT)/cariboulite_rx_backend: $(OBJECTS) $(LIBDIR)/libcariboulite.so
 	$(CC) $(OBJECTS) -L$(LIBDIR) -Wl,-rpath,$(LIBDIR) -lcariboulite -lasound -lpthread -lm -o "$@.tmp"
 	mv "$@.tmp" "$@"
-
-# Change the diagnostic label only in a generated backend compilation copy.
-# The baseline worker and test_app retain their original source and behavior.
-$(OUT)/demod_worker_backend.c: $(SRC)/demod_worker.c $(HERE)/Makefile | $(OUT)
-	sed 's/ aud_fifo=/ audio_fifo=/' "$<" > "$@"
-
-$(OUT)/demod_worker.o: $(OUT)/demod_worker_backend.c | $(OUT)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(DSPFLAGS) -MMD -MP -c "$<" -o "$@"
 
 $(addprefix $(OUT)/,$(addsuffix .o,$(OWN_NAMES))): $(OUT)/%.o: $(HERE)/%.c | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c "$<" -o "$@"

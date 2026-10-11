@@ -44,7 +44,9 @@ static const char* memory_state(audio_sink_t* base)
     memory_sink_t* s = (memory_sink_t*)base;
     return s->position == s->capacity ? "FULL" : "READY";
 }
-static const audio_sink_ops_t sink_ops = {memory_write, memory_sink_destroy, memory_state};
+static const audio_sink_ops_t sink_ops = {
+    .write=memory_write, .destroy=memory_sink_destroy, .state=memory_state
+};
 
 static int supported(audio_format_t format)
 {

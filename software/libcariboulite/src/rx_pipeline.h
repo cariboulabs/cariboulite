@@ -8,6 +8,9 @@
 // Internal application handles. One control owner serializes lifecycle calls.
 typedef struct {
     bool active;
+    atomic_bool alive;
+    atomic_int last_error;
+    pipeline_thread_diagnostics_t scheduling;
     audio_sink_t* sink;
     aud10_fifo_t* fifo;     // source of 10 ms audio frames
     size_t xruns;
@@ -15,6 +18,10 @@ typedef struct {
 
 typedef struct {
     bool active;
+    atomic_bool alive;
+    pipeline_thread_diagnostics_t scheduling;
+    atomic_uint_fast64_t read_calls, read_samples, short_reads, zero_reads, read_errors;
+    atomic_int last_error;
     const atomic_uint* squelch_flags;
     cariboulite_radio_state_st *radio;
     cariboulite_sample_complex_int16 *rx_buffer;
@@ -71,7 +78,23 @@ typedef struct {
 } rx_pipeline_t;
 
 typedef struct {
+    bool created, alive;
+    int last_error;
+    pipeline_thread_status_t scheduling;
+} rx_worker_status_t;
+
+typedef struct {
+    uint64_t calls, samples, short_reads, zero_reads, errors;
+    int last_error;
+} rx_reader_stats_t;
+
+typedef struct {
     rf10_stats_t rxq;
+    aud10_stats_t audioq;
+    bool playback_valid;
+    audio_sink_stats_t playback;
+    rx_reader_stats_t reader;
+    rx_worker_status_t reader_worker, demod_worker, audio_worker;
 } rx_pipeline_stats_t;
 
 typedef struct {
@@ -90,6 +113,8 @@ bool rx_pipeline_running(const rx_pipeline_t*);
 int rx_pipeline_set_freq(rx_pipeline_t*, double freq_hz);
 int rx_pipeline_set_pcm_gain(rx_pipeline_t*, float gain);
 int rx_pipeline_set_deemph(rx_pipeline_t*, float tau_s);
+// Control-owner snapshot: serialize with init/start/stop/reset/destroy. Safe
+// while workers run; independent counters may describe adjacent instants.
 void rx_pipeline_get_stats(rx_pipeline_t*, rx_pipeline_stats_t*);
 // Internal worker helpers reused by the modem self-test and lifecycle checks.
 int write_audio_exact(audio_sink_t*, const int16_t*, size_t frames);
@@ -97,6 +122,7 @@ void* audio_writer_thread(void*);
 void* rx_reader_thread_func(void*);
 
 size_t rx_pipeline_frame_samples(const rx_pipeline_t*);
+// Resets RF/audio FIFO counters only. Reader/playback counters last until destroy.
 void rx_pipeline_reset_stats(rx_pipeline_t*);
 
 // Thread-safe controls; configuration survives start/stop, reset on re-init.

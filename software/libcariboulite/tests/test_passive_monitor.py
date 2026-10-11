@@ -47,6 +47,31 @@ def encoded(value):
     return json.dumps(value, separators=(",", ":")).encode()
 
 
+def rx_instrumentation():
+    """Independent nonzero fixture: reveal misleading zero/error displays."""
+    scheduling = {"valid": True, "requested_priority": 80, "requested_cpu": 2,
+                  "applied_cpu": 2, "policy": 0, "policy_name": "SCHED_OTHER",
+                  "priority": 0, "affinity": "2", "rt_error": 1,
+                  "fallback_error": 0, "affinity_error": 0, "mlock_error": 12,
+                  "query_error": 0, "mlock_attempted": True}
+    return {
+        "audio_queue": {"capacity": 24, "depth": 12, "puts": 100, "gets": 88,
+                        "drops": 3, "timeouts_put": 3, "timeouts_get": 2,
+                        "min_depth": 0, "max_depth": 17,
+                        "shutdown_puts": 1, "shutdown_gets": 2},
+        "playback": {"valid": True, "write_calls": 91, "frames_requested": 48000,
+                     "frames_written": 47000, "partial_writes": 4, "would_block": 5,
+                     "zero_writes": 6, "underruns": 7, "recovery_attempts": 8,
+                     "recovery_successes": 6, "recovery_failures": 2,
+                     "write_errors": 9, "last_error": -32},
+        "reader": {"calls": 110, "samples": 1000000, "short_reads": 3,
+                   "zero_reads": 2, "errors": 4, "last_error": -5},
+        "workers": {name: {"alive": True, "created": True, "last_error": -5,
+                           "scheduling": dict(scheduling)}
+                    for name in ("reader", "demod", "audio")},
+    }
+
+
 class FixturePublisher:
     """An isolated socket fixture; it never accepts or executes commands."""
 
@@ -488,7 +513,7 @@ class IQRegisterDisplayTests(unittest.TestCase):
                  "max_depth": 20, "puts": 100, "gets": 97, "drops": 0,
                  "timeouts_put": 0, "timeouts_get": 1}
         value = snapshot(channel="RF24", hardware=hardware,
-                         rx={"running": True, "queue": queue},
+                         rx={"running": True, "queue": queue, **rx_instrumentation()},
                          tx={"running": False, "queue": queue})
         connection = CachedConnection(value)
         body = client.format_snapshot(value, rates=connection.rates)
@@ -499,6 +524,10 @@ class IQRegisterDisplayTests(unittest.TestCase):
         frame = screen.frames[0]
         displayed = "\n".join(frame[row] for row in sorted(frame))
         for line in ("RX application RF queue:", "TX application RF queue:",
+                     "RX audio FIFO: 12/24", "Playback: calls=91", "underruns=7",
+                     "RX reader: calls=110", "reader worker: alive=on",
+                     "demod worker: alive=on", "audio worker: alive=on",
+                     "errors(rt/fb/cpu/lock/query)=1/0/0/12/0",
                      "RF24 STATE=0x05 STATE=5(RX)", "FPGA:", "Loopback:",
                      "Queue timeouts are wait events; drops are application queue drops."):
             with self.subTest(line=line):
@@ -508,6 +537,59 @@ class IQRegisterDisplayTests(unittest.TestCase):
         self.assertNotIn(" TXDFE=", displayed)
         self.assertNotIn(" TXDAC", displayed)
         self.assertEqual(frame[len(body) + 2], body[-1])
+
+    def test_rx_instrumentation_reports_fifo_playback_reader_and_actual_scheduling(self):
+        lines = client.format_snapshot(snapshot(rx=rx_instrumentation()))
+        text = "\n".join(lines)
+        for expected in (
+                "RX audio FIFO: 12/24  min/max=0/17  puts/gets=100/88",
+                "drops=3  put/get timeouts=3/2  shutdown put/get=1/2",
+                "Playback: calls=91  frames(req/written)=48000/47000",
+                "partial=4  would_block=5  zero=6", "underruns=7",
+                "recovery(attempt/ok/fail)=8/6/2  errors=9  last_error=-32",
+                "RX reader: calls=110  samples=1000000  short/zero reads=3/2",
+                "errors=4  last_error=-5", "created=on last_error=-5",
+                "sched=SCHED_OTHER/0 req=80",
+                "cpu(req/applied)=2/2 affinity=2",
+                "errors(rt/fb/cpu/lock/query)=1/0/0/12/0 mlock=on"):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, text)
+        self.assertEqual(sum(" worker:" in line for line in lines), 3)
+        self.assertTrue(all(len(line) <= 159 for line in lines if " worker:" in line))
+
+    def test_optional_rx_instrumentation_does_not_invent_data_for_older_publishers(self):
+        text = "\n".join(client.format_snapshot(snapshot(rx={"running": True})))
+        for label in ("RX audio FIFO:", "Playback:", "RX reader:", " worker:"):
+            with self.subTest(label=label):
+                self.assertNotIn(label, text)
+
+    def test_unavailable_rx_instrumentation_cannot_report_healthy_zeroes(self):
+        new_rx = rx_instrumentation()
+        new_rx["audio_queue"] = {"depth": True, "capacity": -1, "drops": "0"}
+        new_rx["playback"]["valid"] = False
+        new_rx["reader"] = []
+        worker = new_rx["workers"]["reader"]
+        worker["alive"] = False
+        del worker["last_error"]
+        worker["scheduling"]["valid"] = False
+        worker["scheduling"]["query_error"] = 3
+        new_rx["workers"]["demod"] = None
+        new_rx["workers"]["audio"]["scheduling"] = []
+        text = "\n".join(client.format_snapshot(snapshot(rx=new_rx)))
+        for expected in ("RX audio FIFO: unavailable/unavailable", "drops=unavailable",
+                         "Playback: unavailable", "ALSA counters unavailable",
+                         "RX reader: calls=unavailable", "short/zero reads=unavailable/unavailable",
+                         "reader worker: alive=off created=on last_error=unavailable",
+                         "sched=unavailable/unavailable",
+                         "req=80", "errors(rt/fb/cpu/lock/query)=1/0/0/12/3",
+                         "demod worker: alive=unknown created=unknown",
+                         "affinity=unavailable"):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, text)
+        self.assertNotIn("underruns=0", text)
+        self.assertNotIn("underruns=7", text)
+        self.assertNotIn("calls=0", text)
+        self.assertNotIn("drops=0", text)
 
     def test_plain_stream_respects_rx_and_all_register_views(self):
         value = snapshot(channel="RF24", hardware=self.hardware(

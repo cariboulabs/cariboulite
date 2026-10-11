@@ -131,6 +131,8 @@ int __wrap_ioctl(int fd, unsigned long request, ...) {
 }
 int __wrap_caribou_fpga_set_io_ctrl_mode(caribou_fpga_st* f, uint8_t d, caribou_fpga_io_ctrl_rfm_en m) { return 0; }
 static rx_reader_ctrl_st* capture_once;
+static rx_reader_ctrl_st* scripted_reader;
+static unsigned scripted_read;
 static unsigned rssi_reads;
 static uint16_t expected_rssi_register;
 static uint8_t measured_rssi;
@@ -172,6 +174,16 @@ int __wrap_at86rf215_write_buffer(at86rf215_st* dev, uint16_t reg, uint8_t* valu
 }
 int __wrap_cariboulite_radio_read_samples(cariboulite_radio_state_st* r,
         cariboulite_sample_complex_int16* b, cariboulite_sample_meta* m, size_t n) {
+    if (scripted_reader) {
+        static const int results[]={4,0,-EIO,16};
+        static const size_t requests[]={20,16,16,16};
+        assert(scripted_read<4 && n==requests[scripted_read]);
+        int result=results[scripted_read++];
+        if (result>0) memset(b,0,(size_t)result*sizeof(*b));
+        if (scripted_read==4) scripted_reader->active=false;
+        assert(atomic_load(&scripted_reader->alive));
+        return result;
+    }
     if (capture_once) {
         memset(b, 0, n*sizeof(*b));
         capture_once->active = false;
@@ -267,6 +279,11 @@ static void test_rssi_capture(void) {
     atomic_init(&flags, RX_SQUELCH_CARRIER);
     rx_reader_ctrl_st ctrl = {.active=true,.radio=&sys.radio_high,
         .rx_buffer=buffer,.rx_buffer_size=20,.rx_fifo=&fifo,.squelch_flags=&flags};
+    atomic_init(&ctrl.alive,false);
+    pipeline_thread_diagnostics_init(&ctrl.scheduling);
+    atomic_init(&ctrl.read_calls,0); atomic_init(&ctrl.read_samples,0);
+    atomic_init(&ctrl.short_reads,0); atomic_init(&ctrl.zero_reads,0);
+    atomic_init(&ctrl.read_errors,0); atomic_init(&ctrl.last_error,0);
     capture_once=&ctrl;
     for (unsigned trial=0; trial<5; ++trial) {
         ctrl.active=true;
@@ -277,6 +294,8 @@ static void test_rssi_capture(void) {
         atomic_store(&flags, trial==4 ? 0 : RX_SQUELCH_CARRIER);
         unsigned before=rssi_reads;
         rx_reader_thread_func(&ctrl);
+        assert(!atomic_load(&ctrl.alive));
+        assert(atomic_load(&ctrl.read_calls)==trial+1);
         rf10_frame_t frame;
         assert(rf10_fifo_get(&fifo,&frame,0));
         assert(frame.rssi_valid == (trial<2));
@@ -287,6 +306,120 @@ static void test_rssi_capture(void) {
     }
     capture_once=NULL;
     rf10_fifo_destroy(&fifo);
+}
+
+static void test_shared_rx_stats(void)
+{
+    rx_pipeline_stats_t stats;
+    rx_pipeline_t p={0};
+    memset(&stats,0xa5,sizeof(stats));
+    rx_pipeline_get_stats(NULL,&stats);
+    assert(!stats.playback_valid && stats.rxq.cap==0 && stats.audioq.cap==0);
+    assert(!stats.reader.calls && !stats.audio_worker.created && !stats.audio_worker.alive);
+    memset(&stats,0xa5,sizeof(stats));
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.playback_valid && !stats.reader.errors && !stats.demod_worker.scheduling.valid);
+    rx_pipeline_get_stats(&p,NULL);
+    sys_st sys={0};
+    sys.radio_high.sys=&sys; sys.radio_high.type=cariboulite_channel_hif;
+    rx_params_t params={.freq_hz=430125000,.pcm_dev="null",.fs_rf=1000000,.fs_audio=48000};
+    assert(rx_pipeline_init(&p,&sys,&sys.radio_high,&params)==0);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.playback_valid && stats.playback.write_calls==0);
+    assert(stats.audioq.cap==24 && stats.rxq.cap==64 && !stats.reader.calls);
+    assert(stats.audio_worker.created && stats.demod_worker.created);
+    assert(!stats.audio_worker.alive && !stats.demod_worker.alive); // lifecycle mocks
+    const audio_sink_ops_t unsupported_ops={0};
+    audio_sink_t unsupported={48000,&unsupported_ops};
+    audio_sink_t* sink=p.demod.sink;
+    p.demod.sink=&unsupported;
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.playback_valid && stats.playback.write_calls==0);
+    p.demod.sink=sink;
+
+    p.rx_ctrl.rx_buffer=calloc(20,sizeof(*p.rx_ctrl.rx_buffer)); assert(p.rx_ctrl.rx_buffer);
+    p.rx_ctrl.rx_buffer_size=20; p.rx_ctrl.active=true;
+    p.rx_ctrl.squelch_flags=NULL;
+    scripted_reader=&p.rx_ctrl; scripted_read=0;
+    rx_reader_thread_func(&p.rx_ctrl);
+    scripted_reader=NULL;
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.reader.calls==4 && stats.reader.samples==20 && stats.reader.short_reads==1);
+    assert(stats.reader.zero_reads==1 && stats.reader.errors==1 && stats.reader.last_error==-EIO);
+    assert(!stats.reader_worker.alive && stats.reader_worker.scheduling.valid);
+    assert(stats.rxq.puts==1 && stats.rxq.count==1);
+    p.rx_ctrl.active=true;
+    fail_malloc=true;
+    rx_reader_thread_func(&p.rx_ctrl);
+    fail_malloc=false;
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.reader_worker.alive && stats.reader.calls==4);
+    assert(stats.reader.errors==1 && stats.reader.last_error==-ENOMEM);
+    assert(stats.reader_worker.last_error==-ENOMEM);
+
+    aud10_frame_t frame={0};
+    assert(aud10_fifo_put(&p.afifo,&frame,0));
+    assert(audio_sink_write(sink,frame.pcm,480).frames==480);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.audioq.puts==1 && stats.audioq.count==1);
+    assert(stats.playback.write_calls==1 && stats.playback.frames_written==480);
+    rx_pipeline_reset_stats(&p);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.rxq.count==1 && stats.audioq.count==1); // reset preserves queued data
+    assert(!stats.rxq.puts && !stats.audioq.puts && !stats.audioq.gets && !stats.audioq.drops);
+    assert(stats.audioq.min_depth==1 && stats.audioq.max_depth==1);
+    assert(stats.reader.calls==4 && stats.reader.errors==1 && stats.reader.last_error==-ENOMEM);
+    assert(stats.playback.write_calls==1 && stats.playback.frames_written==480);
+    p.demod.pcm_gain=NAN;
+    audio_demod_thread(&p.demod); // queued RF block, rejected audio configuration
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.demod_worker.alive && stats.demod_worker.last_error==-EINVAL);
+    assert(stats.demod_worker.scheduling.valid);
+    rx_pipeline_reset_stats(&p);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.demod_worker.last_error==-EINVAL && stats.playback.write_calls==1);
+    rx_pipeline_destroy(&p); check_clean(&p);
+    memset(&stats,0xa5,sizeof(stats));
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.playback_valid && !stats.rxq.cap && !stats.audioq.cap && !stats.reader.calls);
+}
+
+static audio_sink_result_t fail_audio_write(audio_sink_t* sink,const int16_t* samples,size_t frames)
+{
+    (void)sink; (void)samples; (void)frames;
+    return (audio_sink_result_t){0,AUDIO_SINK_ERROR,-EIO};
+}
+static void test_audio_worker_exits(void)
+{
+    const audio_sink_ops_t fail_ops={.write=fail_audio_write};
+    audio_sink_t sink={48000,&fail_ops};
+    aud10_fifo_t fifo;
+    aud10_fifo_init(&fifo,1);
+    audio_writer_ctrl_t ctrl={.active=true,.sink=&sink,.fifo=&fifo};
+    atomic_init(&ctrl.alive,false);
+    atomic_init(&ctrl.last_error,0);
+    pipeline_thread_diagnostics_init(&ctrl.scheduling);
+    aud10_frame_t frame={0};
+    assert(aud10_fifo_put(&fifo,&frame,0));
+    audio_writer_thread(&ctrl); // fatal sink error
+    assert(!atomic_load(&ctrl.alive) && atomic_load(&ctrl.scheduling.ready));
+    assert(atomic_load(&ctrl.last_error)==-EIO);
+    aud10_fifo_stop(&fifo);
+    audio_writer_thread(&ctrl); // normal stopped-queue return
+    assert(!atomic_load(&ctrl.alive));
+    assert(atomic_load(&ctrl.last_error)==-EIO); // retained on subsequent normal exit
+    aud10_fifo_destroy(&fifo);
+    aud10_fifo_init(&fifo,1);
+    pipeline_thread_diagnostics_reset(&ctrl.scheduling);
+    pthread_t thread; void* result;
+    assert(pthread_create(&thread,NULL,audio_writer_thread,&ctrl)==0);
+    for(unsigned retry=0; retry<1000 && !atomic_load(&ctrl.alive); ++retry) usleep(1000);
+    assert(atomic_load(&ctrl.alive));
+    assert(pthread_cancel(thread)==0);
+    assert(pthread_join(thread,&result)==0 && result==PTHREAD_CANCELED);
+    assert(!atomic_load(&ctrl.alive));
+    assert(pthread_mutex_trylock(&fifo.m)==0); pthread_mutex_unlock(&fifo.m);
+    aud10_fifo_destroy(&fifo);
 }
 // Lifecycle mocks do not run DSP threads; acknowledge cue consumption so a
 // successful TX start exercises real tuning/activation without generating RF.
@@ -482,6 +615,7 @@ static void test_noise_level_controls(void) {
 
 int main(void) {
     test_rssi_capture();
+    test_shared_rx_stats();
     test_modem_policy();
     test_noise_level_controls();
     sys_st sys = {0};
@@ -799,10 +933,17 @@ int main(void) {
     }
 
     real_threads = true;
+    test_audio_worker_exits();
     // Actual waiting DSP/writer threads must join before DSP/sink destruction.
     assert(rx_pipeline_init(&p,&sys,&radio,&par)==0);
-    usleep(10000);
+    for (unsigned retry=0; retry<1000 && (!atomic_load(&p.demod.alive) || !atomic_load(&p.aw.alive)); ++retry)
+        usleep(1000);
+    rx_pipeline_stats_t active_stats;
+    rx_pipeline_get_stats(&p,&active_stats);
+    assert(active_stats.demod_worker.alive && active_stats.audio_worker.alive);
+    assert(active_stats.demod_worker.scheduling.valid && active_stats.audio_worker.scheduling.valid);
     rx_pipeline_destroy(&p); check_clean(&p);
+    assert(!atomic_load(&p.demod.alive) && !atomic_load(&p.aw.alive));
 
     for (int which=0; which<4; ++which) {
         aud10_fifo_init(&audio,1); rf10_fifo_init(&rf,1,false);
@@ -818,17 +959,24 @@ int main(void) {
     }
     cariboulite_sample_complex_int16 samples[40000];
     radio.sys = &sys;
-    rx_reader_ctrl_st reader = {.active=true, .radio=&radio, .rx_buffer=samples};
+    rx_reader_ctrl_st reader = {.active=true, .radio=&radio, .rx_buffer=samples,.rx_buffer_size=40000};
+    atomic_init(&reader.alive,false);
+    pipeline_thread_diagnostics_init(&reader.scheduling);
+    atomic_init(&reader.read_calls,0); atomic_init(&reader.read_samples,0);
+    atomic_init(&reader.short_reads,0); atomic_init(&reader.zero_reads,0);
+    atomic_init(&reader.read_errors,0); atomic_init(&reader.last_error,0);
     pthread_t thread;
     assert(pthread_barrier_init(&reader_ready,NULL,2)==0);
     track_metadata = true;
     assert(pthread_create(&thread,NULL,rx_reader_thread_func,&reader)==0);
     pthread_barrier_wait(&reader_ready);
     assert(metadata_allocation != NULL);
+    assert(atomic_load(&reader.alive) && atomic_load(&reader.scheduling.ready));
     assert(pthread_cancel(thread)==0);
     assert(pthread_join(thread,NULL)==0);
     assert(metadata_allocation == NULL);
+    assert(!atomic_load(&reader.alive));
     track_metadata = false;
     pthread_barrier_destroy(&reader_ready);
-    puts("PASS: S1G/HiF frequency bands, HiF monitor routing/rates/modes, NBFM modem AGC/filter policy, TX tail padding plans, TX/RX lifecycle, startup failures, FIFO timing and cancellation");
+    puts("PASS: S1G/HiF routing/rates/modes, modem policy, TX/RX lifecycle, shared FIFO/playback/reader stats, worker errors and cancellation");
 }

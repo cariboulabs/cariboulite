@@ -7,6 +7,7 @@ All sockets and pseudo terminals are isolated test resources.
 """
 import fcntl
 import importlib.util
+import json
 import os
 from pathlib import Path
 import pty
@@ -89,6 +90,13 @@ class RadioBackendTests(unittest.TestCase):
         self.assertEqual(snapshot["channel"], channel)
         self.assertIs(snapshot["rx"]["running"], False)
         self.assertIsNone(snapshot["rx"]["queue"])
+        self.assertIsNone(snapshot["rx"]["audio_queue"])
+        self.assertIsNone(snapshot["rx"]["reader"])
+        self.assertEqual(snapshot["rx"]["playback"], {"valid": False})
+        for worker in ("reader", "demod", "audio"):
+            self.assertEqual(snapshot["rx"]["workers"][worker], {
+                "created": False, "alive": False, "last_error": 0,
+                "scheduling": {"valid": False}})
         self.assertIs(snapshot["tx"]["running"], False)
         self.assertIs(snapshot["rx"]["noise"]["valid"], False)
         self.assertIsNone(snapshot["rx"]["noise"]["rms"])
@@ -156,6 +164,175 @@ class RadioBackendTests(unittest.TestCase):
         self.assertIs(snapshot["rx"]["noise_enabled"], False)
         _, errors = process.communicate(timeout=3)
         self.assertEqual(process.returncode, 0, errors.decode())
+
+    def test_unavailable_audio_and_worker_counters_remain_explicit_in_monitor(self):
+        self.start_backend()
+        snapshot = self.once()
+        self.assert_transport_only(snapshot)
+        display = "\n".join(client.format_snapshot(snapshot))
+        self.assertIn("RX audio FIFO: unavailable/unavailable", display)
+        self.assertIn("Playback: unavailable", display)
+        self.assertIn("RX reader: calls=unavailable", display)
+        for name in ("reader", "demod", "audio"):
+            self.assertIn(f"{name} worker: alive=off created=off", display)
+        self.assertNotIn("sched=SCHED_OTHER/0", display,
+                         "Dry-run guessed a policy for workers it did not create")
+
+    def test_maximum_escaped_device_name_fits_packet_limit_with_instrumentation(self):
+        playback = "\x01" * 255
+        self.start_backend("--playback", playback)
+        peer = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        self.addCleanup(peer.close)
+        peer.settimeout(2)
+        peer.connect(str(self.path))
+        packet, _, flags, _ = peer.recvmsg(8192)
+        self.assertFalse(flags & socket.MSG_TRUNC, "Instrumented packet exceeds protocol limit")
+        self.assertLessEqual(len(packet), 8192)
+        snapshot = client.parse_snapshot(packet)
+        self.assertEqual(snapshot["config"]["playback"], playback)
+        self.assert_transport_only(snapshot)
+
+    def test_live_serializer_preserves_counters_errors_and_actual_scheduling(self):
+        # Compile the actual serializer with cached-data fixtures. The unused
+        # radio-owning entry point is discarded; these stubs only answer status.
+        src = ROOT / "software/libcariboulite/src"
+        backend = CLIENT.parent / "radio_backend"
+        fixture = Path(self.temporary.name) / "serializer.c"
+        fixture.write_text(r'''
+#define _GNU_SOURCE
+#define main unused_backend_main
+#include "main.c"
+#undef main
+#include <assert.h>
+#include <sched.h>
+
+bool rx_pipeline_running(const rx_pipeline_t *p) { (void)p; return true; }
+bool rx_pipeline_squelch_open(const rx_pipeline_t *p) { (void)p; return true; }
+int rx_pipeline_get_noise_squelch_status(const rx_pipeline_t *p,
+                                       rx_noise_squelch_status_t *out) {
+    (void)p;
+    *out = (rx_noise_squelch_status_t){.valid=true, .detector_open=true,
+        .rms=.12f, .open_rms=.20f, .close_rms=.30f};
+    return 0;
+}
+int main(void) {
+    options_t options;
+    char *arguments[] = {"fixture", NULL};
+    assert(!parse_options(1, arguments, &options));
+    rx_pipeline_t pipeline = {.inited=true};
+    rx_pipeline_stats_t stats = {
+        .rxq = {.cap=64, .count=2, .puts=101, .gets=99, .drops=3,
+                .timeouts_put=4, .timeouts_get=5, .min_depth=0, .max_depth=7},
+        .audioq = {.cap=24, .count=12, .puts=21, .gets=9, .drops=2,
+                   .timeouts_put=3, .timeouts_get=4, .min_depth=1, .max_depth=17,
+                   .shutdown_puts=5, .shutdown_gets=6},
+        .playback_valid=true,
+        .playback = {.write_calls=1, .frames_requested=2, .frames_written=3,
+            .partial_writes=4, .would_block=5, .zero_writes=6, .underruns=7,
+            .recovery_attempts=8, .recovery_successes=9, .recovery_failures=10,
+            .write_errors=11, .last_error=-EIO},
+        .reader = {.calls=201, .samples=202, .short_reads=203,
+                   .zero_reads=204, .errors=205, .last_error=-ENODEV},
+        .reader_worker = {.created=true, .alive=true, .last_error=-ENODEV,
+            .scheduling={.valid=true, .requested_priority=46,
+                .requested_cpu=0, .applied_cpu=0, .policy=SCHED_OTHER, .priority=0,
+                .affinity="0", .rt_error=EPERM, .fallback_error=0,
+                .affinity_error=0, .mlock_attempted=true, .mlock_error=ENOMEM}},
+        .demod_worker = {.created=true, .alive=false, .last_error=-ENOMEM},
+        .audio_worker = {.created=true, .alive=true, .last_error=-EIO}
+    };
+    stats.demod_worker.scheduling = stats.reader_worker.scheduling;
+    stats.demod_worker.scheduling.requested_priority = 55;
+    stats.demod_worker.scheduling.requested_cpu = 1;
+    stats.demod_worker.scheduling.applied_cpu = -1;
+    stats.demod_worker.scheduling.affinity_error = EINVAL;
+    stats.demod_worker.scheduling.mlock_attempted = false;
+    stats.demod_worker.scheduling.mlock_error = 0;
+    strcpy(stats.demod_worker.scheduling.affinity, "0,1,2,3");
+    modem_snapshot modem;
+    modem_snapshot_init(&modem, at86rf215_rf_channel_2400mhz);
+    status_publisher_t publisher = {0};
+    char packet[STATUS_PUBLISHER_MAX_PACKET_BYTES];
+    int size = make_snapshot(packet, sizeof(packet), &options, "fixture", 1,
+        "RX", &pipeline, &stats, &modem, &publisher, NULL);
+    assert(size > 0); puts(packet);
+
+    // Largest supported escaped device name and counters exercise bounds on
+    // the full live schema rather than the smaller unavailable dry-run data.
+    char device[256]; memset(device, 1, 255); device[255] = 0;
+    options.playback = device;
+    memset(&stats.rxq, 255, sizeof(stats.rxq));
+    memset(&stats.audioq, 255, sizeof(stats.audioq));
+    memset(&stats.playback, 255, sizeof(stats.playback));
+    memset(&stats.reader, 255, sizeof(stats.reader));
+    stats.audio_worker.scheduling = stats.demod_worker.scheduling;
+    stats.audio_worker.scheduling.requested_priority = 70;
+    size = make_snapshot(packet, sizeof(packet), &options, "fixture", UINT64_MAX,
+        "RX", &pipeline, &stats, &modem, &publisher, NULL);
+    assert(size > 0); puts(packet);
+    return 0;
+}
+''')
+        binary = Path(self.temporary.name) / "serializer"
+        compilation = subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                        "-Wno-unused-parameter", "-Wno-missing-braces",
+                        "-ffunction-sections", "-fdata-sections",
+                        "-I" + str(src), "-I" + str(backend), str(fixture),
+                        str(backend / "modem_snapshot.c"), str(src / "pipeline_runtime.c"),
+                        str(src / "noise_squelch.c"),
+                        "-Wl,--gc-sections", "-pthread", "-lm", "-o", str(binary)],
+                       capture_output=True)
+        self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
+        result = subprocess.run([str(binary)], check=True, capture_output=True, timeout=3)
+        packets = result.stdout.splitlines()
+        self.assertEqual(len(packets), 2)
+        snapshot = client.parse_snapshot(packets[0])
+        self.assertEqual(snapshot["source"]["kind"], "live")
+        rx = snapshot["rx"]
+        self.assertEqual(rx["queue"]["puts"], 101)
+        self.assertEqual(rx["audio_queue"], {
+            "capacity": 24, "depth": 12, "puts": 21, "gets": 9, "drops": 2,
+            "timeouts_put": 3, "timeouts_get": 4, "min_depth": 1, "max_depth": 17,
+            "shutdown_puts": 5, "shutdown_gets": 6})
+        playback_fields = ("write_calls", "frames_requested", "frames_written",
+                           "partial_writes", "would_block", "zero_writes", "underruns",
+                           "recovery_attempts", "recovery_successes", "recovery_failures",
+                           "write_errors")
+        self.assertIs(rx["playback"]["valid"], True)
+        self.assertEqual([rx["playback"][name] for name in playback_fields], list(range(1, 12)))
+        self.assertEqual(rx["playback"]["last_error"], -5)
+        self.assertEqual(rx["reader"], {"calls": 201, "samples": 202,
+                                       "short_reads": 203, "zero_reads": 204,
+                                       "errors": 205, "last_error": -19})
+        workers = rx["workers"]
+        self.assertEqual(workers["reader"]["last_error"], -19)
+        self.assertIs(workers["demod"]["alive"], False)
+        self.assertEqual(workers["demod"]["last_error"], -12)
+        scheduling = workers["reader"]["scheduling"]
+        self.assertEqual(scheduling["policy_name"], "SCHED_OTHER")
+        self.assertEqual(scheduling["priority"], 0)
+        self.assertEqual(scheduling["requested_priority"], 46)
+        self.assertEqual(scheduling["affinity"], "0")
+        self.assertEqual(scheduling["rt_error"], 1)
+        self.assertEqual(scheduling["mlock_error"], 12)
+        self.assertIs(scheduling["mlock_attempted"], True)
+        scheduling = workers["demod"]["scheduling"]
+        self.assertEqual(scheduling["requested_priority"], 55)
+        self.assertEqual(scheduling["affinity_error"], 22)
+        self.assertEqual(scheduling["applied_cpu"], -1)
+        self.assertIs(scheduling["mlock_attempted"], False)
+        self.assertEqual(workers["audio"]["scheduling"], {"valid": False})
+        display = "\n".join(client.format_snapshot(snapshot))
+        self.assertIn("underruns=7", display)
+        self.assertIn("recovery(attempt/ok/fail)=8/9/10", display)
+        self.assertIn("sched=SCHED_OTHER/0", display)
+        for packet in packets:
+            self.assertLessEqual(len(packet), 8192)
+            json.loads(packet)
+        extreme = client.parse_snapshot(packets[1])
+        self.assertEqual(extreme["config"]["playback"], "\x01" * 255)
+        self.assertEqual(extreme["rx"]["playback"]["underruns"], 2 ** 64 - 1)
+        self.assertEqual(extreme["sequence"], 2 ** 64 - 1)
 
     def test_monitor_quit_disconnect_and_reconnect_leave_backend_running(self):
         process = self.start_backend("--status-hz", "10")

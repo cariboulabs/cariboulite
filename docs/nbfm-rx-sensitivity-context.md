@@ -451,3 +451,29 @@ RF09 and RF24, including every two-byte register combination, targeted field
 isolation checks and a compile-time assertion that the renamed enum is code 7.
 The same register cases exposed failures in the previous decoder. The app and
 shared library rebuilt successfully; no physical RX/TX test was performed.
+
+## Shared receiver instrumentation (2026-10-11)
+
+The separate C RX backend and passive Unix-socket monitor are implemented,
+and the user confirmed good audio and normal squelch. For a fair comparison
+with menu 14, both apps now share audio FIFO accounting, ALSA playback and
+recovery counters, radio read counters, worker lifetime/error status and
+actual startup scheduling/affinity diagnostics. The empty RF queue warning
+no longer claims an underrun. DSP, modem profiles, scheduling requests and
+existing recovery behavior remain the accepted baseline.
+
+After this update, the user confirmed on 2026-10-11 that everything was
+working as expected. This validates expected operation with the new
+instrumentation. A subsequent [physical application comparison](rx-application-comparison.md)
+measured menu 14 at 7.90% of one CPU core and backend plus monitor at 9.66%
+(backend 6.14%, monitor 3.53%) on the Pi 4 at a controlled 1.8 GHz. Both
+setups recorded zero IQ/audio queue drops, ALSA underruns and RX errors;
+the collected kernel SMI diagnostics reported `missed:0`. Combined PSS was
+48.33 MiB for backend plus monitor versus 64.01 MiB for menu 14. Marginal
+instrumentation overhead was not isolated, and upstream continuity remains
+unproven.
+
+See [the passive monitor documentation](passive-monitor.md#shared-rx-instrumentation-2026-10-11)
+for counter definitions, reset/lifetime rules, build commands and comparison
+procedure. Application counters cannot prove kernel/FPGA sample continuity;
+upstream loss metadata and stage latency profiling remain roadmap items.

@@ -27,10 +27,20 @@ static bool reset_case;
 int __wrap_clock_gettime(clockid_t id, struct timespec* ts)
 { (void)id; *ts=(struct timespec){0}; return 0; }
 int set_rt_and_affinity_prio(int prio, int cpu) { (void)prio; (void)cpu; return 0; }
+int set_rt_and_affinity_prio_record(int prio, int cpu, pipeline_thread_diagnostics_t* d)
+{
+    if (d) {
+        d->status=(pipeline_thread_status_t){.valid=true,.requested_priority=prio,
+            .requested_cpu=cpu,.applied_cpu=cpu,.policy=SCHED_OTHER,.priority=0};
+        atomic_store_explicit(&d->ready,true,memory_order_release);
+    }
+    return set_rt_and_affinity_prio(prio,cpu);
+}
 
 bool rf10_fifo_get(rf10_fifo_t* f, rf10_frame_t* frame, int timeout)
 {
     (void)f; (void)timeout;
+    if (!legacy) assert(current && atomic_load(&current->alive));
     if (frames == BLOCKS) {
         if (legacy) legacy->active=false; else current->active=false;
         return false;
@@ -96,7 +106,13 @@ static void compare_workers(void)
         .pcm_gain=8000,.deemph_tau=50e-6f,.prime_blocks_10ms=20};
     nbfm_demod_config_t config={rate,48000,50e-6f,8000};
     now.dsp=nbfm_demod_create(&config); assert(now.dsp);
+    atomic_init(&now.alive,false);
+    atomic_init(&now.last_error,0);
+    atomic_init(&now.scheduling.ready,false);
     nbfm_demod_ctrl_t repeat=now;
+    atomic_init(&repeat.alive,false);
+    atomic_init(&repeat.last_error,0);
+    atomic_init(&repeat.scheduling.ready,false);
     repeat.dsp=nbfm_demod_create(&config); assert(repeat.dsp);
     frames=captured=put_count=depth_calls=0; capture=before; legacy=&old; current=NULL;
     memset(old_puts,0,sizeof(old_puts));
@@ -104,11 +120,15 @@ static void compare_workers(void)
     size_t expected=captured, expected_depth_calls=depth_calls;
     frames=captured=put_count=depth_calls=0; capture=before; legacy=NULL; current=&now;
     nbfm_demod_thread(&now);
+    assert(!atomic_load(&now.alive) && atomic_load(&now.scheduling.ready));
+    assert(!atomic_load(&now.last_error));
     assert(expected==captured && expected_depth_calls==depth_calls);
     assert(old.pcm_total_frames==now.pcm_total_frames && old.priming==now.priming);
     assert(now.pcm_gain==1000000 && now.deemph_tau==0);
     frames=captured=put_count=depth_calls=0; capture=after; current=&repeat;
     nbfm_demod_thread(&repeat);
+    assert(!atomic_load(&repeat.alive) && atomic_load(&repeat.scheduling.ready));
+    assert(!atomic_load(&repeat.last_error));
     assert(expected==captured && expected_depth_calls==depth_calls);
     for(size_t i=0;i<captured;++i) {
         if(before[i]!=after[i]) {

@@ -14,6 +14,11 @@
 
 cariboulite_sample_complex_int16 latest_rx_sample = {0};
 
+static void worker_exited(void* flag)
+{
+    atomic_store_explicit((atomic_bool*)flag, false, memory_order_relaxed);
+}
+
 int write_audio_exact(audio_sink_t* sink, const int16_t* mono, size_t frames)
 {
     while (frames) {
@@ -33,11 +38,14 @@ int write_audio_exact(audio_sink_t* sink, const int16_t* mono, size_t frames)
 void* audio_writer_thread(void* arg){
     
     audio_writer_ctrl_t* a = (audio_writer_ctrl_t*)arg;
-    pthread_setname_np(pthread_self(),"audio_writer_thread");
+    if (!a) return NULL;
+    pthread_setname_np(pthread_self(),"audio_writer");
     
     //set_rt_and_affinity();
     //set_rt_and_affinity_prio(42,-1); 
-    set_rt_and_affinity_prio(46,0);
+    set_rt_and_affinity_prio_record(46, 0, &a->scheduling);
+    atomic_store_explicit(&a->alive, true, memory_order_relaxed);
+    pthread_cleanup_push(worker_exited, &a->alive);
 
     // optional: make period/blocking behavior nicer
     while(a->active){
@@ -46,35 +54,54 @@ void* audio_writer_thread(void* arg){
             break;
         }
         // Write one 10 ms block; adapter reports recovery and progress.
-        if (write_audio_exact(a->sink, frm.pcm, 480) < 0) break;
+        int error = write_audio_exact(a->sink, frm.pcm, 480);
+        if (error < 0) {
+            atomic_store_explicit(&a->last_error, error, memory_order_relaxed);
+            break;
+        }
     }
+    pthread_cleanup_pop(1);
     return NULL;
 }
 
 void* rx_reader_thread_func(void* arg)
 {
-    pthread_setname_np(pthread_self(),"rx_reader_thread");
+    rx_reader_ctrl_st* ctrl = (rx_reader_ctrl_st*)arg;
+    if (!ctrl || !ctrl->radio) return NULL;
+    pthread_setname_np(pthread_self(),"rx_reader");
     //set_rt_and_affinity();
     //set_rt_and_affinity_prio(30, -1);
     // Highest prio; reader must never be blocked by DSP/ALSA
-    set_rt_and_affinity_prio(70, 2);   // falls back to CPU0 if missing 
-
-    rx_reader_ctrl_st* ctrl = (rx_reader_ctrl_st*)arg;
-    caribou_smi_st *smi = &ctrl->radio->sys->smi;
+    set_rt_and_affinity_prio_record(70, 2, &ctrl->scheduling);
+    atomic_store_explicit(&ctrl->alive, true, memory_order_relaxed);
+    pthread_cleanup_push(worker_exited, &ctrl->alive);
 
     const size_t want = ctrl->rx_buffer_size; // Selected rate * 10 ms
     cariboulite_sample_complex_int16* buf = ctrl->rx_buffer;
     cariboulite_sample_meta* meta = malloc(sizeof(*meta) * want);
     if (!meta) {
         fprintf(stderr, "RX reader metadata allocation failed\n");
-        return NULL;
+        atomic_store_explicit(&ctrl->last_error, -ENOMEM, memory_order_relaxed);
+        goto done;
     }
     pthread_cleanup_push(free, meta);
 
     size_t have = 0;
     while (ctrl->active) {
-        int ret = cariboulite_radio_read_samples(ctrl->radio, buf + have, meta, want - have);
-        if (ret > 0) have += (size_t)ret;
+        size_t requested = want - have;
+        int ret = cariboulite_radio_read_samples(ctrl->radio, buf + have, meta, requested);
+        atomic_fetch_add_explicit(&ctrl->read_calls, 1, memory_order_relaxed);
+        if (ret > 0) {
+            atomic_fetch_add_explicit(&ctrl->read_samples, (size_t)ret, memory_order_relaxed);
+            if ((size_t)ret < requested)
+                atomic_fetch_add_explicit(&ctrl->short_reads, 1, memory_order_relaxed);
+            have += (size_t)ret;
+        } else if (!ret) {
+            atomic_fetch_add_explicit(&ctrl->zero_reads, 1, memory_order_relaxed);
+        } else {
+            atomic_fetch_add_explicit(&ctrl->read_errors, 1, memory_order_relaxed);
+            atomic_store_explicit(&ctrl->last_error, ret, memory_order_relaxed);
+        }
 
         if (have == want) {
             rf10_frame_t frm;
@@ -115,6 +142,8 @@ void* rx_reader_thread_func(void* arg)
         }
     }
     pthread_cleanup_pop(1);
+done:
+    pthread_cleanup_pop(1);
     return NULL;
 }
 
@@ -124,6 +153,20 @@ int rx_pipeline_init(rx_pipeline_t* p, sys_st* sys,
 {
     if (!p || !sys || !radio || !par) return -1;
     memset(p, 0, sizeof(*p));
+    atomic_init(&p->aw.alive, false);
+    atomic_init(&p->aw.last_error, 0);
+    atomic_init(&p->demod.alive, false);
+    atomic_init(&p->demod.last_error, 0);
+    atomic_init(&p->rx_ctrl.alive, false);
+    pipeline_thread_diagnostics_init(&p->aw.scheduling);
+    pipeline_thread_diagnostics_init(&p->demod.scheduling);
+    pipeline_thread_diagnostics_init(&p->rx_ctrl.scheduling);
+    atomic_init(&p->rx_ctrl.read_calls, 0);
+    atomic_init(&p->rx_ctrl.read_samples, 0);
+    atomic_init(&p->rx_ctrl.short_reads, 0);
+    atomic_init(&p->rx_ctrl.zero_reads, 0);
+    atomic_init(&p->rx_ctrl.read_errors, 0);
+    atomic_init(&p->rx_ctrl.last_error, 0);
     p->sys   = sys;
     p->radio = radio;
 
@@ -310,6 +353,7 @@ int rx_pipeline_start(rx_pipeline_t* p)
     // start reader now (only when RX is active)
     p->rx_ctrl.active        = true;
     p->rx_ctrl.radio         = p->radio;
+    pipeline_thread_diagnostics_reset(&p->rx_ctrl.scheduling);
     p->running = true; // stop() must unwind hardware if thread creation fails.
     if (pthread_create(&p->rx_thread, NULL, rx_reader_thread_func, &p->rx_ctrl) != 0) {
         rx_pipeline_stop(p);
@@ -426,8 +470,30 @@ int rx_pipeline_set_deemph(rx_pipeline_t* p, float tau_s)
 
 void rx_pipeline_get_stats(rx_pipeline_t* p, rx_pipeline_stats_t* out)
 {
-    if (!p || !out) return;
+    if (!out) return;
+    memset(out, 0, sizeof(*out));
+    if (!p || !p->inited) return;
     rf10_fifo_get_stats(&p->rxq, &out->rxq);
+    aud10_fifo_get_stats(&p->afifo, &out->audioq);
+    out->playback_valid = audio_sink_get_stats(p->demod.sink, &out->playback);
+    out->reader.calls = atomic_load_explicit(&p->rx_ctrl.read_calls, memory_order_relaxed);
+    out->reader.samples = atomic_load_explicit(&p->rx_ctrl.read_samples, memory_order_relaxed);
+    out->reader.short_reads = atomic_load_explicit(&p->rx_ctrl.short_reads, memory_order_relaxed);
+    out->reader.zero_reads = atomic_load_explicit(&p->rx_ctrl.zero_reads, memory_order_relaxed);
+    out->reader.errors = atomic_load_explicit(&p->rx_ctrl.read_errors, memory_order_relaxed);
+    out->reader.last_error = atomic_load_explicit(&p->rx_ctrl.last_error, memory_order_relaxed);
+    out->reader_worker.created = p->rx_thread_created;
+    out->demod_worker.created = p->demod_thread_created;
+    out->audio_worker.created = p->aw_thread_created;
+    out->reader_worker.alive = atomic_load_explicit(&p->rx_ctrl.alive, memory_order_relaxed);
+    out->demod_worker.alive = atomic_load_explicit(&p->demod.alive, memory_order_relaxed);
+    out->audio_worker.alive = atomic_load_explicit(&p->aw.alive, memory_order_relaxed);
+    out->reader_worker.last_error = out->reader.last_error;
+    out->demod_worker.last_error = atomic_load_explicit(&p->demod.last_error, memory_order_relaxed);
+    out->audio_worker.last_error = atomic_load_explicit(&p->aw.last_error, memory_order_relaxed);
+    pipeline_thread_diagnostics_get(&p->rx_ctrl.scheduling, &out->reader_worker.scheduling);
+    pipeline_thread_diagnostics_get(&p->demod.scheduling, &out->demod_worker.scheduling);
+    pipeline_thread_diagnostics_get(&p->aw.scheduling, &out->audio_worker.scheduling);
 }
 
 size_t rx_pipeline_frame_samples(const rx_pipeline_t* p)
@@ -437,7 +503,10 @@ size_t rx_pipeline_frame_samples(const rx_pipeline_t* p)
 
 void rx_pipeline_reset_stats(rx_pipeline_t* p)
 {
-    if (p && p->inited) rf10_fifo_reset_stats(&p->rxq);
+    if (p && p->inited) {
+        rf10_fifo_reset_stats(&p->rxq);
+        aud10_fifo_reset_stats(&p->afifo);
+    }
 }
 
 void rx_pipeline_set_squelch(rx_pipeline_t* p, bool noise, bool carrier)

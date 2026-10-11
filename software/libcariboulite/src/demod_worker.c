@@ -10,12 +10,20 @@
 #include <stdio.h>
 #include <time.h>
 
+static void demod_exited(void* arg)
+{
+    audio_demod_ctrl_t* c = arg;
+    atomic_store_explicit(&c->alive, false, memory_order_relaxed);
+}
+
 void* audio_demod_thread(void* arg)
 {
-    pthread_setname_np(pthread_self(), "audio_demod_thread");
-    set_rt_and_affinity_prio(55, 1);
     audio_demod_ctrl_t* c = arg;
     if (!c || !c->fifo_in || !c->sink || !c->dsp) return NULL;
+    pthread_setname_np(pthread_self(), "audio_demod");
+    set_rt_and_affinity_prio_record(55, 1, &c->scheduling);
+    atomic_store_explicit(&c->alive, true, memory_order_relaxed);
+    pthread_cleanup_push(demod_exited, c);
 
     // The FIFO carries complete 10 ms RF blocks. Sample depth immediately before
     // processing the last IQ pair: this is the same 500th 50k interval at which
@@ -117,13 +125,16 @@ void* audio_demod_thread(void* arg)
             }
             if (audio_demod_set_audio(c->dsp, c->deemph_tau, c->pcm_gain) != 0) {
                 fprintf(stderr, "DEMOD: invalid audio configuration\n");
-                return NULL;
+                atomic_store_explicit(&c->last_error, -EINVAL, memory_order_relaxed);
+                goto done;
             }
             audio_demod_result_t result = audio_demod_process_with_raw(c->dsp,
                 frm.data + offset, count, audio.pcm + nout, raw, 480 - nout, corr48);
             if (result.error || !result.consumed) {
                 fprintf(stderr, "DEMOD: processing failed (%d)\n", result.error);
-                return NULL;
+                atomic_store_explicit(&c->last_error,
+                    result.error ? result.error : -EIO, memory_order_relaxed);
+                goto done;
             }
             bool open = false;
             for (size_t i = 0; i < result.produced; ++i) {
@@ -152,7 +163,7 @@ void* audio_demod_thread(void* arg)
                     size_t acnt = 0, acap = 0;
                     aud10_fifo_peek_depth(c->afifo_out, &acnt, &acap);
                     fprintf(stderr,
-                        "DEMOD: frames=%llu (%.1fs) ALSA=%s  aud_fifo=%zu/%zu (%.0f%%)  corr=%.5f",
+                        "DEMOD: produced_frames=%llu (%.1fs) ALSA=%s  audio_fifo=%zu/%zu (%.0f%%)  corr=%.5f",
                         (unsigned long long)c->pcm_total_frames,
                         (double)c->pcm_total_frames / (double)c->pcm_rate,
                         audio_sink_state(c->sink), acnt, acap,
@@ -175,6 +186,8 @@ void* audio_demod_thread(void* arg)
             atomic_store(&c->noise_squelch_valid, 1);
         }
     }
+done:
+    pthread_cleanup_pop(1);
     return NULL;
 }
 
