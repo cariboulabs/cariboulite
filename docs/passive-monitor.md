@@ -1,10 +1,11 @@
 # Standalone passive monitor
 
 This development branch adds a separate terminal monitor and an independent
-C RX backend using a local Unix-domain socket. The accepted radio behavior
+C radio backend using local Unix-domain sockets. The accepted radio behavior
 and performance remain the baseline. Following the user's request for a fair
 comparison, both the backend and `test_app` now use shared RX instrumentation.
-DSP, radio settings, scheduling requests and recovery behavior are unchanged.
+The RX DSP and modem profile remain the accepted baseline. Shared TX workers
+now park efficiently while stopped and report writer/capture diagnostics.
 
 The monitor is a Python 3 client with no radio-library dependency. It receives
 status snapshots and displays them; it sends no commands and never opens SPI,
@@ -17,11 +18,12 @@ The status protocol is independent of language, so a native C/C++ monitor can
 replace this client later. A [physical comparison with menu 14](rx-application-comparison.md)
 now measures both instrumented applications, including the Python monitor.
 
-The backend runs **instead of `test_app`** and owns the hardware and receive
+The backend runs **instead of `test_app`** and owns the hardware and radio
 pipeline. It automatically starts RX using launch settings, demodulates NBFM
 or mono WBFM, plays audio, and publishes status. A separate C
-[receiver controller](radio-control.md) now provides RX start/stop, frequency,
-mode, sample rate and squelch commands through a second Unix socket.
+[radio controller](radio-control.md) provides RX start/stop, frequency,
+mode, sample rate and squelch, plus half-duplex NBFM TX with separate frequency,
+power, rate and microphone/test-tone source, through a second Unix socket.
 Use `--start-stopped` to wait for the controller before starting reception. The
 `test_app` displays the shared counters in menu 14 and does not publish socket telemetry. The included Python
 demo publisher remains available for explicitly simulated data.
@@ -76,9 +78,11 @@ radio. Pressing `q` in the monitor closes only that monitor; reception and
 audio continue. Monitor connections do not trigger additional hardware reads
 and cannot control the radio.
 
-For receiver controls, open another terminal and run
+For radio controls, open another terminal and run
 `build/radio-backend/cariboulite_radio_control`. The monitor stays optional;
-closing either client leaves RX in its current state. Frequency, mode and
+Closing the monitor leaves radio operation unchanged. Closing the controller
+leaves RX in its current state, but releases its TX and restores previously
+running RX. Frequency, mode and
 sample-rate edits require stopped RX. Squelch edits work during reception.
 See [controller commands, validation and restart behavior](radio-control.md).
 
@@ -91,6 +95,11 @@ Launch options:
 | `--sample-rate HZ` | `1000000`, `2000000` or `4000000`; default `1000000`. |
 | `--mode nbfm\|wbfm` | Demodulation; default `nbfm`. WBFM audio is mono. |
 | `--playback DEVICE` | ALSA device; default `plughw:Loopback,0,0`. |
+| `--microphone DEVICE` | TX capture device; default `plughw:Loopback,1,1`. |
+| `--tx-frequency HZ` | Saved TX frequency; default `430125000`. |
+| `--tx-power DBM` | Requested TX power; default `-12`. |
+| `--tx-sample-rate HZ` | TX rate: `1000000`, `2000000` or `4000000`; default `1000000`. |
+| `--tx-source mic\|tone` | TX source; default `mic`. |
 | `--socket PATH` | Status socket; default path described below. |
 | `--control-socket PATH` | Command socket; default `control.sock` beside the status socket. |
 | `--start-stopped` | Initialize/tune hardware and wait for an RX start command. |
@@ -536,3 +545,39 @@ and reader errors. Controller disconnection left RX running, and final
 shutdown removed both owned sockets. This was a short control/lifecycle
 check; the earlier CPU comparison describes the preceding instrumented build.
 See [artifacts and limitations](radio-control.md#physical-control-check-2026-10-11).
+
+### Half-duplex TX controls
+
+The [radio controller](radio-control.md) now adds `tx start`/`tx stop`, saved
+TX frequency/power/rate, microphone or test-tone source and tone settings.
+Starting TX fully releases RX; normal stop preserves the opening/closing
+Quindar sequence and existing fast tail drain, then restores previously
+running RX. Controller disconnect requests that same normal stop. Lifecycle
+jobs keep ordinary command replies and monitoring available during transitions.
+
+TX buffers and workers may remain allocated after stop. Both workers block on
+a condition variable, and microphone capture is reset only after its reader
+is parked. Before each subsequent TX start, the backend joins both pipelines,
+soft-resets shared FPGA state and creates a fresh TX pipeline, preserving
+menu 14's validated startup recovery. TX counters restart with a new pipeline
+generation. Shared worker diagnostics include completed/partial/zero writes,
+backpressure, persistent write errors, complete-frame sequence, microphone
+overruns/recovery/read errors, and actual worker scheduling/health.
+
+The monitor replaces its RX detail rows with eight compact TX rows while TX
+is starting, running or stopping, then restores the RX detail view. Both
+layouts fit the 57-row terminal limit. TX queue rates are calculated only
+within the same allocation generation. Hardware/dry-run transitions expose
+unavailable pipeline measurements explicitly. Power estimates come from
+checked register codes and the existing driver model; they are not calibrated
+connector-power measurements.
+
+Software validation covers RX/menu-14 lifecycle, Quindar sample/drain,
+audio-adapter and worker behavior. The user's initial TX attempts remained
+in TXPREP without a carrier. After restoring the missing FPGA reset, the user
+confirmed on 2026-10-11 that both Quindar tones and modulation from the
+test-tone and microphone sources are audible. The user also confirmed
+RX → TX → RX transitions and that disconnecting the controller during TX
+stops transmission and restores RX. Failed startup logs now capture
+IQ-interface synchronization and FPGA readbacks before cleanup. No new
+whole-application CPU measurement was performed.

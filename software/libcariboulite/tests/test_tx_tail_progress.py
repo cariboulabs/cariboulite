@@ -23,7 +23,9 @@ else:
 
 with tempfile.TemporaryDirectory(prefix='tx-tail-progress-') as directory:
     directory = Path(directory)
-    (directory / 'tx_writer_thread.inc').write_text(source[start:end + 1])
+    # The writer now shares the production stopped-worker gate and cleanup.
+    helpers = source.index('static void gate_unlock(')
+    (directory / 'tx_writer_thread.inc').write_text(source[helpers:end + 1])
     binary = directory / 'test'
     subprocess.run(['cc', '-std=gnu11', '-O2', '-Wall', '-Wextra', '-Werror',
                     *['-I' + str(path) for path in

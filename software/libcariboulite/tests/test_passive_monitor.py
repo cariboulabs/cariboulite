@@ -72,6 +72,26 @@ def rx_instrumentation():
     }
 
 
+def tx_instrumentation():
+    scheduling = {"valid": True, "requested_priority": 60, "requested_cpu": 0,
+                  "applied_cpu": 0, "policy_name": "SCHED_OTHER", "priority": 0,
+                  "affinity": "0", "rt_error": 1, "fallback_error": 0,
+                  "affinity_error": 0, "mlock_error": 12, "query_error": 0,
+                  "mlock_attempted": True}
+    return {
+        "running": True, "requested": True, "initialized": True, "generation": 5,
+        "writer": {"calls": 151, "samples": 1234567, "partial_writes": 7,
+                   "zero_writes": 3, "would_block": 4, "errors": 2,
+                   "last_error": -11, "written_sequence": 123},
+        "capture": {"valid": True, "read_calls": 42, "frames_read": 20160,
+                    "overruns": 4, "recovery_attempts": 7, "recovery_successes": 6,
+                    "recovery_failures": 1, "read_errors": 2, "last_error": -32},
+        "workers": {name: {"alive": True, "created": True, "last_error": -5,
+                           "scheduling": dict(scheduling)} for name in ("producer", "writer")},
+        "fault": None,
+    }
+
+
 class FixturePublisher:
     """An isolated socket fixture; it never accepts or executes commands."""
 
@@ -538,6 +558,64 @@ class IQRegisterDisplayTests(unittest.TestCase):
         self.assertNotIn(" TXDAC", displayed)
         self.assertEqual(frame[len(body) + 2], body[-1])
 
+    def test_default_tx_view_fits_57_rows_and_keeps_registers_and_footer_visible(self):
+        class Connection:
+            status = "connected"
+            rates = {"rx": (100, 100), "tx": (200, 200)}
+
+            def __init__(self, value):
+                self.latest = value
+
+            def poll(self):
+                return None
+
+        class Screen:
+            def __init__(self):
+                self.lines = {}
+
+            def nodelay(self, enabled): pass
+            def keypad(self, enabled): pass
+            def getmaxyx(self): return 57, 160
+            def erase(self): self.lines = {}
+            def refresh(self): pass
+            def getch(self): return ord("q")
+
+            def addnstr(self, row, column, line, limit):
+                assert 0 <= row < 57 and column == 0
+                self.lines[row] = line[:limit]
+
+        hardware = self.hardware(common={name: 0 for name in self.COMMON},
+                                 rf24={name: 0 for name in self.RADIO})
+        hardware["rf24"]["registers"]["STATE"] = 6
+        hardware["fpga"] = {"valid": True, "raw_status": 7, "io_control": 1, "debug": 2}
+        queue = {"capacity": 64, "depth": 3, "min_depth": 0, "max_depth": 20,
+                 "puts": 100, "gets": 97, "drops": 0, "timeouts_put": 0, "timeouts_get": 1}
+        tx = tx_instrumentation()
+        tx["queue"] = queue
+        for state in ("TX_STARTING", "TX", "TX_STOPPING"):
+            with self.subTest(state=state):
+                value = snapshot(channel="RF24", state="DRY_RUN", hardware=hardware,
+                                 rx={"running": False, "queue": queue, **rx_instrumentation()},
+                                 tx=tx, control={"state": state, "tx_pipeline_generation": 5,
+                                                 "tx_requested": True, "transition": True,
+                                                 "rx_resume": True},
+                                 config={"tx_sample_rate_hz": 2000000, "tx_source": "mic",
+                                         "tx_deviation_hz": 2500})
+                connection = Connection(value)
+                body = client.format_snapshot(value, rates=connection.rates)
+                self.assertLessEqual(len(body) + 3, 57)
+                screen = Screen()
+                self.assertEqual(client.run_interactive(screen, connection), 0)
+                text = "\n".join(screen.lines.values())
+                for expected in (f"state={state}", "TX writer: calls=151", "overruns=4",
+                                 "producer worker: alive=on", "writer worker: alive=on",
+                                 "TX fault: none", "RF24 STATE=0x06", "FPGA:", "Loopback:",
+                                 "TX rate=2,000,000 S/s source=mic dev=+/-2500 Hz",
+                                 "Queue timeouts are wait events; drops are application queue drops."):
+                    self.assertIn(expected, text)
+                self.assertNotIn("RX audio FIFO:", text)
+                self.assertEqual(screen.lines[len(body) + 2], body[-1])
+
     def test_rx_instrumentation_reports_fifo_playback_reader_and_actual_scheduling(self):
         lines = client.format_snapshot(snapshot(rx=rx_instrumentation()))
         text = "\n".join(lines)
@@ -556,6 +634,63 @@ class IQRegisterDisplayTests(unittest.TestCase):
                 self.assertIn(expected, text)
         self.assertEqual(sum(" worker:" in line for line in lines), 3)
         self.assertTrue(all(len(line) <= 159 for line in lines if " worker:" in line))
+
+    def test_tx_details_replace_rx_instrumentation_in_all_transmit_states(self):
+        for state in ("TX_STARTING", "TX", "TX_STOPPING"):
+            with self.subTest(state=state):
+                value = snapshot(state="DRY_RUN", channel="RF24", rx=rx_instrumentation(),
+                                 tx=tx_instrumentation(),
+                                 control={"state": state, "tx_pipeline_generation": 5,
+                                          "tx_requested": True, "rx_resume": True, "transition": True},
+                                 config={"tx_frequency_hz": 430225000,
+                                         "tx_actual_frequency_hz": None, "tx_power_dbm": -12,
+                                         "tx_actual_power_dbm": None, "tx_sample_rate_hz": 2000000,
+                                         "tx_source": "mic", "tx_deviation_hz": 2500})
+                lines = client.format_snapshot(value)
+                text = "\n".join(lines)
+                for expected in (f"state={state}", "TX pipeline: running=on requested=on",
+                                 "initialized=on generation=5 resume RX=on transition=on",
+                                 "TX writer: calls=151 samples=1234567 written_sequence=123",
+                                 "partial/zero writes=7/3 would_block=4 errors=2 last_error=-11",
+                                 "TX capture: calls=42 frames=20160 overruns=4",
+                                 "recovery(attempt/ok/fail)=7/6/1 errors=2 last_error=-32",
+                                 "producer worker: alive=on created=on last_error=-5",
+                                 "writer worker: alive=on created=on last_error=-5",
+                                 "sched=SCHED_OTHER/0 req=60", "affinity=0",
+                                 "errors(rt/fb/cpu/lock/query)=1/0/0/12/0 mlock=on",
+                                 "TX fault: none", "TX rate=2,000,000 S/s source=mic dev=+/-2500 Hz",
+                                 "TX 430.225000 MHz actual=unavailable", "power(req/est)=-12/unavailable dBm"):
+                    self.assertIn(expected, text)
+                for absent in ("RX audio FIFO:", "Playback:", "RX reader:", "reader worker:"):
+                    self.assertNotIn(absent, text)
+                self.assertEqual(len(client._format_tx_instrumentation(value["tx"], value["control"])), 8)
+                self.assertTrue(all(len(line) <= 159 for line in lines if " worker:" in line))
+
+    def test_unavailable_tx_statistics_do_not_imply_healthy_zeroes(self):
+        tx = tx_instrumentation()
+        tx.update(running=None, writer=None, capture={"valid": False, "overruns": 4},
+                  fault="writer failure\x1b[2J\n")
+        tx["workers"]["producer"] = None
+        tx["workers"]["writer"]["scheduling"]["valid"] = False
+        text = "\n".join(client.format_snapshot(snapshot(control={"state": "TX"}, tx=tx)))
+        for expected in ("running=unknown", "TX writer: calls=unavailable samples=unavailable",
+                         "partial/zero writes=unavailable/unavailable", "errors=unavailable",
+                         "TX capture: unavailable", "ALSA capture counters unavailable",
+                         "producer worker: alive=unknown created=unknown",
+                         "sched=unavailable/unavailable", "TX fault: writer failure"):
+            self.assertIn(expected, text)
+        for absent in ("overruns=0", "overruns=4", "calls=0", "errors=0", "\x1b"):
+            self.assertNotIn(absent, text)
+
+    def test_rx_details_return_after_tx_and_retained_tx_fault_is_visible(self):
+        tx = tx_instrumentation()
+        tx["fault"] = "capture failed"
+        for state in ("RX_STARTING", "RX", "IDLE", "FAULT"):
+            text = "\n".join(client.format_snapshot(snapshot(control={"state": state},
+                                                            rx=rx_instrumentation(), tx=tx)))
+            self.assertIn("RX audio FIFO:", text)
+            self.assertNotIn("TX writer:", text)
+            self.assertIn("TX fault=capture failed", text)
 
     def test_optional_rx_instrumentation_does_not_invent_data_for_older_publishers(self):
         text = "\n".join(client.format_snapshot(snapshot(rx={"running": True})))
@@ -721,6 +856,23 @@ class PassiveClientTests(unittest.TestCase):
         self.assertEqual(client.queue_rates(dict(old, control={"pipeline_generation": 2}), new),
                          {"rx": (100, 100)})
         self.assertIn("config=4  pipeline=2", "\n".join(client.format_snapshot(new)))
+
+    def test_tx_generation_prevents_rates_across_transmitter_restart(self):
+        old = snapshot(monotonic_s=10, control={"tx_pipeline_generation": 1},
+                       tx={"generation": 1, "queue": {"puts": 10, "gets": 9}})
+        new = snapshot(2, monotonic_s=12, control={"tx_pipeline_generation": 2},
+                       tx={"generation": 2, "queue": {"puts": 210, "gets": 209}})
+        self.assertEqual(client.queue_rates(old, new), {})
+        same = dict(old, control={"tx_pipeline_generation": 2},
+                    tx={"generation": 2, "queue": old["tx"]["queue"]})
+        self.assertEqual(client.queue_rates(same, new), {"tx": (100, 100)})
+        # Either exported generation changing suppresses rates, even if an
+        # incomplete publisher temporarily leaves the other field unchanged.
+        self.assertEqual(client.queue_rates(dict(same, control={"tx_pipeline_generation": 1}), new), {})
+        self.assertEqual(client.queue_rates(dict(same, tx=old["tx"]), new), {})
+        reset = snapshot(3, monotonic_s=14, control={"tx_pipeline_generation": 2},
+                         tx={"generation": 2, "queue": {"puts": 1, "gets": 0}})
+        self.assertEqual(client.queue_rates(new, reset), {})
 
     def test_formatting_marks_stale_cache_and_safe_labels(self):
         value = snapshot(monotonic_s=10, hardware_monotonic_s=8,

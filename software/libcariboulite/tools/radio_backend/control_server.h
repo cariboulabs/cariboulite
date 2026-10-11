@@ -23,6 +23,11 @@ typedef struct control_server {
     uint64_t replies_sent;
     uint64_t replies_deferred;
     uint64_t disconnects;
+    /* Accepted sessions are never reused. On active disconnect the service
+     * returns before accepting a replacement, and retains the lost session's
+     * generation so the owner can release any TX belonging to that session. */
+    uint64_t controller_generation;
+    uint64_t disconnected_generation;
 } control_server_t;
 
 typedef void (*control_command_handler_t)(void *context,
@@ -43,7 +48,8 @@ int control_server_init(control_server_t *server, const char *socket_path);
  * A single deferred reply prevents further command execution until delivered.
  * The handler must populate a valid reply, even for INVALID/BUSY requests.
  * Returns 0 on normal/no work, -1 with errno for invalid/inactive transport or
- * an invalid handler reply. Closing a client never generates a radio command. */
+ * an invalid handler reply. Closing a client never generates a radio command;
+ * disconnects/disconnected_generation expose the event to the radio owner. */
 int control_server_service(control_server_t *server,
                            control_command_handler_t handler, void *context);
 

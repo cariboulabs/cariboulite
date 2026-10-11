@@ -53,6 +53,14 @@ static void handle_command(void *context, const control_request_t *request,
     reply->noise_enabled = true;
     reply->noise_open_rms = 0.2f;
     reply->noise_close_rms = 0.3f;
+    reply->tx_requested_frequency_hz = 430125000;
+    reply->tx_actual_frequency_hz = 430125000;
+    reply->tx_sample_rate_hz = 1000000;
+    reply->tx_requested_power_dbm = -12;
+    reply->tx_actual_power_dbm = -12;
+    reply->tx_tone_hz = 1000;
+    reply->tx_tone_amp = .5f;
+    reply->tx_deviation_hz = 2500;
 }
 
 static int connect_client(const char *path)
@@ -330,6 +338,46 @@ static void test_secure_path_and_cleanup(const char *directory, const char *path
     CHECK(control_server_init(NULL, path) == -1 && errno == EINVAL);
 }
 
+static void test_session_generation_and_disconnect_visibility(const char *path)
+{
+    control_server_t server;
+    owner_t owner = {0};
+    CHECK(!control_server_init(&server, path));
+    int first = connect_client(path);
+    send_packet(first, "v2 1 get", 8);
+    service_once(&server, &owner);
+    control_reply_t reply = receive_reply(first);
+    CHECK(reply.protocol_version == 2 && reply.tx_sample_rate_hz == 1000000);
+    CHECK(server.controller_generation == 1 && server.disconnected_generation == 0);
+    close(first);
+    /* Queue a replacement before servicing EOF. The owner must receive a
+     * complete service turn to release TX before this session can execute. */
+    int replacement = connect_client(path);
+    send_packet(replacement, "v2 2 get", 8);
+    service_once(&server, &owner);
+    CHECK(server.controller == -1 && server.controller_generation == 1);
+    CHECK(server.disconnects == 1 && server.disconnected_generation == 1);
+    CHECK(owner.handler_calls == 1);
+    service_once(&server, &owner);
+    reply = receive_reply(replacement);
+    CHECK(reply.protocol_version == 2 && reply.id == 2);
+    CHECK(server.controller_generation == 2 && server.disconnected_generation == 1);
+    /* A lost socket with a deferred reply must expose the same event. */
+    memcpy(server.pending_reply, "ignored", 7);
+    server.pending_reply_bytes = 7;
+    close(replacement);
+    int third = connect_client(path);
+    send_packet(third, "v1 3 get", 8);
+    service_once(&server, &owner);
+    CHECK(server.controller == -1 && server.controller_generation == 2);
+    CHECK(server.disconnects == 2 && server.disconnected_generation == 2);
+    service_once(&server, &owner);
+    reply = receive_reply(third);
+    CHECK(reply.protocol_version == 1 && server.controller_generation == 3);
+    close(third);
+    control_server_close(&server);
+}
+
 int main(void)
 {
     char directory[] = "/tmp/cariboulite-control-test-XXXXXX";
@@ -342,6 +390,7 @@ int main(void)
     test_malformed_packets(path);
     test_slow_controller(path);
     test_busy_startup_handshake(path);
+    test_session_generation_and_disconnect_visibility(path);
     test_secure_path_and_cleanup(directory, path);
     CHECK(rmdir(directory) == 0);
     puts("control server: exclusive ownership, bounded dispatch, malformed "

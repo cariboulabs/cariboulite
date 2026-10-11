@@ -89,3 +89,25 @@ After installing the shutdown fix, the user confirmed **RX and TX tests
 successful**. This records successful physical testing of the updated receiver
 and TX shutdown behavior. The channel and sample rate were not restated, and
 no numerical carrier-release measurement was supplied.
+
+## Separate controller integration
+
+The independent backend now exposes the same NBFM TX path through the
+[separate C radio controller](radio-control.md). `tx start` suspends the RX
+pipeline; `tx stop` runs the existing closing-tone and bounded drain path
+before unkeying and restoring previously running RX. Lifecycle transitions
+are asynchronous, keeping status publication and command responses available
+while the TX tail drains. `ACCEPTED` reports a pending request rather than
+completed carrier release.
+
+Controller disconnection and normal backend shutdown request TX shutdown;
+quitting the passive monitor leaves radio operation unchanged. Interactive
+control is required to start TX, and a one-shot `--command 'tx start'` is
+refused before connection.
+
+Inactive TX producer and writer threads now park on condition variables.
+Parking changes their idle waiting behavior, while opening/closing cues,
+ordinary audio pacing, final fast silent padding and complete-frame write
+acknowledgement retain the established timing path. The simulated release
+times and user acceptance above describe their original validation; they
+are not new measurements of the controller/backend integration.

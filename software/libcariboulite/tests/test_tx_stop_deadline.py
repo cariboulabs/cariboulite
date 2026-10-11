@@ -18,10 +18,15 @@ i = s.index('\nint tx_pipeline_init(', h)
 a = s.index('static inline int ms_to_frames_10ms(')
 b = s.index('\nint tx_pipeline_start(', a)
 c = s.index('static bool tx_wait_written(', b)
-d = s.index('\nvoid tx_pipeline_destroy(', c)
-code = s[h:i] + s[a:b] + s[c:d]
+d = s.index('\nvoid tx_pipeline_request_abort(', c)
+park_start = s.index('static int tx_park_workers(', a)
+park_end = s.index('static void tx_clear_injection(', park_start)
+# Model the exact cue/drain/shutdown phases; real retained-worker parking is
+# exercised separately with pthreads by test_tx_worker_parking.py.
+code = s[h:i] + s[a:park_start] + s[park_end:b] + s[c:d]
 pre = r'''
 #include <assert.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdatomic.h>
@@ -46,6 +51,8 @@ typedef struct {
         unsigned tail_padding_frames;
         uint64_t next_sequence;
         atomic_uint_fast64_t written_sequence;
+        atomic_int last_error;
+        atomic_bool abort_requested;
         struct {
             float hz;
             int frames_left;
@@ -53,7 +60,7 @@ typedef struct {
             bool hold_silence,fast_padding;
         } inj;
     } tx_ctrl;
-    struct { bool active; } dsp_ctrl;
+    struct { bool active; atomic_int last_error; } dsp_ctrl;
     sys_st* sys;
     void* radio;
     rf10_stats_t txq;
@@ -63,6 +70,7 @@ static uint64_t now;
 static tx_pipeline_t* current;
 static int idle_calls,off_calls,low_calls;
 static uint64_t mono_ns(void) { return now; }
+static int tx_park_workers(tx_pipeline_t* p) { (void)p; return 0; }
 
 /* kfifo and cyclic DMA operate in samples, matching the public SMI getter. */
 #define NATIVE_SAMPLES 131072u
@@ -169,7 +177,10 @@ static int fake_sleep(const struct timespec* t,struct timespec* rest) {
     assert(t->tv_sec==0 && t->tv_nsec==2000000);
     now+=2000000;
     advance_rf();
-    if(mode==FAILED_WORKER && now>=20000000) nbfm_tx_active=false;
+    if(mode==FAILED_WORKER && now>=20000000) {
+        atomic_store(&current->tx_ctrl.last_error,-EIO);
+        nbfm_tx_active=false;
+    }
     if(nbfm_tx_active && current->tx_ctrl.active && current->dsp_ctrl.active) {
         bool fast=current->tx_ctrl.inj.fast_padding &&
                   current->tx_ctrl.inj.frames_left>0 &&
@@ -266,6 +277,7 @@ int main(void) {
             tx_pipeline_stop(&p);
             assert_shutdown(&p);
             if(scenario==NORMAL || scenario==DELAY_LAST_WRITE) {
+                assert(atomic_load(&p.tx_ctrl.last_error)==0);
                 assert(generated_tone_frames==25);
                 assert(tone_samples==25*p.tx_ctrl.frame_samples);
                 assert(last_rf_tone_ns-first_rf_tone_ns+
@@ -280,9 +292,18 @@ int main(void) {
                     if(tail>longest_tail) longest_tail=tail;
                 }
             }
-            if(scenario==STALLED_PRODUCER) assert(now>=1000000000ULL);
-            if(scenario==FAILED_WORKER) assert(now==20000000);
+            if(scenario==STALLED_PRODUCER) {
+                assert(now>=1000000000ULL);
+                assert(atomic_load(&p.tx_ctrl.last_error)==-ETIMEDOUT);
+            }
+            if(scenario==STALLED_WRITER)
+                assert(atomic_load(&p.tx_ctrl.last_error)==-ETIMEDOUT);
+            if(scenario==FAILED_WORKER) {
+                assert(now==20000000);
+                assert(atomic_load(&p.tx_ctrl.last_error)==-EIO);
+            }
             if(scenario==STALL_LAST_WRITE) {
+                assert(atomic_load(&p.tx_ctrl.last_error)==-ETIMEDOUT);
                 assert(writer_busy && p.txq.count==0);
                 assert(atomic_load(&p.tx_ctrl.written_sequence)<p.tx_ctrl.inj.last_sequence);
                 assert(now>=final_queued_ns+1250000000ULL &&
@@ -304,6 +325,14 @@ int main(void) {
         else nbfm_tx_active=false;
         tx_pipeline_stop(&p);assert_shutdown(&p);assert(now==0);
     }
+    /* A retained producer error remains authoritative when the tail cannot
+     * run; shutdown must not manufacture a competing writer timeout. */
+    reset(&p,&sys,1000000,6,NORMAL,2,false);
+    atomic_store(&p.dsp_ctrl.last_error,-ENODEV);
+    nbfm_tx_active=false;
+    tx_pipeline_stop(&p);assert_shutdown(&p);
+    assert(atomic_load(&p.dsp_ctrl.last_error)==-ENODEV);
+    assert(atomic_load(&p.tx_ctrl.last_error)==0);
     /* Demonstrate the regression: fixed 250 ms padding truncates at 1 MS/s. */
     reset(&p,&sys,1000000,6,NORMAL,0,false);
     p.tx_ctrl.tail_padding_frames=25;

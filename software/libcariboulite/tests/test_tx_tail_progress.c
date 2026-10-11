@@ -25,6 +25,15 @@ static bool check_pacing_deadline;
 uint64_t mono_ns(void) { return producer_now += 10000000; }
 int set_rt_and_affinity_prio(int priority, int cpu)
 { (void)priority; (void)cpu; return 0; }
+int set_rt_and_affinity_prio_record(int priority, int cpu,
+                                   pipeline_thread_diagnostics_t* diagnostics)
+{
+    (void)priority; (void)cpu;
+    diagnostics->status.valid = true;
+    atomic_store(&diagnostics->ready, true);
+    return 0;
+}
+void rf10_fifo_stop(rf10_fifo_t* fifo) { (void)fifo; }
 int __wrap_clock_nanosleep(clockid_t clock, int flags,
                           const struct timespec* request, struct timespec* remain)
 {
@@ -351,14 +360,22 @@ static void writer_case(unsigned rate, bool fail, bool stop)
     handoff=HANDOFF_NONE; stream_state=smi_stream_tx_channel;
     hard_failure=fail; midframe_stop=stop; nbfm_tx_active=true;
     tx_writer_thread_func(&tx);
+    assert(atomic_load(&tx.write_calls) == write_calls);
+    assert(!atomic_load(&tx.alive) && tx.scheduling.status.valid);
     if (fail || stop) {
         assert(fetched==1 && accepted<tx.frame_samples);
         assert(atomic_load(&tx.written_sequence)==20);
         assert(!completed);
         if (fail) assert(!nbfm_tx_active);
+        assert(atomic_load(&tx.write_samples) == accepted);
+        assert(atomic_load(&tx.write_errors) == (fail ? 1u : 0u));
+        assert(atomic_load(&tx.last_error) == (fail ? -EIO : 0));
     } else {
         assert(fetched==3 && completed==3);
         assert(atomic_load(&tx.written_sequence)==23);
+        assert(atomic_load(&tx.write_samples) == 3 * tx.frame_samples);
+        assert(atomic_load(&tx.partial_writes) && atomic_load(&tx.zero_writes));
+        assert(atomic_load(&tx.would_block) && !atomic_load(&tx.write_errors));
     }
 }
 static void stop_then_start_rx(void)

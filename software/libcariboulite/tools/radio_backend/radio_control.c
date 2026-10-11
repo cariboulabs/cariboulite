@@ -1,10 +1,11 @@
-/* Receiver controls only. The backend remains the sole hardware owner.
+/* Radio controls only. The backend remains the sole hardware owner.
  * No timer, status subscription, signal to the owner, or command retry is used. */
 #include "command_protocol.h"
 
 #include <errno.h>
 #include <getopt.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <math.h>
 #include <poll.h>
 #include <signal.h>
@@ -55,7 +56,7 @@ static void usage(FILE *out, const char *program)
 {
     fprintf(out,
         "Usage: %s [--socket PATH] [--timeout SECONDS] [--command 'COMMAND']\n"
-        "Receiver-only controller; connecting and quitting leave RX unchanged.\n"
+        "Radio controller; disconnect releases owned TX and resumes prior RX.\n"
         "  --socket PATH      default /tmp/cariboulite-monitor-<UID>/control.sock\n"
         "  --timeout SECONDS  reply timeout, default 2 (maximum 60)\n"
         "  --command COMMAND  execute once, then disconnect\n"
@@ -73,9 +74,17 @@ static void command_help(void)
          "  noise on|off          noise squelch enable\n"
          "  carrier on|off        carrier squelch enable\n"
          "  levels OPEN CLOSE     noise RMS thresholds: 0 < OPEN < CLOSE <= 8\n"
+         "  tx start | tx stop    key/unkey NBFM TX; keep this controller connected\n"
+         "  tx frequency MHz      saved TX frequency, for example 430.125\n"
+         "  tx power DBM          integer -14..14; backend applies channel limits\n"
+         "  tx rate 1|2|4         saved TX sample rate in MS/s\n"
+         "  tx source mic|tone    saved TX audio source\n"
+         "  tx tone HZ AMP        0 < HZ <= 3000, 0 < AMP <= 1\n"
          "  help                  show commands\n"
-         "  q | quit              disconnect; reception keeps its current state\n"
-         "Frequency, mode and rate changes require stopped RX.");
+         "  q | quit              disconnect; unkey owned TX and resume prior RX\n"
+         "RX frequency/mode/rate changes require stopped RX.\n"
+         "TX settings can be saved during RX; changes require stopped TX.\n"
+         "Start/stop acknowledgements can precede completion: use status or the monitor.");
 }
 
 static int parse_number(const char *text, double *result)
@@ -162,6 +171,41 @@ static int parse_command(const char *input, ui_command_t *command)
         command->kind = UI_LEVELS;
         command->request.noise_open_rms = (float)opening;
         command->request.noise_close_rms = (float)closing;
+    } else if (count == 2 && !strcmp(name, "tx") &&
+               (!strcmp(tokens[1], "start") || !strcmp(tokens[1], "stop"))) {
+        command->request.command = !strcmp(tokens[1], "start") ? CONTROL_TX_START : CONTROL_TX_STOP;
+    } else if (count == 3 && !strcmp(name, "tx") &&
+               (!strcmp(tokens[1], "frequency") || !strcmp(tokens[1], "freq"))) {
+        double value;
+        if (parse_number(tokens[2], &value) || value <= 0 || !isfinite(value * 1e6)) return -1;
+        command->request.command = CONTROL_TX_FREQUENCY;
+        command->request.tx_frequency_hz = value * 1e6;
+    } else if (count == 3 && !strcmp(name, "tx") && !strcmp(tokens[1], "power")) {
+        const char *digit = tokens[2];
+        if (*digit == '+' || *digit == '-') ++digit;
+        if (!*digit) return -1;
+        for (; *digit; ++digit) if (*digit < '0' || *digit > '9') return -1;
+        double power;
+        if (parse_number(tokens[2], &power) || power < -14 || power > 14) return -1;
+        command->request.command = CONTROL_TX_POWER;
+        command->request.tx_power_dbm = (int)power;
+    } else if (count == 3 && !strcmp(name, "tx") && !strcmp(tokens[1], "rate")) {
+        double rate;
+        if (parse_number(tokens[2], &rate) || (rate != 1 && rate != 2 && rate != 4)) return -1;
+        command->request.command = CONTROL_TX_SAMPLE_RATE;
+        command->request.tx_sample_rate_hz = (unsigned)rate * 1000000;
+    } else if (count == 3 && !strcmp(name, "tx") && !strcmp(tokens[1], "source") &&
+               (!strcmp(tokens[2], "mic") || !strcmp(tokens[2], "tone"))) {
+        command->request.command = CONTROL_TX_SOURCE;
+        command->request.tx_tone_mode = !strcmp(tokens[2], "tone");
+    } else if (count == 4 && !strcmp(name, "tx") && !strcmp(tokens[1], "tone")) {
+        double hz, amplitude;
+        if (parse_number(tokens[2], &hz) || parse_number(tokens[3], &amplitude) ||
+            hz <= 0 || hz > 3000 || amplitude <= 0 || amplitude > 1) return -1;
+        command->request.command = CONTROL_TX_TONE;
+        command->request.tx_tone_hz = (float)hz;
+        command->request.tx_tone_amp = (float)amplitude;
+        if (command->request.tx_tone_hz <= 0 || command->request.tx_tone_amp <= 0) return -1;
     } else return -1;
     return 0;
 }
@@ -244,6 +288,7 @@ static int exchange(controller_t *controller, control_request_t *request)
         return -1;
     }
     request->id = ++controller->next_id;
+    request->protocol_version = 2;
     int length = control_request_format(request, packet, sizeof(packet));
     if (length < 0) {
         fprintf(stderr, "Invalid command values; no request was sent.\n");
@@ -292,6 +337,8 @@ static int exchange(controller_t *controller, control_request_t *request)
         fprintf(stderr, "Command rejected: %s. Current settings follow.\n", reply.code);
         return 1;
     }
+    if (!strcmp(reply.code, "ACCEPTED"))
+        puts("Transition accepted; use status or the passive monitor to observe completion.");
     return 0;
 failure:
     fprintf(stderr, "%s: %s.\n", sent ? "Reply unavailable" : "Request not sent", strerror(errno));
@@ -319,6 +366,25 @@ static void print_state(const controller_t *controller)
            state->noise_enabled ? "on" : "off", state->carrier_enabled ? "on" : "off",
            (double)state->noise_open_rms, (double)state->noise_close_rms,
            state->config_generation, state->pipeline_generation);
+    if (state->protocol_version == 2) {
+        char tx_actual[64];
+        char tx_power[40];
+        if (state->tx_actual_frequency_hz > 0)
+            snprintf(tx_actual, sizeof(tx_actual), "%.6f MHz", state->tx_actual_frequency_hz / 1e6);
+        else strcpy(tx_actual, "unavailable");
+        if (state->tx_actual_power_dbm != INT_MIN)
+            snprintf(tx_power, sizeof(tx_power), "%d dBm", state->tx_actual_power_dbm);
+        else strcpy(tx_power, "unavailable");
+        printf("  TX: requested %.6f MHz, actual %s | %.0f MS/s | power requested %d dBm, estimate %s\n"
+               "      source %s, tone %.1f Hz amplitude %.3f, deviation +/-%.0f Hz | pipeline=%" PRIu64 "\n"
+               "      requested=%s, resume RX=%s, transition=%s\n",
+               state->tx_requested_frequency_hz / 1e6, tx_actual, state->tx_sample_rate_hz / 1e6,
+               state->tx_requested_power_dbm, tx_power,
+               state->tx_tone_mode ? "tone" : "mic", (double)state->tx_tone_hz,
+               (double)state->tx_tone_amp, (double)state->tx_deviation_hz,
+               state->tx_pipeline_generation, state->tx_requested ? "yes" : "no",
+               state->rx_resume ? "yes" : "no", state->transition ? "yes" : "no");
+    }
     fflush(stdout);
 }
 
@@ -406,6 +472,10 @@ int main(int argc, char **argv)
         if (result) { fprintf(stderr, "Invalid command. Use --help for supported commands.\n"); return 2; }
         if (initial_command.kind == UI_HELP) { command_help(); return 0; }
         if (initial_command.kind == UI_QUIT) return 0;
+        if (initial_command.request.command == CONTROL_TX_START) {
+            fprintf(stderr, "TX start requires an interactive controller session; --command would disconnect and immediately unkey TX.\n");
+            return 2;
+        }
     }
     struct sigaction action = { .sa_handler = interrupt_handler };
     sigemptyset(&action.sa_mask);
@@ -416,7 +486,7 @@ int main(int argc, char **argv)
     setvbuf(stdin, NULL, _IONBF, 0);
     bool terminal = isatty(STDIN_FILENO);
     if (!once) {
-        puts("CaribouLite receiver control. Type help for commands; q disconnects without stopping RX.");
+        puts("CaribouLite radio control. Type help for commands; q disconnects and unkeys any owned TX.");
     }
     int startup = refresh_state(&controller);
     if (once) {
@@ -461,6 +531,6 @@ int main(int argc, char **argv)
         if (terminal) { fputs("radio> ", stdout); fflush(stdout); }
     }
     disconnect_controller(&controller);
-    if (terminal) puts("\nController disconnected; RX state was left unchanged.");
+    if (terminal) puts("\nController disconnected; owned TX is released and prior RX resumes.");
     return 0;
 }

@@ -254,7 +254,7 @@ int main(void) {
     status_publisher_t publisher = {0};
     char packet[STATUS_PUBLISHER_MAX_PACKET_BYTES];
     int size = make_snapshot(packet, sizeof(packet), &options, "fixture", 1,
-        "RX", &pipeline, &stats, &modem, &publisher, NULL);
+        "RX", &pipeline, &stats, &modem, &publisher, NULL, NULL);
     assert(size > 0); puts(packet);
 
     // Largest supported escaped device name and counters exercise bounds on
@@ -268,7 +268,21 @@ int main(void) {
     stats.audio_worker.scheduling = stats.demod_worker.scheduling;
     stats.audio_worker.scheduling.requested_priority = 70;
     size = make_snapshot(packet, sizeof(packet), &options, "fixture", UINT64_MAX,
-        "RX", &pipeline, &stats, &modem, &publisher, NULL);
+        "RX", &pipeline, &stats, &modem, &publisher, NULL, NULL);
+    assert(size > 0); puts(packet);
+    // RX resumes while TX workers remain allocated and parked. Both sets of
+    // lifetime counters must still fit the monitor transport together.
+    tx_pipeline_stats_t txstats = {.capture_valid=true};
+    memset(&txstats.txq, 255, sizeof(txstats.txq));
+    memset(&txstats.writer, 255, sizeof(txstats.writer));
+    memset(&txstats.capture, 255, sizeof(txstats.capture));
+    txstats.producer_worker = (tx_worker_status_t){.created=true, .alive=true,
+        .scheduling=stats.demod_worker.scheduling};
+    txstats.writer_worker = txstats.producer_worker;
+    options.tx_initialized = true;
+    options.tx_pipeline_generation = UINT64_MAX;
+    size = make_snapshot(packet, sizeof(packet), &options, "fixture", UINT64_MAX,
+        "RX", &pipeline, &stats, &modem, &publisher, NULL, &txstats);
     assert(size > 0); puts(packet);
     return 0;
 }
@@ -285,7 +299,7 @@ int main(void) {
         self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
         result = subprocess.run([str(binary)], check=True, capture_output=True, timeout=3)
         packets = result.stdout.splitlines()
-        self.assertEqual(len(packets), 2)
+        self.assertEqual(len(packets), 3)
         snapshot = client.parse_snapshot(packets[0])
         self.assertEqual(snapshot["source"]["kind"], "live")
         rx = snapshot["rx"]
@@ -333,6 +347,12 @@ int main(void) {
         self.assertEqual(extreme["config"]["playback"], "\x01" * 255)
         self.assertEqual(extreme["rx"]["playback"]["underruns"], 2 ** 64 - 1)
         self.assertEqual(extreme["sequence"], 2 ** 64 - 1)
+        retained = client.parse_snapshot(packets[2])
+        self.assertIs(retained["tx"]["initialized"], True)
+        self.assertIs(retained["tx"]["running"], False)
+        self.assertEqual(retained["tx"]["writer"]["samples"], 2 ** 64 - 1)
+        self.assertEqual(retained["tx"]["capture"]["overruns"], 2 ** 64 - 1)
+        self.assertEqual(retained["tx"]["generation"], 2 ** 64 - 1)
 
     def test_monitor_quit_disconnect_and_reconnect_leave_backend_running(self):
         process = self.start_backend("--status-hz", "10")

@@ -15,12 +15,21 @@ typedef enum control_command {
     CONTROL_MODE,
     CONTROL_SAMPLE_RATE,
     CONTROL_SQUELCH,
+    CONTROL_TX_START,
+    CONTROL_TX_STOP,
+    CONTROL_TX_FREQUENCY,
+    CONTROL_TX_POWER,
+    CONTROL_TX_SAMPLE_RATE,
+    CONTROL_TX_SOURCE,
+    CONTROL_TX_TONE,
     /* These are transport-generated requests, never valid wire commands. */
     CONTROL_INVALID,
     CONTROL_BUSY
 } control_command_t;
 
 typedef struct control_request {
+    /* Zero selects v1 when formatting existing callers' requests. */
+    unsigned protocol_version;
     uint64_t id;
     control_command_t command;
     double frequency_hz;
@@ -30,9 +39,16 @@ typedef struct control_request {
     bool carrier_enabled;
     float noise_open_rms;
     float noise_close_rms;
+    double tx_frequency_hz;
+    int tx_power_dbm;
+    unsigned tx_sample_rate_hz;
+    bool tx_tone_mode;
+    float tx_tone_hz;
+    float tx_tone_amp;
 } control_request_t;
 
 typedef struct control_reply {
+    unsigned protocol_version;
     uint64_t id;
     bool ok;
     char code[32];
@@ -49,9 +65,23 @@ typedef struct control_reply {
     bool carrier_enabled;
     float noise_open_rms;
     float noise_close_rms;
+    uint64_t tx_pipeline_generation;
+    double tx_requested_frequency_hz;
+    double tx_actual_frequency_hz;
+    unsigned tx_sample_rate_hz;
+    int tx_requested_power_dbm;
+    int tx_actual_power_dbm;
+    bool tx_tone_mode;
+    float tx_tone_hz;
+    float tx_tone_amp;
+    float tx_deviation_hz;
+    bool tx_requested;
+    bool rx_resume;
+    bool transition;
 } control_reply_t;
 
-/* Strict ASCII protocol-v1 packets. Parsers accept ASCII whitespace between
+/* Strict ASCII protocol-v1/v2 packets. v1 carries RX commands/settings; v2
+ * extends them with TX controls and transition states. Parsers accept ASCII whitespace between
  * tokens, reject embedded NULs, nonfinite/overflowed numbers and trailing
  * tokens. They return 0 on success or -1 with errno on failure. A failed
  * request parse retains a syntactically valid request ID when available. */

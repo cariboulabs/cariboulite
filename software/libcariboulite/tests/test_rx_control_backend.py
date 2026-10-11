@@ -140,11 +140,12 @@ class RxControlBackendTests(unittest.TestCase):
         self.assertEqual(snapshot["source"]["kind"], "simulated")
         self.assertIs(snapshot["rx"]["running"], False)
         self.assertIs(snapshot["tx"]["running"], False)
-        self.assertEqual(snapshot["control"], {
+        expected_control = {
             "config_generation": reply["config_generation"],
             "pipeline_generation": reply["pipeline_generation"],
             "rx_requested": reply["state"] == "RX", "state": reply["state"],
-        })
+        }
+        self.assertEqual({key: snapshot["control"][key] for key in expected_control}, expected_control)
         self.assertIsNone(snapshot["rx"]["queue"])
         self.assertIsNone(snapshot["rx"]["audio_queue"])
         self.assertEqual(snapshot["hardware"]["register_poll"]["polls"], 0)
@@ -289,7 +290,7 @@ class RxControlBackendTests(unittest.TestCase):
         peer = self.controller()
         before = self.command(peer, "get")
         packets = (
-            b"v2 40 start", b"v1 40 get surplus", b"v1 40", b"v1 40 transmit",
+            b"v3 40 start", b"v1 40 get surplus", b"v1 40", b"v1 40 transmit",
             b"v1 -1 get", b"v1 not-an-id start", b"v1 18446744073709551616 get",
             b"v1 40 start\x00stop", b"v1 40 frequency nan", b"v1 40 frequency inf",
             b"v1 40 frequency 430125000x", b"v1 40 mode am",

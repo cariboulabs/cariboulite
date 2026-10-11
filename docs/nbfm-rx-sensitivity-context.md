@@ -497,3 +497,81 @@ A short physical RF24 check exercised five RX sessions across NBFM at
 changes. Application queue drops, ALSA underruns/write errors and RX read
 errors stayed zero. It validates control/lifecycle behavior; reception
 quality and CPU overhead of this new build still need separate measurements.
+
+## Half-duplex controller TX
+
+The separate backend/controller now supports NBFM TX with independent saved
+frequency, requested power, 1/2/4 MS/s and microphone/test-tone source.
+Maximum deviation remains ±2.5 kHz. TX fully releases the RX pipeline before
+keying; normal stop returns to the saved RX configuration if RX was running.
+Controller disconnect also requests normal TX stop, while monitor disconnect
+leaves radio operation unchanged.
+
+The 2525 Hz opening and 2475 Hz closing Quindar tones remain 250 ms each, with
+the accepted silence stages, fast final padding and write acknowledgement.
+Stopped TX buffers can remain allocated; producer/writer threads now block
+on a condition variable. Each subsequent TX start joins both pipelines,
+soft-resets the FPGA and initializes fresh TX resources, following menu 14's
+validated clean-start sequence. Capture is reset with its reader parked,
+preventing old microphone samples from entering a new transmission.
+
+TX settings and lifecycle status use protocol v2, with compatibility for the
+existing v1 RX commands. Hardware activation/profile checks and persistent
+TX/capture counters accompany the controls. Shared TX workers and capture
+adapter are improved for both applications; RX DSP and menu-14 controls
+remain the regression baseline. Software validation covers handoff, faults,
+disconnect, worker parking and existing Quindar drain regressions. Successful
+physical TX listening confirmation is recorded below; a new CPU baseline
+has not been measured.
+See [radio controls and validation](radio-control.md).
+
+### First backend TX startup check
+
+The user reported `TX_STARTING` followed by `FAULT`. A passive RF24 snapshot
+at 1 MS/s showed 40 opening-cue frames (400000 IQ samples) accepted by SMI,
+zero writer/producer/capture errors and no microphone reads yet. PAC was
+`0x60` and TXDFE `0x84` after shutdown. These observations locate the failure
+after the opening cue; they do not establish successful RF transmission.
+
+The backend's immediate post-cue `STATE=TX` requirement was replaced with a
+bounded 500 ms check for TX state and sample progress. Embedded IQ control
+can report TXPREP while waiting for buffered data or between frames. Runtime
+state checks use a corresponding bounded recheck; persistent failure still
+unkeys TX. Backend error output and monitor faults now retain the startup
+stage. At this point, hardware confirmation still required another user test.
+The original passive snapshot is saved in
+[`build/radio-backend/tx-start-fault-20261011.json`](../build/radio-backend/tx-start-fault-20261011.json).
+
+### Persistent TXPREP and missing FPGA clean start
+
+The user's next RF24/1 MS/s attempt reported `TX_STATE_TIMEOUT`, SPI return
+zero, `STATE=0x03`, `PAC=0x60`, 880000 accepted samples and zero worker errors.
+The user confirmed no carrier or opening Quindar tone. Thus the bounded state
+check exposed a persistent delivery problem, rather than resolving startup.
+Linux FIFO acceptance does not prove delivery through SMI and the FPGA.
+
+Comparison with `app_menu.c` found that menu 14 destroys both pipelines and
+soft-resets the FPGA before every TX start. The backend had omitted this
+step. The earlier [FPGA study](fpga-gap-study-2026-09-13.md) documented similar
+stalls with tiny SMI transfer lengths and recovery using this clean start.
+The backend now joins RX/TX workers, confirms idle SMI, performs the checked
+FPGA reset, and creates fresh TX resources with the requested rate/gap.
+This advances the TX pipeline generation on each start. No FPGA image,
+kernel driver, shared DSP or menu-14 controls were changed by this correction.
+
+Failed pipeline starts also log modem IQ-interface synchronization/failsafe
+and FPGA routing/FIFO/profile readbacks before cleanup clears their state.
+The diagnostic reads `IQIFC2.SYNC` once on failure, leaving normal monitoring
+unchanged. Software regressions cover reset order/failure and diagnostic
+read failures.
+
+### Successful backend TX listening test (2026-10-11)
+
+After restoring the FPGA clean-start sequence, the user confirmed TX works:
+the opening and closing Quindar tones are audible, and both test-tone and
+microphone modulation are received. This confirms successful audible TX
+following the RF24/1 MS/s startup-fault investigation. The FPGA reset/recreation
+correction resolved the reported failure on the tested setup. The user also
+confirmed RX → TX → RX transitions and controller disconnect during TX:
+transmission stops and the backend returns to RX. No new CPU,
+carrier-release timing or sample-continuity measurements were supplied.

@@ -145,6 +145,28 @@ def _counter(section, key):
     return _integer(section.get(key), nonnegative=True)
 
 
+def _format_worker(name, value):
+    worker = _mapping(value)
+    scheduling = _mapping(worker.get("scheduling"))
+    valid = scheduling.get("valid") is True
+    policy = _label(scheduling.get("policy_name"), "unavailable") if valid else "unavailable"
+    priority = _integer(scheduling.get("priority")) if valid else "unavailable"
+    affinity = _label(scheduling.get("affinity"), "unavailable") if valid else "unavailable"
+    errors = "/".join(_integer(scheduling.get(key)) for key in
+                      ("rt_error", "fallback_error", "affinity_error", "mlock_error", "query_error"))
+    return (
+        f"{name} worker: alive={_on(worker.get('alive'))}"
+        f" created={_on(worker.get('created'))}"
+        f" last_error={_integer(worker.get('last_error'))}"
+        f" sched={policy}/{priority}"
+        f" req={_integer(scheduling.get('requested_priority'))}"
+        f" cpu(req/applied)={_integer(scheduling.get('requested_cpu'))}/"
+        f"{_integer(scheduling.get('applied_cpu'))} affinity={affinity}"
+        f" errors(rt/fb/cpu/lock/query)={errors}"
+        f" mlock={_on(scheduling.get('mlock_attempted'))}"
+    )
+
+
 def _format_rx_instrumentation(rx):
     """Optional version 1 extensions; absent counters never imply zero errors."""
     lines = []
@@ -188,25 +210,43 @@ def _format_rx_instrumentation(rx):
     if "workers" in rx:
         workers = _mapping(rx["workers"])
         for name in ("reader", "demod", "audio"):
-            worker = _mapping(workers.get(name))
-            scheduling = _mapping(worker.get("scheduling"))
-            valid = scheduling.get("valid") is True
-            policy = _label(scheduling.get("policy_name"), "unavailable") if valid else "unavailable"
-            priority = _integer(scheduling.get("priority")) if valid else "unavailable"
-            affinity = _label(scheduling.get("affinity"), "unavailable") if valid else "unavailable"
-            errors = "/".join(_integer(scheduling.get(key)) for key in
-                              ("rt_error", "fallback_error", "affinity_error", "mlock_error", "query_error"))
-            lines.append(
-                f"{name} worker: alive={_on(worker.get('alive'))}"
-                f" created={_on(worker.get('created'))}"
-                f" last_error={_integer(worker.get('last_error'))}"
-                f" sched={policy}/{priority}"
-                f" req={_integer(scheduling.get('requested_priority'))}"
-                f" cpu(req/applied)={_integer(scheduling.get('requested_cpu'))}/"
-                f"{_integer(scheduling.get('applied_cpu'))} affinity={affinity}"
-                f" errors(rt/fb/cpu/lock/query)={errors}"
-                f" mlock={_on(scheduling.get('mlock_attempted'))}"
-            )
+            lines.append(_format_worker(name, workers.get(name)))
+    return lines
+
+
+def _format_tx_instrumentation(tx, control):
+    """Eight rows replace RX details while TX starts, runs or stops."""
+    writer = _mapping(tx.get("writer"))
+    capture = _mapping(tx.get("capture"))
+    workers = _mapping(tx.get("workers"))
+    generation = tx.get("generation", control.get("tx_pipeline_generation"))
+    lines = [
+        f"TX pipeline: running={_on(tx.get('running'))}"
+        f" requested={_on(tx.get('requested', control.get('tx_requested')))}"
+        f" initialized={_on(tx.get('initialized'))} generation={_integer(generation, True)}"
+        f" resume RX={_on(control.get('rx_resume'))} transition={_on(control.get('transition'))}",
+        f"TX writer: calls={_counter(writer, 'calls')} samples={_counter(writer, 'samples')}"
+        f" written_sequence={_counter(writer, 'written_sequence')}",
+        f"  partial/zero writes={_counter(writer, 'partial_writes')}/{_counter(writer, 'zero_writes')}"
+        f" would_block={_counter(writer, 'would_block')} errors={_counter(writer, 'errors')}"
+        f" last_error={_integer(writer.get('last_error'))}",
+    ]
+    if capture.get("valid") is True:
+        lines.extend([
+            f"TX capture: calls={_counter(capture, 'read_calls')}"
+            f" frames={_counter(capture, 'frames_read')} overruns={_counter(capture, 'overruns')}",
+            f"  recovery(attempt/ok/fail)={_counter(capture, 'recovery_attempts')}/"
+            f"{_counter(capture, 'recovery_successes')}/{_counter(capture, 'recovery_failures')}"
+            f" errors={_counter(capture, 'read_errors')} last_error={_integer(capture.get('last_error'))}",
+        ])
+    else:
+        lines.extend(["TX capture: unavailable", "  ALSA capture counters unavailable"])
+    for name in ("producer", "writer"):
+        lines.append(_format_worker(name, workers.get(name)))
+    fault = tx.get("fault")
+    fault_label = "none" if "fault" in tx and fault is None else (
+        _label(fault) if isinstance(fault, str) and fault else "unavailable")
+    lines.append(f"TX fault: {fault_label}")
     return lines
 
 
@@ -220,20 +260,37 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
     hardware = _mapping(snapshot.get("hardware"))
     loopback = _mapping(snapshot.get("loopback"))
     control = _mapping(snapshot.get("control"))
+    state = control.get("state") or snapshot.get("state")
+    tx_active = state in ("TX_STARTING", "TX", "TX_STOPPING")
+    tx_settings = (f"  TX rate={_formatted(config.get('tx_sample_rate_hz'), ',.0f')} S/s"
+                   f" source={_label(config.get('tx_source'))}"
+                   f" dev=+/-{_formatted(config.get('tx_deviation_hz'), 'g')} Hz") if (
+                       "tx_sample_rate_hz" in config) else ""
+    tx_actual = config.get("tx_actual_frequency_hz")
+    tx_frequency = _frequency(config.get("tx_frequency_hz"))
+    if "tx_actual_frequency_hz" in config:
+        tx_frequency += " actual=" + (_frequency(tx_actual) if _number(tx_actual) and tx_actual > 0 else "unavailable")
+    tx_power = _formatted(config.get("tx_power_dbm"), "g")
+    if "tx_actual_power_dbm" in config:
+        tx_power = f"power(req/est)={tx_power}/{_formatted(config.get('tx_actual_power_dbm'), 'g', 'unavailable')} dBm"
+    else:
+        tx_power = f"power={tx_power} dBm"
+    tx_fault = tx.get("fault")
+    inactive_tx_fault = f"  TX fault={_label(tx_fault)}" if (
+        not tx_active and isinstance(tx_fault, str) and tx_fault) else ""
     generations = (f"  config={_label(control.get('config_generation'))}"
                    f"  pipeline={_label(control.get('pipeline_generation'))}") if control else ""
     rates = rates or {}
     noise_valid = noise.get("valid") is True
     lines = [
         f"Data source: {source_label(snapshot)}",
-        f"{_label(snapshot.get('channel'))}  state={_label(snapshot.get('state'))}"
+        f"{_label(snapshot.get('channel'))}  state={_label(state)}{inactive_tx_fault}"
         f"  mode={_label(snapshot.get('rx_mode'))}"
         f"  sample rate={_formatted(config.get('sample_rate_hz'), ',.0f')} S/s",
         f"RX {_frequency(config.get('rx_frequency_hz'))}"
-        f"  TX {_frequency(config.get('tx_frequency_hz'))}"
-        f"  TX power={_formatted(config.get('tx_power_dbm'), 'g')} dBm",
+        f"  TX {tx_frequency}  TX {tx_power}",
         f"RX bandwidth={_bandwidth(config.get('rx_bandwidth_hz'))}"
-        f"  TX bandwidth={_bandwidth(config.get('tx_bandwidth_hz'))}",
+        f"  TX bandwidth={_bandwidth(config.get('tx_bandwidth_hz'))}{tx_settings}",
         f"Session={_label(snapshot.get('session'))}"
         f"  PID={_label(snapshot.get('owner_pid'))}"
         f"  sequence={_label(snapshot.get('sequence'))}{generations}",
@@ -257,7 +314,7 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="rx"):
         rate = rates.get(name.lower())
         if rate:
             lines.append(f"  put/get rate={rate[0]:.1f}/{rate[1]:.1f} frames/s")
-    lines.extend(_format_rx_instrumentation(rx))
+    lines.extend(_format_tx_instrumentation(tx, control) if tx_active else _format_rx_instrumentation(rx))
     lines += [
         "",
         f"Squelch: noise={_on(rx.get('noise_enabled'))}"
@@ -297,11 +354,14 @@ def queue_rates(previous, current):
         return {}
     result = {}
     for name in ("rx", "tx"):
-        if name == "rx":
-            old_generation = _mapping(previous.get("control")).get("pipeline_generation")
-            new_generation = _mapping(current.get("control")).get("pipeline_generation")
-            if old_generation != new_generation:
-                continue
+        generation_key = "pipeline_generation" if name == "rx" else "tx_pipeline_generation"
+        old_generation = _mapping(previous.get("control")).get(generation_key)
+        new_generation = _mapping(current.get("control")).get(generation_key)
+        if old_generation != new_generation:
+            continue
+        if name == "tx" and (_mapping(previous.get(name)).get("generation") !=
+                             _mapping(current.get(name)).get("generation")):
+            continue
         old = _mapping(_mapping(previous.get(name)).get("queue"))
         new = _mapping(_mapping(current.get(name)).get("queue"))
         values = [old.get("puts"), old.get("gets"), new.get("puts"), new.get("gets")]

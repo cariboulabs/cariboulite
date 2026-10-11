@@ -21,13 +21,15 @@ static inline void fill_tone_48k(tx_writer_ctrl_st* ctrl, float* buf, size_t n)
     audio_source_read(ctrl->tone, buf, n);
 }
 
-static bool read_audio_exact(audio_source_t* mic, float* buf, size_t need)
+static int read_audio_exact(audio_source_t* mic, float* buf, size_t need,
+                            tx_writer_ctrl_st* tx)
 {
     size_t have = 0;
     while (have < need) {
+        if (!nbfm_tx_active || atomic_load(&tx->abort_requested)) return -ECANCELED;
         audio_source_result_t result = audio_source_read(mic, buf + have, need - have);
         if (result.status == AUDIO_SOURCE_ERROR || result.status == AUDIO_SOURCE_EOF)
-            return false;
+            return result.error < 0 ? result.error : -EIO;
         size_t got = result.frames;
         if (got == 0) {
             // tiny sleep to avoid hot spin if device is momentarily empty
@@ -36,20 +38,29 @@ static bool read_audio_exact(audio_source_t* mic, float* buf, size_t need)
         }
         have += got;
     }
-    return true;
+    return 0;
+}
+
+static void producer_exited(void* argument)
+{
+    dsp_producer_ctrl_t* ctrl = argument;
+    tx_worker_end(ctrl->tx, true);
+    atomic_store_explicit(&ctrl->alive, false, memory_order_relaxed);
 }
 
 void* nbfm_mod_thread(void* arg)
 {
-    pthread_setname_np(pthread_self(), "dsp_producer_thread");
+    pthread_setname_np(pthread_self(), "tx_producer");
     //set_rt_and_affinity();   // make sure this logs failures
     //set_rt_and_affinity_prio(45,-1);
-    set_rt_and_affinity_prio(40,0);
 
     dsp_producer_ctrl_t* ctrl = (dsp_producer_ctrl_t*)arg;
     if (!ctrl || !ctrl->tx || !ctrl->tx->fm || !ctrl->fifo ||
         !ctrl->tx->a48k || !ctrl->tx->iq_rf)
         return NULL;
+    set_rt_and_affinity_prio_record(40, 0, &ctrl->scheduling);
+    atomic_store_explicit(&ctrl->alive, true, memory_order_relaxed);
+    pthread_cleanup_push(producer_exited, ctrl);
 
     const uint64_t PERIOD_NS = 10ull * 1000ull * 1000ull; // 10 ms
     uint64_t next_ns = mono_ns();   // anchor current time
@@ -61,13 +72,19 @@ void* nbfm_mod_thread(void* arg)
         // ============================================================
         // TX OFF: do not generate or enqueue frames
         // ============================================================
-        if (!nbfm_tx_active) {
-            struct timespec ts = { .tv_sec = 0, .tv_nsec = 2 * 1000 * 1000 }; // 2 ms
-            nanosleep(&ts, NULL);
-
+        if (!tx_worker_begin(ctrl->tx, true)) {
             // Re-anchor timing so we don't accumulate drift
             next_ns = mono_ns();
             last_wake = 0;
+            continue;
+        }
+        if (ctrl->tx->gate_initialized && ctrl->tx->producer_resumed) {
+            next_ns = mono_ns();
+            last_wake = 0;
+        }
+
+        if (!nbfm_tx_active || atomic_load(&ctrl->tx->abort_requested)) {
+            tx_worker_end(ctrl->tx, true);
             continue;
         }
 
@@ -114,6 +131,11 @@ void* nbfm_mod_thread(void* arg)
             }
         }
 
+        if (!nbfm_tx_active || atomic_load(&ctrl->tx->abort_requested)) {
+            tx_worker_end(ctrl->tx, true);
+            continue;
+        }
+
         // ============================================================
         // 1) Generate 10 ms of audio @ 48 kHz (480 samples)
         // ============================================================
@@ -147,9 +169,14 @@ void* nbfm_mod_thread(void* arg)
             if (ctrl->tx->tone_mode) {
                 fill_tone_48k(ctrl->tx, ctrl->tx->a48k, 480);
             } else if (ctrl->tx->mic) {
-                if (!read_audio_exact(ctrl->tx->mic, ctrl->tx->a48k, 480)) {
-                    fprintf(stderr, "TX audio source failed; stopping stream\n");
-                    nbfm_tx_active = false;
+                int error = read_audio_exact(ctrl->tx->mic, ctrl->tx->a48k, 480, ctrl->tx);
+                if (error) {
+                    if (error != -ECANCELED) {
+                        fprintf(stderr, "TX audio source failed; stopping stream\n");
+                        atomic_store_explicit(&ctrl->last_error, error, memory_order_relaxed);
+                        tx_worker_fail(ctrl->tx, error);
+                    }
+                    tx_worker_end(ctrl->tx, true);
                     continue;
                 }
             } else {
@@ -167,7 +194,10 @@ void* nbfm_mod_thread(void* arg)
             mod.produced != ctrl->tx->frame_samples || mod.held_audio) {
             fprintf(stderr, "TX modulator error: %d, audio=%zu, IQ=%zu, held=%zu\n",
                     mod.error, mod.consumed, mod.produced, mod.held_audio);
-            nbfm_tx_active = false;
+            int error = mod.error < 0 ? mod.error : -EINVAL;
+            atomic_store_explicit(&ctrl->last_error, error, memory_order_relaxed);
+            tx_worker_fail(ctrl->tx, error);
+            tx_worker_end(ctrl->tx, true);
             continue;
         }
 
@@ -187,14 +217,21 @@ void* nbfm_mod_thread(void* arg)
 
         // Blocking put; don’t drop frames
         bool ok = rf10_fifo_put(ctrl->fifo, &frm, -1);
-        if (!ok) break; // stop signal
+        if (!ok) {
+            tx_worker_end(ctrl->tx, true);
+            if (!ctrl->active) break;
+            /* Owner interrupted the queue while retaining stopped workers. */
+            if (!nbfm_tx_active || atomic_load(&ctrl->tx->abort_requested)) continue;
+            break;
+        }
         if (inj_left > 0) {
             pthread_mutex_lock(&g_tx_injection_lock);
             ctrl->tx->inj.last_sequence = frm.tx_sequence;
             if (ctrl->tx->inj.frames_left > 0) --ctrl->tx->inj.frames_left;
             pthread_mutex_unlock(&g_tx_injection_lock);
         }
+        tx_worker_end(ctrl->tx, true);
     }
-
+    pthread_cleanup_pop(1);
     return NULL;
 }

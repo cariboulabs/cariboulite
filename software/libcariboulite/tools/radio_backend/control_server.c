@@ -34,6 +34,7 @@ static void disconnect_controller(control_server_t *server)
     if (server->controller >= 0) {
         close(server->controller);
         server->controller = -1;
+        server->disconnected_generation = server->controller_generation;
         ++server->disconnects;
     }
     server->pending_reply_bytes = 0;
@@ -148,6 +149,7 @@ static int make_reply(control_server_t *server,
     /* Matching IDs and transport errors are enforced here, independent of
      * handler policy. The owner still supplies its current configuration. */
     reply.id = request->id;
+    reply.protocol_version = request->protocol_version ? request->protocol_version : 1;
     if (request->command == CONTROL_INVALID || request->command == CONTROL_BUSY) {
         reply.ok = false;
         strcpy(reply.code, request->command == CONTROL_BUSY ? "BUSY" :
@@ -254,7 +256,13 @@ static int accept_controller(control_server_t *server,
         service_rejected_controller(server);
         return 1;
     }
+    if (server->controller_generation == UINT64_MAX) {
+        ++server->controllers_rejected;
+        close(client);
+        return 0;
+    }
     server->controller = client;
+    ++server->controller_generation;
     return 0;
 }
 
@@ -285,6 +293,9 @@ int control_server_service(control_server_t *server,
         result = receive_command(server, handler, context);
         if (result)
             return result < 0 ? -1 : 0;
+        /* Expose this session's loss to the owner before a queued replacement
+         * can be accepted or execute a command, particularly TX_START. */
+        if (server->controller < 0) return 0;
     }
     /* Commands already queued by the active controller have priority over
      * accepting a competitor. Human-operated clients leave ample idle turns. */

@@ -17,12 +17,17 @@ SOURCE = ROOT / "software/libcariboulite/tools/radio_backend"
 
 
 def reply(packet, *, result="OK", code="OK", state="RX", noise=1,
-          carrier=0, opening=.2, closing=.3, identifier=None, actual=430125000):
+          carrier=0, opening=.2, closing=.3, identifier=None, actual=430125000,
+          version=1, tx_requested=0, transition=0, tx_actual_power=-11):
     tokens = packet.decode().split()
     identifier = tokens[1] if identifier is None else identifier
-    return (f"v1 {identifier} {result} {code} 4 2 simulated {state} RF24 "
+    base = (f"v{version} {identifier} {result} {code} 4 2 simulated {state} RF24 "
             f"430125000 {actual} 1000000 nbfm {noise} {carrier} "
-            f"{opening} {closing}\n").encode()
+            f"{opening} {closing}")
+    if version == 2:
+        base += (f" 3 430225000 430225000 2000000 -12 {tx_actual_power} 1 1000 .5 2500 "
+                 f"{tx_requested} 1 {transition}")
+    return (base + "\n").encode()
 
 
 class MockOwner:
@@ -134,7 +139,7 @@ class RadioControlTests(unittest.TestCase):
         result = self.once("status")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.wait_for_packets(owner, 1)
-        self.assertEqual(owner.packets, [["v1", "1", "get"]])
+        self.assertEqual(owner.packets, [["v2", "1", "get"]])
         self.assertIn("SIMULATED RF24 RX", result.stdout)
         self.assertIn("requested 430.125000 MHz, actual 430.125000 MHz", result.stdout)
         self.assertIn("noise on, carrier off, open 0.200, close 0.300", result.stdout)
@@ -152,7 +157,7 @@ class RadioControlTests(unittest.TestCase):
                 result = self.once(command)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.wait_for_packets(owner, 2)
-                self.assertEqual(owner.packets[0], ["v1", "1", "get"])
+                self.assertEqual(owner.packets[0], ["v2", "1", "get"])
                 self.assertEqual(owner.packets[1][2:], expected)
                 owner.close()
                 self.path.unlink()
@@ -175,7 +180,11 @@ class RadioControlTests(unittest.TestCase):
                         "frequency 0x1", "rate 0x1", "levels 0x1 2",
                         "levels .3 .2", "levels .2 .2", "levels 0 .3",
                         "levels .2 8.1", "levels nan .3", "noise maybe",
-                        "start extra", "tx start", ""):
+                        "start extra", "tx frequency nan", "tx power 1.5",
+                        "tx power 15", "tx power -15", "tx rate 3", "tx source file",
+                        "tx tone 0 .5", "tx tone 3001 .5", "tx tone 1000 0",
+                        "tx tone 1000 1.1", "tx tone 1000 1e-50", "tx tone 1e-50 .5",
+                        "tx tone 0x1 .5", ""):
             with self.subTest(command=command):
                 result = self.once(command)
                 self.assertEqual(result.returncode, 2)
@@ -252,7 +261,7 @@ class RadioControlTests(unittest.TestCase):
                 ], input=input_text, capture_output=True, text=True, timeout=3)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.wait_for_packets(owner, 1)
-                self.assertEqual(owner.packets, [["v1", "1", "get"]])
+                self.assertEqual(owner.packets, [["v2", "1", "get"]])
                 owner.close()
                 self.path.unlink()
 
@@ -287,6 +296,72 @@ class RadioControlTests(unittest.TestCase):
             result = self.once(command)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertNotIn("Cannot connect", result.stderr)
+
+    def test_one_shot_tx_start_requires_interactive_session(self):
+        result = self.once("tx start")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("requires an interactive controller session", result.stderr)
+        self.assertNotIn("Cannot connect", result.stderr)
+
+    def test_tx_configuration_commands_use_exact_v2_fields(self):
+        for command, expected in (
+            ("tx frequency 430.225", ["tx_frequency", "430225000"]),
+            ("tx power -12", ["tx_power", "-12"]),
+            ("tx rate 2", ["tx_sample_rate", "2000000"]),
+            ("tx source tone", ["tx_source", "tone"]),
+            ("tx source mic", ["tx_source", "mic"]),
+            ("tx tone 1000 .5", ["tx_tone", "1000", "0.5"]),
+            ("tx stop", ["tx_stop"]),
+        ):
+            with self.subTest(command=command):
+                owner = self.owner(lambda number, packet: reply(packet, version=2))
+                result = self.once(command)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(owner.packets, [["v2", "1", "get"], ["v2", "2", *expected]])
+                self.assertIn("TX: requested 430.225000 MHz", result.stdout)
+                self.assertIn("power requested -12 dBm, estimate -11 dBm", result.stdout)
+                self.assertIn("deviation +/-2500 Hz", result.stdout)
+                owner.close()
+                self.path.unlink()
+
+    def test_unavailable_tx_power_is_not_shown_as_integer_sentinel(self):
+        self.owner(lambda number, packet: reply(packet, version=2, tx_actual_power=-2147483648))
+        result = self.once("status")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("power requested -12 dBm, estimate unavailable", result.stdout)
+        self.assertNotIn("-2147483648", result.stdout)
+
+    def test_interactive_tx_acknowledges_transition_without_auto_poll(self):
+        def handler(number, packet):
+            command = packet.decode().split()[2]
+            if command == "tx_start":
+                return reply(packet, version=2, state="TX_STARTING", code="ACCEPTED",
+                             tx_requested=1, transition=1)
+            if command == "tx_stop":
+                return reply(packet, version=2, state="TX_STOPPING", code="ACCEPTED",
+                             transition=1)
+            return reply(packet, version=2)
+        owner = self.owner(handler)
+        result = subprocess.run([str(self.binary), "--socket", str(self.path), "--timeout", ".2"],
+                                input="tx start\nstatus\ntx stop\nq\n", capture_output=True,
+                                text=True, timeout=3)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([packet[2] for packet in owner.packets], ["get", "tx_start", "get", "tx_stop"])
+        self.assertEqual(result.stdout.count("Transition accepted"), 2)
+        self.assertIn("SIMULATED RF24 TX_STARTING", result.stdout)
+        self.assertIn("SIMULATED RF24 TX_STOPPING", result.stdout)
+        self.assertIn("q disconnects and unkeys", result.stdout)
+
+    def test_uncertain_tx_start_is_not_retried(self):
+        def handler(number, packet):
+            return reply(packet, version=2) if packet.decode().split()[2] == "get" else None
+        owner = self.owner(handler)
+        result = subprocess.run([str(self.binary), "--socket", str(self.path), "--timeout", ".1"],
+                                input="tx start\nq\n", capture_output=True, text=True, timeout=3)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("outcome is uncertain", result.stderr)
+        self.assertIn("was not retried", result.stderr)
+        self.assertEqual([packet[2] for packet in owner.packets], ["get", "tx_start"])
 
 
 if __name__ == "__main__":

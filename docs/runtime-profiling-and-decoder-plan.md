@@ -74,6 +74,26 @@ edits require stopped RX; squelch edits reuse atomic controls. Checked startup,
 stop and tune rollback report failures with the retained configuration.
 The accepted `test_app` and shared DSP are unchanged by this milestone.
 
+TX implementation update: the same controller/backend now provides half-duplex
+NBFM TX with separate frequency, power, sample rate and microphone/test-tone
+source. Serialized lifecycle jobs preserve normal Quindar start/stop and
+the accepted tail drain while keeping monitoring and commands available.
+Disconnect unkeys the controlling client's TX and returns to previously
+running RX. Stopped TX workers retain their allocations and block on a
+condition variable; the next TX start joins both pipelines and performs
+menu 14's FPGA reset/recreation sequence before keying. Shared TX/capture
+diagnostics now cover write progress,
+worker health/scheduling, microphone overruns and capture recovery/errors.
+The remaining capture work includes detailed latency and continuity rather
+than those newly implemented counters. Current RX DSP/menu controls remain
+the baseline; the TX worker/capture improvements apply to both executables.
+Software validation is supplemented by the user's successful TX listening
+test on 2026-10-11 after restoring the FPGA clean-start reset: both Quindar
+tones and test-tone/microphone modulation were audible. RX → TX → RX handoff
+and controller-disconnect TX stop/return to RX were also confirmed by the
+user. A new CPU/latency
+comparison remains outstanding.
+
 A [physical NBFM application comparison](rx-application-comparison.md) now
 provides a 1 MS/s baseline for both instrumented applications. Menu 14 used
 7.90% of one core; backend plus monitor used 9.66% (6.14% + 3.53%). The shared
