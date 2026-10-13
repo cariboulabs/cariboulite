@@ -22,6 +22,11 @@ On October 14, 2026, a successful fresh build and installation was reported on
 a **Raspberry Pi Zero 2 W running 64-bit Raspberry Pi OS Trixie**, following
 this README. NBFM TX worked without distortion when the RF sample rate was
 reduced to **1 MS/s**. WBFM RX was also tested at **4 MS/s**.
+NBFM was also successfully tested against a known repeater. During NBFM TX
+testing at **1 MS/s**, the Linux/application TX FIFO was observed slowly filling to
+**100% (64/64) in about 90 seconds**, with modulation audio apparently
+unaffected. The same queue growth was not observed at **4 MS/s**.
+See [TX FIFO occupancy](#tx-fifo-occupancy) for its interpretation.
 
 Follow the installation steps in the next section after the Trixie settings
 below, and [create the ALSA Loopback device](#creating-the-alsa-loopback-device)
@@ -408,6 +413,128 @@ while the separate `L` interface-loopback diagnostic is enabled.
 Stopping TX sends a 250 ms trailing Quindar tone, followed by silence long
 enough to clear the kernel and DMA buffers before switching the radio off.
 This takes longer at 1 MS/s; the tone duration stays at 250 ms.
+
+### TX FIFO occupancy
+
+The repeated Pi Zero 2 W / Trixie NBFM TX test reported above confirmed that
+at **1 MS/s** the application TX FIFO slowly fills to **64/64**, with **max:64**,
+during active transmission. It takes approximately **90 seconds** to reach full
+occupancy, while the modulation audio appears unaffected. This establishes
+accumulating backlog during active TX; its underlying cause remains open.
+
+The user clarified that this filling does **not** occur at **4 MS/s**:
+
+| TX RF rate | IQ samples per 10 ms frame | Reported application TX queue behavior |
+| --- | --- | --- |
+| 1 MS/s | 10,000 | Gradually fills to 64/64 in approximately 90 seconds |
+| 4 MS/s | 40,000 | Does not show the same filling |
+
+Both settings retain a 64-frame queue representing 640 ms of signal. The
+4 MS/s modulator processes four times as many IQ samples per frame, while
+driver/DMA buffers have fixed byte capacities and therefore different durations
+at the two rates. Lower production under the heavier 4 MS/s workload could
+also keep its queue from filling. Compare long-term producer rates, accepted
+writer sample rates and capture/driver diagnostics at both settings to
+distinguish that possibility from slower draining at 1 MS/s. The reported
+distortion-free TX audio remains the result recorded for 1 MS/s.
+
+If the queue starts near empty, the observed growth corresponds to
+`64 / 90 ≈ 0.71` excess frames per second, about **0.7%** of the nominal
+100 frames/s. More generally, use `(64 - starting_depth) / elapsed_seconds`.
+This estimates the application's enqueue/dequeue imbalance; the initial depth
+and individual long-term producer/writer rates still need recording.
+
+An earlier screenshot showed the following counters at 1 MS/s:
+
+```text
+Linux TX FIFO: 10000 samples/frame (10 ms)
+    depth: 48/64 (75%), min:0 max:51
+    puts:8318 gets:8270 drops:0 tO_put:0 tO_get:0
+    rate: puts 98.8/s, gets 98.8/s  (expect ~100 fps @ 10ms)
+    NOTE: Under-runs observed (producer late)
+```
+
+This snapshot contains 480 ms of queued signal, with a recorded maximum of
+510 ms (51/64, approximately 80%). The matching enqueue/dequeue rates indicate
+no net queue growth during that display interval, to the displayed precision.
+The writer was draining the queue, and `8318 - 8270 = 48` agrees with its depth.
+One short rate interval cannot establish a sustained sample-rate mismatch or
+explain the accumulated backlog.
+
+The user subsequently clarified that both TX rates fluctuate between **98 and
+103 frames/s**. Menu 14 calculates each rate from counter changes since the
+previous refresh, over approximately 200 ms plus register reads and screen
+work. One frame crossing a 200 ms interval boundary changes the displayed rate
+by about 5 frames/s, so this range is consistent with short-interval counting
+and scheduling variation. For a longer-term check, divide cumulative counter
+changes by elapsed time over 30–60 seconds of continuous TX, excluding startup,
+shutdown and counter resets. The repeated 90-second fill establishes a sustained
+imbalance despite this short-interval rate variation.
+
+The screenshot's underrun warning comes from an older display condition:
+`min_depth == 0`. TX startup flushes the queue and sets that minimum to zero,
+so the warning can appear without producer lateness or an RF underrun.
+Commit `bcc7efe` (October 11, 2026) removed this misleading check; the current
+source does not print that warning. The exact revision of the binary used
+for the screenshot has not been identified.
+
+The `Linux TX FIFO` panel measures the application's IQ queue between the
+modulator and SMI writer. It holds **64 frames of 10 ms each**, so a full queue
+contains **640 ms of queued signal**, before kernel/DMA and audio-device
+buffering. Selecting 1 MS/s reduces the number of IQ samples per frame, while
+each frame still represents 10 ms.
+
+The producer waits when this queue is full instead of overwriting frames.
+Full occupancy alone therefore does not establish lost IQ or distorted RF.
+However, normal TX is paced at one frame every 10 ms; sustained saturation
+needs investigation of writer throughput, transport timing and queued latency.
+Clean-sounding audio can coexist with the accumulating delay because the
+application queue preserves its frames and blocks further production at full
+capacity. The [profiling follow-up](ROADMAP.md#i-runtime-profiling-broadcast-decoding-and-adjustable-ctcss)
+tracks timed producer/writer measurements and capture/driver diagnostics.
+Final silence during TX shutdown is deliberately generated without that pacing
+and can temporarily fill the queue.
+
+During steady TX, compare the displayed `puts` and `gets` rates over several
+updates: both should average approximately **100 frames/s**. A full queue with
+`gets` no longer advancing indicates that the writer is not draining it.
+Both TX queue operations wait without a timeout, and overwriting is disabled,
+so zero `drops`, `tO_put` and `tO_get` counters do not prove healthy transmission.
+Microphone capture overruns and driver errors need checking separately.
+
+These queue and pacing details are defined in
+[`tx_pipeline.c`](software/libcariboulite/src/tx_pipeline.c),
+[`mod_worker.c`](software/libcariboulite/src/mod_worker.c) and
+[`pipeline_transport.c`](software/libcariboulite/src/pipeline_transport.c).
+
+### RX FIFO snapshot
+
+A further screenshot taken during RX at 1 MS/s showed:
+
+| Queue | Current depth | Recorded maximum | Puts / gets | Displayed puts / gets rate |
+| --- | --- | --- | --- | --- |
+| TX (inactive during RX) | 63/64 (98%) | 64 | 20219 / 20156 | 0.0 / 0.0 frames/s |
+| RX | 0/64 (0%) | 4 | 3339 / 3339 | 95.4 / 95.4 frames/s |
+
+Both queues reported zero drops and put/get timeouts. The TX queue remains
+allocated after stopping TX, and starting RX does not flush it; its displayed
+depth and historical maximum can therefore persist with no TX queue activity.
+Final stop padding can fill the queue, but this snapshot does not establish
+when its maximum was reached or which frames remained. A near-full inactive
+TX queue does not indicate that the RX path is overloaded.
+
+The RX demodulator had consumed all 3339 enqueued frames, with a maximum
+observed backlog of four frames (40 ms of signal). Its matching reader and
+demodulator rates show no net application IQ queue growth during the displayed
+interval. A single 95.4 frames/s reading does not establish sustained throughput
+below the nominal 100 frames/s or upstream sample loss.
+
+The older `Under-runs observed (reader late)` message was also triggered merely
+by `min_depth == 0`. Normal consumption of the last available frame sets this
+minimum to zero; it does not establish an underrun. RX queue counters do not
+measure kernel/FPGA sample continuity or ALSA playback underruns.
+
+### Historical monitor display
 
 This is how the monitor modem status output should look like:
 ```

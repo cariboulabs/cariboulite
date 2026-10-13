@@ -243,6 +243,15 @@ not yet implemented.
   discontinuity metadata and worker-health reporting. Profile whole-app CPU,
   stage service/wait latency and queues at 1/2/4 MS/s, with recording off/on.
   Optimize measured contributors and preserve accepted FM behavior.
+- [ ] **Pi Zero 2 W TX queue growth (reported 2026-10-14).** Investigate the
+  1 MS/s NBFM application TX queue slowly filling to 64/64 during approximately
+  90 seconds of active TX, despite apparently unaffected modulation audio.
+  Compare with 4 MS/s, where the user reports no such filling; establish whether
+  its producer sustains 100 frames/s under the greater modulation workload.
+  Record starting depth, elapsed time and cumulative producer/writer deltas;
+  compare accepted IQ sample rates, writer wait/service time, kernel/DMA timing,
+  ALSA capture overruns and queued latency before changing pacing or capacity.
+  See the [reported measurements](ADDITIONAL-README.md#tx-fifo-occupancy).
 - [ ] Add adjustable CTCSS TX encoding and optional RX tone squelch, including
   explicit tone deviation, total ±2.5 kHz modulation budget, tone rejection
   from listening audio and compatible Quindar/PTT/tail timing.
