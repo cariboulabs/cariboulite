@@ -824,6 +824,23 @@ arecord -D plughw:Loopback,1,0 -t raw -f S16_LE -c 1 -r 48000 |
   aplay -D plughw:CARD=Headphones,DEV=0 -t raw -f S16_LE -c 1 -r 48000
 ```
 
+# New developments
+We have implemented a new application that is split in three modules that are run in separate terminals:
+
+
+This creates these launchers under build/radio-backend/:
+- cariboulite_radio_backend
+- cariboulite_radio_controller
+- cariboulite_radio_monitor
+
+They currently run from that directory; there’s no system installation target.
+
+he standalone apps use a separate Makefile. After the main build, run from the repository root:
+
+```
+make -C software/libcariboulite/tools/radio_backend
+```
+
 
 # GNU-RADIO (WIP)
 ```
