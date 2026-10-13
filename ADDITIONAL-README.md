@@ -2,10 +2,10 @@
 
 Development priorities and acceptance criteria are tracked in the
 [development roadmap](ROADMAP.md). The [documentation audit](docs/documentation-audit-2026-09-16.md) records what
-was checked and what remains open. These installation notes
-combine historical recipes and work in progress; they are not a freshly verified
-installation guide. Before applying manual source patches, check whether the
-current checkout already contains them. For recorded development state, see the
+was checked and what remains open. These notes include a successful fresh
+Pi Zero 2 W / Trixie installation reported on October 14, 2026, alongside
+historical recipes and work in progress. Before applying manual source patches,
+check whether the current checkout already contains them. For recorded development state, see the
 [software baseline](docs/software-baseline-2026-09-13.md) and
 [FPGA study](docs/fpga-gap-study-2026-09-13.md); neither certifies the current setup.
 
@@ -16,10 +16,22 @@ and launching them, including symmetric `rx frequency` / `tx frequency`
 commands and grouped squelch controls. The [passive monitor](docs/passive-monitor.md)
 remains optional and runs in its own terminal.
 
-# Install CaribouLite with Raspberry pi OS Trixie (64bit) [WIP]
-These Trixie notes are a historical workaround and need revalidation against the
-current kernel, login/session limits and driver permissions. A Debian-wide policy
-change has not been established here. The settings below change system-wide
+# Install CaribouLite with Raspberry Pi OS Trixie (64-bit)
+
+On October 14, 2026, a successful fresh build and installation was reported on
+a **Raspberry Pi Zero 2 W running 64-bit Raspberry Pi OS Trixie**, following
+this README. NBFM TX worked without distortion when the RF sample rate was
+reduced to **1 MS/s**. WBFM RX was also tested at **4 MS/s**.
+
+Follow the installation steps in the next section after the Trixie settings
+below, and [create the ALSA Loopback device](#creating-the-alsa-loopback-device)
+before using the test application's audio modes. In menu option 14, stop TX
+and RX, then press `1` for the tested NBFM TX rate or `4` for the tested WBFM
+RX rate. These are RF sample rates; the ALSA audio rate remains 48 kHz.
+
+The settings below were part of the installation recipe; their necessity for
+each launch method and login/session still needs checking. A Debian-wide policy
+change has not been established here. These settings change system-wide
 locked-memory limits; they do not by themselves establish device access or
 real-time scheduling permissions.
 
@@ -206,9 +218,10 @@ installation prerequisite.
 
 The top-level installer builds the blob generator before the driver and invokes
 the driver installer itself; a driver-first installation is unnecessary. It also
-runs `git pull`, installs packages and writes system configuration. Its legacy
-header/Python package choices still require fresh Bookworm/Trixie validation;
-see [DOC-01](ROADMAP.md#documentation-validation-backlog).
+runs `git pull`, installs packages and writes system configuration. The fresh
+Pi Zero 2 W / Trixie installation reported above succeeded with this recipe;
+broader package, permissions and platform validation remains tracked in
+[DOC-01](ROADMAP.md#documentation-validation-backlog).
 
 Then in the cariboulite directory:
 
@@ -290,7 +303,10 @@ Found device 1
   version = 0x0001
 ```
 
-Now it is also possible to interact with the CaribouLite board with the provided `cariboulite_test_app` in the `~/src/cariboulite/build` directory.
+Before using the audio modes in `cariboulite_test_app`,
+[create the ALSA Loopback device](#creating-the-alsa-loopback-device).
+Then interact with the CaribouLite board with the provided `cariboulite_test_app`
+in the `~/src/cariboulite/build` directory.
 
 ```
 cd ~/src/cariboulite
@@ -375,7 +391,8 @@ must be checked rather than inferred from the branch name. The historical
 [baseline](docs/software-baseline-2026-09-13.md) records Jan's startup and
 programming procedure, with its validation limits.
 
-Options 12 and 14 need configured ALSA playback. In the current option 14
+Options 12, 13 and 14 need the [ALSA Loopback device](#creating-the-alsa-loopback-device).
+In the current option 14
 configuration, both TX and RX use RF09 (Sub-1 GHz). TX captures `plughw:Loopback,1,1`, RX plays to
 `plughw:Loopback,0,0`, and both default to 430.100 MHz. `tone_mode` defaults to
 false; the internal tone parameter is 600 Hz. Therefore pressing T does not
@@ -736,32 +753,54 @@ I have also tried all the other options such as hard reset of the fpga, soft res
 
 # ALSA
 
-ALSA is complicated. To have some flexibility for testing the nbfm modulator and demodulator it can be helpfull to not have to depend on a physical audio device, such as a sound card.This can be done with a ALSA utility: snd_aloop. What I describe here is based on this article:
+### Creating the ALSA Loopback device
 
-based on: https://linuxvox.com/blog/linux-without-hardware-soundcard-capture-audio-playback-and-record-it-to-file/
+The current `cariboulite_test_app` uses the ALSA `Loopback` card for NBFM RX
+(option 12), the modem self-test (option 13), and the modem monitor's TX/RX
+audio (option 14). Create it before entering these modes. The
+[`snd-aloop` kernel module](https://github.com/torvalds/linux/blob/master/sound/drivers/aloop.c)
+provides this virtual sound card; installing the ALSA development libraries
+alone does not load it.
 
-### Prerequisites:
+Install the command-line utilities used below and load the module immediately:
 
-Ensure
-```alsa-utils```  ```ffmpeg``` ```sox```
-are installed.
+```bash
+sudo apt install -y alsa-utils
+sudo modprobe snd-aloop
+```
 
-note :both alsa-utils and ffmpeg, are already part of the Raspberry OS usualy.
+Also configure it to load at every boot, using
+[systemd's modules-load.d configuration](https://github.com/systemd/systemd/blob/main/man/modules-load.d.xml):
 
-### Making the Loopback Module Persistent
+```bash
+sudo mkdir -p /etc/modules-load.d
+sudo tee /etc/modules-load.d/alsa-loopback.conf >/dev/null <<'EOF'
+snd-aloop
+EOF
+```
 
-The modprobe command loads the module temporarily (it will unload on reboot). To make it persistent:
+Verify the device now, and repeat these checks after the next reboot to confirm
+boot-time loading:
 
-Create a configuration file in /etc/modules-load.d/ to load the module at boot:
+```bash
+lsmod | grep snd_aloop
+cat /proc/asound/cards
+aplay -l
+arecord -l
+```
 
-sudo nano /etc/modules-load.d/alsa-loopback.conf
-Add the following line and save the file:
+The card lists should include `Loopback`, with PCM devices 0 and 1 available
+for both playback and capture. The default module settings provide enough
+substreams; the application needs substreams 0 and 1. Use the card name `Loopback` in
+commands, since its numeric card index can change.
 
-```snd-aloop```
-Reboot to test persistence (optional, but recommended):
+| Audio route | External audio endpoint | Application endpoint |
+| --- | --- | --- |
+| Microphone or test tone to TX | Play to `plughw:Loopback,0,1` | Captures `plughw:Loopback,1,1` |
+| RX audio to speaker or recorder | Capture from `plughw:Loopback,1,0` | Plays to `plughw:Loopback,0,0` |
 
-sudo reboot
-After reboot, re-run lsmod | grep snd_aloop to confirm the module is loaded.
+These routes use 48 kHz mono S16_LE audio. Loading the module creates the virtual
+card; use the bridges below to connect it to a physical microphone or speaker.
 
 ### Long-running audio bridges
 
