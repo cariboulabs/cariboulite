@@ -31,6 +31,7 @@ preamble = r'''
 #define mutex_trylock(m) (pthread_mutex_trylock(m) == 0)
 #define mutex_lock(m) ((void)assert(pthread_mutex_lock(m) == 0))
 #define mutex_unlock(m) ((void)assert(pthread_mutex_unlock(m) == 0))
+#define WRITE_ONCE(a,b) ((a)=(b))
 #define dev_dbg(...) ((void)0)
 #define dev_err(...) ((void)0)
 #define dev_info(...) ((void)0)
@@ -46,6 +47,7 @@ struct instance {
     uint8_t *rx_fifo_buffer, *tx_fifo_buffer;
     struct kfifo rx_fifo, tx_fifo;
     int address_changed;
+    unsigned tx_fifo_limit_bytes;
 };
 static struct instance instance;
 static struct instance *inst = &instance;

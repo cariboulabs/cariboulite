@@ -6,6 +6,7 @@
 #include "nbfm_mod.h"
 #include "alsa_source.h"
 #include "pipeline_runtime.h"
+#include "tx_audio_buffer.h"
 #include <stdatomic.h>
 
 // Internal application handles. One control owner serializes lifecycle calls.
@@ -31,6 +32,10 @@ typedef struct {
     bool gate_initialized, gate_enabled, writer_busy, producer_busy;
     bool producer_resumed;
     bool verify_start_profile; // Opt-in checked modem profile before any cue IQ
+    bool hardware_paced;
+    struct smi_stream_tx_status driver_config;
+    bool smi_write_timing_saved;
+    int saved_write_setup, saved_write_strobe, saved_write_hold;
     atomic_bool abort_requested;
     cariboulite_radio_state_st *radio;
     cariboulite_sample_complex_int16 *tx_buffer;
@@ -39,6 +44,7 @@ typedef struct {
 	// (live path)
     bool    live_from_mic;     // set true to enable live generation
     audio_source_t* mic;     // ALSA handle
+    tx_audio_buffer_t* audio_buffer; // Independent capture and clock adaptation
     nbfm_mod_t*     fm;      // 48 kHz audio -> configured RF rate NBFM
     float*            a48k;    // 480-float scratch
     iq16_t*           iq_rf;    // One RF frame of IQ scratch
@@ -69,6 +75,12 @@ typedef struct {
     rf10_fifo_t*        fifo;
 } dsp_producer_ctrl_t;
 
+typedef enum {
+    TX_PACING_AUTO = 0, // Use demand ABI when present; ENOTTY permits legacy
+    TX_PACING_HARDWARE_REQUIRED,
+    TX_PACING_LEGACY,
+} tx_pacing_mode_t;
+
 typedef struct {
     // Radio
     double freq_hz;             // e.g., 430.1e6
@@ -87,6 +99,7 @@ typedef struct {
     // Backend-only checked pre-cue profile; preserves owner cancellation until
     // rebuild. Default false retains the legacy start/retry behavior.
     bool verify_start_profile;
+    tx_pacing_mode_t pacing_mode;
 } tx_params_t;
 
 typedef struct {
@@ -128,6 +141,11 @@ typedef struct {
     tx_worker_status_t producer_worker, writer_worker;
     bool capture_valid;
     alsa_source_stats_t capture;
+    bool hardware_paced, driver_valid, audio_buffer_valid;
+    bool smi_timing_valid;
+    struct smi_settings smi_timing;
+    struct smi_stream_tx_status driver;
+    tx_audio_buffer_stats_t audio_buffer;
 } tx_pipeline_stats_t;
 
 extern cariboulite_sample_complex_int16 latest_tx_sample;
@@ -151,3 +169,6 @@ void tx_pipeline_reset_stats(tx_pipeline_t*);
 bool tx_worker_begin(tx_writer_ctrl_st*, bool producer);
 void tx_worker_end(tx_writer_ctrl_st*, bool producer);
 void tx_worker_fail(tx_writer_ctrl_st*, int error);
+/* One parked lifecycle owner or the producer owns the modulator at a time.
+ * Uses a48k input, validates exact audio/RF counts and packs one sequenced frame. */
+int tx_generate_frame(tx_writer_ctrl_st*, rf10_frame_t*);

@@ -129,7 +129,8 @@ static int parse_options(int argc, char **argv, options_t *o)
         .frequency = 430125000, .status_hz = 5, .config_generation = 1,
         .tx = {.freq_hz = 430125000, .tx_power_dbm = -12, .rf_fs = 1000000,
             .tone_hz = 600, .tone_amp = .4f, .out_scale = 4000,
-            .f_dev_hz = NBFM_DEFAULT_DEVIATION_HZ, .verify_start_profile = true},
+            .f_dev_hz = NBFM_DEFAULT_DEVIATION_HZ, .verify_start_profile = true,
+            .pacing_mode = TX_PACING_HARDWARE_REQUIRED},
         .rx = {.freq_hz = 430125000, .fs_rf = 1000000, .fs_audio = 48000,
             .deemph_tau_s = 50e-6f, .pcm_gain = 8000,
             .noise_squelch_open_rms = NOISE_SQUELCH_OPEN_RMS,
@@ -1201,6 +1202,82 @@ static int playback_json(const rx_pipeline_stats_t *stats, char *out, size_t cap
     return result < 0 || (size_t)result >= capacity ? -1 : result;
 }
 
+static int tx_driver_json(const tx_pipeline_stats_t *stats, char *out, size_t capacity)
+{
+    int result;
+    if (!stats || !stats->driver_valid) {
+        result = snprintf(out, capacity, "{\"valid\":false}");
+    } else {
+        const struct smi_stream_tx_status *d = &stats->driver;
+        result = snprintf(out, capacity, "{\"valid\":true,\"abi_version\":%" PRIu32 ","
+            "\"struct_size\":%" PRIu32 ",\"state\":%" PRIu32 ",\"flags\":%" PRIu32 ","
+            "\"bounded_fifo\":%s,\"dma_running\":%s,\"fifo_queued_bytes\":%" PRIu32 ","
+            "\"fifo_capacity_bytes\":%" PRIu32 ",\"fifo_limit_bytes\":%" PRIu32 ","
+            "\"period_bytes\":%" PRIu32 ",\"ring_bytes\":%" PRIu32 ",\"reserved\":%" PRIu32 ","
+            "\"session_generation\":%" PRIu64 ",\"completed_periods\":%" PRIu64 ","
+            "\"underrun_periods\":%" PRIu64 ",\"accepted_bytes\":%" PRIu64 ","
+            "\"fifo_dequeued_bytes\":%" PRIu64 "}",
+            (uint32_t)d->abi_version, (uint32_t)d->struct_size,
+            (uint32_t)d->state, (uint32_t)d->flags,
+            d->flags & SMI_STREAM_TX_STATUS_BOUNDED_FIFO ? "true" : "false",
+            d->flags & SMI_STREAM_TX_STATUS_DMA_RUNNING ? "true" : "false",
+            (uint32_t)d->fifo_queued_bytes, (uint32_t)d->fifo_capacity_bytes,
+            (uint32_t)d->fifo_limit_bytes, (uint32_t)d->period_bytes,
+            (uint32_t)d->ring_bytes, (uint32_t)d->reserved,
+            (uint64_t)d->session_generation, (uint64_t)d->completed_periods,
+            (uint64_t)d->underrun_periods, (uint64_t)d->accepted_bytes,
+            (uint64_t)d->fifo_dequeued_bytes);
+    }
+    return result < 0 || (size_t)result >= capacity ? -1 : result;
+}
+
+static int tx_audio_buffer_json(const tx_pipeline_stats_t *stats, char *out, size_t capacity)
+{
+    int result;
+    if (!stats || !stats->audio_buffer_valid) {
+        result = snprintf(out, capacity, "{\"valid\":false}");
+    } else {
+        const tx_audio_buffer_stats_t *a = &stats->audio_buffer;
+        result = snprintf(out, capacity, "{\"valid\":true,\"created\":%s,\"alive\":%s,"
+            "\"running\":%s,\"cue\":%s,\"primed\":%s,\"clock_valid\":%s,\"last_error\":%d,"
+            "\"queued_frames\":%zu,\"capacity_frames\":%zu,\"target_frames\":%zu,"
+            "\"minimum_frames\":%zu,\"maximum_frames\":%zu,\"input_per_output\":%.9f,"
+            "\"correction_ppm\":%.3f,\"occupancy_filtered_frames\":%.3f,"
+            "\"captured_frames\":%" PRIu64 ",\"consumed_frames\":%" PRIu64 ","
+            "\"output_frames\":%" PRIu64 ",\"capture_calls\":%" PRIu64 ","
+            "\"again_calls\":%" PRIu64 ",\"read_calls\":%" PRIu64 ","
+            "\"underflows\":%" PRIu64 ",\"overflows\":%" PRIu64 ","
+            "\"overflow_frames\":%" PRIu64 ",\"cue_discard_frames\":%" PRIu64 ","
+            "\"resets\":%" PRIu64 ",\"clock_limit_frames\":%" PRIu64 ","
+            "\"clock_limit_faults\":%" PRIu64 "}",
+            a->created ? "true" : "false", a->alive ? "true" : "false",
+            a->running ? "true" : "false", a->cue ? "true" : "false",
+            a->primed ? "true" : "false", a->clock_valid ? "true" : "false", a->last_error,
+            a->queued_frames, a->capacity_frames, a->target_frames,
+            a->minimum_frames, a->maximum_frames, a->input_per_output,
+            a->correction_ppm, a->occupancy_filtered_frames,
+            a->captured_frames, a->consumed_frames, a->output_frames,
+            a->capture_calls, a->again_calls, a->read_calls, a->underflows,
+            a->overflows, a->overflow_frames, a->cue_discard_frames, a->resets,
+            a->clock_limit_frames, a->clock_limit_faults);
+    }
+    return result < 0 || (size_t)result >= capacity ? -1 : result;
+}
+
+static int tx_smi_timing_json(const tx_pipeline_stats_t *stats, char *out, size_t capacity)
+{
+    int result;
+    if (!stats || !stats->smi_timing_valid) {
+        result = snprintf(out, capacity, "{\"valid\":false}");
+    } else {
+        const struct smi_settings *s = &stats->smi_timing;
+        result = snprintf(out, capacity, "{\"valid\":true,\"write_setup\":%d,"
+            "\"write_strobe\":%d,\"write_hold\":%d,\"write_pace\":%d}",
+            s->write_setup_time, s->write_strobe_time, s->write_hold_time, s->write_pace_time);
+    }
+    return result < 0 || (size_t)result >= capacity ? -1 : result;
+}
+
 static int make_snapshot(char *out, size_t capacity, const options_t *o,
     const char *session, uint64_t sequence, const char *state, rx_pipeline_t *pipeline,
     const rx_pipeline_stats_t *stats,
@@ -1210,9 +1287,10 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
     char hardware[2500], playback[1600], queue[600] = "null", rms[48] = "null";
     char audio_queue[600] = "null", playback_stats[700], reader[300] = "null";
     char reader_worker[1200], demod_worker[1200], audio_worker[1200];
-    char tx_json[4200], tx_queue[600] = "null", tx_writer[700] = "null";
+    char tx_json[9000], tx_queue[600] = "null", tx_writer[700] = "null";
     char tx_capture[700] = "{\"valid\":false}", producer_worker[1200], writer_worker[1200];
-    rx_worker_status_t producer = {0}, writer = {0};
+    char tx_driver[1200], tx_audio_buffer[2000], capture_worker[1200], tx_smi_timing[180];
+    rx_worker_status_t producer = {0}, writer = {0}, capture = {0};
     if (txstats) {
         producer = (rx_worker_status_t){.created = txstats->producer_worker.created,
             .alive = txstats->producer_worker.alive, .last_error = txstats->producer_worker.last_error,
@@ -1220,6 +1298,11 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         writer = (rx_worker_status_t){.created = txstats->writer_worker.created,
             .alive = txstats->writer_worker.alive, .last_error = txstats->writer_worker.last_error,
             .scheduling = txstats->writer_worker.scheduling};
+        if (txstats->audio_buffer_valid) {
+            const tx_audio_buffer_stats_t *a = &txstats->audio_buffer;
+            capture = (rx_worker_status_t){.created = a->created, .alive = a->alive,
+                .last_error = a->last_error, .scheduling = a->scheduling};
+        }
         const rf10_stats_t *q = &txstats->txq;
         snprintf(tx_queue, sizeof(tx_queue), "{\"capacity\":%zu,\"depth\":%zu,"
             "\"puts\":%zu,\"gets\":%zu,\"drops\":%zu,\"timeouts_put\":%zu,"
@@ -1243,14 +1326,22 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         }
     }
     if (worker_json(txstats ? &producer : NULL, producer_worker, sizeof(producer_worker)) < 0
-        || worker_json(txstats ? &writer : NULL, writer_worker, sizeof(writer_worker)) < 0) return -1;
+        || worker_json(txstats ? &writer : NULL, writer_worker, sizeof(writer_worker)) < 0
+        || worker_json(txstats && txstats->audio_buffer_valid ? &capture : NULL,
+                       capture_worker, sizeof(capture_worker)) < 0
+        || tx_driver_json(txstats, tx_driver, sizeof(tx_driver)) < 0
+        || tx_audio_buffer_json(txstats, tx_audio_buffer, sizeof(tx_audio_buffer)) < 0
+        || tx_smi_timing_json(txstats, tx_smi_timing, sizeof(tx_smi_timing)) < 0) return -1;
     int tx_size = snprintf(tx_json, sizeof(tx_json), "{\"running\":%s,\"requested\":%s,"
         "\"initialized\":%s,\"generation\":%" PRIu64 ",\"queue\":%s,\"writer\":%s,"
-        "\"capture\":%s,\"workers\":{\"producer\":%s,\"writer\":%s},\"fault\":%s%s%s}",
+        "\"capture\":%s,\"hardware_paced\":%s,\"driver\":%s,\"audio_buffer\":%s,\"smi_timing\":%s,"
+        "\"workers\":{\"producer\":%s,\"writer\":%s,\"capture\":%s},\"fault\":%s%s%s}",
         o->dry_run ? "false" : o->transition ? "null" : o->tx_requested ? "true" : "false",
         o->tx_requested ? "true" : "false",
         o->dry_run ? "false" : o->transition ? "null" : o->tx_initialized ? "true" : "false",
-        o->tx_pipeline_generation, tx_queue, tx_writer, tx_capture, producer_worker, writer_worker,
+        o->tx_pipeline_generation, tx_queue, tx_writer, tx_capture,
+        txstats ? txstats->hardware_paced ? "true" : "false" : "null",
+        tx_driver, tx_audio_buffer, tx_smi_timing, producer_worker, writer_worker, capture_worker,
         o->tx_error ? "\"" : "", o->tx_error ? o->tx_error : "null", o->tx_error ? "\"" : "");
     if (tx_size < 0 || (size_t)tx_size >= sizeof(tx_json)) return -1;
     if (modem_snapshot_hardware_json(modem, hardware, sizeof(hardware)) < 0
@@ -1430,7 +1521,7 @@ int main(int argc, char **argv)
     uint64_t progress_generation = options.pipeline_generation;
     uint64_t published_config_generation = options.config_generation;
     uint64_t sequence = 0;
-    char session[80], packet[8192];
+    char session[80], packet[STATUS_PUBLISHER_MAX_PACKET_BYTES];
     snprintf(session, sizeof(session), "radio-%ld-%" PRIu64, (long)getpid(), mono_ns());
     fprintf(stderr, "%s: %s %.6f MHz, %.0f S/s, %s. Ctrl+C stops the backend.\n",
         options.dry_run ? "SIMULATED TRANSPORT ONLY" : options.start_stopped ? "RX idle" : "RX started", options.channel,

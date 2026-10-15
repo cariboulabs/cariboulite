@@ -36,6 +36,100 @@ client, exposed under the same executable naming scheme by the build. The earlie
 `cariboulite_rx_backend` name reflected the first RX-only implementation. The
 current names describe the combined RX/TX radio applications.
 
+### Tested Pi Zero staging checkout
+
+The hardware-paced candidate is built from the Pi 4 source and tested on the
+Pi Zero 2 W in an isolated checkout. The original Pi Zero binaries under
+`~/src/cariboulite/build/radio-backend/` remain the earlier implementation.
+For this candidate, run the following from the staging checkout in each
+terminal:
+
+```sh
+cd /home/pi/src/cariboulite/build/tx-hardware-paced-zero-20261014
+```
+
+Close other radio-owning applications, then start terminal 1 with RX stopped
+and the agreed dummy-load TX frequency of 430.100 MHz:
+
+```sh
+./build/radio-backend/cariboulite_radio_backend \
+  --channel RF24 --frequency 430125000 --sample-rate 1000000 \
+  --mode nbfm --playback plughw:Loopback,0,0 \
+  --microphone plughw:Loopback,1,1 \
+  --tx-frequency 430100000 --tx-power -12 --tx-sample-rate 1000000 \
+  --tx-source mic --start-stopped
+```
+
+In terminal 2, use `./build/radio-backend/cariboulite_radio_controller`.
+The optional third terminal uses
+`./build/radio-backend/cariboulite_radio_monitor`. These relative paths select
+the staged candidate; the USB microphone and Loopback bridges are unchanged.
+
+Hardware validation applies to the Pi Zero's current
+`6.18.50+rpt-rpi-v8` kernel and runtime module source version
+`29FA4AB8842B3807F97F0A5`. The installed original module remains unchanged at
+`697F3CF2096C282E312BA14`, so a reboot returns to that original driver.
+After a reboot, with other radio owners closed, load the matching candidate
+from the staging checkout:
+
+```sh
+sudo bash driver/tools/tx_driver_reload.sh "$PWD/smi_stream_dev.ko"
+```
+
+The reload helper verifies the kernel and saves the original for rollback.
+It intentionally refuses another reload while the candidate is already active
+and differs from the installed rollback module. A different kernel needs a
+matching module build. This candidate changes no FPGA firmware; these tests
+do not establish RF clock accuracy or spectrum quality.
+
+### Pi 4 staging checkout (2026-10-15)
+
+The same candidate is staged separately on the Pi 4 at
+`/home/pi/src/cariboulite/build/tx-hardware-paced-pi4-20261015`.
+Its backend, controller and monitor compile successfully. The recorded runtime
+sources match the passing Pi Zero production build, and the candidate driver
+module matches the Pi 4's `6.18.50+rpt-rpi-v8` kernel and architecture.
+
+The CaribouLite and Jabra audio device were transferred to the Pi 4 on October
+15. With the user's dummy load connected, the candidate driver was loaded
+temporarily. All six short checks and all six 180-second microphone/tone trials
+passed at 430.100 MHz, followed by same-backend automatic RX restoration at
+1 and 4 MS/s. Independent qualification and provenance audits passed; see the
+[Pi 4 validation record](pi4-tx-validation-2026-10-15.md).
+Current binaries, shared library, firmware and installed driver are preserved.
+See the original staging
+[instructions](../build/tx-hardware-paced-pi4-20261015/README.md) and
+[source/build provenance](../build/tx-hardware-paced-pi4-20261015/staging-manifest.json).
+
+Use this checkout in each terminal:
+
+```sh
+cd /home/pi/src/cariboulite/build/tx-hardware-paced-pi4-20261015
+```
+
+The Pi 4 candidate module is at `driver/smi_stream_dev.ko`. After a reboot
+restores the installed original, the runtime-only reload command, with the
+radio idle and the matching kernel, is:
+
+```sh
+sudo bash driver/tools/tx_driver_reload.sh "$PWD/driver/smi_stream_dev.ko"
+```
+
+The helper refuses another reload while the candidate is already active.
+The application paths are `./build/radio-backend/cariboulite_radio_backend`,
+`./build/radio-backend/cariboulite_radio_controller` and
+`./build/radio-backend/cariboulite_radio_monitor`. The same backend options as
+the Zero candidate select TX at 430.100 MHz. Validation uses temporary
+USB/Loopback bridges matching the Zero route, with backend microphone
+`plughw:Loopback,1,1` and playback `plughw:Loopback,0,0`. These owned bridges
+are separate from the backend and have a finite lifetime; their setup and
+cleanup are recorded in the validation report. They were stopped after
+validation; the report includes a command to recreate the measured audio route
+for a later manual test. The candidate driver remains loaded for the current
+boot, and permanent installation remains deferred.
+
+### General checkout commands
+
 Close other radio-owning applications first. Run all clients and the backend
 as the same user. In terminal 1, initialize the backend with RX stopped:
 
@@ -305,7 +399,34 @@ deviation. TX is always NBFM, including when the saved receiver mode is WBFM.
 The opening and closing Quindar behavior and
 [closing-tone carrier-release fix](tx-tail-timing.md) remain in use.
 
-The TX producer and SMI writer can retain allocated resources after stop
+TX now follows SMI/DMA backpressure. The backend requires the updated streaming
+driver ABI and refuses an older driver before activation; the terminal menu
+uses demand pacing when available and retains legacy pacing on `ENOTTY`.
+Driver admission is bounded to two native periods and the application queue to
+four frames. A steady **4/4** queue is deliberate prefill within this limit.
+The producer and writer use CPUs 1 and 2 where affinity permits.
+
+Hardware-paced TX snapshots actual SMI settings while idle, applies write
+setup/strobe/hold **1/4/2**, and verifies the readback before activation. Read
+timing, write pace and DMA settings remain intact. Stop, abort and failed starts
+restore the original write tuple before RX handoff; `tx.smi_timing` shows actual
+settings. A parked precomputed FM frame covers the first refill and counts as
+one of the ten opening zero-audio frames. The writer still waits for calibrated
+hardware verification before sending application IQ.
+
+Microphone capture runs independently on CPU 0 through opening and closing
+cues. Its bounded audio buffer targets **3360 frames / 70 ms**; gradual adaptive
+resampling allows **±4%** correction, with proportional gain 0.75 and maximum
+slew 100 ppm per 10 ms output block. Five nominal seconds of continuously
+clamped desired correction report a worker fault and stop TX. Audio starvation
+and overflow fault separately, without that five-second delay. Monitor fields
+distinguish real capture loss, cue replacement,
+clock correction and driver underruns. Accepted/dequeued IQ counts describe
+transport and do not independently establish RF timing. The
+[design and qualification record](tx-hardware-paced-design.md) explains the
+measured clock-step reserve and current physical validation.
+
+The TX producer, capture worker and SMI writer can retain allocated resources after stop
 and park on condition variables while inactive. They do not poll
 the receiver or repeatedly wake while RX is running. Requested worker health,
 actual scheduling, capture and writer diagnostics are exposed separately
@@ -603,3 +724,63 @@ Artifacts are in
 [monitor snapshots](../build/radio-backend/control-live-check-20261011/monitor.jsonl),
 [backend log](../build/radio-backend/control-live-check-20261011/backend.log)
 and [source/binary metadata](../build/radio-backend/control-live-check-20261011/metadata.json).
+
+## Pi Zero 2 W TX observations (2026-10-14)
+
+The user also tested the backend/controller application on the Pi Zero 2 W
+installation. Gradual TX application queue growth persisted at 1 MS/s; the
+supplied excerpt showed 29/64 queued frames and 99.8/99.8 frames/s.
+At 4 MS/s the queue was empty, but rates were reported around 80–90 frames/s
+(79.7/79.7 in the excerpt), with 48 capture overruns and 48 successful recoveries.
+Both workers reported `SCHED_OTHER/0`, despite requested priorities 40/48.
+These observations identify accumulating latency at 1 MS/s and a separate
+production/capture concern at 4 MS/s. Timed counter deltas and CPU/transport
+measurements remain necessary to identify the causes. See the
+[Pi Zero TX observations and follow-up](pi-zero-tx-queue-test-2026-10-15.md).
+
+The [automated Pi Zero baseline](pi-zero-tx-queue-test-2026-10-15.md#automated-baseline-on-the-pi-zero-2-w)
+uses the existing backend and a persistent C controller to measure microphone
+and tone TX at 1 and 4 MS/s, with 430.100 MHz TX frequency. It records passive
+status, process/thread CPU, scheduling, capture recovery and kernel diagnostics
+before changing the TX implementation.
+
+That [physical baseline](pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14)
+completed all four three-minute runs with normal cleanup. Both 1 MS/s sources
+filled the queue after approximately 129 seconds; 4 MS/s microphone/tone averaged
+82.81/88.84 frames/s while both TX workers shared nearly saturated CPU 0. The
+existing binaries and runtime sources remained unchanged, and the radio returned
+to idle afterward.
+
+The [TX rate diagnosis and hardware-paced design](tx-hardware-paced-design.md)
+explains why healthy RX differs from TX, records additional pacing/compute
+measurements, and describes the implemented demand-driven IQ generation with
+bounded buffering, independent microphone capture and adaptive resampling.
+The backend now requires the updated SMI driver ABI for TX; start refuses an old
+driver before activation. The terminal menu uses hardware pacing when available
+and retains legacy pacing when an older driver returns `ENOTTY`. Physical Pi Zero
+acceptance now uses the candidate driver loaded at runtime; the original installed
+module, application binaries and firmware are preserved. The first prototype
+completed three-minute microphone trials at 1 and 4 MS/s and a tone trial at
+4 MS/s, with the 4 MS/s producer using about 54% of one core. Its 2 MS/s
+microphone run reached a real transport/audio-clock mismatch beyond its initial
+±2% guard and stopped explicitly. The revised **±4% / 70 ms** implementation
+was tested in a fresh six-run qualification: microphone trials at 1/2 MS/s
+completed, then 4 MS/s stopped at about 169 seconds after changing transport
+demand exceeded the ±4% audio-clock guard. Tone trials were not reached.
+Subsequent timing-only 1/4/2 trials completed at near-nominal cadence for
+microphone 1/2/4 MS/s, including five minutes at 4 MS/s, and tone at 4 MS/s,
+without stable capture loss, driver underruns or ASRC faults. The integrated
+apply/restore/first-refill implementation then passed all six 180-second
+microphone/tone trials at 1/2/4 MS/s, with completed rates of
+99.9965–100.0045 frames/s, zero total driver underruns including startup, and
+zero capture loss, ASRC faults or writer errors. Its 4 MS/s microphone/tone
+producer used 54.67%/53.78% of one core. Actual TX timing read 1/4/2/1 and
+stopped readback restored 1/5/1/1. An application queue at 4/4 is the intentional
+bounded prefill with matched rates; it does not grow into a large backlog.
+Independent qualification, file hashes and cleanup passed. Physical automatic
+RX restoration also passed at 1/4 MS/s after five-second TX windows, with about
+30 seconds of healthy resumed RX, restored 1/5/1 timing and final idle cleanup.
+See the [handoff evidence](../build/radio-backend/tx-rx-handoff-zero-retry-20261014/handoff-summary.json)
+and [final verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json).
+Exact SWE sampling behavior and RF waveform/calibration remain unproven. See the
+[implementation trials](pi-zero-tx-queue-test-2026-10-15.md#hardware-paced-implementation-trials-2026-10-14).

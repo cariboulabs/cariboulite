@@ -246,12 +246,77 @@ not yet implemented.
 - [ ] **Pi Zero 2 W TX queue growth (reported 2026-10-14).** Investigate the
   1 MS/s NBFM application TX queue slowly filling to 64/64 during approximately
   90 seconds of active TX, despite apparently unaffected modulation audio.
-  Compare with 4 MS/s, where the user reports no such filling; establish whether
-  its producer sustains 100 frames/s under the greater modulation workload.
+  The backend/controller follow-up reproduced gradual growth at 1 MS/s;
+  4 MS/s showed no such filling but reported 80–90 frames/s (79.7 in the supplied
+  snapshot) and 48 recovered capture overruns. Measure sustained production
+  under the greater modulation workload and the associated audio discontinuities.
   Record starting depth, elapsed time and cumulative producer/writer deltas;
   compare accepted IQ sample rates, writer wait/service time, kernel/DMA timing,
   ALSA capture overruns and queued latency before changing pacing or capacity.
   See the [reported measurements](ADDITIONAL-README.md#tx-fifo-occupancy).
+  See the [backend observations and timed follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md),
+  including full scheduling/affinity and per-thread CPU measurements.
+  The [automated runner](docs/pi-zero-tx-queue-test-2026-10-15.md#automated-baseline-on-the-pi-zero-2-w)
+  measures microphone/tone at 1 and 4 MS/s on the existing build, at 430.100 MHz,
+  before implementation changes.
+  The [completed baseline](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14)
+  reproduced 1 MS/s saturation for both sources, with dequeue near 99.59 frames/s.
+  At 4 MS/s, microphone/tone averaged 82.81/88.84 frames/s with both workers on
+  saturated CPU 0 and increasing kernel TX missed counters. Investigate measured
+  core contention/modulation cost at 4 MS/s and writer/transport timing at 1 MS/s;
+  preserve this baseline and account for recorder overhead in follow-up comparisons.
+- [ ] **Hardware-paced TX and 4 MS/s compute margin (transport qualified; RF checks open, 2026-10-14).**
+  The [implemented design](docs/tx-hardware-paced-design.md) adds bounded driver
+  admission/telemetry, demand-paced production, independent capture with adaptive
+  resampling, separate worker cores and single-precision IQ conversion with double
+  phase integration. The candidate driver is loaded at runtime on the Zero;
+  installed module, original binaries and firmware remain preserved. Initial
+  three-minute microphone trials at 1/4 MS/s and tone at 4 MS/s completed with
+  bounded queues and no stable capture loss or driver underruns. The 4 MS/s
+  producer used about 54% of one core, with sustained transport above four
+  million IQ-equivalents/s. A 2 MS/s transport step exceeded the first ±2% audio
+  guard and stopped that trial explicitly. The tested revision uses a 70 ms
+  audio reserve and ±4% correction; 600-second native-burst, clock-step and
+  capture-jitter tests pass under both compiler configurations. The revised
+  qualification completed 1/2 MS/s microphone trials, then
+  stopped during 4 MS/s after approximately 169 seconds when changing transport
+  demand exceeded ±4%. The tone trials were not reached. Subsequent controlled
+  SMI write-timing trials changed only 1/5/1 to 1/4/2 and restored near-nominal
+  transport at 1/2/4 MS/s, including a five-minute 4 MS/s microphone run, without
+  stable loss/faults. Production now verifies that profile before activation,
+  restores the original write tuple before RX handoff, and primes one opening
+  zero-audio FM frame while parked. All six production microphone/tone trials
+  at 1/2/4 MS/s completed their 180-second targets, sustaining approximately
+  100 frames/s with zero total driver underruns, capture loss, ASRC faults or
+  writer errors. The 4 MS/s microphone/tone producer used 54.67%/53.78% of one
+  core. Actual timing application/restoration, independent qualification,
+  hashes and cleanup passed. Physical RX→TX→RX handoff also passed at 1/4 MS/s,
+  with about 30 seconds of healthy resumed RX, restored timing and verified idle
+  cleanup; [final verification](build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json)
+  preserves original/staged binaries and audio bridges.
+  On 2026-10-15, the user also reported successful quick tests at 1/4 MS/s and
+  substantially improved modulation audio at 4 MS/s; see the
+  [listening checks](docs/pi-zero-tx-queue-test-2026-10-15.md#user-listening-checks-2026-10-15).
+  The same candidate was staged and compiled on the Pi 4 on 2026-10-15;
+  [Pi 4 preparation](docs/radio-control.md#pi-4-staging-checkout-2026-10-15)
+  records source identity and preserved installation files. Following the
+  hardware transfer and confirmed dummy load, the runtime driver reload and
+  six short microphone/tone checks passed. The
+  [Pi 4 full timed validation](docs/pi4-tx-validation-2026-10-15.md) also passed
+  all six 180-second trials and 216 independent checks: approximately 100
+  frames/s, zero driver/capture/audio losses and faults, bounded queues and
+  verified timing restoration. Pi 4 producer CPU at 4 MS/s was 17.31/16.79%
+  for microphone/tone. Same-backend RX→TX→RX checks passed at 1/4 MS/s with
+  about 30 seconds of healthy resumed RX; original files and final idle were
+  verified, and temporary audio bridges were cleaned up. Permanent deployment
+  remains deferred.
+  A subsequent user listening check at 4 MS/s through an RSP2pro and nominal
+  50 dB attenuation reported perfect modulation audio and no noticeable hiss
+  with a quiet microphone. SDRconnect with AGC enabled indicated −61.2 dBm;
+  [manual measurement conditions](docs/pi4-tx-validation-2026-10-15.md#user-rsp2pro-listening-check--4-mss-2026-10-15)
+  are recorded separately from calibrated RF measurements.
+  Exact physical SWE sampling behavior, RF calibration, quantitative signal
+  quality and longer-duration acceptance remain open.
 - [ ] Add adjustable CTCSS TX encoding and optional RX tone squelch, including
   explicit tone deviation, total ±2.5 kHz modulation budget, tone rejection
   from listening audio and compatible Quindar/PTT/tail timing.

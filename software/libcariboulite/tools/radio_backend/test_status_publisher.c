@@ -121,6 +121,25 @@ static void test_bounded_clients_and_slow_monitor(const char *path)
     status_publisher_close(&publisher);
 }
 
+static void test_full_packet_delivery(const char *path)
+{
+    status_publisher_t publisher;
+    char packet[STATUS_PUBLISHER_MAX_PACKET_BYTES], received[sizeof(packet)];
+    memset(packet, ' ', sizeof(packet));
+    memcpy(packet, snapshot, sizeof(snapshot)-1);
+    CHECK(status_publisher_init(&publisher, path) == 0);
+    int client = connect_client(path);
+    CHECK(status_publisher_publish(&publisher, packet, sizeof(packet)) == 0);
+    struct iovec iov = {.iov_base=received, .iov_len=sizeof(received)};
+    struct msghdr message = {.msg_iov=&iov, .msg_iovlen=1};
+    CHECK(recvmsg(client, &message, 0) == (ssize_t)sizeof(packet));
+    CHECK(!(message.msg_flags & MSG_TRUNC));
+    CHECK(!memcmp(packet, received, sizeof(packet)));
+    CHECK(publisher.packets_sent == 1);
+    close(client);
+    status_publisher_close(&publisher);
+}
+
 static void test_replacement_preserved(const char *path)
 {
     status_publisher_t publisher;
@@ -189,6 +208,7 @@ int main(void)
     CHECK(snprintf(path, sizeof(path), "%s/status.sock", directory) > 0);
     test_delivery_and_passivity(path);
     test_bounded_clients_and_slow_monitor(path);
+    test_full_packet_delivery(path);
     test_replacement_preserved(path);
     test_path_validation(directory, path);
     CHECK(rmdir(directory) == 0);

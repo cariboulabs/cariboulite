@@ -148,7 +148,14 @@ int __wrap_at86rf215_read_buffer(at86rf215_st* modem, uint16_t address,
 size_t __wrap_caribou_smi_get_native_batch_samples(caribou_smi_st* smi)
 { (void)smi; return 1024; }
 int __wrap_ioctl(int descriptor, unsigned long request, ...)
-{ (void)descriptor; (void)request; errno = ENOTTY; return -1; }
+{
+    (void)descriptor;
+    /* Missing demand ABI uses the unchanged legacy transport. Its lifecycle
+     * must never apply or restore the hardware-paced SMI timing profile. */
+    assert(request != BCM2835_SMI_IOC_WRITE_SETTINGS);
+    errno = ENOTTY;
+    return -1;
+}
 int __wrap_caribou_fpga_set_io_ctrl_mode(caribou_fpga_st* fpga, int debug,
                                        caribou_fpga_io_ctrl_rfm_en mode)
 { (void)fpga; (void)debug; (void)mode; return 0; }
@@ -255,7 +262,7 @@ int main(void)
     tx_params_t params = {.freq_hz = 430125000, .rf_fs = 1000000,
         .mic_dev = "mock", .tone_hz = 600, .tone_amp = .4f,
         .tx_power_dbm = -3, .f_dev_hz = 2500, .out_scale = 4000,
-        .verify_start_profile = true};
+        .verify_start_profile = true, .pacing_mode = TX_PACING_LEGACY};
     assert(tx_pipeline_init(&pipeline, &sys, &sys.radio_high, &params) == 0);
     for (unsigned i = 0; i < 100 && !tx_pipeline_healthy(&pipeline); ++i) delay_ms(1);
     assert_parked(&pipeline, true);
@@ -298,6 +305,7 @@ int main(void)
     atomic_store(&missing_mic, false);
     /* Read errors and mismatched hardware reject start before a cue frame or
      * SMI write. Failed starts fully unkey and retain parked healthy workers. */
+    params.pacing_mode = TX_PACING_AUTO;
     unsigned initial_cues = atomic_load(&start_tone_frames);
     for (unsigned failure = PAC_READ_FAIL; failure <= STREAM_FAIL; ++failure) {
         profile_failure = failure;
@@ -332,5 +340,5 @@ int main(void)
     puts("PASS: retained TX workers park without wakeups/read/write/DSP; repeated "
          "Quindar sessions, calibrated pre-cue profile, readback failures before "
          "any IQ write, preserved owner cancellation, live diagnostics, "
-         "reader-owned resets and bounded abort");
+         "reader-owned resets, unchanged legacy SMI timing and bounded abort");
 }

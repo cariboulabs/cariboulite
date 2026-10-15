@@ -19,7 +19,7 @@ import time
 from at86rf215_monitor import decode_agc, format_register_rows
 
 
-MAX_PACKET_BYTES = 8192
+MAX_PACKET_BYTES = 16384
 MAX_DRAIN_PACKETS = 64
 RECONNECT_SECONDS = 0.5
 STALE_SECONDS = 1.0
@@ -50,7 +50,7 @@ def _reject_json_constant(value):
 def parse_snapshot(packet, truncated=False):
     """Validate a bounded protocol packet; do not accept incompatible versions."""
     if truncated or len(packet) > MAX_PACKET_BYTES:
-        raise ValueError("snapshot exceeds the 8192 byte packet limit")
+        raise ValueError(f"snapshot exceeds the {MAX_PACKET_BYTES} byte packet limit")
     try:
         snapshot = json.loads(packet, parse_float=_json_float,
                               parse_constant=_reject_json_constant)
@@ -215,38 +215,81 @@ def _format_rx_instrumentation(rx):
 
 
 def _format_tx_instrumentation(tx, control):
-    """Eight rows replace RX details while TX starts, runs or stops."""
+    """Keep eight rows, including optional hardware pacing instrumentation."""
     writer = _mapping(tx.get("writer"))
     capture = _mapping(tx.get("capture"))
     workers = _mapping(tx.get("workers"))
+    extended = "driver" in tx or "audio_buffer" in tx or "smi_timing" in tx or "capture" in workers
     generation = tx.get("generation", control.get("tx_pipeline_generation"))
     lines = [
         f"TX pipeline: running={_on(tx.get('running'))}"
         f" requested={_on(tx.get('requested', control.get('tx_requested')))}"
         f" initialized={_on(tx.get('initialized'))} generation={_integer(generation, True)}"
         f" resume RX={_on(control.get('rx_resume'))} transition={_on(control.get('transition'))}",
+    ]
+    if extended:
+        lines[0] += f" hardware paced={_on(tx.get('hardware_paced'))}"
+        driver = _mapping(tx.get("driver"))
+        audio = _mapping(tx.get("audio_buffer"))
+        if driver.get("valid") is True:
+            lines.append(
+                f"TX driver: FIFO={_counter(driver, 'fifo_queued_bytes')}/"
+                f"{_counter(driver, 'fifo_limit_bytes')} bytes"
+                f" completed={_counter(driver, 'completed_periods')}"
+                f" underruns={_counter(driver, 'underrun_periods')}"
+                f" DMA={_on(driver.get('dma_running'))} bounded={_on(driver.get('bounded_fifo'))}")
+        else:
+            lines.append("TX driver: unavailable")
+        if "smi_timing" in tx:
+            timing = _mapping(tx.get("smi_timing"))
+            if timing.get("valid") is True:
+                values = "/".join(_integer(timing.get(key), True) for key in
+                                  ("write_setup", "write_strobe", "write_hold", "write_pace"))
+                lines[-1] += f" SMI write(set/strobe/hold/pace)={values}"
+            else:
+                lines[-1] += " SMI write=unavailable"
+        if audio.get("valid") is True:
+            lines.append(
+                f"TX audio: {_counter(audio, 'queued_frames')}/{_counter(audio, 'capacity_frames')} frames"
+                f" target={_counter(audio, 'target_frames')}"
+                f" correction={_formatted(audio.get('correction_ppm'), '+.1f', 'unavailable')} ppm"
+                f" clock={_on(audio.get('clock_valid'))}"
+                f" under/overflow={_counter(audio, 'underflows')}/{_counter(audio, 'overflows')}"
+                f" cue drops={_counter(audio, 'cue_discard_frames')}"
+                f" error={_integer(audio.get('last_error'))}")
+        else:
+            lines.append("TX audio: unavailable")
+    writer_lines = [
         f"TX writer: calls={_counter(writer, 'calls')} samples={_counter(writer, 'samples')}"
         f" written_sequence={_counter(writer, 'written_sequence')}",
-        f"  partial/zero writes={_counter(writer, 'partial_writes')}/{_counter(writer, 'zero_writes')}"
+        f"partial/zero writes={_counter(writer, 'partial_writes')}/{_counter(writer, 'zero_writes')}"
         f" would_block={_counter(writer, 'would_block')} errors={_counter(writer, 'errors')}"
         f" last_error={_integer(writer.get('last_error'))}",
     ]
+    lines.extend([" ".join(writer_lines)] if extended else
+                 [writer_lines[0], "  " + writer_lines[1]])
     if capture.get("valid") is True:
-        lines.extend([
+        capture_lines = [
             f"TX capture: calls={_counter(capture, 'read_calls')}"
             f" frames={_counter(capture, 'frames_read')} overruns={_counter(capture, 'overruns')}",
-            f"  recovery(attempt/ok/fail)={_counter(capture, 'recovery_attempts')}/"
+            f"recovery(attempt/ok/fail)={_counter(capture, 'recovery_attempts')}/"
             f"{_counter(capture, 'recovery_successes')}/{_counter(capture, 'recovery_failures')}"
             f" errors={_counter(capture, 'read_errors')} last_error={_integer(capture.get('last_error'))}",
-        ])
+        ]
+        lines.extend([" ".join(capture_lines)] if extended else
+                     [capture_lines[0], "  " + capture_lines[1]])
     else:
-        lines.extend(["TX capture: unavailable", "  ALSA capture counters unavailable"])
-    for name in ("producer", "writer"):
+        lines.extend(["TX capture: unavailable (ALSA capture counters unavailable)"] if extended else
+                     ["TX capture: unavailable", "  ALSA capture counters unavailable"])
+    for name in (("producer", "writer", "capture") if extended else ("producer", "writer")):
         lines.append(_format_worker(name, workers.get(name)))
     fault = tx.get("fault")
     fault_label = "none" if "fault" in tx and fault is None else (
         _label(fault) if isinstance(fault, str) and fault else "unavailable")
-    lines.append(f"TX fault: {fault_label}")
+    if extended:
+        lines[0] += f" TX fault: {fault_label}"
+    else:
+        lines.append(f"TX fault: {fault_label}")
     return lines
 
 

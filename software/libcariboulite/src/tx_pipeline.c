@@ -71,6 +71,9 @@ static void tx_gate_set(tx_writer_ctrl_st* ctrl, bool enabled)
     ctrl->gate_enabled = enabled;
     pthread_cond_broadcast(&ctrl->state_changed);
     pthread_mutex_unlock(&ctrl->state_mutex);
+    pthread_mutex_lock(&g_tx_injection_lock);
+    pthread_cond_broadcast(&g_tx_injection_changed);
+    pthread_mutex_unlock(&g_tx_injection_lock);
 }
 
 void tx_worker_fail(tx_writer_ctrl_st* ctrl, int error)
@@ -81,6 +84,7 @@ void tx_worker_fail(tx_writer_ctrl_st* ctrl, int error)
     nbfm_tx_active = false;
     tx_gate_set(ctrl, false);
     if (ctrl->fifo) rf10_fifo_stop(ctrl->fifo);
+    tx_audio_buffer_request_abort(ctrl->audio_buffer);
 }
 
 static void writer_exited(void* argument)
@@ -99,7 +103,7 @@ static void* tx_writer_thread_func(void* arg)
 
     tx_writer_ctrl_st* ctrl = (tx_writer_ctrl_st*)arg;
     if (!ctrl || !ctrl->radio || !ctrl->radio->sys) return NULL;
-    set_rt_and_affinity_prio_record(48, 0, &ctrl->scheduling);
+    set_rt_and_affinity_prio_record(48, ctrl->hardware_paced ? 2 : 0, &ctrl->scheduling);
 
     caribou_smi_st *smi = &ctrl->radio->sys->smi;
     if (!smi || smi->filedesc < 0) return NULL;
@@ -173,7 +177,11 @@ static void* tx_writer_thread_func(void* arg)
                 pthread_setcancelstate(cancel_state, NULL);
                 break;
             }
-            int sent = caribou_smi_write_samples(smi, ch, p, (int)todo);  // returns *samples*
+            /* Hardware admission may change after poll. Make one nonblocking
+             * attempt under HW_LOCK; wait for DMA outside the shared lock. */
+            int sent = ctrl->hardware_paced
+                ? caribou_smi_write_timed(smi, ch, p, (int)todo, 0)
+                : caribou_smi_write_samples(smi, ch, p, (int)todo);
             int write_error = errno;
             atomic_fetch_add_explicit(&ctrl->write_calls, 1, memory_order_relaxed);
             if (sent > 0 && (size_t)sent <= todo) {
@@ -231,6 +239,132 @@ static unsigned tx_tail_padding_frames(size_t native_samples,
     return frames < 25 ? 25 : frames;
 }
 
+static int tx_detect_pacing(tx_writer_ctrl_st* ctrl, int fd, tx_pacing_mode_t mode)
+{
+    if (mode == TX_PACING_LEGACY) return 0;
+    if (mode != TX_PACING_AUTO && mode != TX_PACING_HARDWARE_REQUIRED) return -EINVAL;
+    struct smi_stream_tx_status status = {0};
+    if (ioctl(fd, SMI_STREAM_IOC_GET_TX_STATUS, &status) < 0) {
+        if (errno == ENOTTY && mode == TX_PACING_AUTO) return 0;
+        fprintf(stderr, "[tx_pipeline] hardware-paced TX needs the updated SMI driver: %s\n",
+                strerror(errno));
+        return -ENOTSUP;
+    }
+    if (status.abi_version != SMI_STREAM_TX_ABI_VERSION ||
+        status.struct_size != sizeof(status) || !status.period_bytes ||
+        status.period_bytes % 4 || status.period_bytes > UINT32_MAX / 2 ||
+        status.fifo_capacity_bytes < 2 * status.period_bytes ||
+        status.ring_bytes < status.period_bytes || status.ring_bytes % 4)
+        return -EPROTO;
+    ctrl->hardware_paced = true;
+    ctrl->driver_config = status;
+    ctrl->driver_config.fifo_limit_bytes = 2 * status.period_bytes;
+    /* Include admission, cyclic DMA, one extra quarter and FPGA capacity.
+     * Accepted padding displaces the cue even when DMA retirement is delayed. */
+    uint64_t pending = (uint64_t)ctrl->driver_config.fifo_limit_bytes / 4 +
+        status.ring_bytes / 4 + status.period_bytes / 4 + 1024;
+    unsigned frames = (unsigned)((pending + ctrl->frame_samples - 1) / ctrl->frame_samples);
+    ctrl->tail_padding_frames = frames < 25 ? 25 : frames;
+    return 0;
+}
+
+/* Called under the hardware lock with SMI idle, before a new TX session. */
+static int tx_configure_admission(tx_pipeline_t* p)
+{
+    struct smi_stream_tx_buffer_limit limit = {
+        .abi_version = SMI_STREAM_TX_ABI_VERSION, .struct_size = sizeof(limit),
+        .fifo_limit_bytes = p->tx_ctrl.hardware_paced
+            ? p->tx_ctrl.driver_config.fifo_limit_bytes : 0,
+    };
+    if (ioctl(p->sys->smi.filedesc, SMI_STREAM_IOC_SET_TX_BUFFER_LIMIT, &limit) < 0)
+        return !p->tx_ctrl.hardware_paced && errno == ENOTTY ? 0 : -errno;
+    if (p->tx_ctrl.hardware_paced) {
+        struct smi_stream_tx_status status;
+        if (ioctl(p->sys->smi.filedesc, SMI_STREAM_IOC_GET_TX_STATUS, &status) < 0)
+            return -errno;
+        if (status.fifo_limit_bytes != limit.fifo_limit_bytes ||
+            !(status.flags & SMI_STREAM_TX_STATUS_BOUNDED_FIFO)) return -EPROTO;
+    }
+    return 0;
+}
+
+/* Compare named canonical fields, never struct padding or requested DMA values:
+ * GET_SETTINGS decodes hardware thresholds (e.g. 254/495 become 62/47). */
+static bool tx_smi_settings_equal(const struct smi_settings* a,
+                                  const struct smi_settings* b)
+{
+#define SAME(field) (a->field == b->field)
+    return SAME(data_width) && SAME(pack_data) && SAME(read_setup_time) &&
+        SAME(read_hold_time) && SAME(read_pace_time) && SAME(read_strobe_time) &&
+        SAME(write_setup_time) && SAME(write_hold_time) && SAME(write_pace_time) &&
+        SAME(write_strobe_time) && SAME(dma_enable) && SAME(dma_passthrough_enable) &&
+        SAME(dma_read_thresh) && SAME(dma_write_thresh) &&
+        SAME(dma_panic_read_thresh) && SAME(dma_panic_write_thresh);
+#undef SAME
+}
+
+static int tx_smi_require_idle(tx_pipeline_t* p)
+{
+    struct smi_stream_tx_status status = {0};
+    if (ioctl(p->sys->smi.filedesc, SMI_STREAM_IOC_GET_TX_STATUS, &status) < 0)
+        return -(errno ? errno : EIO);
+    return status.state == smi_stream_idle ? 0 : -EBUSY;
+}
+
+/* Lifecycle owner holds HW_LOCK, with both workers parked and SMI idle. Only
+ * setup/strobe/hold change; read timings, pace and canonical DMA fields retain
+ * the actual device profile. Cache before WRITE so even a failed verification
+ * leaves enough information for the abort path to restore the old write tuple. */
+static int tx_apply_write_timing(tx_pipeline_t* p)
+{
+    tx_writer_ctrl_st* ctrl = &p->tx_ctrl;
+    if (!ctrl->hardware_paced) return 0;
+    int error = tx_smi_require_idle(p);
+    if (error) return error;
+    if (ctrl->smi_write_timing_saved) return -EBUSY;
+    struct smi_settings before = {0};
+    if (ioctl(p->sys->smi.filedesc, BCM2835_SMI_IOC_GET_SETTINGS, &before) < 0)
+        return -(errno ? errno : EIO);
+    ctrl->saved_write_setup = before.write_setup_time;
+    ctrl->saved_write_strobe = before.write_strobe_time;
+    ctrl->saved_write_hold = before.write_hold_time;
+    ctrl->smi_write_timing_saved = true;
+    struct smi_settings expected = before;
+    expected.write_setup_time = 1;
+    expected.write_strobe_time = 4;
+    expected.write_hold_time = 2;
+    if (ioctl(p->sys->smi.filedesc, BCM2835_SMI_IOC_WRITE_SETTINGS, &expected) < 0)
+        return -(errno ? errno : EIO);
+    struct smi_settings actual = {0};
+    if (ioctl(p->sys->smi.filedesc, BCM2835_SMI_IOC_GET_SETTINGS, &actual) < 0)
+        return -(errno ? errno : EIO);
+    return tx_smi_settings_equal(&actual, &expected) ? 0 : -EPROTO;
+}
+
+/* Restore only the saved write tuple into a newly read current profile. A
+ * stopped pipeline may be retained while RX settings evolve independently. */
+static int tx_restore_write_timing(tx_pipeline_t* p)
+{
+    tx_writer_ctrl_st* ctrl = &p->tx_ctrl;
+    if (!ctrl->hardware_paced || !ctrl->smi_write_timing_saved) return 0;
+    int error = tx_smi_require_idle(p);
+    if (error) return error;
+    struct smi_settings expected = {0};
+    if (ioctl(p->sys->smi.filedesc, BCM2835_SMI_IOC_GET_SETTINGS, &expected) < 0)
+        return -(errno ? errno : EIO);
+    expected.write_setup_time = ctrl->saved_write_setup;
+    expected.write_strobe_time = ctrl->saved_write_strobe;
+    expected.write_hold_time = ctrl->saved_write_hold;
+    if (ioctl(p->sys->smi.filedesc, BCM2835_SMI_IOC_WRITE_SETTINGS, &expected) < 0)
+        return -(errno ? errno : EIO);
+    struct smi_settings actual = {0};
+    if (ioctl(p->sys->smi.filedesc, BCM2835_SMI_IOC_GET_SETTINGS, &actual) < 0)
+        return -(errno ? errno : EIO);
+    if (!tx_smi_settings_equal(&actual, &expected)) return -EPROTO;
+    ctrl->smi_write_timing_saved = false;
+    return 0;
+}
+
 int tx_pipeline_init(tx_pipeline_t* p, sys_st* sys,
                      cariboulite_radio_state_st* radio,
                      const tx_params_t* par)
@@ -282,8 +416,15 @@ int tx_pipeline_init(tx_pipeline_t* p, sys_st* sys,
     p->tx_ctrl.tail_padding_frames = tx_tail_padding_frames(native_samples,
         (unsigned)fifo_multiplier, p->tx_ctrl.frame_samples);
 
-    // FIFOs
-    rf10_fifo_init(&p->txq, /*cap=*/64, /*drop_oldest_on_full=*/false);
+    int pacing_error = tx_detect_pacing(&p->tx_ctrl, sys->smi.filedesc, par->pacing_mode);
+    if (pacing_error) {
+        pthread_cond_destroy(&p->tx_ctrl.state_changed);
+        pthread_mutex_destroy(&p->tx_ctrl.state_mutex);
+        p->tx_ctrl.gate_initialized = false;
+        return pacing_error;
+    }
+    // Hardware backpressure bounds latency; legacy retains its original queue.
+    rf10_fifo_init(&p->txq, p->tx_ctrl.hardware_paced ? 4 : 64, false);
 
     p->inited = true; // FIFO synchronization is ready for staged cleanup.
     int error = -2;
@@ -336,6 +477,10 @@ int tx_pipeline_init(tx_pipeline_t* p, sys_st* sys,
         if (alsa_source_reset(p->tx_ctrl.mic, false) < 0) {
             error = -5;
             goto fail;
+        }
+        if (p->tx_ctrl.hardware_paced) {
+            p->tx_ctrl.audio_buffer = tx_audio_buffer_create(p->tx_ctrl.mic);
+            if (!p->tx_ctrl.audio_buffer) { error = -5; goto fail; }
         }
     }
 
@@ -455,6 +600,7 @@ static int tx_park_workers(tx_pipeline_t* p)
         if (wait_error) { rc = -wait_error; break; }
     }
     pthread_mutex_unlock(&ctrl->state_mutex);
+    if (!rc && ctrl->audio_buffer) tx_audio_buffer_park(ctrl->audio_buffer);
     if (!rc && ctrl->mic) rc = alsa_source_reset(ctrl->mic, false);
     return rc;
 }
@@ -464,6 +610,7 @@ static void tx_clear_injection(tx_pipeline_t* p)
     pthread_mutex_lock(&g_tx_injection_lock);
     p->tx_ctrl.inj.frames_left = 0;
     p->tx_ctrl.inj.fast_padding = false;
+    pthread_cond_broadcast(&g_tx_injection_changed);
     pthread_mutex_unlock(&g_tx_injection_lock);
 }
 
@@ -473,18 +620,8 @@ static bool tx_injection_can_run(const tx_pipeline_t* p)
            p->tx_ctrl.active && p->dsp_ctrl.active;
 }
 
-static bool tx_inject_frames(tx_pipeline_t* p, float hz, int frames,
-                             uint64_t deadline, bool fast_padding)
+static bool tx_wait_injection(tx_pipeline_t* p, uint64_t deadline)
 {
-    if (!tx_injection_can_run(p) || frames <= 0 || mono_ns() >= deadline)
-        return false;
-
-    pthread_mutex_lock(&g_tx_injection_lock);
-    p->tx_ctrl.inj.hz = hz;
-    p->tx_ctrl.inj.fast_padding = fast_padding;
-    p->tx_ctrl.inj.frames_left = frames;
-    pthread_mutex_unlock(&g_tx_injection_lock);
-
     while (true) {
         pthread_mutex_lock(&g_tx_injection_lock);
         int left = p->tx_ctrl.inj.frames_left;
@@ -498,6 +635,20 @@ static bool tx_inject_frames(tx_pipeline_t* p, float hz, int frames,
         nanosleep(&ts, NULL);
     }
     return tx_injection_can_run(p);
+}
+
+static bool tx_inject_frames(tx_pipeline_t* p, float hz, int frames,
+                             uint64_t deadline, bool fast_padding)
+{
+    if (!tx_injection_can_run(p) || frames <= 0 || mono_ns() >= deadline)
+        return false;
+    pthread_mutex_lock(&g_tx_injection_lock);
+    p->tx_ctrl.inj.hz = hz;
+    p->tx_ctrl.inj.fast_padding = fast_padding;
+    p->tx_ctrl.inj.frames_left = frames;
+    pthread_cond_broadcast(&g_tx_injection_changed);
+    pthread_mutex_unlock(&g_tx_injection_lock);
+    return tx_wait_injection(p, deadline);
 }
 
 static bool tx_inject_tone_with_zeros(tx_pipeline_t* p,
@@ -533,7 +684,10 @@ int tx_pipeline_start(tx_pipeline_t* p)
         }
     } else atomic_store(&p->tx_ctrl.abort_requested, false);
     if (tx_park_workers(p) < 0) return -3;
-    if (p->tx_ctrl.mic && alsa_source_reset(p->tx_ctrl.mic, true) < 0) return -3;
+    if (p->tx_ctrl.audio_buffer) {
+        if (tx_audio_buffer_resume(p->tx_ctrl.audio_buffer) < 0) return -3;
+        tx_audio_buffer_set_cue(p->tx_ctrl.audio_buffer, true);
+    } else if (p->tx_ctrl.mic && alsa_source_reset(p->tx_ctrl.mic, true) < 0) return -3;
 
     // Disable RX if it was on and arm TX chain
     if (nbfm_rx_active) {
@@ -550,25 +704,57 @@ int tx_pipeline_start(tx_pipeline_t* p)
     p->txq.stop = false;
     pthread_mutex_unlock(&p->txq.m);
     pthread_mutex_lock(&g_tx_injection_lock);
-    p->tx_ctrl.inj.hold_silence = false;
+    p->tx_ctrl.inj.hold_silence = true;
     p->tx_ctrl.inj.fast_padding = false;
     pthread_mutex_unlock(&g_tx_injection_lock);
 
+    if (p->tx_ctrl.hardware_paced) {
+        /* The owner is the sole FM user after tx_park_workers acknowledges the
+         * producer. Precompute one of the ten opening zero-audio frames before
+         * DMA activation; the writer stays gated until the hardware profile is
+         * verified. This supplies its first refill without waiting for DSP. */
+        memset(p->tx_ctrl.a48k, 0, 480 * sizeof(float));
+        rf10_frame_t opening;
+        int prime_error = tx_generate_frame(&p->tx_ctrl, &opening);
+        if (prime_error || !rf10_fifo_put(&p->txq, &opening, 0)) {
+            atomic_store(&p->dsp_ctrl.last_error, prime_error ? prime_error : -EIO);
+            tx_pipeline_abort(p);
+            return -3;
+        }
+        pthread_mutex_lock(&g_tx_injection_lock);
+        p->tx_ctrl.inj.hz = 0.0f;
+        p->tx_ctrl.inj.frames_left = 9;
+        pthread_cond_broadcast(&g_tx_injection_changed);
+        pthread_mutex_unlock(&g_tx_injection_lock);
+    }
+
     HW_LOCK();
     int requested_power = p->radio->tx_power;
+    /* Activation itself enables the SMI TX stream. Configure admission first
+     * while idle so its initial DMA ring uses the bounded framing policy. */
+    int idle_error = caribou_smi_set_driver_streaming_state(&p->sys->smi, smi_stream_idle);
+    int admission_error = idle_error ? idle_error : tx_configure_admission(p);
+    int timing_error = admission_error ? admission_error : tx_apply_write_timing(p);
+    if (timing_error && p->tx_ctrl.hardware_paced)
+        fprintf(stderr, "[tx_pipeline] SMI TX write-profile setup failed: %d\n", timing_error);
     int fpga_error = caribou_fpga_set_io_ctrl_mode(&p->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
-    int radio_error = cariboulite_radio_activate_channel(p->radio, cariboulite_channel_dir_tx, true);
+    int radio_error = timing_error || fpga_error ? -1 :
+        cariboulite_radio_activate_channel(p->radio, cariboulite_channel_dir_tx, true);
     /* Activation's bandwidth setter uses an uncalibrated PAC mapping. Restore
      * the requested calibrated power before the first opening-cue sample. */
     int power_error = cariboulite_radio_set_tx_power(p->radio, requested_power);
-    int profile_error = p->tx_ctrl.verify_start_profile
+    int profile_error = !radio_error && !power_error && p->tx_ctrl.verify_start_profile
         ? tx_verify_start_profile(p, requested_power) : 0;
-    // give writer a head-start so FIFO fills a bit
-    struct timespec ts = { .tv_sec = 0, .tv_nsec = 30*1000*1000 };
-    nanosleep(&ts, NULL);
-    int stream_error = caribou_smi_set_driver_streaming_state(&p->sys->smi, (smi_stream_state_en)3); // TX
+    /* Activation waits for PLL lock and has already started DMA. Do not hold
+     * the new producer off for another 30 ms (several 4 MS/s periods). */
+    if (!p->tx_ctrl.hardware_paced) {
+        struct timespec ts = { .tv_sec = 0, .tv_nsec = 30*1000*1000 };
+        nanosleep(&ts, NULL);
+    }
+    int stream_error = fpga_error || radio_error || power_error || profile_error || timing_error
+        ? -1 : caribou_smi_set_driver_streaming_state(&p->sys->smi, smi_stream_tx_channel);
     HW_UNLOCK();
-    if (fpga_error || radio_error || power_error || profile_error || stream_error
+    if (fpga_error || radio_error || power_error || profile_error || timing_error || stream_error
         || atomic_load(&p->tx_ctrl.abort_requested)) {
         tx_pipeline_abort(p);
         return -3;
@@ -581,12 +767,26 @@ int tx_pipeline_start(tx_pipeline_t* p)
     tx_gate_set(&p->tx_ctrl, true);
     
     // --- Quindar "start" tone: 2525 Hz for 250 ms with 5 frames of padding ---
-    if (!tx_inject_tone_with_zeros(p, 2525.0f, 250, 10, 5, false)) {
+    bool cue_ok;
+    if (p->tx_ctrl.hardware_paced) {
+        const uint64_t deadline = mono_ns() + 1000000000ULL;
+        cue_ok = tx_wait_injection(p, deadline) &&
+            tx_inject_frames(p, 2525.0f, 25, deadline, false) &&
+            tx_inject_frames(p, 0.0f, 5, deadline, false);
+    } else {
+        cue_ok = tx_inject_tone_with_zeros(p, 2525.0f, 250, 10, 5, false);
+    }
+    if (!cue_ok) {
         fprintf(stderr, "TX start tone aborted; stopping TX\n");
         nbfm_tx_active = false; // stop must skip another tone attempt
         tx_pipeline_stop(p);
         return -2;
     }
+    tx_audio_buffer_set_cue(p->tx_ctrl.audio_buffer, false);
+    pthread_mutex_lock(&g_tx_injection_lock);
+    p->tx_ctrl.inj.hold_silence = false;
+    pthread_cond_broadcast(&g_tx_injection_changed);
+    pthread_mutex_unlock(&g_tx_injection_lock);
     
     return 0;
 }
@@ -624,6 +824,7 @@ void tx_pipeline_stop(tx_pipeline_t* p)
     pthread_mutex_lock(&g_tx_injection_lock);
     p->tx_ctrl.inj.hold_silence = true;
     pthread_mutex_unlock(&g_tx_injection_lock);
+    tx_audio_buffer_set_cue(p->tx_ctrl.audio_buffer, true);
     if (tx_inject_tone_with_zeros(p, 2475.0f, 250, 5,
                                 p->tx_ctrl.tail_padding_frames, true)) {
         pthread_mutex_lock(&g_tx_injection_lock);
@@ -647,13 +848,16 @@ void tx_pipeline_stop(tx_pipeline_t* p)
     int stream_error = caribou_smi_set_driver_streaming_state(&p->sys->smi, (smi_stream_state_en)0); // idle
     int radio_error = cariboulite_radio_activate_channel(p->radio, cariboulite_channel_dir_tx, false);
     int fpga_error = caribou_fpga_set_io_ctrl_mode(&p->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
+    int timing_error = tx_restore_write_timing(p);
+    if (timing_error)
+        fprintf(stderr, "[tx_pipeline] SMI write-profile restore failed: %d\n", timing_error);
     HW_UNLOCK();
 
     p->running = false;
     int park_error = tx_park_workers(p);
     if (park_error)
         tx_record_stop_error(p, park_error);
-    else if (stream_error || radio_error || fpga_error)
+    else if (stream_error || radio_error || fpga_error || timing_error)
         tx_record_stop_error(p, -EIO);
 }
 
@@ -664,6 +868,7 @@ void tx_pipeline_request_abort(tx_pipeline_t* p)
     nbfm_tx_active = false;
     tx_gate_set(&p->tx_ctrl, false);
     rf10_fifo_stop(&p->txq);
+    tx_audio_buffer_request_abort(p->tx_ctrl.audio_buffer);
 }
 
 int tx_pipeline_abort(tx_pipeline_t* p)
@@ -675,12 +880,17 @@ int tx_pipeline_abort(tx_pipeline_t* p)
     int stream_error = caribou_smi_set_driver_streaming_state(&p->sys->smi, smi_stream_idle);
     int radio_error = cariboulite_radio_activate_channel(p->radio, cariboulite_channel_dir_tx, false);
     int fpga_error = caribou_fpga_set_io_ctrl_mode(&p->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_low_power);
+    int timing_error = tx_restore_write_timing(p);
+    if (timing_error)
+        fprintf(stderr, "[tx_pipeline] SMI write-profile restore failed: %d\n", timing_error);
     HW_UNLOCK();
     p->running = false;
     int park_error = tx_park_workers(p);
     if (park_error)
         tx_record_stop_error(p, park_error);
-    return stream_error || radio_error || fpga_error || park_error ? -1 : 0;
+    else if (stream_error || radio_error || fpga_error || timing_error)
+        tx_record_stop_error(p, -EIO);
+    return stream_error || radio_error || fpga_error || timing_error || park_error ? -1 : 0;
 }
 
 void tx_pipeline_destroy(tx_pipeline_t* p)
@@ -694,6 +904,7 @@ void tx_pipeline_destroy(tx_pipeline_t* p)
     p->dsp_ctrl.active = false;
     tx_gate_set(&p->tx_ctrl, false);
     rf10_fifo_stop(&p->txq);
+    tx_audio_buffer_request_abort(p->tx_ctrl.audio_buffer);
 
     if (p->tx_thread_created) {
         pthread_cancel(p->tx_thread);
@@ -704,6 +915,15 @@ void tx_pipeline_destroy(tx_pipeline_t* p)
         pthread_cancel(p->dsp_thread);
         pthread_join(p->dsp_thread, NULL);
         p->dsp_thread_created = false;
+    }
+    /* A failed stopped start/restore can leave a saved timing tuple. Retry
+     * after both workers joined, before freeing the pipeline or RX handoff. */
+    if (p->tx_ctrl.smi_write_timing_saved) {
+        HW_LOCK();
+        int idle_error = caribou_smi_set_driver_streaming_state(&p->sys->smi, smi_stream_idle);
+        int timing_error = idle_error ? idle_error : tx_restore_write_timing(p);
+        HW_UNLOCK();
+        if (timing_error) tx_record_stop_error(p, timing_error);
     }
     if (p->tx_ctrl.gate_initialized) {
         pthread_cond_destroy(&p->tx_ctrl.state_changed);
@@ -716,6 +936,8 @@ void tx_pipeline_destroy(tx_pipeline_t* p)
     if (p->tx_ctrl.iq_rf) free(p->tx_ctrl.iq_rf);
     if (p->tx_ctrl.a48k) free(p->tx_ctrl.a48k);
     if (p->tx_ctrl.fm)   nbfm_destroy(p->tx_ctrl.fm);
+    tx_audio_buffer_destroy(p->tx_ctrl.audio_buffer);
+    p->tx_ctrl.audio_buffer = NULL;
     if (p->tx_ctrl.mic)  audio_source_destroy(p->tx_ctrl.mic);
     audio_source_destroy(p->tx_ctrl.tone);
     p->tx_ctrl.tone = NULL;
@@ -731,7 +953,11 @@ bool tx_pipeline_running(const tx_pipeline_t* p) { return p && p->running; }
 
 bool tx_pipeline_healthy(const tx_pipeline_t* p)
 {
+    tx_audio_buffer_stats_t audio = {0};
+    if (p && p->tx_ctrl.audio_buffer)
+        tx_audio_buffer_get_stats(p->tx_ctrl.audio_buffer, &audio);
     return p && p->inited && p->dsp_thread_created && p->tx_thread_created
+        && (!p->tx_ctrl.audio_buffer || (audio.alive && !audio.last_error))
         && atomic_load_explicit(&p->dsp_ctrl.alive, memory_order_relaxed)
         && atomic_load_explicit(&p->tx_ctrl.alive, memory_order_relaxed)
         && !atomic_load_explicit(&p->dsp_ctrl.last_error, memory_order_relaxed)
@@ -771,6 +997,14 @@ void tx_pipeline_get_stats(tx_pipeline_t* p, tx_pipeline_stats_t* out)
     out->writer_worker.last_error = atomic_load_explicit(&p->tx_ctrl.last_error, memory_order_relaxed);
     pipeline_thread_diagnostics_get(&p->tx_ctrl.scheduling, &out->writer_worker.scheduling);
     out->capture_valid = alsa_source_get_stats(p->tx_ctrl.mic, &out->capture);
+    out->hardware_paced = p->tx_ctrl.hardware_paced;
+    out->driver_valid = out->hardware_paced &&
+        ioctl(p->sys->smi.filedesc, SMI_STREAM_IOC_GET_TX_STATUS, &out->driver) == 0;
+    out->smi_timing_valid = out->hardware_paced &&
+        ioctl(p->sys->smi.filedesc, BCM2835_SMI_IOC_GET_SETTINGS, &out->smi_timing) == 0;
+    out->audio_buffer_valid = p->tx_ctrl.audio_buffer != NULL;
+    if (out->audio_buffer_valid)
+        tx_audio_buffer_get_stats(p->tx_ctrl.audio_buffer, &out->audio_buffer);
 }
 
 size_t tx_pipeline_frame_samples(const tx_pipeline_t* p)
@@ -780,5 +1014,8 @@ size_t tx_pipeline_frame_samples(const tx_pipeline_t* p)
 
 void tx_pipeline_reset_stats(tx_pipeline_t* p)
 {
-    if (p && p->inited) rf10_fifo_reset_stats(&p->txq);
+    if (p && p->inited) {
+        rf10_fifo_reset_stats(&p->txq);
+        tx_audio_buffer_reset_stats(p->tx_ctrl.audio_buffer);
+    }
 }

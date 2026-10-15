@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='rx-lifecycle-') as directory:
     includes = [src, src/'at86rf215', src/'rffc507x']
     command = ['cc', '-O0', '-g', '-ffunction-sections', '-fdata-sections',
                '-Wno-unused-parameter', *['-I'+str(p) for p in includes],
-               str(Path(__file__).with_suffix('.c')), str(src/'nbfm_mod.c'), str(src/'nbfm_demod.c'), str(src/'nbfm_demod_dsp.c'), str(src/'wbfm_demod.c'), str(src/'demod_worker.c'), str(src/'noise_squelch.c'), str(src/'carrier_squelch.c'), str(src/'pipeline_transport.c'), str(src/'pipeline_runtime.c'), str(src/'mod_worker.c'), str(src/'tx_pipeline.c'), str(src/'rx_pipeline.c'), str(src/'modem_selftest.c'), str(src/'alsa_source.c'), str(src/'alsa_sink.c'), str(src/'tone_source.c'), '-Wl,--gc-sections',
+               str(Path(__file__).with_suffix('.c')), str(src/'nbfm_mod.c'), str(src/'nbfm_demod.c'), str(src/'nbfm_demod_dsp.c'), str(src/'wbfm_demod.c'), str(src/'demod_worker.c'), str(src/'noise_squelch.c'), str(src/'carrier_squelch.c'), str(src/'pipeline_transport.c'), str(src/'pipeline_runtime.c'), str(src/'mod_worker.c'), str(src/'tx_pipeline.c'), str(src/'tx_audio_buffer.c'), str(src/'rx_pipeline.c'), str(src/'modem_selftest.c'), str(src/'alsa_source.c'), str(src/'alsa_sink.c'), str(src/'tone_source.c'), '-Wl,--gc-sections',
                *['-Wl,--wrap='+s for s in wraps], '-L'+str(root/'build'),
                '-Wl,-rpath,'+str(root/'build'), '-lcariboulite', '-lasound',
                '-lm', '-pthread', '-o', str(binary)]

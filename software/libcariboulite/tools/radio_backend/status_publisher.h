@@ -6,7 +6,9 @@
 #include <sys/types.h>
 
 #define STATUS_PUBLISHER_MAX_CLIENTS 8
-#define STATUS_PUBLISHER_MAX_PACKET_BYTES 8192
+/* Protocol v1 permits optional instrumentation sections. Deploy readers with
+ * this ceiling alongside publishers; older v1 packets remain supported. */
+#define STATUS_PUBLISHER_MAX_PACKET_BYTES 16384
 #define STATUS_PUBLISHER_SOCKET_PATH_BYTES 108
 
 /* Single owner/thread. This transport never opens radio devices or accepts

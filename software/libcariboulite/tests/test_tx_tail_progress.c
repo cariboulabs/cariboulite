@@ -347,6 +347,14 @@ int caribou_smi_write_samples(caribou_smi_st* smi, caribou_smi_channel_en channe
     accepted+=sent;
     return (int)sent;
 }
+int caribou_smi_write_timed(caribou_smi_st* smi, caribou_smi_channel_en channel,
+                          const caribou_smi_sample_complex_int16* samples,
+                          size_t count, long timeout_us)
+{
+    (void)smi; (void)channel; (void)samples; (void)count; (void)timeout_us;
+    assert(!"legacy writer fixture unexpectedly used hardware paced writes");
+    return -1;
+}
 static void writer_case(unsigned rate, bool fail, bool stop)
 {
     sys_st sys={0}; rf10_fifo_t fifo={0};

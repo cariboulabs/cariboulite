@@ -365,7 +365,7 @@ def trial(kind, index, args, output):
                     if term.process.poll() is not None: raise RuntimeError("Application exited during comparison")
                 if connection and connection in ready:
                     for _ in range(64):
-                        try: packet, _, flags, _ = connection.recvmsg(8192)
+                        try: packet, _, flags, _ = connection.recvmsg(16384)
                         except BlockingIOError: break
                         if not packet: raise RuntimeError("Backend disconnected during comparison")
                         record = parse_snapshot(packet, bool(flags & socket.MSG_TRUNC))

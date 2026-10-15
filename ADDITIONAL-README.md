@@ -27,6 +27,11 @@ testing at **1 MS/s**, the Linux/application TX FIFO was observed slowly filling
 **100% (64/64) in about 90 seconds**, with modulation audio apparently
 unaffected. The same queue growth was not observed at **4 MS/s**.
 See [TX FIFO occupancy](#tx-fifo-occupancy) for its interpretation.
+The [backend/controller/passive-monitor follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md)
+also reproduced gradual queue growth at 1 MS/s. At 4 MS/s it showed lower
+production rates and capture overruns. The subsequent
+[automated baseline](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14)
+reproduced both behaviors with the existing build.
 
 Follow the installation steps in the next section after the Trixie settings
 below, and [create the ALSA Loopback device](#creating-the-alsa-loopback-device)
@@ -437,6 +442,55 @@ also keep its queue from filling. Compare long-term producer rates, accepted
 writer sample rates and capture/driver diagnostics at both settings to
 distinguish that possibility from slower draining at 1 MS/s. The reported
 distortion-free TX audio remains the result recorded for 1 MS/s.
+
+The subsequent backend/controller test on the same Pi Zero 2 W installation
+also showed gradual growth at 1 MS/s: depth 29/64, max 30, puts/gets 4582/4553
+and displayed rates 99.8/99.8 frames/s. This represents 290 ms of application
+backlog. At 4 MS/s, the supplied snapshot showed depth 0/64, max 3 and
+79.7/79.7 frames/s, with a reported range around 80–90. Each frame still
+represents 10 ms, so those lower rates point toward insufficient production
+under the heavier workload. Capture recorded 48 overruns and 48 successful
+recoveries at 4 MS/s, versus zero in the 1 MS/s excerpt. Successful recovery
+does not restore lost audio. Both workers reported actual `SCHED_OTHER/0`;
+requested FIFO priorities 40/48 were not active. Full counters, interpretation
+and the timed comparisons are in the
+[backend follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md#backendcontroller-observations-2026-10-14).
+
+The automated Pi Zero baseline at 430.100 MHz then measured both sources for
+three minutes at each rate. At 1 MS/s, microphone and internal-tone queues
+both filled after about 129 seconds, with production near 100 frames/s before
+saturation and dequeue near 99.59 frames/s. At 4 MS/s, microphone/tone averaged
+82.81/88.84 frames/s and CPU 0 was approximately 98–100% busy; both TX workers
+were pinned there. Kernel TX missed counters increased at 4 MS/s for both
+sources. The measured microphone capture overrun deltas were 2 at 1 MS/s and
+383 at 4 MS/s. This confirms capture-independent backlog at 1 MS/s and a
+separate processing/scheduling limit at 4 MS/s. That baseline used the unchanged
+TX implementation. Full rates, window definitions, recorder overhead and limitations
+are in the [physical baseline report](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14).
+
+The subsequent [hardware-paced TX implementation](docs/tx-hardware-paced-design.md)
+passed six three-minute microphone/tone trials at 1/2/4 MS/s and 430.100 MHz.
+It sustains approximately 100 frames/s within a four-frame application bound,
+with zero driver underruns or microphone/audio-buffer losses. At 4 MS/s the
+producer uses approximately 55% of one core. Verified SMI write timing is
+restored on stop, and same-backend automatic RX restoration passed at 1/4 MS/s.
+The tested build is staged separately on the Zero; its driver reload lasts
+until reboot. RF waveform accuracy remains separately unmeasured.
+
+On October 15, the user also confirmed successful quick tests of this staged
+version at 1 and 4 MS/s, with substantially better modulation audio at 4 MS/s.
+This [listening observation](docs/pi-zero-tx-queue-test-2026-10-15.md#user-listening-checks-2026-10-15)
+supplements the automated transport measurements.
+
+The unchanged staged candidate subsequently passed the
+[Pi 4 transport and RX restoration checks](docs/pi4-tx-validation-2026-10-15.md).
+The user then confirmed **perfect modulation audio at 4 MS/s**, with no
+noticeable hiss while the microphone was quiet, using an RSP2pro connected
+through 30 dB / 2 W and 20 dB / 2 W attenuators. SDRconnect with AGC enabled
+indicated **−61.2 dBm**. The
+[manual listening record](docs/pi4-tx-validation-2026-10-15.md#user-rsp2pro-listening-check--4-mss-2026-10-15)
+keeps this qualitative result and nominal 50 dB path separate from calibrated
+RF measurements.
 
 If the queue starts near empty, the observed growth corresponds to
 `64 / 90 ≈ 0.71` excess frames per second, about **0.7%** of the nominal

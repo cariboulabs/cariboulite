@@ -19,6 +19,8 @@ typedef enum {smi_stream_idle, smi_stream_rx_channel_0, smi_stream_rx_channel_1,
 #define DMA_DEV_TO_MEM 2
 #define HRTIMER_MODE_REL_PINNED 0
 #define WRITE_ONCE(a,b) ((a)=(b))
+#define atomic64_inc(a) (++*(a))
+#define atomic64_set(a,b) (*(a)=(b))
 #define dev_info(...) ((void)0)
 #define mb() ((void)0)
 #define usecs_to_jiffies(a) (a)
@@ -27,6 +29,7 @@ struct instance {
     smi_stream_state_en state;
     bool transfer_thread_running, writeable;
     int tx_hr, tx_watch_work, tx_fifo, poll_event, tx_watch_period_us, tx_hr_period;
+    long long tx_session_generation, tx_completed_periods, tx_underrun_periods, tx_accepted_bytes, tx_fifo_dequeued_bytes;
     void* smi_inst;
 };
 static struct instance instance = {.transition_lock=PTHREAD_MUTEX_INITIALIZER, .write_lock=PTHREAD_MUTEX_INITIALIZER};

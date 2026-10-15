@@ -99,6 +99,12 @@ class RadioBackendTests(unittest.TestCase):
                 "created": False, "alive": False, "last_error": 0,
                 "scheduling": {"valid": False}})
         self.assertIs(snapshot["tx"]["running"], False)
+        self.assertIsNone(snapshot["tx"]["hardware_paced"])
+        self.assertEqual(snapshot["tx"]["driver"], {"valid": False})
+        self.assertEqual(snapshot["tx"]["audio_buffer"], {"valid": False})
+        self.assertEqual(snapshot["tx"]["smi_timing"], {"valid": False})
+        self.assertEqual(snapshot["tx"]["workers"]["capture"], {
+            "created": False, "alive": False, "last_error": 0, "scheduling": {"valid": False}})
         self.assertIs(snapshot["rx"]["noise"]["valid"], False)
         self.assertIsNone(snapshot["rx"]["noise"]["rms"])
         hardware = snapshot["hardware"]
@@ -209,9 +215,9 @@ class RadioBackendTests(unittest.TestCase):
         self.addCleanup(peer.close)
         peer.settimeout(2)
         peer.connect(str(self.path))
-        packet, _, flags, _ = peer.recvmsg(8192)
+        packet, _, flags, _ = peer.recvmsg(client.MAX_PACKET_BYTES)
         self.assertFalse(flags & socket.MSG_TRUNC, "Instrumented packet exceeds protocol limit")
-        self.assertLessEqual(len(packet), 8192)
+        self.assertLessEqual(len(packet), client.MAX_PACKET_BYTES)
         snapshot = client.parse_snapshot(packet)
         self.assertEqual(snapshot["config"]["playback"], playback)
         self.assert_transport_only(snapshot)
@@ -243,6 +249,7 @@ int main(void) {
     options_t options;
     char *arguments[] = {"fixture", NULL};
     assert(!parse_options(1, arguments, &options));
+    assert(options.tx.pacing_mode == TX_PACING_HARDWARE_REQUIRED);
     rx_pipeline_t pipeline = {.inited=true};
     rx_pipeline_stats_t stats = {
         .rxq = {.cap=64, .count=2, .puts=101, .gets=99, .drops=3,
@@ -296,13 +303,36 @@ int main(void) {
     assert(size > 0); puts(packet);
     // RX resumes while TX workers remain allocated and parked. Both sets of
     // lifetime counters must still fit the monitor transport together.
-    tx_pipeline_stats_t txstats = {.capture_valid=true};
+    tx_pipeline_stats_t txstats = {.capture_valid=true, .hardware_paced=true,
+                                  .driver_valid=true, .audio_buffer_valid=true, .smi_timing_valid=true};
+    txstats.smi_timing = (struct smi_settings){.write_setup_time=1, .write_strobe_time=4,
+                                             .write_hold_time=2, .write_pace_time=1};
     memset(&txstats.txq, 255, sizeof(txstats.txq));
     memset(&txstats.writer, 255, sizeof(txstats.writer));
     memset(&txstats.capture, 255, sizeof(txstats.capture));
     txstats.producer_worker = (tx_worker_status_t){.created=true, .alive=true,
         .scheduling=stats.demod_worker.scheduling};
     txstats.writer_worker = txstats.producer_worker;
+    txstats.driver = (struct smi_stream_tx_status){.abi_version=SMI_STREAM_TX_ABI_VERSION,
+        .struct_size=sizeof(txstats.driver), .state=smi_stream_tx_channel,
+        .flags=SMI_STREAM_TX_STATUS_BOUNDED_FIFO | SMI_STREAM_TX_STATUS_DMA_RUNNING,
+        .fifo_queued_bytes=32768, .fifo_capacity_bytes=4194304, .fifo_limit_bytes=65536,
+        .period_bytes=65536, .ring_bytes=262144, .session_generation=UINT64_MAX,
+        .completed_periods=UINT64_MAX, .underrun_periods=UINT64_MAX,
+        .accepted_bytes=UINT64_MAX, .fifo_dequeued_bytes=UINT64_MAX};
+    txstats.audio_buffer = (tx_audio_buffer_stats_t){.created=true, .alive=true,
+        .running=false, .cue=false, .primed=true, .clock_valid=true, .last_error=-EPIPE,
+        .queued_frames=1900, .capacity_frames=16384, .target_frames=1920,
+        .minimum_frames=480, .maximum_frames=4096, .input_per_output=1.0040335,
+        .correction_ppm=4033.5, .occupancy_filtered_frames=1911.125,
+        .captured_frames=UINT64_MAX, .consumed_frames=UINT64_MAX, .output_frames=UINT64_MAX,
+        .capture_calls=UINT64_MAX, .again_calls=UINT64_MAX, .read_calls=UINT64_MAX,
+        .underflows=UINT64_MAX, .overflows=UINT64_MAX, .overflow_frames=UINT64_MAX,
+        .cue_discard_frames=UINT64_MAX, .resets=UINT64_MAX, .clock_limit_frames=UINT64_MAX,
+        .clock_limit_faults=UINT64_MAX, .scheduling=stats.audio_worker.scheduling};
+    txstats.audio_buffer.scheduling.requested_cpu=2;
+    txstats.audio_buffer.scheduling.applied_cpu=2;
+    strcpy(txstats.audio_buffer.scheduling.affinity, "2");
     options.tx_initialized = true;
     options.tx_pipeline_generation = UINT64_MAX;
     size = make_snapshot(packet, sizeof(packet), &options, "fixture", UINT64_MAX,
@@ -365,7 +395,7 @@ int main(void) {
         self.assertIn("recovery(attempt/ok/fail)=8/9/10", display)
         self.assertIn("sched=SCHED_OTHER/0", display)
         for packet in packets:
-            self.assertLessEqual(len(packet), 8192)
+            self.assertLessEqual(len(packet), client.MAX_PACKET_BYTES)
             json.loads(packet)
         extreme = client.parse_snapshot(packets[1])
         self.assertEqual(extreme["config"]["playback"], "\x01" * 255)
@@ -377,6 +407,47 @@ int main(void) {
         self.assertEqual(retained["tx"]["writer"]["samples"], 2 ** 64 - 1)
         self.assertEqual(retained["tx"]["capture"]["overruns"], 2 ** 64 - 1)
         self.assertEqual(retained["tx"]["generation"], 2 ** 64 - 1)
+        self.assertTrue(retained["tx"]["hardware_paced"])
+        self.assertEqual(retained["tx"]["smi_timing"], {"valid": True, "write_setup": 1,
+                                                      "write_strobe": 4, "write_hold": 2, "write_pace": 1})
+        driver = retained["tx"]["driver"]
+        self.assertTrue(driver["valid"])
+        self.assertEqual(driver["abi_version"], 1)
+        self.assertTrue(driver["bounded_fifo"])
+        self.assertTrue(driver["dma_running"])
+        self.assertEqual(driver["fifo_queued_bytes"], 32768)
+        self.assertEqual(driver["fifo_capacity_bytes"], 4194304)
+        self.assertEqual(driver["fifo_limit_bytes"], 65536)
+        self.assertEqual(driver["period_bytes"], 65536)
+        self.assertEqual(driver["ring_bytes"], 262144)
+        for name in ("session_generation", "completed_periods", "underrun_periods",
+                     "accepted_bytes", "fifo_dequeued_bytes"):
+            self.assertEqual(driver[name], 2 ** 64 - 1)
+        audio = retained["tx"]["audio_buffer"]
+        self.assertTrue(audio["valid"])
+        self.assertFalse(audio["running"])
+        self.assertFalse(audio["cue"])
+        self.assertTrue(audio["primed"])
+        self.assertTrue(audio["clock_valid"])
+        self.assertEqual(audio["last_error"], -32)
+        self.assertEqual(audio["queued_frames"], 1900)
+        self.assertEqual(audio["capacity_frames"], 16384)
+        self.assertEqual(audio["target_frames"], 1920)
+        self.assertEqual(audio["minimum_frames"], 480)
+        self.assertEqual(audio["maximum_frames"], 4096)
+        self.assertAlmostEqual(audio["input_per_output"], 1.0040335)
+        self.assertAlmostEqual(audio["correction_ppm"], 4033.5)
+        self.assertAlmostEqual(audio["occupancy_filtered_frames"], 1911.125)
+        for name in ("captured_frames", "consumed_frames", "output_frames", "capture_calls",
+                     "again_calls", "read_calls", "underflows", "overflows", "overflow_frames",
+                     "cue_discard_frames", "resets", "clock_limit_frames", "clock_limit_faults"):
+            self.assertEqual(audio[name], 2 ** 64 - 1)
+        capture = retained["tx"]["workers"]["capture"]
+        self.assertTrue(capture["created"])
+        self.assertTrue(capture["alive"])
+        self.assertEqual(capture["last_error"], -32)
+        self.assertEqual(capture["scheduling"]["applied_cpu"], 2)
+        self.assertEqual(capture["scheduling"]["affinity"], "2")
 
     def test_monitor_quit_disconnect_and_reconnect_leave_backend_running(self):
         process = self.start_backend("--status-hz", "10")

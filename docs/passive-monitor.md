@@ -358,7 +358,10 @@ fault recovery are further roadmap work; this instrumentation does not add
 new recovery or scheduling policies.
 
 The transport is `AF_UNIX` / `SOCK_SEQPACKET`, with one UTF-8 JSON object per
-packet and an 8192-byte maximum. Version 1 requires:
+packet and a 16384-byte maximum. The packet ceiling was increased from 8192
+bytes for TX hardware pacing instrumentation; update the backend, monitor and
+recording tools together. The protocol remains version 1, and older version 1
+snapshots remain supported. Version 1 requires:
 
 | Field | Meaning |
 | --- | --- |
@@ -388,6 +391,25 @@ has `created`, `alive`, `last_error` and `scheduling`; scheduling carries
 `policy_name`, affinity text/truncation, operation errors and `mlock_attempted`.
 Dry-run queues/readers are `null`, playback is `valid:false`, and workers
 are uncreated with unavailable scheduling.
+
+Optional TX fields are `hardware_paced`, `driver`, `audio_buffer`, `smi_timing`
+and `workers.capture`. `driver` reports validity, the versioned driver ABI fields,
+FIFO queued/capacity/limit bytes, DMA period/ring bytes, accepted/dequeued bytes,
+session generation, completed periods and underrun periods. DMA completion
+describes entry into the SMI transport; it does not measure RF emission.
+`audio_buffer` reports queue depth/target/capacity in audio frames, correction
+in ppm, input/output ratio, clock validity, capture/consumption/output counts,
+starvation/overflow/cue-discard counts and clock-limit errors. The capture
+worker uses the same scheduling schema as the other workers. `smi_timing`
+reports the actual queried write setup, strobe, hold and pace register values
+as `write_setup`, `write_strobe`, `write_hold` and `write_pace`, with a `valid`
+flag. These values identify the bus configuration; they do not measure its
+clock or the RF sample rate. The monitor shows them on its existing driver
+row. These fields
+remain optional; invalid or absent observations display as unavailable rather
+than zero. Dry-run uses `hardware_paced:null`, `driver.valid:false` and
+`audio_buffer.valid:false` and `smi_timing.valid:false`, with an uncreated
+capture worker.
 
 Registers are supplied in `hardware.common.registers` and the active
 `hardware.rf09.registers` or `hardware.rf24.registers` map. Keys are short

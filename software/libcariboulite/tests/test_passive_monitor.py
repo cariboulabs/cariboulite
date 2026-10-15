@@ -25,7 +25,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[3]
 CLIENT = ROOT / "software/libcariboulite/tools/cariboulite_radio_monitor.py"
 DEMO = CLIENT.with_name("monitor_demo_source.py")
-MAX_PACKET = 8192
+MAX_PACKET = 16384
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(CLIENT.parent))
 import at86rf215_monitor as registers
@@ -90,6 +90,24 @@ def tx_instrumentation():
                            "scheduling": dict(scheduling)} for name in ("producer", "writer")},
         "fault": None,
     }
+
+
+def hardware_tx_instrumentation():
+    tx = tx_instrumentation()
+    tx.update(hardware_paced=True,
+              smi_timing={"valid": True, "write_setup": 1, "write_strobe": 4,
+                          "write_hold": 2, "write_pace": 1},
+              driver={"valid": True, "fifo_queued_bytes": 32768,
+                      "fifo_limit_bytes": 65536, "completed_periods": 777,
+                      "underrun_periods": 3, "dma_running": True, "bounded_fifo": True},
+              audio_buffer={"valid": True, "queued_frames": 1900, "capacity_frames": 16384,
+                            "target_frames": 1920, "correction_ppm": 4033.5, "clock_valid": True,
+                            "underflows": 2, "overflows": 4, "cue_discard_frames": 960,
+                            "last_error": -5})
+    tx["workers"]["capture"] = {"created": True, "alive": True, "last_error": -5,
+                                  "scheduling": dict(tx["workers"]["producer"]["scheduling"],
+                                                     requested_cpu=2, applied_cpu=2, affinity="2")}
+    return tx
 
 
 class FixturePublisher:
@@ -704,7 +722,7 @@ class IQRegisterDisplayTests(unittest.TestCase):
         hardware["fpga"] = {"valid": True, "raw_status": 7, "io_control": 1, "debug": 2}
         queue = {"capacity": 64, "depth": 3, "min_depth": 0, "max_depth": 20,
                  "puts": 100, "gets": 97, "drops": 0, "timeouts_put": 0, "timeouts_get": 1}
-        tx = tx_instrumentation()
+        tx = hardware_tx_instrumentation()
         tx["queue"] = queue
         for state in ("TX_STARTING", "TX", "TX_STOPPING"):
             with self.subTest(state=state):
@@ -723,6 +741,10 @@ class IQRegisterDisplayTests(unittest.TestCase):
                 text = "\n".join(screen.lines.values())
                 for expected in (f"state={state}", "TX writer: calls=151", "overruns=4",
                                  "producer worker: alive=on", "writer worker: alive=on",
+                                 "TX driver: FIFO=32768/65536 bytes completed=777 underruns=3",
+                                 "SMI write(set/strobe/hold/pace)=1/4/2/1",
+                                 "TX audio: 1900/16384 frames target=1920 correction=+4033.5 ppm",
+                                 "capture worker: alive=on", "hardware paced=on",
                                  "TX fault: none", "RF24 STATE=0x06", "FPGA:", "Loopback:",
                                  "TX rate=2,000,000 S/s source=mic dev=+/-2500 Hz",
                                  "Queue timeouts are wait events; drops are application queue drops."):
@@ -788,6 +810,26 @@ class IQRegisterDisplayTests(unittest.TestCase):
                     self.assertNotIn(absent, text)
                 self.assertEqual(len(client._format_tx_instrumentation(value["tx"], value["control"])), 8)
                 self.assertTrue(all(len(line) <= 159 for line in lines if " worker:" in line))
+
+    def test_hardware_tx_metrics_remain_unavailable_when_invalid(self):
+        tx = hardware_tx_instrumentation()
+        tx["hardware_paced"] = None
+        tx["driver"]["valid"] = False
+        tx["audio_buffer"]["valid"] = False
+        tx["smi_timing"]["valid"] = False
+        tx["workers"]["capture"] = None
+        lines = client._format_tx_instrumentation(tx, {"state": "TX"})
+        self.assertEqual(len(lines), 8)
+        text = "\n".join(lines)
+        for expected in ("hardware paced=unknown", "TX driver: unavailable", "TX audio: unavailable",
+                         "capture worker: alive=unknown created=unknown", "SMI write=unavailable"):
+            self.assertIn(expected, text)
+        for absent in ("FIFO=32768", "completed=0", "underruns=0", "correction=+0.0"):
+            self.assertNotIn(absent, text)
+
+    def test_old_tx_publishers_do_not_invent_smi_timing(self):
+        text = "\n".join(client._format_tx_instrumentation(tx_instrumentation(), {}))
+        self.assertNotIn("SMI write", text)
 
     def test_unavailable_tx_statistics_do_not_imply_healthy_zeroes(self):
         tx = tx_instrumentation()
@@ -938,6 +980,13 @@ class PassiveClientTests(unittest.TestCase):
                          rx={"queue": {"puts": 1}}, tx={}, hardware={}, loopback={})
         self.assertEqual(client.parse_snapshot(encoded(value)), value)
         self.assertEqual(client.parse_snapshot(encoded(snapshot()))["version"], 1)
+
+    def test_extended_v1_packet_above_old_ceiling_is_accepted(self):
+        value = snapshot(tx=hardware_tx_instrumentation(), padding="p" * 9000)
+        packet = encoded(value)
+        self.assertGreater(len(packet), 8192)
+        self.assertLessEqual(len(packet), MAX_PACKET)
+        self.assertEqual(client.parse_snapshot(packet), value)
 
     def test_rejects_malformed_and_incompatible_packets(self):
         malformed = [b"\xff", b"[]", b"{}", b"broken JSON", b"x" * (MAX_PACKET + 1)]

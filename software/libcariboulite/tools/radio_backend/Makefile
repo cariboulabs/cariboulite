@@ -8,7 +8,7 @@ CC ?= cc
 CPPFLAGS += -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -I$(SRC) -I$(HERE)
 CFLAGS := -std=c11 -O3 -g -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces
 DSPFLAGS := -ffast-math -fno-math-errno -funroll-loops
-BASE_NAMES := rx_pipeline pipeline_transport pipeline_runtime nbfm_demod nbfm_demod_dsp demod_worker wbfm_demod noise_squelch carrier_squelch alsa_sink tx_pipeline mod_worker nbfm_mod alsa_source tone_source
+BASE_NAMES := rx_pipeline pipeline_transport pipeline_runtime nbfm_demod nbfm_demod_dsp demod_worker wbfm_demod noise_squelch carrier_squelch alsa_sink tx_pipeline tx_audio_buffer mod_worker nbfm_mod alsa_source tone_source
 OWN_NAMES := main modem_snapshot status_publisher command_protocol control_server
 OBJECTS := $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES) $(OWN_NAMES)))
 

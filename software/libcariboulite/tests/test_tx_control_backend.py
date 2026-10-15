@@ -95,8 +95,12 @@ class TxControlBackendTests(unittest.TestCase):
         self.assertIsNone(snapshot["tx"]["queue"])
         self.assertIsNone(snapshot["tx"]["writer"])
         self.assertEqual(snapshot["tx"]["capture"], {"valid": False})
+        self.assertIsNone(snapshot["tx"]["hardware_paced"])
+        self.assertEqual(snapshot["tx"]["driver"], {"valid": False})
+        self.assertEqual(snapshot["tx"]["audio_buffer"], {"valid": False})
+        self.assertEqual(snapshot["tx"]["smi_timing"], {"valid": False})
         self.assertEqual(snapshot["hardware"]["register_poll"]["polls"], 0)
-        for worker in ("producer", "writer"):
+        for worker in ("producer", "writer", "capture"):
             self.assertIs(snapshot["tx"]["workers"][worker]["created"], False)
             self.assertIs(snapshot["tx"]["workers"][worker]["alive"], False)
 
