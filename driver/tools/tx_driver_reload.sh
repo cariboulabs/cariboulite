@@ -33,6 +33,33 @@ if (( check_only )); then
     exit 0
 fi
 [[ $EUID == 0 ]] || { echo "Run this reload command with sudo in the Pi Zero terminal" >&2; exit 1; }
+
+# A sudo invocation must leave its rollback files removable by that user.
+# Direct root invocations retain root ownership. Never trust numeric ownership
+# values without matching them to the invoking account.
+backup_owner=
+if [[ -n ${SUDO_USER:-}${SUDO_UID:-}${SUDO_GID:-} ]]; then
+    [[ -n ${SUDO_USER:-} && ${SUDO_UID:-} =~ ^(0|[1-9][0-9]*)$ &&
+       ${SUDO_GID:-} =~ ^(0|[1-9][0-9]*)$ ]] || {
+        echo "Invalid sudo user ownership metadata" >&2; exit 1;
+    }
+    [[ $(id -u -- "$SUDO_USER") == "$SUDO_UID" &&
+       $(id -g -- "$SUDO_USER") == "$SUDO_GID" ]] || {
+        echo "Sudo user ownership metadata does not match the account" >&2; exit 1;
+    }
+    backup_owner="$SUDO_UID:$SUDO_GID"
+fi
+backup_paths=()
+own_backup_paths() {
+    [[ -n $backup_owner ]] || return 0
+    local path
+    for path in "${backup_paths[@]}"; do
+        if [[ -e $path || -L $path ]]; then
+            chown -h -- "$backup_owner" "$path"
+        fi
+    done
+}
+
 for program in fuser python3 rmmod insmod; do
     command -v "$program" >/dev/null || { echo "Missing program: $program" >&2; exit 1; }
 done
@@ -98,10 +125,24 @@ PY
 }
 probe_idle old
 
-backup_dir="$(dirname "$candidate")/reload-backups/$(date -u +%Y%m%dT%H%M%SZ)-$$"
-mkdir -p "$backup_dir"
-cp -- "$installed" "$backup_dir/$(basename "$installed")"
+backup_root="$(dirname "$candidate")/reload-backups"
+[[ ! -L $backup_root ]] || { echo "Backup root must not be a symlink: $backup_root" >&2; exit 1; }
+trap own_backup_paths EXIT
+if [[ ! -e $backup_root ]]; then
+    mkdir -- "$backup_root"
+    backup_paths+=("$backup_root")
+fi
+[[ -d $backup_root ]] || { echo "Backup root is not a directory: $backup_root" >&2; exit 1; }
+if [[ -n $backup_owner && $(stat -c %u -- "$backup_root") != "$SUDO_UID" &&
+      ${#backup_paths[@]} == 0 ]]; then
+    echo "Existing backup root belongs to another user; correct its ownership before reload: $backup_root" >&2
+    exit 1
+fi
+backup_dir=$(mktemp -d "$backup_root/$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
+installed_backup="$backup_dir/$(basename "$installed")"
 rollback_module="$backup_dir/smi_stream_dev-original.ko"
+backup_paths+=("$backup_dir" "$installed_backup" "$rollback_module" "$backup_dir/rollback-sha256.txt")
+cp -- "$installed" "$installed_backup"
 case "$installed" in
     *.xz) xz -dc -- "$installed" > "$rollback_module" ;;
     *.gz) gzip -dc -- "$installed" > "$rollback_module" ;;
@@ -111,6 +152,8 @@ esac
 [[ $(modinfo -F name "$rollback_module") == "$module" ]] || { echo "Rollback backup verification failed" >&2; exit 1; }
 [[ $(modinfo -F vermagic "$rollback_module") == "$vermagic" ]] || { echo "Rollback kernel/ABI metadata differs from candidate" >&2; exit 1; }
 sha256sum "$rollback_module" > "$backup_dir/rollback-sha256.txt"
+own_backup_paths
+trap - EXIT
 printf 'Verified rollback module: %s\n' "$rollback_module"
 
 # The normal module reference check remains authoritative if an application

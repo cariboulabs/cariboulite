@@ -206,13 +206,15 @@ Get the source code:
 git clone https://github.com/cariboulabs/cariboulite.git
 ```
 
-Or if you don't want to patch yourself:
+For this fork's hardware-paced TX and standalone radio applications, select
+the development branch explicitly:
 
 ```
-git clone https://github.com/Habraken/cariboulite.git
+git clone --branch dev-passive-monitor --recurse-submodules https://github.com/Habraken/cariboulite.git
 ```
 
-To make the nbfm_tx and nbfm_rx examples work you also need to install the dev tools for ALSA:
+The installer includes the ALSA development dependencies. For a manual build,
+install them first:
 
 ```
 sudo apt install -y libasound2-dev pkg-config
@@ -227,11 +229,19 @@ are already in this checkout; switching to `feature/nbfm_rx` is not an
 installation prerequisite.
 
 The top-level installer builds the blob generator before the driver and invokes
-the driver installer itself; a driver-first installation is unnecessary. It also
+the driver installer itself; a driver-first installation is unnecessary. It builds
+the main library, standard test application and the standalone backend,
+controller and monitor. It also
 runs `git pull`, installs packages and writes system configuration. The fresh
 Pi Zero 2 W / Trixie installation reported above succeeded with this recipe;
 broader package, permissions and platform validation remains tracked in
 [DOC-01](ROADMAP.md#documentation-validation-backlog).
+
+On October 15, a separate recursive GitHub clone of `dev-passive-monitor` at
+`37d2414` built the native blob generator, kernel driver, embedded driver header,
+main library, standard test application and all three standalone radio apps.
+This check used the Pi 4's existing OS dependencies and matching kernel headers;
+it did not run the system installer or validate installation on a fresh OS image.
 
 Then in the cariboulite directory:
 

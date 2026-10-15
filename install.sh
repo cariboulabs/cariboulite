@@ -3,7 +3,7 @@
 ## --------------------------------------------------------------------
 ## Variables
 ## --------------------------------------------------------------------
-ROOT_DIR=`pwd`
+ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || exit 1
 SOAPY_UTILS_EXE=SoapySDRUtil
 RED='\033[0;31m'
 GREEN='\033[1;32m'
@@ -17,29 +17,30 @@ ERROR="0"
 ## update the git repo on develop_R1 branch to include sub-modules
 ## --------------------------------------------------------------------
 printf "\n[  1  ] ${GREEN}CaribouLite Git Repo${NC}\n"
-git pull
-git submodule init
-git submodule update
+cd "$ROOT_DIR" || exit 1
+git pull || exit 1
+git submodule update --init --recursive || exit 1
 
 ## --------------------------------------------------------------------
 ## kernel module dev dependencies
 ## --------------------------------------------------------------------
 printf "\n[  2  ] ${GREEN}Updating system and installing dependencies...${NC}\n"
-sudo apt-get update
+sudo apt-get update || exit 1
 if [ ! -f "/lib/modules/$(uname -r)/build/Makefile" ]; then
     sudo apt-get -y install "linux-headers-$(uname -r)" || exit 1
 fi
-sudo apt-get -y install module-assistant pkg-config libncurses5-dev cmake git libzmq3-dev
-sudo apt-get -y install swig avahi-daemon libavahi-client-dev python3-distutils libpython3-dev
+sudo apt-get -y install build-essential module-assistant pkg-config libncurses-dev \
+    cmake git libzmq3-dev libasound2-dev alsa-utils || exit 1
+sudo apt-get -y install swig avahi-daemon libavahi-client-dev python3 python3-dev || exit 1
 
 # In ubuntu we need to grant access to gpiomem
 if grep -iq "NAME=\"Ubuntu\"" /etc/os-release; then
-	sudo apt-get install rpi.gpio-common
+	sudo apt-get install rpi.gpio-common || exit 1
 	echo "Adding user `whoami` to dialout, root groups"
-	sudo usermod -aG dialout,root "${USER}"
+	sudo usermod -aG dialout,root "${USER}" || exit 1
 fi
 
-sudo depmod -a
+sudo depmod -a || exit 1
 
 ## --------------------------------------------------------------------
 ## clone SoapySDR dependencies
@@ -51,7 +52,7 @@ SOAPY_UTIL_PATH=`which $SOAPY_UTILS_EXE`
 if test -f "${SOAPY_UTIL_PATH}"; then
     printf "${CYAN}Found SoapySDRUtil at ${SOAPY_UTIL_PATH}${NC}\n"
 else
-    mkdir -p $ROOT_DIR/installations
+    mkdir -p "$ROOT_DIR/installations" || exit 1
 
     printf "${RED}Did not find SoapySDRUtil${NC}. Do you want to clone and install? [Y/n]: "
     read -s -n1
@@ -63,30 +64,30 @@ else
         printf "Y\n"
 
         printf "==> ${GREEN}Cloning SoapySDR, and compiling...${NC}\n"
-        cd $ROOT_DIR/installations
+        cd "$ROOT_DIR/installations" || exit 1
 
-        rm -rf SoapySDR
-        git clone https://github.com/pothosware/SoapySDR.git
+        rm -rf SoapySDR || exit 1
+        git clone https://github.com/pothosware/SoapySDR.git || exit 1
 
         # Soapy SDR -- the SDR abstraction library
-        cd SoapySDR
-        mkdir -p build && cd build
-        cmake ../
-        make && sudo make install
-        sudo ldconfig
+        cd SoapySDR || exit 1
+        mkdir -p build && cd build || exit 1
+        cmake ../ || exit 1
+        make && sudo make install || exit 1
+        sudo ldconfig || exit 1
 
         printf "==> ${GREEN}Cloning SoapyRemote, and compiling...${NC}\n"
-        cd $ROOT_DIR/installations
+        cd "$ROOT_DIR/installations" || exit 1
 
-        rm -rf SoapyRemote
-        git clone https://github.com/pothosware/SoapyRemote.git
+        rm -rf SoapyRemote || exit 1
+        git clone https://github.com/pothosware/SoapyRemote.git || exit 1
 
         # Soapy Server -- Use any Soapy SDR remotely
-        cd SoapyRemote
-        mkdir -p build && cd build
-        cmake ../
-        make && sudo make install
-        sudo ldconfig
+        cd SoapyRemote || exit 1
+        mkdir -p build && cd build || exit 1
+        cmake ../ || exit 1
+        make && sudo make install || exit 1
+        sudo ldconfig || exit 1
     fi
 
     printf "\n[  4  ] ${GREEN}Checking the installed Soapy utilities...${NC}\n"
@@ -104,41 +105,45 @@ fi
 ## --------------------------------------------------------------------
 printf "\n[  5  ] ${GREEN}Compiling main source...${NC}\n"
 printf "${CYAN}1. External Tools...${NC}\n"
-cd $ROOT_DIR/software/utils
-mkdir -p build && cd build
-cmake ../
-make
-mv $ROOT_DIR/software/utils/build/generate_bin_blob $ROOT_DIR/software/utils/generate_bin_blob
+cd "$ROOT_DIR/software/utils" || exit 1
+mkdir -p build && cd build || exit 1
+cmake ../ || exit 1
+make || exit 1
+mv "$ROOT_DIR/software/utils/build/generate_bin_blob" "$ROOT_DIR/software/utils/generate_bin_blob" || exit 1
 
 printf "${CYAN}2. libIIR ${NC}\n"
-cd $ROOT_DIR/software/libcariboulite/src/iir/
-mkdir -p build && cd build
-cmake ../
-make
-sudo make install
-sudo ldconfig
+cd "$ROOT_DIR/software/libcariboulite/src/iir/" || exit 1
+mkdir -p build && cd build || exit 1
+cmake ../ || exit 1
+make || exit 1
+sudo make install || exit 1
+sudo ldconfig || exit 1
 
 printf "${CYAN}3. SMI kernel module & udev...${NC}\n"
-cd $ROOT_DIR/driver
+cd "$ROOT_DIR/driver" || exit 1
 kernel_memory=$(grep "MemAvailable:" /proc/meminfo | awk '{print $2}')
 kernel_memory_mb=$((kernel_memory / 1024))
 printf "${CYAN}   Detected memory ${kernel_memory_mb} MB...${NC}\n"
 if (( kernel_memory_mb > 512 )); then
   printf "${CYAN}   Installing with Fifo size multiplier of 6xMTU...${NC}\n"
-  ./install.sh install 6 2 3
+  ./install.sh install 6 2 3 || exit 1
 else
   printf "${CYAN}   Installing with Fifo size multiplier of 2xMTU...${NC}\n"
-  ./install.sh install 2 2 3
+  ./install.sh install 2 2 3 || exit 1
 fi
-cd ..
+cd .. || exit 1
 
 printf "${CYAN}4. Main software...${NC}\n"
-cd $ROOT_DIR
-mkdir -p build && cd build
-cmake $ROOT_DIR/software/libcariboulite/
-make
-sudo make install
-sudo ldconfig
+cd "$ROOT_DIR" || exit 1
+mkdir -p build && cd build || exit 1
+cmake "$ROOT_DIR/software/libcariboulite/" || exit 1
+make || exit 1
+
+printf "${CYAN}5. Radio backend, controller and monitor...${NC}\n"
+make -C "$ROOT_DIR/software/libcariboulite/tools/radio_backend" || exit 1
+
+sudo make install || exit 1
+sudo ldconfig || exit 1
 
 ## --------------------------------------------------------------------
 ## Configuration File - RPI /boot/config.txt

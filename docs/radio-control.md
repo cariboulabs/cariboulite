@@ -77,6 +77,8 @@ sudo bash driver/tools/tx_driver_reload.sh "$PWD/smi_stream_dev.ko"
 ```
 
 The reload helper verifies the kernel and saves the original for rollback.
+When invoked through `sudo`, its new backup directories and files belong to
+the invoking user so the build directory remains removable.
 It intentionally refuses another reload while the candidate is already active
 and differs from the installed rollback module. A different kernel needs a
 matching module build. This candidate changes no FPGA firmware; these tests

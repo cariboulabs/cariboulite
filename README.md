@@ -23,13 +23,18 @@ So, if you intend to use CaribouLite on RPI5 please don't - it won't work. Why w
 
 A Pi 5 transport redesign was proposed historically, but no working implementation is established here. Display/camera connectors are separate from the 40-pin GPIO header. Feasibility and scope are tracked as [DOC-10](ROADMAP.md#documentation-validation-backlog).
 
-## Development fork status — 4 October 2026
+## Development fork status — 15 October 2026
 
 The accepted NBFM TX/RX, mono WBFM RX and FM refactoring work is now on
 `main`. Further receive modes are developed on `dev-additional-modes`, starting
 with CW listening, then AM and SSB; these modes remain planned. See the
 [development overview](docs/wiki/Home.md), [FM plan](docs/demodulator-architecture-research.md)
 and [interface reference](docs/audio-dsp-interfaces.md).
+
+The standalone backend/controller/monitor and hardware-paced TX are on
+`dev-passive-monitor`. This TX implementation has been tested on the Pi Zero
+2 W and Pi 4; see the [Pi 4 validation record](docs/pi4-tx-validation-2026-10-15.md).
+The clone command below selects that branch and its pinned IIR submodule.
 
 # Getting Started & Installation
 
@@ -42,9 +47,9 @@ Use the following steps to install the CaribouLite on your choice of RPI board
 2. Power the RPI device, wait for it to finish boot sequence.
 3. Clone this repository into a local directory of your choise (in this case `~/projects`)
 ```
-mkdir ~/projects
+mkdir -p ~/projects
 cd ~/projects
-git clone https://github.com/cariboulabs/cariboulite
+git clone --branch dev-passive-monitor --recurse-submodules https://github.com/Habraken/cariboulite.git
 cd cariboulite
 ```
 4. Use the following setup command (**note: don't `sudo` it**):
@@ -60,6 +65,8 @@ The setup script **requires internet connection** and it follows the following a
    2. IIR DSP library
    3. SMI stream device module (kernel object) blob generation
 4. **Main software** and SoapyAPI compilation and installation
+   The standalone backend, controller and monitor are also built under
+   `build/radio-backend/`; see [radio controls](docs/radio-control.md) for launching them.
 5. **Raspberry PI configuration** verification. The installer checks boot settings in `/boot/firmware/config.txt` when present, otherwise `/boot/config.txt`; it does not edit these boot settings. It does write module-loading, blacklist, module-option and udev files through the driver installer.
 
 Note: the user will be requested to enter their password during the installation process.
