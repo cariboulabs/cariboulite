@@ -4,6 +4,14 @@ Register notes below were checked against the current RTL on 2026-09-16.
 Historical diagrams may describe intended features; implementation differences
 are called out explicitly. Physical timing/electrical validation remains in
 [DOC-03 and DOC-04](../ROADMAP.md#documentation-validation-backlog).
+
+Current-source review on 2026-10-16 confirmed that the RTL and packaged
+bitstream remain the September 16 loopback-capable baseline. `top.bin` SHA-256:
+`dcdf0733ef1ee8088b82381148475a6e4de87c6f00b8d14480a46d48621d31f6`.
+The October 15 [hardware-paced TX](../docs/tx-hardware-paced-design.md) changes
+are in the driver and userspace; they do not require new FPGA firmware.
+LVDS timing optimization and PMOD sequencer integration remain planned.
+
 CaribouLite contains an FPGA device (ICE40 family) with 1280 LE. It has two designated roles:
 1. Step #1: Controlling and managing the RF front-end path, and other digital device control.
 2. Step #2: Streaming SMI I/Q data from the RPI to the modem, and from the modem LVDS back to the SMI interface.
@@ -12,7 +20,7 @@ CaribouLite contains an FPGA device (ICE40 family) with 1280 LE. It has two desi
 
 The above block diagram shows the FPGA's peripheral connections and their naming.
 
-## Convensions
+## Conventions
 * i_<signal>: input signal
 * o_<signal>: output signal
 * io_<signal>: input / output signal (controllable pin)
@@ -233,6 +241,13 @@ a complete clock-domain/timing specification remains DOC-03/DOC-04.
 RX emits bytes least-significant first; TX assembles four bytes per word. RX
 read requests reflect a nonempty FIFO; TX write requests reflect a nonfull FIFO.
 LVDS framing is implemented separately in `lvds_rx.v` and `lvds_tx.v`.
+
+Current `smi_ctrl.v` assembles FIFO words with TX-enable hardcoded high even
+when the host word's control bit is zero; `lvds_tx.v` serializes those words.
+Valid zero-IQ startup/underrun padding preserves framing but does not unkey RF.
+Userspace must stop SMI and disable modem TX explicitly. Historical
+`TX_EN = I[0]` notes describe the modem interface, not the current RTL's
+propagation of host control.
 
 | IOC | Access | Meaning |
 | --- | --- | --- |

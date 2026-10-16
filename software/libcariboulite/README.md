@@ -15,8 +15,9 @@ cmake --build build --parallel 2
 
 On Debian-family systems the dependency package names include `build-essential`,
 `cmake`, `pkg-config`, `libncurses-dev`, `libasound2-dev`, and optionally
-`libsoapysdr-dev`. A fresh OS installation has not been exercised by the
-September 2026 documentation audit; see [DOC-01](../../ROADMAP.md#documentation-validation-backlog).
+`libsoapysdr-dev`. The [installation guide](../../installation.md) describes
+the system installer and recorded Pi Zero 2 W / Trixie installation; a CMake
+userspace build alone does not validate a fresh OS setup.
 
 The build creates `libcariboulite.so`, `libcariboulite_static.a`, the test
 application, utilities, and (when detected) the Soapy module. It does not build
@@ -36,6 +37,28 @@ rule; run `./build/cariboulite_test_app` from the repository root so its
 
 Software regression tests live in [tests](tests/); hardware diagnostics also
 exist under [test](test/). Building successfully does not verify radio operation.
+
+## Separate radio applications
+
+After building the main library, build the backend, controller and monitor:
+
+```sh
+make -C software/libcariboulite/tools/radio_backend
+```
+
+Their executables are in `build/radio-backend/`. This is a separate Makefile
+build; it is included by the top-level installer, but not by the library's
+CMake targets. The backend owns the radio and audio pipelines, the C controller
+uses a command socket, and the optional Python 3 monitor reads status.
+See [radio controls](../../docs/radio-control.md) for launch options, half-duplex
+NBFM TX, mono NBFM/WBFM RX, FPGA programming and reset controls.
+
+The current TX producer follows downstream SMI/DMA demand, with bounded IQ
+buffering, microphone clock correction and an optimized NBFM modulator.
+It requires the matching current SMI driver, including its TX write timing.
+The [TX design and validation record](../../docs/tx-hardware-paced-design.md)
+links the Pi Zero 2 W and Pi 4 results at 1/2/4 MS/s. Existing installed drivers
+and binaries are not updated by rebuilding userspace alone.
 
 ## Hardware-free NBFM example
 
@@ -63,10 +86,12 @@ keep their existing behavior.
 Press `[1]`, `[2]` or `[4]` while TX, RX and interface loopback are stopped to
 select 1, 2 or 4 MS/s for both directions. The monitor defaults to 4 MS/s.
 
-TX shutdown retains the 250 ms trailing Quindar tone. Silence padding scales
-with the selected RF rate and driver buffering, and shutdown waits for the
-writer to accept that padding before disabling TX. Stop therefore takes longer
-at 1 MS/s. Stalled producers or writers still have bounded shutdown deadlines.
+TX shutdown retains the 250 ms trailing Quindar tone and waits for accepted
+final silence before disabling TX. The finite silence stage uses fast padding
+to flush buffered IQ; it no longer adds a wall-clock sleep for every padding
+frame. Stop deadlines remain bounded. See
+[TX tail timing](../../docs/tx-tail-timing.md) and the
+[current hardware-paced design](../../docs/tx-hardware-paced-design.md).
 
 WBFM supports 1, 2 and 4 MS/s IQ input and 48 kHz mono output, with nominal
 75 kHz deviation and the monitor's existing 50 microsecond de-emphasis.

@@ -3,6 +3,11 @@ Each CaribouLite is pre-configured by the contract manufacturer before shipping.
 
 CaribouLite doesn't have an FPGA configuration flash device, as the ICE40 device is dynamically configured by the RPI quickly and on-demand. It rather has a general board configuration device (EEPROM) as required by RPi's HAT device rules.
 
+For current FPGA image loading and reset commands, use the
+[radio controller procedure](../radio-control.md#fpga-programming-after-reboot)
+or the explicit programming targets in [firmware/README.md](../../firmware/README.md).
+Those operations configure the volatile FPGA; they do not change EEPROM data.
+
 ## EEPROM Data Structure
 The code is located [here](../../software/libcariboulite/src/hat/) and is based on [RPi EERPROM Utils Tools](https://github.com/raspberrypi/hats/tree/master/eepromutils) provided by RaspberryPi. The ID EEPROM internal structure is described [here](https://github.com/raspberrypi/hats/blob/master/eeprom-format.md).
 

@@ -1,115 +1,151 @@
-# Installation Details
-**Note**: ***Major issues with the newly published distro `bookworm`*** - the required kernel modules cannot compile agains the latest 6.1.0 'bookworm' distribution. We noticed that the kernel-headers in the latest rapsberry-pi image distributions do not agree with the mainline linux kernel modules compilation process. Same issues exist with other kernel modules compilations in other projects. This issue needs to be further inspected. **Therefore we suggest using the latest bullseye distribution** `bullseye 6.1.21-*`. See details bellow.
+# Installation
 
-## Fresh SDCard preparation
-1. Download and install Raspberry Pi imager:
-   https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2023-05-03/
+These instructions describe the current installer in this development fork.
+The older blanket recommendation to use Bullseye because Bookworm cannot build
+the driver is obsolete. A fresh 64-bit Raspberry Pi OS Trixie installation on
+a Pi Zero 2 W was reported successful on 14 October 2026; see the
+[installation and audio notes](ADDITIONAL-README.md). Pi 4 and Pi Zero 2 W
+hardware-paced TX checks with kernel `6.18.50+rpt-rpi-v8` are recorded in the
+[Pi 4 validation](docs/pi4-tx-validation-2026-10-15.md) and
+[Pi Zero validation](docs/pi-zero-tx-queue-test-2026-10-15.md).
+Those results identify tested setups, rather than support for every OS/kernel
+combination. Raspberry Pi 5 is not supported by this SMI hardware path.
 
-   ![Raspberry Pi official imager](docs/images/rpi_imager.png)
+## Prepare the Pi
 
-2. Insert a micro-SD card for flashing. Note - the process will override the SD's previous contents.
-3. Download the latest bullseye distribution from:
-   https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2023-05-03/
+Install a Raspberry Pi OS image suitable for your Pi with Raspberry Pi Imager.
+Writing the image erases the selected card. Configure a user, hostname and SSH
+or local desktop access, then boot the Pi. Power the Pi off before attaching
+CaribouLite to its 40-pin header.
 
-   ![Bullseye Download](docs/images/distro_download.png)
+Install the checkout tools and obtain this fork, including its IIR submodule:
 
-4. Start Raspberry Pi Imager and choose device:
-   
-   ![Choose device](docs/images/imager_choose_device.png)
+```sh
+sudo apt update
+sudo apt install git cmake
+mkdir -p ~/src
+cd ~/src
+git clone --branch dev-passive-monitor --recurse-submodules https://github.com/Habraken/cariboulite.git
+cd cariboulite
+```
 
-   Note: Raspberry Pi 5 is not supported due to compatibility issues with the SMI communication.
+The branch above contains the standalone radio applications and hardware-paced
+TX work reviewed on 16 October 2026. For an existing checkout, inspect
+`git status` and your selected branch before updating. The installer itself
+runs `git pull` and `git submodule update --init --recursive`.
 
-5. Choosing the OS file downloaded in step (3):
-   Click the "CHOOSE OS" button and drag down to "Use Custom". Then select the downloaded file.
+The kernel build requires headers for the **running** kernel:
 
-6. Select the target storage - be very careful to choose the micro-SD card that was inserted into the computer. In cases where various such devices are present in the system, verify the correct card by removing / re-inserting while monitoring the storage selection menu.
+```sh
+uname -r
+ls -l "/lib/modules/$(uname -r)/build/Makefile"
+```
 
-7. Edit additional settings of the system:
-   
-   ![Edit Settings](docs/images/settings.png)   
-   
-   Make sure to enable ssh, apply a proper host name (default 'raspberrypi') and  a username / password to further communicate with the RPI through Ethernet / Wifi. Wifi SSID can also be configured through this process to enable the RPI automatically connect the local Wifi Network.
+If that Makefile is absent, the installer requests
+`linux-headers-$(uname -r)`. Package availability depends on the installed
+kernel and configured repositories. After a kernel update, reboot into the
+intended kernel before building its SMI module.
 
-8. When the imager finished the process, remove the SDCard and insert into the Raspberry Pi.
- 
-   ![Imager progress](docs/images/progress.png)
-   
-   **Note**: do not remove the SDCard unless the images approits removel:
-   
-   ![Imager finished](docs/images/finished_imager_safe_remove.png)
+## Run the installer
 
+Run as your normal user; the script invokes `sudo` for system changes and
+refuses to run as root:
 
-## Software Installation and API invokation
-The newly prepared SDCard can be inserted into the Raspberry Pi. 
-1. Mount Cariboulite on top of the RPI device and power it on.
-2. Connecting the RPI is possible via direct Ethernet Cable, Wifi or by setting up a desktop environment with a display, keyboard and mouse.
-3. During a fresh distro configuration we recommand using the desktop environment. Ethernet connection also possible through ssh.
+```sh
+./install.sh
+```
 
-**Connecting RPI through SSH**
-- In Windows we use [Putty](https://www.putty.org) / [WinSCP](https://winscp.net)
-- In Linux and Mac `ssh <username>@<hostname>`  though terminal.
+Read [install.sh](install.sh) before using it on an existing development system.
+It updates Git, installs dependencies, builds and installs IIR, installs the SMI
+driver and udev/module configuration, builds the main library and test app,
+builds the standalone backend/controller/monitor, and installs the library,
+headers, pkg-config file and `cariboulite_util`. The test app and standalone
+radio applications remain in `build/`; they are not installed as system commands.
+The driver installer regenerates headers under
+`software/libcariboulite/src/caribou_smi/kernel/` for the running kernel.
 
-**Installations**
-1. In the terminal (ssh), clone cariboulite repository:
-   `git clone https://github.com/cariboulabs/cariboulite.git`
-   and:
-   `git clone https://github.com/pothosware/SoapySDR.git`
+If `SoapySDRUtil` is missing, the script offers to clone, build and install
+SoapySDR and SoapyRemote under `installations/`. Accepting is the default.
+Declining without an existing `SoapySDRUtil` causes the installer to stop.
+If the utility already exists, the script reuses it and does not install
+SoapyRemote. Soapy development files must also be discoverable by CMake to
+build the CaribouLite plugin; finding the utility alone does not prove that.
+For a native-library build without SoapySDR or system installation, use the
+[manual userspace build](software/libcariboulite/README.md).
 
-   **Note**: SoapySDR is useful for interacting with the SDR through its python interface. The aptitude version (0.7) which can be obtained through `sudo apt install soapysdr-tools libsoapysdr libsoapysdr-dev` has API compatibility issues with the the newer version (0.8-3). Thus it is recommanded to compile it from source as follows.
+## Boot configuration
 
-2. Cmake installation and upgrade:
-   `sudo apt update`
+The installer checks `/boot/firmware/config.txt` when present, otherwise
+`/boot/config.txt` (Ubuntu selects the firmware path). It prints required edits
+but does **not** edit that file. Apply these settings in a section that covers
+your Pi:
 
-   if update is suggested by apt, use:
-   `sudo apt upgrade` and follow instructions.
+```ini
+# Disable the ARM I2C and default SPI configuration lines:
+#dtparam=i2c_arm=on
+#dtparam=spi=on
 
-   Now CMAKE is installed by:
-   `sudo apt install cmake`
-3. Install SoapySDR:
-   ```
-   cd SoapySDR
-   mkdir build && cd build
-   cmake ../
-   make -j4
-   sudo make install
-   ```
-   Soapy SDR is a third party generic SDR API that can interact with CaribouLite (in addition to the native c/c++ APIs)
+# CaribouLite EEPROM and SPI1:
+dtparam=i2c_vc=on
+dtoverlay=spi1-3cs
+```
 
-   note: rpi-zero might struggle with compiling the python swig wrappers that SoapySDR uses. If this occurs, feel free to remove the `add_subdirectory(swig)` from their CMakeLists.txt to remove python support for Soapy.
-   
-4. Install the software using CaribouLite's dedicated install script:
-   ```
-   cd ~/cariboulite       # note: depends on the exact location that was chosen for the package.
-   ./install.sh
-   ```
-5. During this installation process, dependencies and kernel modules are being build and installed into the Linux system.
-6. As the building process is finalized, the install script checks the `/boot/config.txt` file. **Note**: the exact location of the file varies between systems. In Raspbian this file shall typically be located in `/boot/config.txt`.
-The installer notes on any mismatch between the actual and expected configuration. The configuration should be applied to the config file according to instructions given by the script.
-7. As the building process finished, the APIs are installed into the system, including SoapySDR API, C and C++ API. The build artifacts will be located in the `build` sub-directory. 
-8. After the installation process and the config.txt file editing are finished, reboot the system by:
-`sudo reboot` and wait for the RPI to restart and initialize.
+The script's checks match configuration text, including commented lines;
+its warning output is not a full check of the effective boot configuration.
+Review the selected file and the settings above. Wi-Fi/Bluetooth disabling
+and Trixie locked-memory settings in
+[ADDITIONAL-README.md](ADDITIONAL-README.md) describe the recorded setup;
+they are separate from the installer checks.
 
-**Testing and interactions**
-1. Testing the HAT connection and detection by running:
-   `cat /proc/device-tree/hat/product`
-   shiould yield the following output: 
-   `CaribouLite RPI Hat`
-2. Testing the `smi_stream` driver insertion:
-   `lsmod | grep smi` should produce the following output:
-   ```
-   smi_stream_dev         20480  0
-   bcm2835_smi            20480  1 smi_stream_dev
-   ```
-3. Testing through the dedicated testing app: within the `build` sub-directory, run the following:
-`./cariboulite_test_app`
-This application provides access to low / high level features of the board - board id, 
+After installation and any boot edits, reboot:
 
-![Testing App](docs/images/test_app.png)
+```sh
+sudo reboot
+```
 
-4. Testing the connection to the SoapySDR API. Use the following command to have the SoapySDR Util interract with the board and show it's information:
-   `SoapySDRUtil --probe`
-   The expected output shows the insterfacesm configurations and state of the board:
+## Check the installed setup
 
-   ![Soapy Util](docs/images/soapySDRUtils.png)
-   
-Once these steps are complete, CaribouLite is properly mounted and operational on the RPI.
+After reconnecting, run from the repository root:
+
+```sh
+tr -d '\000' </proc/device-tree/hat/product
+lsmod | grep smi
+modinfo -F vermagic smi_stream_dev
+ls -l /dev/smi
+```
+
+The product should identify `CaribouLite RPI Hat`. Expect `smi_stream_dev` and
+`bcm2835_smi`; sizes vary. The module's kernel release must match `uname -r`.
+See the [driver guide](driver/README.md) for driver-only installation and
+permission details. These checks establish detection and installation state;
+they do not demonstrate successful RF streaming.
+
+For interactive diagnostics:
+
+```sh
+./build/cariboulite_test_app 2>debug.log
+```
+
+Run from the repository root because menu 3 loads `firmware/top.bin` relative
+to the working directory. Prepare the
+[ALSA Loopback audio route](ADDITIONAL-README.md#creating-the-alsa-loopback-device)
+before using the FM audio modes. The separate radio applications have their own
+[build, launch and control guide](docs/radio-control.md); close other radio
+owners before starting one.
+
+For an installed Soapy plugin, first inspect its installation and discovery:
+
+```sh
+SoapySDRUtil --info
+SoapySDRUtil --find="driver=Cariboulite"
+```
+
+With other radio applications closed, probe the selected device:
+
+```sh
+SoapySDRUtil --probe="driver=Cariboulite,channel=HiF"
+```
+
+Discovery/probing does not validate a complete Soapy TX or GNU Radio workflow.
+Use the [software checks](docs/testing.md) for hardware-free regressions and
+the linked physical records for the configurations actually exercised.

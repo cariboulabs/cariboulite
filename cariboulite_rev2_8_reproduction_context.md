@@ -6,6 +6,25 @@
 **Initial build quantity:** 5 × CaribouLite Full Rev 2.8  
 **Project phase:** Manufacturing feasibility / preparation of upload package
 
+## Current status note — 2026-10-16
+
+This is the September 12 handoff, retained as historical project context. The
+quotation package has since been created under
+[manufacturing/rev2.8-full-eurocircuits](manufacturing/rev2.8-full-eurocircuits/README.md).
+Its [technical review](manufacturing/rev2.8-full-eurocircuits/technical-review.md)
+supersedes the preliminary feasibility and stack-up summary below: the source
+contains **1,397 blind vias with 0.1016 mm holes**, and its **1.610868 mm**
+stack total includes solder mask (copper/dielectric subtotal **1.560068 mm**).
+Fabrication compatibility still needs manufacturer confirmation. U25, J7 and
+SH1/SH2 decisions are recorded in the package; shield cans are not fitted.
+
+The sourcing and budget sections are dated estimates, not current availability
+or a quotation. The package remains prepared for technical review/quotation,
+with no manufacturing release recorded in this repository. The next steps are
+manufacturer preflight, unresolved procurement checks and quote review, rather
+than recreating the existing package. See the
+[procurement policy](manufacturing/rev2.8-full-eurocircuits/procurement-policy.md).
+
 ---
 
 ## 1. Project objective
@@ -175,6 +194,10 @@ Reported total:
 63.42 mil ≈ 1.61 mm
 ```
 
+Correction from the later package review: this total includes two 1 mil mask
+entries. Copper plus dielectric is 61.42 mil = 1.560068 mm; see the
+[extracted stack table](manufacturing/rev2.8-full-eurocircuits/technical-review.md#stack-up-important-correction-to-the-handover).
+
 ### Important RF consideration
 
 The approximately **110 µm distance between the outer copper and adjacent reference plane** is important.
@@ -204,14 +227,9 @@ It contains approximately 50 BOM lines and provides manufacturer part numbers.
 
 A separate sourcing analysis has already been performed.
 
-Suggested project documentation filenames:
-
-```text
-docs/cariboulite_rev2_8_bom_sourcing_manufacturer_update.md
-docs/cariboulite_rev2_8_reproduction_context.md
-```
-
-If the sourcing report is not yet present in the local repository, copy it into the project before relying on it.
+The sourcing snapshots are present at the repository root:
+[first pass](cariboulite_rev2_8_bom_sourcing_first_pass.md) and
+[manufacturer follow-up](cariboulite_rev2_8_bom_sourcing_manufacturer_update.md).
 
 ---
 
@@ -250,7 +268,7 @@ These are RF components and must not be treated like generic interchangeable pas
 
 ---
 
-## 8. Current sourcing conclusions
+## 8. Sourcing conclusions recorded 2026-09-12
 
 A first distributor and manufacturer-level sourcing pass was performed on 2026-09-12.
 
@@ -258,7 +276,10 @@ A first distributor and manufacturer-level sourcing pass was performed on 2026-0
 
 A five-board Rev 2.8 Full reproduction currently appears:
 
-> **Technically and procurement-feasible.**
+> **Preliminary sourcing assessment: potentially feasible.**
+
+The subsequent blind-via/stack-up review identified unresolved fabrication
+holds; this sourcing assessment does not establish manufacturing feasibility.
 
 No critical RF silicon checked so far appears to be an unavoidable obsolete showstopper.
 

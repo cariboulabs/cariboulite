@@ -2,6 +2,11 @@
 
 Reviewed revision: `6236ae1` on `dev`. Host: Raspberry Pi 4 Model B,
 Linux `6.18.39+rpt-rpi-v8`, GCC 14.2.0.
+This is a historical review and fix record. Its source locations, build results
+and the September 16 reconciliation below refer to those dated revisions,
+not a new audit of the current checkout. Later hardware-paced TX and driver
+validation are recorded in the [TX design](tx-hardware-paced-design.md) and
+[Pi 4 validation](pi4-tx-validation-2026-10-15.md).
 
 The application and kernel module build successfully, but several error paths,
 streaming APIs, and firmware build dependencies need correction before treating

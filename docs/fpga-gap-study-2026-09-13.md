@@ -1,5 +1,18 @@
 # FPGA gap feasibility study — 2026-09-13
 
+Current-source note (2026-10-16): this is a chronological experiment log. Its
+early statements about disconnected gap/loopback signals, uncommitted changes,
+loaded hardware and next steps describe their respective experiment stages.
+Gap/reset changes were promoted on September 13 and loopback on September 16,
+as recorded later in this document. The current packaged `firmware/top.bin`
+SHA-256 is `dcdf0733ef1ee8088b82381148475a6e4de87c6f00b8d14480a46d48621d31f6`.
+Use [firmware/README.md](../firmware/README.md) for the current build/register
+contract and the [LVDS timing plan](lvds-fmax-next-test-2026-10-08.md) for planned
+firmware work. October's [hardware-paced TX qualification](tx-hardware-paced-design.md)
+uses this same FPGA baseline with updated driver/userspace code.
+
+## Original study
+
 No repository HDL, working bitstream, or embedded firmware header was changed.
 No FPGA was programmed. Icarus Verilog was installed for simulation.
 

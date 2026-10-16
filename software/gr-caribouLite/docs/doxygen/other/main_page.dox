@@ -1,10 +1,12 @@
-/*! \mainpage
+/*! \mainpage GNU Radio CaribouLite receive source
 
-Welcome to the GNU Radio CARIBOULITE Block
+The caribouLiteSource block receives through the native CaribouLite C++ API.
+It outputs complex float IQ and optional byte metadata. Its channel parameter
+selects S1G (0) or HiF (1); other parameters select AGC, gain, bandwidth, sample
+rate, frequency, metadata and PMOD state. Construction initializes the board
+and starts receiving. No native transmit sink is implemented.
 
-This is the intro page for the Doxygen manual generated for the CARIBOULITE
-block (docs/doxygen/other/main_page.dox). Edit it to add more detailed
-documentation about the new GNU Radio modules contained in this
-project.
-
+Python/GRC bindings, when enabled and installed, use the namespace
+`from gnuradio import caribouLite`. See the module README for source-build
+instructions, example requirements and the outstanding end-to-end validation.
 */

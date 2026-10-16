@@ -23,15 +23,30 @@ Kernel mainline integration is a historical proposal, not an available installat
 Maintenance/packaging options remain [DOC-02](../../ROADMAP.md#documentation-validation-backlog).
 This also is the main issue while switching between the mainline Raspbian to DragonOS or other RPI distributions.
 
-Currently the "smi-stream-dev" is stable but is still has certain issues to solve:
-- the usage of "single-shot" DMA request rather than "cyclic" DMA requests. As a result, depending on the systems compute load, it may miss samples and
-needs resynchronization. This resync process is done on the software side, but it still misses a few samples. This applies both to RX and TX, while the
-FPGA FIFO depth enlargement solves this problem (most of the time), this development process still needs to be visited as it will certainly make the
-module better and the requirements from the FPGA less constrained.
-- generalization problem: the SMI-STREAM-DEV name was given to the module for a good reason - no mentioning CaribouLite. This module should be built
-with no specific relation with CaribouLite and should support high speed streaming of information in the RPI (whether its a camera, display, ultrasound
-receiver, or SDR). Currently the module is not enough general.
-- Bugs - solving them is an iterative task. Though some of the bugs pop out frequently, tracking their source is time consuming.
+## Current driver state (2026-10-16)
+
+The source in [driver/](../../driver/README.md) uses **cyclic DMA for both RX
+and TX**, with a four-period ring. Earlier single-shot-DMA descriptions are
+historical. RX still needs software framing/synchronization and can lose data
+when its FIFO has no room; cyclic DMA alone does not guarantee loss-free operation.
+
+The hardware-paced TX implementation added on October 15 exposes actual FIFO
+occupancy, DMA progress and underruns through a versioned ABI. It supports
+bounded FIFO admission and valid zero-IQ padding for opt-in callers. The shared
+application TX path uses a four-frame queue, a two-period driver limit,
+independent microphone capture with adaptive resampling, and verified SMI write
+timing 1/4/2, restored on shutdown. The backend requires this updated driver;
+the terminal test application retains automatic legacy-driver fallback.
+
+Six 180-second microphone/tone trials at 1/2/4 MS/s passed on each of the Pi
+Zero 2 W and Pi 4, alongside RX restoration checks at 1/4 MS/s. These results
+describe the tested hardware/software configurations and transport counters;
+see the [TX design and evidence](../tx-hardware-paced-design.md) for measurement
+limits and remaining physical RF checks.
+
+Generic streaming support beyond CaribouLite remains a maintenance proposal.
+The current implementation includes CaribouLite framing and FIFO assumptions;
+the module name alone does not establish a general-purpose streaming API.
 
 # Steps to Compiling
 When the kernel module is not applicable to the kernel version the following is expected when starting the system:

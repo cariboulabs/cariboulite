@@ -1,12 +1,20 @@
 # Pi 4 hardware-paced TX validation — 2026-10-15
 
+Current-source note (2026-10-16): the tested implementation is committed in
+`37d2414` and is built by the current installer. Candidate paths, loaded-module
+state and preserved installed-file claims below record the October 15 test
+session. They do not establish present runtime state. For current setup use
+[radio control](radio-control.md#build-and-start) and the
+[driver guide](../driver/README.md); frozen staging paths are for reproducing
+this experiment.
+
 The CaribouLite was transferred from the Pi Zero to the Pi 4. The user confirmed
 the dummy load and requested **430.100 MHz** for all TX tests. Validation uses
 the separately staged candidate; permanent installation remains deferred.
 
-Links into `build/` identify retained local artifacts excluded from Git and
-unavailable in a fresh clone. The measurements summarized here are versioned;
-the committed collection tools can produce fresh artifacts.
+Paths under `build/` identify raw artifacts retained on the original test hosts,
+excluded from Git and unavailable in a fresh clone. The measurements summarized
+here are versioned; the committed collection tools can produce fresh artifacts.
 
 ## Candidate and setup
 
@@ -40,8 +48,8 @@ timing read setup/strobe/hold/pace **1/4/2/1**. The same-host provenance audit
 passed after the run, including unchanged installed/current files, measured
 candidate files and released radio ownership/private sockets.
 
-Artifacts: [short-run report](../build/radio-backend/tx-hardware-paced-pi4-smoke-20261015/README.md)
-and [provenance audit](../build/radio-backend/tx-hardware-paced-pi4-smoke-20261015/provenance-after.json).
+Artifacts: short-run report (`build/radio-backend/tx-hardware-paced-pi4-smoke-20261015/README.md`)
+and provenance audit (`build/radio-backend/tx-hardware-paced-pi4-smoke-20261015/provenance-after.json`).
 
 ## Full timed qualification — passed
 
@@ -80,10 +88,10 @@ between 0.9 and 1.8 GHz (1.0–1.8 GHz for the 4 MS/s microphone case), with
 per-case sampled means around 1.70–1.79 GHz; the Zero ran around 1.0 GHz.
 These are descriptive results across different hosts and clock conditions.
 
-Artifacts: [timed report](../build/radio-backend/tx-hardware-paced-pi4-production-20261015/README.md),
-[independent qualification](../build/radio-backend/tx-hardware-paced-pi4-production-20261015/qualification.json),
-[provenance audit](../build/radio-backend/tx-hardware-paced-pi4-production-20261015/provenance-after.json)
-and [Zero comparison](../build/radio-backend/tx-hardware-paced-pi4-production-20261015/versus-zero.json).
+Artifacts: timed report (`build/radio-backend/tx-hardware-paced-pi4-production-20261015/README.md`),
+independent qualification (`build/radio-backend/tx-hardware-paced-pi4-production-20261015/qualification.json`),
+provenance audit (`build/radio-backend/tx-hardware-paced-pi4-production-20261015/provenance-after.json`)
+and Zero comparison (`build/radio-backend/tx-hardware-paced-pi4-production-20261015/versus-zero.json`).
 
 ## Physical automatic RX restoration — passed
 
@@ -110,9 +118,9 @@ through the measurements, then their supervisor was stopped successfully and
 reaped its four owned children. No audio bridge service or configuration file
 was installed.
 
-Artifacts: [handoff results](../build/radio-backend/tx-rx-handoff-pi4-20261015/handoff-summary.json),
-[handoff provenance](../build/radio-backend/tx-rx-handoff-pi4-20261015/provenance-after.json)
-and [audio lifecycle](../build/radio-backend/tx-hardware-paced-pi4-audio-20261015/manifest.json).
+Artifacts: handoff results (`build/radio-backend/tx-rx-handoff-pi4-20261015/handoff-summary.json`),
+handoff provenance (`build/radio-backend/tx-rx-handoff-pi4-20261015/provenance-after.json`)
+and audio lifecycle (`build/radio-backend/tx-hardware-paced-pi4-audio-20261015/manifest.json`).
 
 ## User RSP2pro listening check — 4 MS/s (2026-10-15)
 
@@ -134,20 +142,24 @@ power setting and receiver measurement conditions were not independently
 verified, so this observation does not establish calibrated TX power, SINAD,
 deviation, frequency accuracy or spectrum.
 
-## State after automated validation
+## Recorded state after automated validation (2026-10-15)
 
 The staged candidate has passed the recorded Pi 4 transport and RX restoration
-checks. The candidate driver remains loaded for the current boot, and the radio
-is idle. Installed driver and current-checkout binaries/library/firmware are
-unchanged. Permanent deployment remains deferred. A reboot restores the
-installed original driver; candidate reload requires the matching kernel and
-the staged helper described in [radio control](radio-control.md#pi-4-staging-checkout-2026-10-15).
+checks. At the end of this test, the candidate driver remained loaded for that
+boot and the radio was idle. Installed driver and current-checkout
+binaries/library/firmware were unchanged; permanent deployment was deferred.
+A reboot at that stage restored the installed original driver; candidate reload
+requires the matching kernel and the staged helper described in
+[radio control](radio-control.md#pi-4-staging-checkout-2026-10-15).
 
-The validation's temporary audio bridges have stopped. A later manual microphone
-test needs its audio route started separately. To recreate the measured routing
-for up to 40 minutes, run the following in a dedicated terminal and wait for
-the `ready` event before opening the backend. Ctrl+C cleans up these owned
-bridges; do so after stopping the radio test.
+The validation's temporary audio bridges stopped. A later manual microphone
+test needs its audio route started separately. The audio supervisor below is a
+local test artifact, unavailable in a fresh clone. If it is retained on the
+original host, it can recreate the measured routing for up to 40 minutes.
+Run it in a dedicated terminal and wait for the `ready` event before opening
+the backend. Ctrl+C cleans up these owned bridges; do so after stopping the
+radio test. For a new checkout, use available ALSA devices with the current
+[backend audio setup](radio-control.md#build-and-start).
 
 ```sh
 cd /home/pi/src/cariboulite
@@ -167,8 +179,8 @@ measure RF waveform quality, deviation, frequency accuracy or spectrum.
 
 ## Evidence
 
-- [Staging manifest](../build/tx-hardware-paced-pi4-20261015/staging-manifest.json).
-- [Preparation and original-file fingerprints](../build/radio-backend/tx-hardware-paced-pi4-validation-20261015/preparation.json).
-- [Temporary audio bridge metadata](../build/radio-backend/tx-hardware-paced-pi4-audio-20261015/manifest.json).
-- [Final idle, ownership, audio cleanup and original-file check](../build/radio-backend/tx-hardware-paced-pi4-validation-20261015/final-state.json).
+- Staging manifest (`build/tx-hardware-paced-pi4-20261015/staging-manifest.json`).
+- Preparation and original-file fingerprints (`build/radio-backend/tx-hardware-paced-pi4-validation-20261015/preparation.json`).
+- Temporary audio bridge metadata (`build/radio-backend/tx-hardware-paced-pi4-audio-20261015/manifest.json`).
+- Final idle, ownership, audio cleanup and original-file check (`build/radio-backend/tx-hardware-paced-pi4-validation-20261015/final-state.json`).
 - [Zero comparison and design](tx-hardware-paced-design.md).

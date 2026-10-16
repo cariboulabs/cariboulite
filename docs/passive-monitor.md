@@ -1,6 +1,6 @@
 # Standalone passive monitor
 
-This development branch adds a separate terminal monitor and an independent
+The repository provides a separate terminal monitor and an independent
 C radio backend using local Unix-domain sockets. The accepted radio behavior
 and performance remain the baseline. Following the user's request for a fair
 comparison, both the backend and `test_app` now use shared RX instrumentation.
@@ -8,6 +8,10 @@ Menu 14 keeps the `main` UI layout; the additional instrumentation rows are
 shown only by the separate monitor. The RX DSP and modem profile remain the
 accepted baseline. Shared TX workers
 now park efficiently while stopped and report writer/capture diagnostics.
+Hardware-paced TX and independent microphone capture are implemented in the
+current source; the backend requires the matching driver ABI for TX, while
+menu 14 uses AUTO pacing with an `ENOTTY` fallback for older drivers. See
+[TX behavior and launch commands](radio-control.md#half-duplex-nbfm-transmission).
 
 The monitor is a Python 3 client with no radio-library dependency. It receives
 status snapshots and displays them; it sends no commands and never opens SPI,

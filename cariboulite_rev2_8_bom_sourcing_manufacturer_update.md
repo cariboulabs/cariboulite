@@ -1,5 +1,14 @@
 # CaribouLite Rev 2.8 Full — BOM sourcing & manufacturer-direct update
 
+Historical sourcing snapshot, superseding the
+[first pass](cariboulite_rev2_8_bom_sourcing_first_pass.md). Stock, lifecycle and
+purchase-route observations below refer to 2026-09-12 and were not rechecked in
+the 2026-10-16 documentation review. Use the
+[quotation package](manufacturing/rev2.8-full-eurocircuits/README.md) for the
+current exact-MPN/population decisions and fabrication holds. The
+[procurement policy](manufacturing/rev2.8-full-eurocircuits/procurement-policy.md)
+still requires current availability checks and review of any MPN migration.
+
 **Date checked:** 2026-09-12  
 **Revision:** Manufacturer-direct and private-purchaser sourcing added  
 **Source BOM:** `cariboulite_bom.xlsx` from the public CaribouLite Rev 2.8 production package  
@@ -125,6 +134,6 @@ For the initial reproduction, the following deserve an explicit **DO NOT SUBSTIT
 
 ## Overall first-pass conclusion
 
-The Rev 2.8 BOM looks **genuinely procurement-feasible for a five-board reproduction run**. Manufacturer-level checking has reduced several apparent distributor problems to legacy-ordering-code or temporary-stock issues rather than true obsolescence. The AT86RF215, RFFC5072, iCE40 FPGA, MACOM amplifiers, Skyworks switches, Mini-Circuits filters/transformer, regulators, EEPROM, and many passives remain obtainable. The next sourcing work should concentrate first on the obsolete Coilcraft inductor, the exact Abracon TCXO, the TC1-1-13M+ balun, the two Johanson revised MPNs, and any remaining rows marked Verify.
+The Rev 2.8 BOM looks **genuinely procurement-feasible for a five-board reproduction run**. Manufacturer-level checking has reduced several apparent distributor problems to legacy-ordering-code or temporary-stock issues rather than true obsolescence. The AT86RF215, RFFC5072, iCE40 FPGA, MACOM amplifiers, Skyworks switches, Mini-Circuits filters/transformer, regulators, EEPROM, and many passives remain obtainable. The next sourcing work should concentrate first on the exact Coilcraft ordering-suffix check, the exact Abracon TCXO, the TC1-1-13M+ balun, the two Johanson revised MPNs, and any remaining rows marked Verify.
 
 > Stock is time-sensitive. This document is a sourcing snapshot, not a reservation of inventory. Re-check quantities and lifecycle immediately before placing the Eurocircuits order.

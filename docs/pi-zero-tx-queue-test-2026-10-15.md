@@ -1,8 +1,17 @@
 # Pi Zero 2 W TX queue comparison — observations and follow-up
 
-Links into `build/` identify retained local artifacts excluded from Git and
-unavailable in a fresh clone. The measurements summarized here are versioned;
-the committed collection tools can produce fresh artifacts.
+Current-source note (2026-10-16): hardware-paced TX is now committed in
+`37d2414`; the current installer builds that implementation. References to
+staging directories, unchanged installed files and the loaded candidate describe
+the October 14–15 sessions. They are not a live deployment status. Use
+[radio control](radio-control.md#build-and-start) and the
+[driver guide](../driver/README.md) for current setup. The original 64-frame
+queue measurements remain below as the baseline; current hardware-paced TX
+uses four application frames and two periods of driver admission.
+
+Paths under `build/` identify raw artifacts retained on the original test hosts,
+excluded from Git and unavailable in a fresh clone. The measurements summarized
+here are versioned; the committed collection tools can produce fresh artifacts.
 
 The backend/controller comparison was originally planned for October 15, 2026.
 On October 14, the user reported testing that application on the Pi Zero 2 W
@@ -193,11 +202,11 @@ changes were left untouched. Measurement scripts were the only files copied
 into its checkout.
 
 Artifacts are retained on both Pis in
-[`build/radio-backend/tx-baseline-zero-20261014T180052Z/`](../build/radio-backend/tx-baseline-zero-20261014T180052Z/):
-[generated report](../build/radio-backend/tx-baseline-zero-20261014T180052Z/README.md),
-[summary and 30-second windows](../build/radio-backend/tx-baseline-zero-20261014T180052Z/summary.json),
-[metadata](../build/radio-backend/tx-baseline-zero-20261014T180052Z/metadata.json),
-[cleanup/hash verification](../build/radio-backend/tx-baseline-zero-20261014T180052Z/verification.json),
+`build/radio-backend/tx-baseline-zero-20261014T180052Z/`:
+generated report (`build/radio-backend/tx-baseline-zero-20261014T180052Z/README.md`),
+summary and 30-second windows (`build/radio-backend/tx-baseline-zero-20261014T180052Z/summary.json`),
+metadata (`build/radio-backend/tx-baseline-zero-20261014T180052Z/metadata.json`),
+cleanup/hash verification (`build/radio-backend/tx-baseline-zero-20261014T180052Z/verification.json`),
 raw status/resources/events/kernel logs and copies of the executed collectors.
 
 ## Hardware-paced implementation trials (2026-10-14)
@@ -259,12 +268,12 @@ remain unmeasured by the automated suite.
 
 Prototype artifacts:
 
-- [1/2 MS/s report](../build/radio-backend/tx-hardware-paced-zero-baseline-20261014/README.md)
-  and [full status](../build/radio-backend/tx-hardware-paced-zero-baseline-20261014/status.jsonl),
+- 1/2 MS/s report (`build/radio-backend/tx-hardware-paced-zero-baseline-20261014/README.md`)
+  and full status (`build/radio-backend/tx-hardware-paced-zero-baseline-20261014/status.jsonl`),
   including the failed 2 MS/s run and cleanup evidence.
-- [4 MS/s microphone/tone report](../build/radio-backend/tx-hardware-paced-zero-4M-20261014/README.md),
-  [summary](../build/radio-backend/tx-hardware-paced-zero-4M-20261014/summary.json) and
-  [cleanup/hash verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-cap2-4M.json).
+- 4 MS/s microphone/tone report (`build/radio-backend/tx-hardware-paced-zero-4M-20261014/README.md`),
+  summary (`build/radio-backend/tx-hardware-paced-zero-4M-20261014/summary.json`) and
+  cleanup/hash verification (`build/radio-backend/tx-hardware-paced-validation-20261014/verification-cap2-4M.json`).
 
 ## Intermediate physical qualification — stopped on a clock guard
 
@@ -302,10 +311,10 @@ healthy `TX` snapshot, so its zero *stable* fault delta does not mean a successf
 run. Current evidence points to changing transport demand rather than interrupted
 microphone capture. RF emission timing remains independently unmeasured.
 
-Artifacts: [generated report](../build/radio-backend/tx-hardware-paced-zero-final-20261014/README.md),
-[summary](../build/radio-backend/tx-hardware-paced-zero-final-20261014/summary.json),
-[raw status](../build/radio-backend/tx-hardware-paced-zero-final-20261014/status.jsonl)
-and [run/fault/cleanup events](../build/radio-backend/tx-hardware-paced-zero-final-20261014/events.jsonl).
+Artifacts: generated report (`build/radio-backend/tx-hardware-paced-zero-final-20261014/README.md`),
+summary (`build/radio-backend/tx-hardware-paced-zero-final-20261014/summary.json`),
+raw status (`build/radio-backend/tx-hardware-paced-zero-final-20261014/status.jsonl`)
+and run/fault/cleanup events (`build/radio-backend/tx-hardware-paced-zero-final-20261014/events.jsonl`).
 
 ## Controlled SMI write-timing repeat
 
@@ -332,15 +341,15 @@ the integrated implementation now prepares a first refill while workers are
 parked to address that margin.
 
 The timing-only change supports a TX write-interface timing explanation. The
-[761-case sampling study](../build/radio-backend/tx-swe-sampling-study-20261014/README.md)
+761-case sampling study (`build/radio-backend/tx-swe-sampling-study-20261014/README.md`)
 also reproduces framing failures with old timing under selected artificial
 jitter. Neither the simulation nor transport counters independently measure
 physical SWE jitter or RF sample timing. The observed transport improvement is
 established; its precise electrical mechanism and RF calibration remain open.
 
-Artifacts: [1/2 MS/s microphone](../build/radio-backend/tx-timing-142-zero-mic1M2M-20261014/README.md),
-[five-minute 4 MS/s microphone](../build/radio-backend/tx-timing-142-zero-mic4M-20261014/README.md)
-and [4 MS/s tone](../build/radio-backend/tx-timing-142-zero-tone4M-retry-20261014/README.md).
+Artifacts: 1/2 MS/s microphone (`build/radio-backend/tx-timing-142-zero-mic1M2M-20261014/README.md`),
+five-minute 4 MS/s microphone (`build/radio-backend/tx-timing-142-zero-mic4M-20261014/README.md`)
+and 4 MS/s tone (`build/radio-backend/tx-timing-142-zero-tone4M-retry-20261014/README.md`).
 Their backend logs retain the actual original, changed and verified settings.
 
 ## Integrated production TX transport qualification — passed
@@ -390,11 +399,11 @@ Automatic RX restoration also passed at 1 and 4 MS/s, as recorded below. These
 checks establish host queue/capture and SMI transport behavior; they do not
 measure RF clock accuracy, deviation, spectrum or cue audibility.
 
-Artifacts: [production report](../build/radio-backend/tx-hardware-paced-zero-production-20261014/README.md),
-[raw status](../build/radio-backend/tx-hardware-paced-zero-production-20261014/status.jsonl),
-[independent qualification](../build/tx-hardware-paced-live-watch-20261014/qualification/qualification.json),
-[cleanup/hash verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-production.json)
-and [optimized Pi Zero stop-deadline results](../build/radio-backend/tx-hardware-paced-validation-20261014/zero-stop-deadline-optimized.log).
+Artifacts: production report (`build/radio-backend/tx-hardware-paced-zero-production-20261014/README.md`),
+raw status (`build/radio-backend/tx-hardware-paced-zero-production-20261014/status.jsonl`),
+independent qualification (`build/tx-hardware-paced-live-watch-20261014/qualification/qualification.json`),
+cleanup/hash verification (`build/radio-backend/tx-hardware-paced-validation-20261014/verification-production.json`)
+and optimized Pi Zero stop-deadline results (`build/radio-backend/tx-hardware-paced-validation-20261014/zero-stop-deadline-optimized.log`).
 
 ### Physical automatic RX restoration — passed
 
@@ -417,9 +426,9 @@ healthy. Final stop verified modem/SMI idle. Cleanup/hash verification confirmed
 no radio owner, private sockets or backend remained and original/staged binaries
 and USB/Loopback bridges were unchanged.
 
-Artifacts: [handoff summary](../build/radio-backend/tx-rx-handoff-zero-retry-20261014/handoff-summary.json)
-and [final verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json).
-A [first harness attempt](../build/radio-backend/tx-rx-handoff-zero-20261014/handoff-summary.json)
+Artifacts: handoff summary (`build/radio-backend/tx-rx-handoff-zero-retry-20261014/handoff-summary.json`)
+and final verification (`build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json`).
+A first harness attempt (`build/radio-backend/tx-rx-handoff-zero-20261014/handoff-summary.json`)
 stopped on a logging error before TX, verified idle cleanup, and remains separate
 from the successful measurement.
 
@@ -603,7 +612,10 @@ record per-thread CPU usage (for example, `top -H -p BACKEND_PID`, replacing
 waiting; the displayed scheduling policy alone cannot do so.
 Optionally record `sudo dmesg -wH` in another
 terminal for kernel `init programmed write. missed:` and stream restart messages.
-The monitor does not publish the kernel missed-quarter counter.
+Current hardware-paced status also exposes `tx.driver.underrun_periods`,
+`completed_periods`, FIFO geometry and accepted/dequeued bytes. Use these
+session counters when `tx.driver.valid` is true; the original legacy baseline
+had only the kernel missed-quarter log.
 
 ### Compare the rates
 
@@ -612,7 +624,7 @@ to complete. Start timing when the monitor reports stable `TX`.
 
 | Run | Controller settings before `tx start` | Observation period |
 | --- | --- | --- |
-| A | `tx source mic`, then `tx rate 1` | Approximately 3 minutes; include 30–60 seconds after any 64/64 saturation |
+| A | `tx source mic`, then `tx rate 1` | Approximately 3 minutes; inspect bounded occupancy and driver/audio loss counters |
 | B | `tx source mic`, then `tx rate 4` | Approximately 3 minutes with the same input |
 | C, optional | `tx source tone`, `tx tone 600 0.4`, then `tx rate 1` | Repeat to check whether growth also occurs without audio capture |
 | D, optional | `tx source tone`, `tx tone 600 0.4`, then `tx rate 4` | Repeat to check whether production stays below 100 frames/s without audio capture |
@@ -645,11 +657,19 @@ pipeline measurements. Do not subtract counters across restarts.
 | Queue growth | Change in `tx.queue.depth`; compare with puts minus gets |
 | Writer failures | Changes in `tx.writer.errors` and retained `last_error` |
 | Capture loss/recovery | Changes in `tx.capture.overruns`, recovery and error counters, when capture is valid |
-| Kernel TX starvation | Growth of `missed` during steady TX in the kernel log |
+| Kernel TX starvation | Change in valid `tx.driver.underrun_periods`; legacy fallback: growth of `missed` in the kernel log |
 
-At 1 MS/s, puts near 100 frames/s with slower dequeue/sample acceptance and
-increasing depth identify accumulating application backlog. At 4 MS/s, low
-occupancy with production below 100 frames/s and rising kernel misses would
+For a new six-case qualification, pass `--rates 1000000 2000000 4000000` to
+the automated runner; its default still repeats the original four 1/4 MS/s
+cases. A current hardware-paced session should report `tx.hardware_paced`
+true, queue capacity four, driver admission two periods, and TX timing 1/4/2.
+A steady full four-frame queue is bounded prefill. Compare driver/audio loss
+counters and timed delivery as well as occupancy; the historical 64/64 symptom
+is not the current queue limit.
+
+In the original baseline, at 1 MS/s, puts near 100 frames/s with slower
+dequeue/sample acceptance and increasing depth identify accumulating application
+backlog. At 4 MS/s, low occupancy with production below 100 frames/s and rising kernel misses would
 indicate underproduction. Capture overruns after saturation would reveal audio
 loss that the blocking application queue's zero drop/timeout counters cannot show.
 

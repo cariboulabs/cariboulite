@@ -1,5 +1,9 @@
 # README validation — 2026-09-16
 
+Historical audit. The [2026-10-16 documentation review](documentation-audit-2026-10-16.md)
+records the current branch, subsequent corrections and remaining validation gaps.
+The findings below describe the September source revision.
+
 Source revision inspected: `9df1d7c`, plus the working documentation edits.
 This is a source/documentation audit, not a fresh installation or RF test.
 No installation script, EEPROM write, FPGA programming or transmitter was run.

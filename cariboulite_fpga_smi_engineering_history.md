@@ -4,6 +4,34 @@
 **Purpose:** Preserve the accumulated engineering knowledge from the CaribouLite FPGA, LVDS, SMI, TX/RX, modem-control, and Raspberry Pi integration work.  
 **Audience:** Future development in VS Code/Codex; engineers maintaining or reviving the CaribouLite platform; first-article validation of reproduced Rev 2.8 boards.
 
+**Current-source review: 2026-10-16.** This is a historical narrative prepared
+on September 12, not the current architecture specification or a host support
+matrix. Performance, clock, register and thread values below describe their
+original experiments; in particular the Pi Zero's approximately 75 frames/s,
+eight-frame FIFO concept and writer priority around 80 are not current TX
+defaults. Historical Pi 5 experiments do not establish a supported installation
+of the current BCM2835 SMI driver.
+
+The current source uses cyclic RX/TX DMA and hardware-paced TX (`37d2414`):
+four application frames, two periods of kernel admission, independent microphone
+capture/adaptive resampling and producer/writer priority requests 40/48 on
+CPUs 1/2, where permitted. Six 180-second microphone/tone trials at 1/2/4 MS/s
+passed on each of the Pi Zero 2 W and Pi 4 at approximately 100 frames/s,
+alongside RX restoration and qualitative listening checks. See
+[TX design and qualification](docs/tx-hardware-paced-design.md),
+[driver/API notes](driver/README.md) and [radio control](docs/radio-control.md)
+for current behavior and measurement limits. Requested scheduling is separate
+from the policy actually granted by Linux.
+
+The FPGA remains the September 16 gap/reset/loopback baseline; its packaged
+image hash, build settings, register contract and validation limits are in
+[firmware/README.md](firmware/README.md). LVDS optimization and PMOD sequencer
+integration are still [planned](docs/lvds-fmax-next-test-2026-10-08.md).
+`smi_ctrl.v` currently forces TX-enable high in assembled LVDS words; host
+control bits or zero IQ do not unkey RF. The `TX_EN = I[0]` discussion below
+records the modem interface and earlier experiments rather than current
+propagation of a host control bit.
+
 ---
 
 # 1. Executive summary
@@ -515,6 +543,9 @@ This is another reason why generic sample repacking or "cleaning up" low bits ca
 
 # 18. Later FPGA TX FSM
 
+This section records an earlier FSM. Current `firmware/lvds_tx.v` uses `IDLE`,
+`TX_FRAME`, `TX_GAP` and `LOOPBACK`; it has no `TX_CHECK` state.
+
 A later working LVDS TX state machine used states including:
 
 ```text
@@ -549,7 +580,11 @@ LVDS clock:   ~64 MHz
 SMI clock:    ~16 MHz
 ```
 
-These are the values associated with the later CaribouLite work and should be preferred over the earlier 48/96 MHz experimental notes when discussing the current design.
+These were the approximate values associated with that development stage.
+Current `top.v` divides the 125 MHz board clock by two for a nominal 62.5 MHz
+system clock, and uses the modem LVDS receive clock at nominal 64 MHz. SMI bus
+cadence depends on the host clock and programmed timing; the historical
+approximately 16 MHz value is not the peripheral's source-clock setting.
 
 The multiple clock domains make CDC and FIFO behavior central to stability.
 
@@ -1482,13 +1517,16 @@ Those should eventually be turned into a formal:
 CaribouLite FPGA/SMI Architecture Specification
 ```
 
-derived directly from the current `dev` branch.
+derived directly from the source revision under review. The current driver,
+firmware and TX guides linked at the top already capture several of these
+details; the remaining architecture specification is still future work.
 
 ---
 
-# 52. Current reference settings
+# 52. Historical reference settings (2026-09-12)
 
-A compact set of useful current-reference values:
+A compact set of values from the original history. Use the current-source
+guides linked at the top for present defaults and supported configurations:
 
 ```text
 Primary IQ rate:        4 MSPS

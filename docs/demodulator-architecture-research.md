@@ -1,13 +1,21 @@
 # Demodulator architecture and reuse
 
-Design recorded 2026-09-20; status updated 2026-10-04. Refactoring steps 1–4
+Design recorded 2026-09-20; status checked 2026-10-16. Refactoring steps 1–4
 are implemented, physically accepted and merged into `main` at `7da1ee0`.
-Additional receive modes continue on `dev-additional-modes`, starting with CW
-listening in step 5; AM/SSB and later decoding/data modes remain planned.
-The analysis below describes the original design baseline; implemented contracts
+CW listening in step 5, AM/SSB and later decoding/data modes remain planned;
+the implemented factory still exposes only NBFM and mono WBFM.
+The analysis below describes the original September design baseline; implemented contracts
 are recorded in [Audio/DSP interfaces](audio-dsp-interfaces.md).
 Code reviewed at `44fee8a`, including the mono WBFM implementation originally
 introduced in `e1ebd4c`.
+
+Since that baseline, both modes support **1, 2 and 4 MS/s** and use independent
+mode-owned state behind `audio_demod.h`. NBFM now has CIC/FIR channel filtering,
+full `atan2f` discrimination and corrected 50-to-48 kHz interpolation; both
+modes clear all signal histories on reset. See [channel filtering](nbfm-channel-filter.md),
+[angle correction](nbfm-discriminator-angle.md) and [RX squelch](rx-squelch.md).
+The old boxcar, approximation and reset descriptions below are historical
+motivation for the design, not the current DSP contract.
 
 ## Recommendation
 
@@ -30,7 +38,7 @@ lifecycle at the application boundary, explicit mode-specific signal chains
 inside. It does not require a runtime flowgraph, a plugin system, or a new DSP
 library dependency.
 
-## Why this fits the current code
+## Original code baseline (2026-09-20)
 
 The following observations come from
 [nbfm_demod.c](../software/libcariboulite/src/nbfm_demod.c) and
@@ -124,7 +132,7 @@ or AM; those tones would first pass through their respective audio demodulators.
 | Symbol timing recovery | — | — | — | — | R | R | D: Morse duration estimation, not PSK clock recovery |
 | Equalization | — | — | — | — | O | O | — |
 
-Decimation is required here because the current hardware path delivers 2/4 MS/s;
+Decimation is required here because the application hardware path delivers 1/2/4 MS/s;
 it is not intrinsic to every possible receiver. A hardware tuning operation may
 provide a mixer function, and a correctly tuned SSB implementation need not run
 an additional nonzero digital oscillator. Avoid double-counting these functions.
@@ -316,8 +324,9 @@ inside each demodulator so that its coefficients and rate plan remain explicit.
    end-of-stream filter-tail behavior before adding general resamplers.
 3. **State and lifecycle:** allocate at creation, no allocation or device I/O in
    processing; one serialized owner. Join workers before freeing DSP state.
-   Keep legacy NBFM reset semantics explicit; a future discontinuity/cold reset
-   can be a separate operation rather than silently changing the existing one.
+   The original plan preserved partial boxcar reset state. The subsequent
+   channel-filter change deliberately replaced that policy: both current FM
+   modes clear all signal history, including partial decimator phases.
 4. **Rate and scale:** every stage declares sample rate, real/complex type and
    amplitude meaning. Supported rate plans are validated presets. A 50→48 kHz
    kernel is not automatically a general interpolator producing multiple outputs

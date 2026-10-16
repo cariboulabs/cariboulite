@@ -47,6 +47,22 @@ selects RF24. These names do not describe the board's complete mixer tuning rang
 `caribou_smi_read_loopback_timed` is for interface-loopback diagnostics: it accepts
 echoed TX control bits; normal reception uses the strict decoder.
 
+## Hardware-paced TX driver contract
+
+The shared FM TX pipeline additionally requires the current driver's versioned
+`SMI_STREAM_IOC_GET_TX_STATUS` and `SMI_STREAM_IOC_SET_TX_BUFFER_LIMIT` interfaces.
+Their structs and `SMI_STREAM_TX_ABI_VERSION` are defined in the source-of-truth
+[driver header](../../../../driver/smi_stream_dev.h). The pipeline validates the
+ABI/geometry, bounds kernel admission to two DMA periods and applies the TX
+write-timing profile while idle. DMA retirement measures progress into the SMI
+peripheral; it is not an independent RF sample-clock measurement.
+
+The raw timed-write API above is still a partial-write transport API; calling it
+alone does not supply the FM pipeline's startup, pacing or shutdown sequence.
+See [TX design](../../../../docs/tx-hardware-paced-design.md) for ownership,
+buffering, timing and physical-validation details. Building userspace without
+loading its matching driver does not update the running ABI.
+
 ## Validation
 
 The regression harness is [test_smi_timed.c](../../tests/test_smi_timed.c),

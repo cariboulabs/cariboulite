@@ -4,6 +4,12 @@ Recorded 2026-10-08. Status: **planned; optimization tests have not started**.
 This is the next firmware development test, followed by a separate PMOD
 sequencer integration test after the acceptance criteria below are met.
 
+Current-source review on 2026-10-16: the receive RTL, synthesis flags and routing
+flags remain unchanged, so this is still a plan. The October 15 hardware-paced
+TX implementation changes driver/userspace behavior and uses the existing
+FPGA image; its [Pi Zero/Pi 4 qualification](tx-hardware-paced-design.md)
+does not satisfy the optimization or sequencer acceptance criteria below.
+
 ## Objective and starting point
 
 Establish a repeatable firmware build with LVDS timing margin while preserving

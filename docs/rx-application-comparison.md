@@ -1,5 +1,9 @@
 # RX application comparison — 2026-10-11
 
+Artifact paths under `build/` below refer to local files on the original test
+host. Missing raw artifacts are not included in this checkout; committed
+reports preserve the recorded results and scope.
+
 The C receiver backend uses **22.3% less CPU** than `test_app` menu 14 in this
 NBFM comparison. The Python monitor adds enough work that **backend plus
 monitor uses 22.4% more CPU** than menu 14. The absolute difference is small:
@@ -8,6 +12,9 @@ memory use is about **24.5% lower**. Both setups passed the measured pipeline
 health checks.
 
 These are historical measurements of the builds used for this comparison.
+Since the measurement, inactive TX workers have been changed to park on
+condition variables and hardware-paced TX has been added. The idle-TX cost
+in the table below therefore does not describe the current menu-14 build.
 The menu-14 UI included the added audio FIFO, playback, reader and worker rows
 at measurement time. Its layout has since been restored to `main`, while
 shared instrumentation remains collected. The CPU and health results below
@@ -185,13 +192,13 @@ this comparison.
 ## Artifacts and reproduction
 
 The full artifacts remain in
-[`build/radio-backend/comparison-20261011/`](../build/radio-backend/comparison-20261011/):
-[derived summary](../build/radio-backend/comparison-20261011/summary.json),
-[all trial reports](../build/radio-backend/comparison-20261011/report.json),
-[settings and binary hashes](../build/radio-backend/comparison-20261011/plan.json),
-[clock changes](../build/radio-backend/comparison-20261011/clock-control.json),
-[SMI observations](../build/radio-backend/comparison-20261011/smi-summary.json)
-and [filtered kernel log](../build/radio-backend/comparison-20261011/smi-kernel.log).
+`build/radio-backend/comparison-20261011/`:
+derived summary (`build/radio-backend/comparison-20261011/summary.json`),
+all trial reports (`build/radio-backend/comparison-20261011/report.json`),
+settings and binary hashes (`build/radio-backend/comparison-20261011/plan.json`),
+clock changes (`build/radio-backend/comparison-20261011/clock-control.json`),
+SMI observations (`build/radio-backend/comparison-20261011/smi-summary.json`)
+and filtered kernel log (`build/radio-backend/comparison-20261011/smi-kernel.log`).
 Each trial also retains raw terminal output, timestamped output chunks,
 snapshots, process samples and reconstructed screens. Pilot runs are separate
 and excluded from these results.
@@ -216,7 +223,7 @@ zero. Such a run can compare IQ queue counters, CPU, memory, configuration and
 register observations, but cannot repeat the full menu-14 health comparison
 above. Backend snapshots still include the complete shared instrumentation.
 The exact temporary
-[clock wrapper](../build/radio-backend/comparison-20261011/clock-wrapper.py)
+clock wrapper (`build/radio-backend/comparison-20261011/clock-wrapper.py`)
 used for this run is retained with the artifacts; it uses the host's existing
 `sudo` permission to set `performance` and restores the original governor in
 `finally`, while launching applications as the invoking user.

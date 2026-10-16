@@ -36,13 +36,22 @@ client, exposed under the same executable naming scheme by the build. The earlie
 `cariboulite_rx_backend` name reflected the first RX-only implementation. The
 current names describe the combined RX/TX radio applications.
 
-### Tested Pi Zero staging checkout
+Hardware-paced TX is part of the current source as of `37d2414` (2026-10-15).
+Use the [general checkout commands](#general-checkout-commands) for a new build.
+The backend requires the matching streaming-driver ABI for TX; update the
+driver as part of the [installation procedure](../installation.md).
+The staging paths below preserve the October 14–15 validation setup and are
+not required to build or run the current checkout. They refer to local,
+ignored artifacts from the original test hosts, which may be absent here.
 
-The hardware-paced candidate is built from the Pi 4 source and tested on the
-Pi Zero 2 W in an isolated checkout. The original Pi Zero binaries under
-`~/src/cariboulite/build/radio-backend/` remain the earlier implementation.
-For this candidate, run the following from the staging checkout in each
-terminal:
+<a id="tested-pi-zero-staging-checkout"></a>
+
+### Pi Zero staging record (2026-10-14–15; historical)
+
+The hardware-paced candidate was built from the Pi 4 source and tested on the
+Pi Zero 2 W in an isolated checkout. At validation time, the original Pi Zero
+binaries under `~/src/cariboulite/build/radio-backend/` were preserved.
+The staged build was run from this checkout in each terminal:
 
 ```sh
 cd /home/pi/src/cariboulite/build/tx-hardware-paced-zero-20261014
@@ -65,12 +74,11 @@ The optional third terminal uses
 `./build/radio-backend/cariboulite_radio_monitor`. These relative paths select
 the staged candidate; the USB microphone and Loopback bridges are unchanged.
 
-Hardware validation applies to the Pi Zero's current
+Hardware validation applied to the Pi Zero's then-active
 `6.18.50+rpt-rpi-v8` kernel and runtime module source version
-`29FA4AB8842B3807F97F0A5`. The installed original module remains unchanged at
-`697F3CF2096C282E312BA14`, so a reboot returns to that original driver.
-After a reboot, with other radio owners closed, load the matching candidate
-from the staging checkout:
+`29FA4AB8842B3807F97F0A5`. The installed original module was preserved at
+`697F3CF2096C282E312BA14`, so rebooting that setup restored the original driver.
+The runtime-only reload command for that matching staged build was:
 
 ```sh
 sudo bash driver/tools/tx_driver_reload.sh "$PWD/smi_stream_dev.ko"
@@ -84,11 +92,13 @@ and differs from the installed rollback module. A different kernel needs a
 matching module build. This candidate changes no FPGA firmware; these tests
 do not establish RF clock accuracy or spectrum quality.
 
-### Pi 4 staging checkout (2026-10-15)
+<a id="pi-4-staging-checkout-2026-10-15"></a>
 
-The same candidate is staged separately on the Pi 4 at
+### Pi 4 staging record (2026-10-15; historical)
+
+The same candidate was staged separately on the Pi 4 at
 `/home/pi/src/cariboulite/build/tx-hardware-paced-pi4-20261015`.
-Its backend, controller and monitor compile successfully. The recorded runtime
+Its backend, controller and monitor compiled successfully. The recorded runtime
 sources match the passing Pi Zero production build, and the candidate driver
 module matches the Pi 4's `6.18.50+rpt-rpi-v8` kernel and architecture.
 
@@ -98,10 +108,10 @@ temporarily. All six short checks and all six 180-second microphone/tone trials
 passed at 430.100 MHz, followed by same-backend automatic RX restoration at
 1 and 4 MS/s. Independent qualification and provenance audits passed; see the
 [Pi 4 validation record](pi4-tx-validation-2026-10-15.md).
-Current binaries, shared library, firmware and installed driver are preserved.
+The pre-existing binaries, shared library, firmware and installed driver were preserved.
 See the original staging
-[instructions](../build/tx-hardware-paced-pi4-20261015/README.md) and
-[source/build provenance](../build/tx-hardware-paced-pi4-20261015/staging-manifest.json).
+instructions (`build/tx-hardware-paced-pi4-20261015/README.md`) and
+source/build provenance (`build/tx-hardware-paced-pi4-20261015/staging-manifest.json`).
 
 Use this checkout in each terminal:
 
@@ -127,8 +137,9 @@ USB/Loopback bridges matching the Zero route, with backend microphone
 are separate from the backend and have a finite lifetime; their setup and
 cleanup are recorded in the validation report. They were stopped after
 validation; the report includes a command to recreate the measured audio route
-for a later manual test. The candidate driver remains loaded for the current
-boot, and permanent installation remains deferred.
+for a later manual test. At the end of validation, the candidate driver remained
+loaded for that boot and permanent installation was deferred. These records do
+not describe the current host's loaded module or running audio processes.
 
 ### General checkout commands
 
@@ -667,10 +678,12 @@ stops transmission and restores RX. This validates the audible TX path and
 half-duplex handoff on the tested setup; no new CPU or sample-continuity measurement
 accompanied this listening test.
 
-The current build passed the four C transport/register/protocol suites and
-108 Python checks: 12 backend, 13 RX-control, 20 controller, 13 TX-control and
-50 passive-monitor checks. Separate production-worker, audio-adapter,
-Quindar/drain and menu-14 lifecycle fixtures also passed. The actual C
+On 2026-10-16, the current build passed the four C transport/register/protocol
+suites and 136 Python checks: 12 backend, 13 RX-control, 28 controller,
+13 TX-control, 11 FPGA-control and 59 passive-monitor checks. These tests use
+mocked hardware or dry-run IPC, including the FPGA commands. Earlier validation
+also passed separate production-worker, audio-adapter, Quindar/drain and
+menu-14 lifecycle fixtures. The actual C
 controller was exercised against the dry-run backend, including disconnect
 and queued stop during startup.
 
@@ -692,7 +705,7 @@ at 10 ms resolution. A second actual controller received a clear `BUSY`
 message, and quitting the first released control without changing receiver
 settings. Both owned processes and sockets cleaned up normally. This measures
 idle client behavior, not physical RX CPU usage. Results are in
-[the idle/controller check report](../build/radio-backend/control-idle-check-20261011/report.json).
+the idle/controller check report (`build/radio-backend/control-idle-check-20261011/report.json`).
 
 ## Physical control check (2026-10-11)
 
@@ -720,12 +733,12 @@ The receiver controller was subsequently confirmed working successfully in
 the user's normal setup.
 
 Artifacts are in
-[`build/radio-backend/control-live-check-20261011/`](../build/radio-backend/control-live-check-20261011/):
-[summary](../build/radio-backend/control-live-check-20261011/summary.json),
-[command replies](../build/radio-backend/control-live-check-20261011/commands.json),
-[monitor snapshots](../build/radio-backend/control-live-check-20261011/monitor.jsonl),
-[backend log](../build/radio-backend/control-live-check-20261011/backend.log)
-and [source/binary metadata](../build/radio-backend/control-live-check-20261011/metadata.json).
+`build/radio-backend/control-live-check-20261011/`:
+summary (`build/radio-backend/control-live-check-20261011/summary.json`),
+command replies (`build/radio-backend/control-live-check-20261011/commands.json`),
+monitor snapshots (`build/radio-backend/control-live-check-20261011/monitor.jsonl`),
+backend log (`build/radio-backend/control-live-check-20261011/backend.log`)
+and source/binary metadata (`build/radio-backend/control-live-check-20261011/metadata.json`).
 
 ## Pi Zero 2 W TX observations (2026-10-14)
 
@@ -782,7 +795,7 @@ bounded prefill with matched rates; it does not grow into a large backlog.
 Independent qualification, file hashes and cleanup passed. Physical automatic
 RX restoration also passed at 1/4 MS/s after five-second TX windows, with about
 30 seconds of healthy resumed RX, restored 1/5/1 timing and final idle cleanup.
-See the [handoff evidence](../build/radio-backend/tx-rx-handoff-zero-retry-20261014/handoff-summary.json)
-and [final verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json).
+See the handoff evidence (`build/radio-backend/tx-rx-handoff-zero-retry-20261014/handoff-summary.json`)
+and final verification (`build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json`).
 Exact SWE sampling behavior and RF waveform/calibration remain unproven. See the
 [implementation trials](pi-zero-tx-queue-test-2026-10-15.md#hardware-paced-implementation-trials-2026-10-14).

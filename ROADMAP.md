@@ -4,7 +4,7 @@ Recorded 2026-09-16 from Jan's backlog. This is a proposed implementation
 order, not a claim that the features below are complete. Original item numbers
 are retained for tracking. Update this document as work is verified.
 
-## Current branch milestone — 2026-10-04
+## Current branch milestone — 2026-10-16
 
 The accepted development work through FM refactoring step 4 is merged into
 `main` at `7da1ee0`. New receive-mode development starts on
@@ -13,6 +13,16 @@ mono WBFM RX are implemented. CW listening, AM and SSB are next in the
 [demodulator plan](docs/demodulator-architecture-research.md); they are not yet
 implemented modes. The completed FM extraction preserves signal behavior,
 legacy APIs, streaming guards and mode-specific squelch capabilities.
+
+Current checkout: `dev-passive-monitor` at `953c1f0`. It includes the standalone
+radio backend, local controller and passive monitor, live RX controls, half-duplex
+NBFM TX, FPGA controls and hardware-paced TX merged at `37d2414`. The
+[Pi Zero 2 W](docs/pi-zero-tx-queue-test-2026-10-15.md) and
+[Pi 4](docs/pi4-tx-validation-2026-10-15.md) reports record the completed transport
+and listening checks. Other receive modes, stereo/RDS, DAB+, configurable CTCSS,
+network audio/PTT and the external-PA sequencer remain open. The
+[2026-10-16 documentation audit](docs/documentation-audit-2026-10-16.md) records
+this source review; it is not a new hardware qualification.
 
 ## Existing foundation
 
@@ -65,8 +75,8 @@ user setting. Document thread ownership, stop deadlines and error recovery.
   guide: prerequisites, build/install, FPGA selection, use, troubleshooting.
   Separate historical patches from current instructions and record the tested
   source revision, OS/kernel, Pi model and firmware for each verified recipe.
-- [ ] Inventory existing tests and provide one documented entry point for tests
-  that do not need hardware. Label hardware and RF end-to-end tests separately.
+- [x] Inventory existing tests and provide a [documented entry point](docs/testing.md)
+  for hardware-free checks, separate from physical/RF procedures.
 - [ ] Add meaningful unit coverage for configuration validation, DSP vectors,
   squelch state and sequencing. Integration tests should exercise partial I/O,
   timeout, overflow/underflow, cancellation and repeated start/stop.
@@ -78,6 +88,12 @@ installation claims are tied to evidence. Hardware results are not inferred from
 simulations or an existing binary.
 
 ### B. Extract a shared radio/stream/DSP core (items 1 and 2)
+
+Progress: the audio/DSP extraction and reusable pipelines are implemented, and
+both menu 14 and the standalone backend use them. The backend serializes local
+commands and publishes cached status. Broader directory/build reorganization and
+configuration across all public adapters remain open; see
+[interfaces](docs/audio-dsp-interfaces.md) and [radio controls](docs/radio-control.md).
 
 - [ ] Extract menu-owned streaming, radio control and audio handling behind the
   interfaces above, preserving current NBFM behavior and public entry points.
@@ -98,9 +114,11 @@ thresholds to -97/-102 dBm. See
 Menu 14 now also implements [separate TX/RX frequency controls](docs/monitor-frequency.md);
 physical acceptance of this addition is pending.
 
-- [ ] Implement configurable NBFM squelch with a defined measurement, threshold,
-  hysteresis and hang time. Test weak signals, threshold crossings, silence,
-  opening delay and audio muting. Define behavior separately for later modes.
+- [x] Implement NBFM noise/RSSI squelch, threshold validation, hysteresis/hang
+  behavior and live noise thresholds in menu 14 and the controller. Regression
+  coverage and recorded listening acceptance are in [RX squelch](docs/rx-squelch.md).
+- [ ] Complete quantitative weak-signal, opening-delay and muting acceptance,
+  and define squelch behavior for later modes.
 - [ ] Add menu item **15: VHF/UHF TRX** using the shared core. Offer `rf09` and
   `rf24`, frequency, IQ sample rate, RF bandwidth and mode selection, filtered
   by actual modem/board/DSP capabilities.
@@ -230,93 +248,44 @@ external-PA sequencing in D where used, and audio/data adapters as needed.
 Added 2026-10-10 from Jan's requested receiver/transceiver extensions. NBFM
 and WBFM listening is reported free of obvious gaps or pops. The
 [runtime review and decoder plan](docs/runtime-profiling-and-decoder-plan.md)
-records instrumentation gaps and proposed sequencing; these features are
-not yet implemented.
+records implemented instrumentation and the remaining decoder work. The local
+backend/controller/monitor and TX transport changes below are implemented;
+stereo/RDS, DAB+ and adjustable CTCSS are not.
 
-- [ ] **Separate control and instrumentation terminals (added 2026-10-11).**
-  Extract one radio-owning session with serialized commands and cached status;
-  retain menu 14 as a frontend, then add a local read-only monitor and separate
-  control client. Use bounded nonblocking telemetry, validate effective settings
-  and measure combined backend/client CPU and latency, including slow-client
-  and disconnect behavior. See the [two-terminal design](docs/runtime-profiling-and-decoder-plan.md#separate-control-and-instrumentation-terminals-2026-10-11).
+- [x] **Separate local control and instrumentation terminals.** Implement one
+  radio-owning backend with serialized commands, cached bounded telemetry, a
+  read-only monitor and a separate controller. Menu 14 remains an alternative
+  frontend using the shared pipelines. See [radio controls](docs/radio-control.md)
+  and [the monitor](docs/passive-monitor.md).
+- [ ] Finish combined backend/client CPU and latency qualification across the
+  planned recording and rate matrix, including slow-client/disconnect behavior.
+  Existing dry-run and physical comparisons are recorded in the
+  [runtime plan](docs/runtime-profiling-and-decoder-plan.md).
 - [ ] Complete loss/recovery counters, actual scheduling reports, RX
   discontinuity metadata and worker-health reporting. Profile whole-app CPU,
   stage service/wait latency and queues at 1/2/4 MS/s, with recording off/on.
   Optimize measured contributors and preserve accepted FM behavior.
-- [ ] **Pi Zero 2 W TX queue growth (reported 2026-10-14).** Investigate the
-  1 MS/s NBFM application TX queue slowly filling to 64/64 during approximately
-  90 seconds of active TX, despite apparently unaffected modulation audio.
-  The backend/controller follow-up reproduced gradual growth at 1 MS/s;
-  4 MS/s showed no such filling but reported 80–90 frames/s (79.7 in the supplied
-  snapshot) and 48 recovered capture overruns. Measure sustained production
-  under the greater modulation workload and the associated audio discontinuities.
-  Record starting depth, elapsed time and cumulative producer/writer deltas;
-  compare accepted IQ sample rates, writer wait/service time, kernel/DMA timing,
-  ALSA capture overruns and queued latency before changing pacing or capacity.
-  See the [reported measurements](ADDITIONAL-README.md#tx-fifo-occupancy).
-  See the [backend observations and timed follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md),
-  including full scheduling/affinity and per-thread CPU measurements.
-  The [automated runner](docs/pi-zero-tx-queue-test-2026-10-15.md#automated-baseline-on-the-pi-zero-2-w)
-  measures microphone/tone at 1 and 4 MS/s on the existing build, at 430.100 MHz,
-  before implementation changes.
-  The [completed baseline](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14)
-  reproduced 1 MS/s saturation for both sources, with dequeue near 99.59 frames/s.
-  At 4 MS/s, microphone/tone averaged 82.81/88.84 frames/s with both workers on
-  saturated CPU 0 and increasing kernel TX missed counters. Investigate measured
-  core contention/modulation cost at 4 MS/s and writer/transport timing at 1 MS/s;
-  preserve this baseline and account for recorder overhead in follow-up comparisons.
-- [ ] **Hardware-paced TX and 4 MS/s compute margin (transport qualified; RF checks open, 2026-10-14).**
-  The [implemented design](docs/tx-hardware-paced-design.md) adds bounded driver
-  admission/telemetry, demand-paced production, independent capture with adaptive
-  resampling, separate worker cores and single-precision IQ conversion with double
-  phase integration. The candidate driver is loaded at runtime on the Zero;
-  installed module, original binaries and firmware remain preserved. Initial
-  three-minute microphone trials at 1/4 MS/s and tone at 4 MS/s completed with
-  bounded queues and no stable capture loss or driver underruns. The 4 MS/s
-  producer used about 54% of one core, with sustained transport above four
-  million IQ-equivalents/s. A 2 MS/s transport step exceeded the first ±2% audio
-  guard and stopped that trial explicitly. The tested revision uses a 70 ms
-  audio reserve and ±4% correction; 600-second native-burst, clock-step and
-  capture-jitter tests pass under both compiler configurations. The revised
-  qualification completed 1/2 MS/s microphone trials, then
-  stopped during 4 MS/s after approximately 169 seconds when changing transport
-  demand exceeded ±4%. The tone trials were not reached. Subsequent controlled
-  SMI write-timing trials changed only 1/5/1 to 1/4/2 and restored near-nominal
-  transport at 1/2/4 MS/s, including a five-minute 4 MS/s microphone run, without
-  stable loss/faults. Production now verifies that profile before activation,
-  restores the original write tuple before RX handoff, and primes one opening
-  zero-audio FM frame while parked. All six production microphone/tone trials
-  at 1/2/4 MS/s completed their 180-second targets, sustaining approximately
-  100 frames/s with zero total driver underruns, capture loss, ASRC faults or
-  writer errors. The 4 MS/s microphone/tone producer used 54.67%/53.78% of one
-  core. Actual timing application/restoration, independent qualification,
-  hashes and cleanup passed. Physical RX→TX→RX handoff also passed at 1/4 MS/s,
-  with about 30 seconds of healthy resumed RX, restored timing and verified idle
-  cleanup; [final verification](build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json)
-  preserves original/staged binaries and audio bridges.
-  On 2026-10-15, the user also reported successful quick tests at 1/4 MS/s and
-  substantially improved modulation audio at 4 MS/s; see the
-  [listening checks](docs/pi-zero-tx-queue-test-2026-10-15.md#user-listening-checks-2026-10-15).
-  The same candidate was staged and compiled on the Pi 4 on 2026-10-15;
-  [Pi 4 preparation](docs/radio-control.md#pi-4-staging-checkout-2026-10-15)
-  records source identity and preserved installation files. Following the
-  hardware transfer and confirmed dummy load, the runtime driver reload and
-  six short microphone/tone checks passed. The
-  [Pi 4 full timed validation](docs/pi4-tx-validation-2026-10-15.md) also passed
-  all six 180-second trials and 216 independent checks: approximately 100
-  frames/s, zero driver/capture/audio losses and faults, bounded queues and
-  verified timing restoration. Pi 4 producer CPU at 4 MS/s was 17.31/16.79%
-  for microphone/tone. Same-backend RX→TX→RX checks passed at 1/4 MS/s with
-  about 30 seconds of healthy resumed RX; original files and final idle were
-  verified, and temporary audio bridges were cleaned up. Permanent deployment
-  remains deferred.
-  A subsequent user listening check at 4 MS/s through an RSP2pro and nominal
-  50 dB attenuation reported perfect modulation audio and no noticeable hiss
-  with a quiet microphone. SDRconnect with AGC enabled indicated −61.2 dBm;
-  [manual measurement conditions](docs/pi4-tx-validation-2026-10-15.md#user-rsp2pro-listening-check--4-mss-2026-10-15)
-  are recorded separately from calibrated RF measurements.
-  Exact physical SWE sampling behavior, RF calibration, quantitative signal
-  quality and longer-duration acceptance remain open.
+- [x] **Pi Zero 2 W TX queue growth and 4 MS/s compute margin.** Preserve the
+  [pre-change baseline](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14):
+  1 MS/s filled the legacy 64-frame queue; 4 MS/s saturated CPU 0 and lost
+  capture/transport continuity. The implemented
+  [hardware-paced design](docs/tx-hardware-paced-design.md) uses bounded driver
+  admission, a four-frame application queue, independent capture/adaptive
+  resampling, separate worker cores and faster IQ conversion. The verified
+  1/4/2 SMI write profile is applied for TX and restored before RX handoff.
+  Both Zero 2 W and Pi 4 completed all six microphone/tone trials at 1/2/4 MS/s
+  for 180 seconds each with approximately 100 frames/s, bounded queues and zero
+  reported driver/capture/audio losses or faults. Same-backend RX→TX→RX passed
+  at 1/4 MS/s. User listening checks reported improved 4 MS/s modulation.
+  Full conditions and limitations remain in the
+  [Zero report](docs/pi-zero-tx-queue-test-2026-10-15.md) and
+  [Pi 4 report](docs/pi4-tx-validation-2026-10-15.md).
+- [ ] **Complete TX RF and deployment qualification.** Measure physical SWE
+  sampling, RF calibration and quantitative signal quality; extend soak and
+  repeated PTT testing. The source is merged into this branch, while the cited
+  physical trials used staged binaries/runtime driver reloads. A clean install
+  and permanent deployment across the supported Pi/OS matrix remain distinct
+  acceptance steps.
 - [ ] Add adjustable CTCSS TX encoding and optional RX tone squelch, including
   explicit tone deviation, total ±2.5 kHz modulation budget, tone rejection
   from listening audio and compatible Quindar/PTT/tail timing.
@@ -351,16 +320,21 @@ Process: when a README TODO or an outdated instruction is encountered, complete
 it using implementation or measured evidence where possible. Otherwise retain a
 short status note at its source and add a linked task here. Do not treat source
 inspection, successful compilation and hardware validation as interchangeable.
-The [2026-09-16 audit](docs/documentation-audit-2026-09-16.md) records this pass.
+The [2026-09-16 audit](docs/documentation-audit-2026-09-16.md) records the initial
+pass; the [2026-10-16 audit](docs/documentation-audit-2026-10-16.md) records the
+current review and corrected status claims.
 
 - [ ] **DOC-01 — Reproducible installation and permissions (milestone A).**
   Sources: [additional installation notes](ADDITIONAL-README.md),
   [root installation instructions](README.md#installation-troubleshooting),
   [driver installation](driver/README.md), and
   [library build](software/libcariboulite/README.md).
-  Validate clean Bookworm/Trixie installs with matching kernel headers; fix
-  obsolete installer package names, presence-only boot-setting checks, absolute
-  install destinations and udev reload/trigger behavior. Establish the actual
+  Current installers use matching versioned kernel headers and discover the
+  running-kernel module destination; the root installer builds the standalone
+  applications and selects `/boot/firmware/config.txt` when present. Preserve the
+  reported Zero 2 W/Trixie installation and Pi 4 recursive-build evidence, then
+  validate clean installs across the claimed platform matrix. Fix presence-only
+  boot-setting checks and verify udev reload/trigger behavior. Establish the actual
   need for memlock/RT limits per launch method, replace broad device permissions
   with the required access, and test unprivileged operation. Record commands,
   package/tool versions and Pi model. The original Zero and Zero 2 W must be

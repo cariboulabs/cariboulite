@@ -1,5 +1,16 @@
 # Package change log
 
+## 2026-10-16 — Documentation archive synchronization
+
+- Refreshed `SHA256SUMS` and the support ZIP to include the existing September 13
+  README, technical-review and change-log corrections. The previous checksum
+  manifest/archive still contained the earlier versions of those three documents.
+- Verified all 34 source-manifest entries and all 31 copied originals against the
+  repository sources. PCB upload ZIP, assembly BOM/CPL, procurement data and
+  validation outputs are byte-for-byte unchanged by this documentation update.
+- No new stock check, manufacturer preflight, upload, order or manufacturing
+  release was performed.
+
 ## 2026-09-13 — macOS reproducibility hardening
 
 - Excluded Finder `.DS_Store` metadata from source inventory and package archives.

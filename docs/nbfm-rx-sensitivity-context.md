@@ -1,7 +1,17 @@
 # Menu 14 NBFM RX chain and sensitivity investigation
 
+Artifact paths under `build/` below refer to local files on the original test
+host. Missing raw artifacts are not included in this checkout; committed
+reports preserve the recorded results and scope.
+
 Recorded 2026-10-10 from source inspection at revision
 `60c6138` (`Fix TX-to-RX stream handoff`).
+Current behavior checked 2026-10-16. The dated entries preserve the investigation
+sequence; current NBFM noise thresholds are **0.20 open / 0.30 close**, with
+the CIC/FIR channel filter, corrected discriminator and interpolation enabled.
+Menus 11/12/14 select HiF/RF24. The backend separately defaults to RF24 and
+1 MS/s; menu 14 starts at 4 MS/s. See [RX squelch](rx-squelch.md) and
+[radio controls](radio-control.md) for the current settings.
 
 ## Deviation configuration (2026-10-10)
 
@@ -16,9 +26,11 @@ physical baseline runner, modem self-test, memory demo and the modulator's
 NULL-config default, as well as NBFM RX normalization. Explicit caller-supplied
 TX deviation values retain their usual meaning.
 
-Noise-squelch RMS thresholds are restored to **0.12/0.18**, with the original
-RX PCM and raw discriminator scaling. Filtering, the angle approximation and
-the captured IQ are unchanged by this experiment.
+At this point in the experiment, noise-squelch RMS thresholds were restored to
+**0.12/0.18**, with the original RX PCM and raw discriminator scaling. That
+deviation-only revert did not change filtering, the then-used angle
+approximation or captured IQ. Later updates below replaced the approximation,
+corrected interpolation and selected the current **0.20/0.30** thresholds.
 
 After changing the shared constant, rebuild:
 
@@ -323,7 +335,7 @@ The log contains **1,872 SMI read timeout messages**. The demodulation FIFO
 also overwrote **57 RF blocks after the raw-IQ capture tap**. Raw samples have
 no hardware timestamps, so continuity remains unverified and interval times
 are nominal. These diagnostics are retained with the recording.
-See the [capture report](../build/iq-captures/20261010T212317+0200_hif_idle/README.md)
+See the capture report (`build/iq-captures/20261010T212317+0200_hif_idle/README.md`)
 for metadata, detector traces and the 10-second active excerpt.
 
 ### 5. S1G antenna matching network at 430 MHz (earlier setup)
@@ -397,8 +409,10 @@ On 2026-10-11, the user proposed separate terminals for instrumentation and
 radio controls. The [two-terminal design](runtime-profiling-and-decoder-plan.md#separate-control-and-instrumentation-terminals-2026-10-11)
 keeps one process in charge of the radio and pipelines, with serialized control
 commands and cached, nonblocking status for observers. This is feasible with
-modest expected IPC/display overhead, pending measurement; it is recorded as
-a proposed roadmap item rather than an implemented feature.
+modest IPC/display overhead. It was initially a proposal; the backend,
+controller and passive monitor are now implemented, and the
+[application comparison](rx-application-comparison.md) records measured CPU
+and memory cost. The following dated entries preserve that development sequence.
 
 ## AGCC/AGCS interpretation and proposed display (2026-10-11)
 
@@ -540,7 +554,7 @@ state checks use a corresponding bounded recheck; persistent failure still
 unkeys TX. Backend error output and monitor faults now retain the startup
 stage. At this point, hardware confirmation still required another user test.
 The original passive snapshot is saved in
-[`build/radio-backend/tx-start-fault-20261011.json`](../build/radio-backend/tx-start-fault-20261011.json).
+`build/radio-backend/tx-start-fault-20261011.json`.
 
 ### Persistent TXPREP and missing FPGA clean start
 

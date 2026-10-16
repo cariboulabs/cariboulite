@@ -1,5 +1,15 @@
 # TX rate diagnosis and a hardware-paced design
 
+Current-source note (2026-10-16): this implementation is merged in commit
+`37d2414` and is part of the current source tree. The subsequent installer
+update (`953c1f0`) builds the current driver, library, terminal application and
+backend/controller/monitor. References below to preserved original files,
+runtime-only candidates and deferred installation describe the dated test
+sessions; they do not establish which versions are installed or loaded now.
+Use [current setup commands](radio-control.md#build-and-start) and
+[driver installation](../driver/README.md) for a new installation, and retain
+the staged commands when reproducing the frozen experiments.
+
 Recorded 2026-10-14 after the Pi Zero 2 W baseline and follow-up measurements.
 The hardware-paced design now includes a verified TX write-timing profile.
 Controlled timing-only trials restored near-nominal transport cadence at
@@ -31,6 +41,8 @@ documents this qualitative confirmation and the limits of the nominal power
 estimate separately from the automated counters.
 
 ## What the measurements distinguish
+
+The following table records the original baseline before the implemented fixes.
 
 The 1 MS/s backlog and the 4 MS/s production shortfall require separate fixes.
 Neither disappears simply because RX works at the same requested rate.
@@ -108,7 +120,7 @@ flowchart LR
    not depend on an independent fixed 10 ms wall timer. Block sizes can remain
    convenient DSP units while their production follows sink demand.
 2. **Bound buffering throughout the path.** A smaller application FIFO alone
-   is insufficient: current `POLLOUT` means the kernel FIFO is not completely
+   is insufficient: legacy `POLLOUT` means the kernel FIFO is not completely
    full. Unpaced production could quickly fill that large FIFO and retain high
    latency. Expose actual kernel occupancy/capacity, completed DMA-period counts
    and repeat counts, and enforce a deliberate refill watermark and total
@@ -287,7 +299,7 @@ October 14 at 22:03:26 Brussels time with the ±4% / 70 ms implementation.
 Microphone trials at 1 and 2 MS/s completed their 180-second target without
 capture loss or stable driver underruns. The 4 MS/s microphone trial stopped
 after about 169 seconds on `-ERANGE`; the three tone trials were not reached.
-Its [report and raw artifacts](../build/radio-backend/tx-hardware-paced-zero-final-20261014/README.md)
+Its report and raw artifacts (`build/radio-backend/tx-hardware-paced-zero-final-20261014/README.md`)
 remain separate from the earlier successful prototype trials.
 
 Late in the 4 MS/s trial, native FIFO-dequeue demand increased from approximately
@@ -326,14 +338,15 @@ with no remaining radio owner/socket after each suite. A single startup underrun
 preceded the tone trial's stable interval; the production precomputed frame is
 tested specifically against that first-refill margin.
 
-The [SWE sampling study](../build/radio-backend/tx-swe-sampling-study-20261014/README.md)
+The SWE sampling study (`build/radio-backend/tx-swe-sampling-study-20261014/README.md`)
 also found framing failures with old timing under selected artificial jitter,
 while 1/4/2 preserved framing across 761 cases. Together these support the
 write-timing change. They do not measure physical jitter, establish its exact
 electrical mechanism, or independently calibrate RF emission.
 
-The Pi 4 source and CMake test application build successfully. Physical results
-apply to the Pi Zero 2 W with kernel `6.18.50+rpt-rpi-v8` and runtime module
+At this stage, the Pi 4 source and CMake test application built successfully.
+The timing-only physical results in this section apply to the Pi Zero 2 W
+with kernel `6.18.50+rpt-rpi-v8` and runtime module
 source version `29FA4AB8842B3807F97F0A5`. The installed original module
 `697F3CF2096C282E312BA14` remains unchanged and returns after reboot; the matching
 candidate can then be loaded with the reload helper, which saves the original
@@ -408,36 +421,37 @@ and abort restoration. RF audio, deviation and spectrum checks remain separate.
 
 ## Evidence and artifacts
 
-Links into `build/` refer to retained local artifacts excluded from Git and
-unavailable in a fresh clone. The tables and conclusions in these documents
-preserve the validation summaries; committed tools can collect new runs.
+Paths under `build/` identify raw artifacts retained on the original test hosts,
+excluded from Git and unavailable in a fresh clone. The tables and conclusions
+in these documents preserve the validation summaries; committed tools can
+collect new runs.
 
 - [Original physical baseline](pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14).
-- [Initial hardware-paced 1/2 MS/s trials](../build/radio-backend/tx-hardware-paced-zero-baseline-20261014/README.md),
+- Initial hardware-paced 1/2 MS/s trials (`build/radio-backend/tx-hardware-paced-zero-baseline-20261014/README.md`),
   including the stopped 2 MS/s run and raw status/events.
-- [Completed prototype 4 MS/s microphone/tone trials](../build/radio-backend/tx-hardware-paced-zero-4M-20261014/README.md)
-  and [cleanup/hash verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-cap2-4M.json).
-- [Revised qualification stopped during 4 MS/s](../build/radio-backend/tx-hardware-paced-zero-final-20261014/README.md),
+- Completed prototype 4 MS/s microphone/tone trials (`build/radio-backend/tx-hardware-paced-zero-4M-20261014/README.md`)
+  and cleanup/hash verification (`build/radio-backend/tx-hardware-paced-validation-20261014/verification-cap2-4M.json`).
+- Revised qualification stopped during 4 MS/s (`build/radio-backend/tx-hardware-paced-zero-final-20261014/README.md`),
   with paired capture, producer and native DMA counters.
-- Timing-only [4 MS/s tone](../build/radio-backend/tx-timing-142-zero-tone4M-retry-20261014/README.md),
-  [five-minute 4 MS/s microphone](../build/radio-backend/tx-timing-142-zero-mic4M-20261014/README.md)
-  and [1/2 MS/s microphone](../build/radio-backend/tx-timing-142-zero-mic1M2M-20261014/README.md)
+- Timing-only 4 MS/s tone (`build/radio-backend/tx-timing-142-zero-tone4M-retry-20261014/README.md`),
+  five-minute 4 MS/s microphone (`build/radio-backend/tx-timing-142-zero-mic4M-20261014/README.md`)
+  and 1/2 MS/s microphone (`build/radio-backend/tx-timing-142-zero-mic1M2M-20261014/README.md`)
   reports, with verified original/changed timing in their backend logs.
-- [Completed production six-case report](../build/radio-backend/tx-hardware-paced-zero-production-20261014/README.md),
-  [independent qualification](../build/tx-hardware-paced-live-watch-20261014/qualification/qualification.json)
-  and [cleanup/hash verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-production.json).
-- [Pi Zero optimized virtual deadline results](../build/radio-backend/tx-hardware-paced-validation-20261014/zero-stop-deadline-optimized.log).
-- [Physical RX→TX→RX handoff results](../build/radio-backend/tx-rx-handoff-zero-retry-20261014/handoff-summary.json)
-  and [final cleanup/hash verification](../build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json).
+- Completed production six-case report (`build/radio-backend/tx-hardware-paced-zero-production-20261014/README.md`),
+  independent qualification (`build/tx-hardware-paced-live-watch-20261014/qualification/qualification.json`)
+  and cleanup/hash verification (`build/radio-backend/tx-hardware-paced-validation-20261014/verification-production.json`).
+- Pi Zero optimized virtual deadline results (`build/radio-backend/tx-hardware-paced-validation-20261014/zero-stop-deadline-optimized.log`).
+- Physical RX→TX→RX handoff results (`build/radio-backend/tx-rx-handoff-zero-retry-20261014/handoff-summary.json`)
+  and final cleanup/hash verification (`build/radio-backend/tx-hardware-paced-validation-20261014/verification-handoff.json`).
 - Implementation: [TX pipeline](../software/libcariboulite/src/tx_pipeline.c),
   [audio capture/ASRC](../software/libcariboulite/src/tx_audio_buffer.c) and
   [clock/burst/cancellation tests](../software/libcariboulite/tests/test_tx_audio_buffer.py).
-- [TX transport arithmetic and RTL experiments](../build/radio-backend/tx-1m-diagnosis-20261014/README.md),
+- TX transport arithmetic and RTL experiments (`build/radio-backend/tx-1m-diagnosis-20261014/README.md`),
   with `clock-query.json` and startup zero-padding bench.
-- [DSP timing, numerical checks and scratch sources](../build/radio-backend/tx-dsp-diagnosis-zero-20261014/README.md).
-- RX [1 MS/s](../build/radio-backend/rx-pacing-zero-1M-20261014/pacing-summary.json)
-  and [4 MS/s](../build/radio-backend/rx-pacing-zero-4M-20261014/pacing-summary.json)
+- DSP timing, numerical checks and scratch sources (`build/radio-backend/tx-dsp-diagnosis-zero-20261014/README.md`).
+- RX 1 MS/s (`build/radio-backend/rx-pacing-zero-1M-20261014/pacing-summary.json`)
+  and 4 MS/s (`build/radio-backend/rx-pacing-zero-4M-20261014/pacing-summary.json`)
   timing, with raw snapshots, kernel logs and normal-cleanup evidence.
-- [Reduced-cadence TX comparison](../build/radio-backend/tx-diagnostic-zero-1M-status05-20261014/pacing-comparison.json)
+- Reduced-cadence TX comparison (`build/radio-backend/tx-diagnostic-zero-1M-status05-20261014/pacing-comparison.json`)
   and its generated report/raw logs. Radio returned to idle and runtime binary
   hashes remained unchanged.

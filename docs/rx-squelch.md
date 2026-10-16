@@ -1,6 +1,6 @@
 # RX noise and carrier squelch
 
-RX pipelines now enable noise squelch by default and leave carrier squelch off.
+NBFM RX pipelines enable noise squelch by default and leave carrier squelch off.
 Menu 14 provides **N** to toggle noise squelch and **C** to toggle carrier squelch.
 For NBFM, **S** sets opening and closing noise RMS thresholds while RX runs.
 Enter two values, for example `0.200 0.300`, then press Enter; Esc cancels.
@@ -140,8 +140,12 @@ python3 software/libcariboulite/tests/test_rx_lifecycle.py
 Software validation passed: all twelve relevant suites (source, sink, tone,
 modulator, demodulator, rate, memory adapters, squelch, RX lifecycle, TX stop,
 monitor loopback and baseline-runner reporting), plus the application and
-memory-demo builds. The disabled-squelch worker comparison remains sample-exact
-against the frozen pre-refactoring implementation at both RF rates.
+memory-demo builds. The frozen pre-refactoring worker remains an oracle for
+framing, progress and clock control. Its original boxcar PCM is no longer the
+NBFM numerical oracle: the later channel filter, angle and interpolation
+corrections deliberately changed those samples. Current NBFM instances are
+compared across independent chunking at all three RF rates; WBFM retains exact
+frozen-reference PCM checks.
 
 Jan accepted the earlier squelch implementation after physical testing; see the
 historical feedback below. That acceptance predates the current interpolation

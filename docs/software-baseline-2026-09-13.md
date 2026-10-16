@@ -2,6 +2,10 @@
 
 Captured at 13:33:32 UTC before addressing the September 12 code review.
 This is an inventory of the existing setup, not a new RX/TX validation.
+All versions, hashes, installed-file statements and reset instructions below
+describe that dated snapshot. They do not identify the current build or loaded
+driver. Use the [documentation index](README.md) and
+[current radio controls](radio-control.md) for present operation.
 
 - Source: branch `dev`, commit `1b75a92a5d3ac49715bf722d56a8519a0b1abd1f`.
   Working tree was clean at capture.

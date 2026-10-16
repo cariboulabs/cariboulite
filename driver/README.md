@@ -34,10 +34,12 @@ writes:
 - `/etc/modprobe.d/smi_stream_mod_cariboulite.conf`: module parameters.
 - `/etc/udev/rules.d/40-cariboulite.rules`: device permissions.
 
-Rebuild after a kernel change or a driver source change. The installer still
-requests `raspberrypi-kernel-headers`; OS-specific package compatibility needs
-revalidation (roadmap DOC-01). Installing a module does not replace an already
-loaded copy; reboot before checking the installed setup.
+Rebuild after a kernel change or a driver source change. The installer reuses
+`/lib/modules/$(uname -r)/build/Makefile` when available; otherwise it requests
+`linux-headers-$(uname -r)`. It installs missing build/package tools as needed.
+Header availability on other distributions still needs validation (roadmap
+DOC-01). Installing a module does not replace an already loaded copy; reboot
+before checking the installed setup.
 
 ```sh
 uname -r
@@ -48,6 +50,65 @@ ls -l /dev/smi
 
 Expect `smi_stream_dev` and `bcm2835_smi`; module sizes and device major numbers
 vary. These checks establish installation state, not successful sample streaming.
+
+## Streaming and hardware-paced TX
+
+The current source uses cyclic DMA for RX and TX: a 524,288-byte ring divided
+into four 131,072-byte periods. One IQ pair occupies four bytes, so a period
+holds 32,768 samples. `/dev/smi` allows one open file description at a time;
+a competing open returns `EBUSY`. Passive monitoring uses the backend's status
+socket instead of opening the device.
+
+The fixed-width version-1 TX ABI in [smi_stream_dev.h](smi_stream_dev.h) adds:
+
+- `SMI_STREAM_IOC_GET_TX_STATUS`: actual FIFO depth/capacity/admission limit,
+  DMA period/ring sizes, session generation, accepted/dequeued bytes, completed
+  periods and underrun periods. Counters reset at each new TX session. DMA
+  retirement measures transport progress, not RF emission.
+- `SMI_STREAM_IOC_SET_TX_BUFFER_LIMIT`: opt into bounded admission while idle.
+  A nonzero limit must be a multiple of four bytes, at least one period and
+  no greater than actual FIFO capacity. Zero restores legacy behavior.
+
+With a nonzero limit, `POLLOUT` and writes honor the admission bound. Writes
+accept whole IQ words, may be partial, and return `EAGAIN` when no capacity is
+available. DMA startup and underrun shortages use valid zero-IQ framing
+(`0x80000000` in native packed words). Zero IQ does not unkey the modem; stop
+must explicitly disable transport and radio. Legacy callers retain allocated
+FIFO admission, raw startup padding and the old underrun-repeat policy.
+
+The shared TX pipeline uses two periods of kernel admission and four application
+frames, with verified write timing 1/4/2 during TX and saved timing restored on
+stop. The standalone backend requires the new ABI; the terminal test application
+automatically falls back on an older driver returning `ENOTTY`. See the
+[TX design and validation](../docs/tx-hardware-paced-design.md) and
+[radio setup](../docs/radio-control.md) for application behavior.
+
+For a runtime-only candidate test, first stop all radio-owning applications:
+
+```sh
+bash driver/tools/tx_driver_reload.sh --check /absolute/path/smi_stream_dev.ko
+sudo bash driver/tools/tx_driver_reload.sh /absolute/path/smi_stream_dev.ko
+```
+
+The helper verifies kernel/module metadata, device ownership and an installed
+rollback source, saves a verified backup next to the candidate, and validates
+the new ABI while idle after reload. It leaves installed modules unchanged;
+the printed rollback commands or a reboot restore the installed original.
+`--check` checks metadata only and does not open the device or reload modules.
+
+Hardware-free regression checks run from the repository root:
+
+```sh
+python3 driver/tests/test_install.py
+python3 driver/tests/test_exclusive_open.py
+python3 driver/tests/test_stream_transitions.py
+python3 driver/tests/test_tx_demand.py
+python3 driver/tests/test_tx_quiet_framing.py
+```
+
+The last check needs Icarus Verilog. These checks exercise mocked installer
+operations, extracted driver functions and RTL framing; they do not load a
+kernel module or establish physical timing.
 
 ## Udev rules
 

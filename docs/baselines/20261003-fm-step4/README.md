@@ -1,5 +1,10 @@
 # Step 4 physical follow-up — 2026-10-03
 
+Final status: **accepted by Jan on 2026-10-04**. The sections below preserve
+the investigation sequence, including superseded pending-acceptance notes.
+The unresolved 96.2 MHz reception issue remains separate from acceptance of
+the extraction; see the final entry.
+
 Jan reports NBFM TX/RX works as expected and mode, sample-rate and frequency
 switching are blocked while streaming. WBFM has clipping-like noise, worse at
 4 MS/s and less at 2 MS/s. Jan confirms the same Pi headphone-jack playback

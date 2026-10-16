@@ -1,12 +1,22 @@
 # Runtime profiling, broadcast decoding and CTCSS
 
+Artifact paths under `build/` below refer to local files on the original test
+host. Missing raw artifacts are not included in this checkout; committed
+reports preserve the recorded results and scope.
+
 Recorded 2026-10-10 against source revision `a4d1ef3`.
+Status reconciled 2026-10-16: the separate backend, controller and passive
+monitor, shared RX/TX diagnostics, parked TX workers and hardware-paced TX
+are implemented. NBFM and mono WBFM remain the receive modes. CTCSS, stereo,
+RDS and DAB+ decoding, complete source-continuity metadata and detailed stage
+latency profiling remain proposed work. See [current interfaces](audio-dsp-interfaces.md),
+[radio control](radio-control.md) and [TX qualification](tx-hardware-paced-design.md).
 
 The user reports no obvious gaps or pops during NBFM or WBFM listening. The
 next requested capabilities are WBFM stereo and RDS, an experimental DAB+
 receiver, and adjustable CTCSS for the NBFM transceiver. This document records
-a source review and a proposed development order; these features and the
-additional instrumentation are not implemented by this review.
+a source review and a proposed development order. The decoder features remain
+unimplemented; later instrumentation/control milestones are recorded below.
 
 ## Assessment and evidence
 
@@ -26,11 +36,15 @@ Kernel overflow diagnostics were not collected and RF continuity is unverified.
 These observations describe the instrumented capture, not a measured failure
 rate during the user's subsequent clean listening tests.
 
-See the [capture report](../build/iq-captures/20261010T212317+0200_hif_idle/README.md)
-and [XRUN snapshot](../build/iq-captures/20261010T212317+0200_hif_idle/application.log).
+See the capture report (`build/iq-captures/20261010T212317+0200_hif_idle/README.md`)
+and XRUN snapshot (`build/iq-captures/20261010T212317+0200_hif_idle/application.log`).
 Recording performs synchronous writes in the reader, so it can affect timing.
 
-## Instrumentation coverage and hidden issues
+## Original instrumentation review (2026-10-10)
+
+This table preserves the gaps identified at the recorded revision. The following
+implementation update distinguishes resolved counters/control work from the
+remaining continuity and latency work.
 
 | Area | Current coverage or weakness | Required improvement |
 | --- | --- | --- |
@@ -70,8 +84,10 @@ continues to publish them to the passive monitor. Counter-reset rate guards
 and corrected empty-FIFO diagnostics remain in menu 14.
 See [counter definitions and comparison procedure](passive-monitor.md#shared-rx-instrumentation-2026-10-11).
 The table above records the original review: source discontinuity metadata,
-kernel overflow telemetry, detailed stage latency, capture-side ALSA counters
-and coordinated fault recovery remain open work. A
+RX kernel overflow telemetry and detailed stage latency remain open work.
+Capture-side ALSA counters and TX fault shutdown have since been implemented;
+the backend also detects RX reader/worker faults. This does not establish a
+complete source-gap or automatic reacquisition policy. A
 [separate C receiver controller](radio-control.md) now implements RX
 start/stop, frequency, mode, sample rate and squelch commands. Commands use a
 second Unix socket and execute on the backend owner thread. Frequency/mode/rate
@@ -110,11 +126,12 @@ These historical results used the expanded menu-14 instrumentation display.
 A new comparison with the restored UI must report its undisplayed audio,
 reader and worker measurements as unavailable and measure CPU again.
 
-The user proposes operating TX/RX, mode, squelch, frequencies, sample rate and
-bandwidth in one terminal while watching menu-14-style instrumentation in
-another. This is feasible with one radio-owning process and separate local
-clients. It is a proposed application/control refactor; it does not require
-moving the DSP or IQ stream between processes.
+The original proposal was to operate TX/RX, mode, squelch, frequencies, sample
+rate and bandwidth in one terminal while watching instrumentation in another.
+The separate backend/controller/monitor now implements that split for the
+listed controls except arbitrary modem-bandwidth selection, which remains
+mode-profile driven. Menu 14 remains an independent frontend rather than a
+client of the new backend. DSP and IQ remain in the radio-owning process.
 
 ```mermaid
 flowchart LR
@@ -129,7 +146,7 @@ observers. Both clients can run in separate SSH terminals on the same Pi. A
 local Unix-domain socket suits the small command/status messages; see the
 [Linux IPC reference](https://www.man7.org/linux/man-pages/man7/unix.7.html).
 
-### Current coupling and reusable code
+### Menu coupling and further integration
 
 The RX/TX pipeline APIs already provide start/stop, lifecycle, frequency and
 statistics operations. However, `monitor_modem_status()` in
@@ -137,8 +154,9 @@ statistics operations. However, `monitor_modem_status()` in
 saved settings alongside ncurses, extensive hardware polling, rendering and
 keyboard handling. Frequency and squelch entry switch to a blocking prompt,
 which pauses the current monitor loop while the user types; streaming workers
-continue independently. Extract a UI-independent session with commands and
-synchronized snapshots, then adapt menu 14 to that interface.
+continue independently. The separate backend now provides serialized command
+handling and status snapshots. Adapting menu 14 to that session interface
+would be additional work.
 
 Commands must be serialized by one session owner. A socket reader should
 queue validated requests rather than reconfigure or destroy pipelines while
@@ -150,7 +168,7 @@ For the first version, preserve current stop-before-change rules for frequency,
 sample rate and receive mode. Live squelch flags and threshold updates can reuse
 the existing atomic controls. Bandwidth needs an explicit validated mode
 configuration: RX startup currently selects 160 kHz / Fs÷8 for NBFM and
-2 MHz / Fs÷2 for WBFM. A one-off register write would be overwritten on start.
+250 kHz / Fs÷8 for WBFM. A one-off register write would be overwritten on start.
 Keep modem bandwidth and software channel-filter bandwidth distinct, and show
 requested and effective settings in both clients.
 
@@ -184,7 +202,11 @@ orderly TX stop. RX persistence and explicit shutdown should be specified by
 the session interface. A persistent system daemon is optional; the first
 backend can be an ordinary manually launched process.
 
-### Incremental delivery and acceptance
+### Original incremental delivery proposal
+
+The backend and both clients are now available and have recorded physical
+acceptance. The menu-14 adaptation in step 1 remains unimplemented, and the
+broader profiling matrix below is still useful follow-up work.
 
 1. Extract the session/command/snapshot interface while retaining menu 14 as
    its frontend. Complete the missing loss, scheduling and worker-health

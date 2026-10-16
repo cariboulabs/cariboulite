@@ -18,12 +18,13 @@ CaribouLite is an affordable, educational, open-source SDR evaluation platform a
 </table>
 
 ## NOTE: No Support for RPI-5
-Due to the architectural changes in RPI5 - the new I/O controller called "RP1" chip, CaribouLite is not supported on RPI5. We assume that the reason is the removal of the SMI interface altogether from the external interfaces by Broadcomm's team.
-So, if you intend to use CaribouLite on RPI5 please don't - it won't work. Why was the SMI interface deprecated by Broadcomm (either from its hardware or kernel SW support)? Most probably due to the same reason this interface was not documented in the first place - no interest in supporting a high-speed external interface within the 40-pin connector.
+This checkout supports the existing BCM2835-family SMI transport and does not
+provide a Raspberry Pi 5 / RP1 transport. A 40-pin header alone does not establish
+compatibility. Pi 5 support would require a separate implementation and validation.
 
 A Pi 5 transport redesign was proposed historically, but no working implementation is established here. Display/camera connectors are separate from the 40-pin GPIO header. Feasibility and scope are tracked as [DOC-10](ROADMAP.md#documentation-validation-backlog).
 
-## Development fork status — 15 October 2026
+## Development fork status — 16 October 2026
 
 The accepted NBFM TX/RX, mono WBFM RX and FM refactoring work is now on
 `main`. Further receive modes are developed on `dev-additional-modes`, starting
@@ -32,20 +33,24 @@ with CW listening, then AM and SSB; these modes remain planned. See the
 and [interface reference](docs/audio-dsp-interfaces.md).
 
 The standalone backend/controller/monitor and hardware-paced TX are on
-`dev-passive-monitor`. This TX implementation has been tested on the Pi Zero
+`dev-passive-monitor` (TX merged at `37d2414`; installer updated at `953c1f0`).
+This TX implementation has been tested on the Pi Zero
 2 W and Pi 4; see the [Pi 4 validation record](docs/pi4-tx-validation-2026-10-15.md).
-The clone command below selects that branch and its pinned IIR submodule.
+The clone command below selects that branch and its pinned IIR submodule. These
+recorded transport and listening checks do not establish calibrated RF performance
+or support for every Pi/OS combination. Start with the [documentation index](docs/README.md)
+for current controls, DSP interfaces and the [hardware-free checks](docs/testing.md).
 
 # Getting Started & Installation
 
 For this development checkout, also read [additional notes](ADDITIONAL-README.md),
-the [documentation audit](docs/documentation-audit-2026-09-16.md), and the
+the [documentation audit](docs/documentation-audit-2026-10-16.md), and the
 [roadmap](ROADMAP.md). The historical installation recipe has not been freshly
 validated on every listed Pi/OS combination.
 Use the following steps to install the CaribouLite on your choice of RPI board
 1. Mount the CaribouLite on a **un-powered** RPI device using the 40-pin header.
 2. Power the RPI device, wait for it to finish boot sequence.
-3. Clone this repository into a local directory of your choise (in this case `~/projects`)
+3. Clone this repository into a local directory of your choice (in this case `~/projects`)
 ```
 mkdir -p ~/projects
 cd ~/projects
@@ -57,10 +62,14 @@ cd cariboulite
     ./install.sh
     ```
 
-The setup script **requires internet connection** and it follows the following automatic steps:
+The setup script **requires an internet connection**. Run it as your normal user;
+it invokes `sudo` for system changes. It first runs `git pull` and initializes
+submodules in the selected checkout, then performs these steps:
 1. **Dependencies** installation (apt)
-2. **Soapy API tools installation** (SoapySDR and SoapyRemote) - only if they are not currently present in the system. Installation from code.
-3. **Internal dependencies installation**
+2. **Soapy tools:** when `SoapySDRUtil` is absent from `PATH`, offers to build
+   SoapySDR and SoapyRemote from source. It does not separately detect SoapyRemote.
+3. **Internal dependencies installation** (using headers for the running kernel;
+   install `linux-headers-$(uname -r)` if its build tree is absent)
    1. Utilities and tools
    2. IIR DSP library
    3. SMI stream device module (kernel object) blob generation
@@ -86,7 +95,7 @@ Note: the user will be requested to enter their password during the installation
    that every application must run with sudo are outdated. The current broad
    udev rules and unprivileged behavior need validation (DOC-01).
 
-To compile the API library and SoapySDR API from code please click [here](/software/libcariboulite/README.md)
+For a manual API/SoapySDR build, see the [library build instructions](software/libcariboulite/README.md).
 
 # SMI Interface
 
@@ -182,7 +191,11 @@ The gaps are defined by the design constraints of the system and may not exist i
 - 65536 Total RAM bits
 - 67 I/Os, Temp: -40-100 degC
 
-<B>Applicable RPI models</B>: RPI_1(B+/A+), RPI_2B, RPI_Zero(Zero/W/WH), RPI_3(B/A+/B+), RPI_4B
+<B>Historical target RPI models</B>: RPI_1(B+/A+), RPI_2B,
+RPI_Zero(Zero/W/WH), RPI_3(B/A+/B+), RPI_4B, plus Zero 2 W.
+Recent branch validation covers **Zero 2 W and Pi 4**; the 64-bit installation
+recipe does not establish support for the original Zero/Zero W. See the
+[installation notes](ADDITIONAL-README.md) for recorded OS and test conditions.
 
 Parameter                  |  Sub-1GHz                    | Wide Tuning Channel
 ---------------------------|------------------------------|------------------------------------------------------------------

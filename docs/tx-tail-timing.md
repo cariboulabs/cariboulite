@@ -1,5 +1,17 @@
 # TX carrier release after the closing Quindar tone
 
+Current-source note (2026-10-16): the diagnosis and simulated delays below
+record the October 10 fix for the legacy paced TX path. Since October 15, the
+backend uses [hardware-paced TX](tx-hardware-paced-design.md): four application
+frames, two DMA periods of kernel admission, and a drain allowance derived from
+that limit plus the ring, an extra period and FPGA capacity (at least 25 frames).
+The terminal application selects this path when the new ABI is available and
+retains the legacy path on older drivers. Finite final-padding acceleration and
+complete-frame write acknowledgement remain shared. The numerical delays below
+are legacy simulation results, not measured carrier-release times for the
+current hardware-paced implementation. The latter requires the updated driver
+and verifies/restores its TX SMI timing separately.
+
 On 2026-10-10, the user reported satisfactory listening with the updated NBFM
 receiver, then noticed that TX remained keyed for roughly two seconds after
 the closing Quindar tone.
@@ -34,19 +46,21 @@ control its progress. Accepting the complete conservative padding still forces
 the end tone through the downstream buffers, while an empty FIFO can fill
 quickly rather than taking its maximum capacity duration.
 
-The opening cue, closing 250 ms tone, pre-tone silence, microphone and ordinary
-test tone retain their normal cadence. Each fast padding frame reanchors the
-producer clock; normal pacing resumes when the finite injection ends. Continued
-held silence remains paced. Stop still waits for the final complete frame's
-write acknowledgement before disabling SMI and the radio, with bounded failure
-paths and the existing hardware lock for TX-to-RX handoff.
+In the legacy path, the opening cue, closing 250 ms tone, pre-tone silence,
+microphone and ordinary test tone retain their normal cadence. Each fast padding
+frame reanchors the producer clock; normal pacing resumes when the finite
+injection ends. Continued held silence remains paced. Stop still waits for the
+final complete frame's write acknowledgement before disabling SMI and the radio,
+with bounded failure paths and the existing hardware lock for TX-to-RX handoff.
 
 Implementation:
 [tx_pipeline.c](../software/libcariboulite/src/tx_pipeline.c),
 [mod_worker.c](../software/libcariboulite/src/mod_worker.c), and the internal
 `tone_injector_t.fast_padding` flag in
 [tx_pipeline.h](../software/libcariboulite/src/tx_pipeline.h).
-No kernel or FPGA update is required.
+The original October 10 fix requires no kernel or FPGA update. Hardware-paced
+operation added later requires the new driver ABI; FPGA firmware remains the
+same.
 
 ## Validation
 
@@ -106,8 +120,8 @@ control is required to start TX, and a one-shot `--command 'tx start'` is
 refused before connection.
 
 Inactive TX producer and writer threads now park on condition variables.
-Parking changes their idle waiting behavior, while opening/closing cues,
-ordinary audio pacing, final fast silent padding and complete-frame write
-acknowledgement retain the established timing path. The simulated release
-times and user acceptance above describe their original validation; they
-are not new measurements of the controller/backend integration.
+Parking changes their idle waiting behavior. Opening/closing cues, final fast
+silent padding and complete-frame write acknowledgement retain the established
+shutdown path; ordinary hardware-paced production follows sink demand. The
+simulated release times and user acceptance above describe their original
+validation; they are not new measurements of the controller/backend integration.
