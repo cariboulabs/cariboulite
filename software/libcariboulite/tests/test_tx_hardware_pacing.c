@@ -24,7 +24,7 @@ static atomic_bool stalled_driver;
 static atomic_uint activations, timed_writes, legacy_writes, microphone_reads;
 static atomic_uint opening_cues, closing_cues;
 static atomic_uint profile_checks;
-static uint8_t pac_code, modem_state;
+static uint8_t pac_code, modem_state, txcutc, txdfe;
 static struct smi_settings driver_settings, original_settings;
 static unsigned settings_reads, settings_writes, timing_verifications;
 static unsigned primed_frames, first_refill_successes, session_mod_frames, stream_starts;
@@ -255,7 +255,8 @@ int __wrap_caribou_smi_write_timed(caribou_smi_st *smi, caribou_smi_channel_en c
     assert(driver.state == smi_stream_tx_channel);
     assert(timing_verified);
     assert(!current->tx_ctrl.verify_start_profile ||
-           atomic_load(&profile_checks) == 15);
+           atomic_load(&profile_checks) == 31);
+    assert(txcutc == 0x80 && txdfe == current->radio->tx_fs);
     if (!driver.accepted_bytes) {
         /* Zero-audio FM is a constant carrier at the retained oscillator
          * phase; its IQ need not be numerical zero or a fixed phase. */
@@ -294,16 +295,29 @@ int __wrap_cariboulite_radio_set_tx_power(cariboulite_radio_state_st *radio, int
     pac_code = 0x60 | (result < 0 ? 0 : result > 31 ? 31 : result);
     return 0;
 }
-int __wrap_cariboulite_radio_set_tx_samp_cutoff_flt(cariboulite_radio_state_st *radio, float rate)
+int __wrap_cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st *radio,
+                                             cariboulite_radio_tx_cut_off_en bandwidth)
 {
-    rf_rate = (unsigned)rate;
-    radio->tx_fs = rate == 1000000 ? cariboulite_radio_rx_sample_rate_1000khz
-                 : rate == 2000000 ? cariboulite_radio_rx_sample_rate_2000khz
-                 : cariboulite_radio_rx_sample_rate_4000khz;
+    assert_hardware_lock();
+    assert(!radio->active && modem_state == at86rf215_radio_state_cmd_trx_off);
+    assert(bandwidth == cariboulite_radio_tx_cut_off_80khz);
+    radio->tx_bw = bandwidth;
+    txcutc = 0x80 | bandwidth;
     return 0;
 }
-int __wrap_cariboulite_radio_get_tx_samp_cutoff_flt(cariboulite_radio_state_st *radio, float *rate)
-{ (void)radio; *rate = rf_rate; return 0; }
+int __wrap_cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st *radio,
+        cariboulite_radio_sample_rate_en rate, cariboulite_radio_f_cut_en cutoff)
+{
+    assert_hardware_lock();
+    assert(!radio->active && modem_state == at86rf215_radio_state_cmd_trx_off);
+    assert(cutoff == cariboulite_radio_rx_f_cut_0_25_half_fs);
+    rf_rate = rate == cariboulite_radio_rx_sample_rate_1000khz ? 1000000
+            : rate == cariboulite_radio_rx_sample_rate_2000khz ? 2000000 : 4000000;
+    radio->tx_fs = rate;
+    radio->tx_fcut = cutoff;
+    txdfe = (cutoff << 5) | rate;
+    return 0;
+}
 int __wrap_caribou_fpga_get_sys_ctrl_tx_sample_gap(caribou_fpga_st *fpga, uint8_t *gap)
 {
     (void)fpga;
@@ -315,15 +329,30 @@ int __wrap_at86rf215_read_buffer(at86rf215_st *modem, uint16_t address,
                                  uint8_t *value, uint8_t length)
 {
     (void)modem;
-    assert(length == 1 && current->radio->active && timing_verified);
+    assert(current->radio && (length == 1 || length == 2));
     bool low = current->radio->type == cariboulite_channel_s1g;
+    if (!current->radio->active) {
+        if (address == (low ? REG_RF09_STATE : REG_RF24_STATE)) {
+            assert(length == 1);
+            *value = modem_state;
+        } else {
+            assert(address == (low ? REG_RF09_TXCUTC : REG_RF24_TXCUTC) && length == 2);
+            value[0] = txcutc;
+            value[1] = txdfe;
+        }
+        return 0;
+    }
+    assert(length == 1 && timing_verified);
     if (address == (low ? REG_RF09_PAC : REG_RF24_PAC)) {
         atomic_fetch_or(&profile_checks, 1);
         *value = pac_code;
         if (start_failure == PROFILE_FAIL) *value ^= 1;
     } else if (address == (low ? REG_RF09_TXDFE : REG_RF24_TXDFE)) {
         atomic_fetch_or(&profile_checks, 2);
-        *value = (current->radio->tx_fcut << 5) | current->radio->tx_fs;
+        *value = txdfe;
+    } else if (address == (low ? REG_RF09_TXCUTC : REG_RF24_TXCUTC)) {
+        atomic_fetch_or(&profile_checks, 16);
+        *value = txcutc;
     } else {
         assert(address == (low ? REG_RF09_STATE : REG_RF24_STATE));
         atomic_fetch_or(&profile_checks, 4);
@@ -344,6 +373,7 @@ int __wrap_cariboulite_radio_activate_channel(cariboulite_radio_state_st *radio,
      * therefore already be configured at this earliest DMA transition. */
     __wrap_caribou_smi_set_driver_streaming_state(&radio->sys->smi, smi_stream_idle);
     if (active) {
+        assert(txcutc == 0x80 && txdfe == radio->tx_fs);
         assert(driver.fifo_limit_bytes == 2 * driver.period_bytes);
         assert(timing_verified);
         pthread_mutex_lock(&current->tx_ctrl.state_mutex);

@@ -676,9 +676,9 @@ class IQRegisterDisplayTests(unittest.TestCase):
         frame = screen.frames[0]
         displayed = "\n".join(frame[row] for row in sorted(frame))
         for line in ("RX application RF queue:", "TX application RF queue:",
-                     "RX audio FIFO: 12/24", "Playback: calls=91", "underruns=7",
-                     "RX reader: calls=110", "reader worker: alive=on",
-                     "demod worker: alive=on", "audio worker: alive=on",
+                     "RX audio FIFO: 12/24", "RX playback: calls=91", "underruns=7",
+                     "RX reader: calls=110", "RX reader worker: alive=on",
+                     "RX demod worker: alive=on", "RX audio worker: alive=on",
                      "errors(rt/fb/cpu/lock/query)=1/0/0/12/0",
                      "RF24 STATE=0x05 STATE=5(RX)", "FPGA:", "Loopback:",
                      "Queue timeouts are wait events; drops are application queue drops."):
@@ -740,13 +740,13 @@ class IQRegisterDisplayTests(unittest.TestCase):
                 self.assertEqual(client.run_interactive(screen, connection), 0)
                 text = "\n".join(screen.lines.values())
                 for expected in (f"state={state}", "TX writer: calls=151", "overruns=4",
-                                 "producer worker: alive=on", "writer worker: alive=on",
+                                 "TX producer worker: alive=on", "TX writer worker: alive=on",
                                  "TX driver: FIFO=32768/65536 bytes completed=777 underruns=3",
                                  "SMI write(set/strobe/hold/pace)=1/4/2/1",
                                  "TX audio: 1900/16384 frames target=1920 correction=+4033.5 ppm",
-                                 "capture worker: alive=on", "hardware paced=on",
+                                 "TX capture worker: alive=on", "hardware paced=on",
                                  "TX fault: none", "RF24 STATE=0x06", "FPGA:", "Loopback:",
-                                 "TX rate=2,000,000 S/s source=mic dev=+/-2500 Hz",
+                                 "TX sample rate=2,000,000 S/s TX source=mic TX deviation=+/-2500 Hz",
                                  "Queue timeouts are wait events; drops are application queue drops."):
                     self.assertIn(expected, text)
                 for name in self.TX_COMMON:
@@ -767,11 +767,11 @@ class IQRegisterDisplayTests(unittest.TestCase):
         for expected in (
                 "RX audio FIFO: 12/24  min/max=0/17  puts/gets=100/88",
                 "drops=3  put/get timeouts=3/2  shutdown put/get=1/2",
-                "Playback: calls=91  frames(req/written)=48000/47000",
+                "RX playback: calls=91  frames(req/written)=48000/47000",
                 "partial=4  would_block=5  zero=6", "underruns=7",
                 "recovery(attempt/ok/fail)=8/6/2  errors=9  last_error=-32",
                 "RX reader: calls=110  samples=1000000  short/zero reads=3/2",
-                "errors=4  last_error=-5", "created=on last_error=-5",
+                "errors=4  last_error=-5", "created=on last_err=-5",
                 "sched=SCHED_OTHER/0 req=80",
                 "cpu(req/applied)=2/2 affinity=2",
                 "errors(rt/fb/cpu/lock/query)=1/0/0/12/0 mlock=on"):
@@ -799,14 +799,14 @@ class IQRegisterDisplayTests(unittest.TestCase):
                                  "partial/zero writes=7/3 would_block=4 errors=2 last_error=-11",
                                  "TX capture: calls=42 frames=20160 overruns=4",
                                  "recovery(attempt/ok/fail)=7/6/1 errors=2 last_error=-32",
-                                 "producer worker: alive=on created=on last_error=-5",
-                                 "writer worker: alive=on created=on last_error=-5",
+                                 "TX producer worker: alive=on created=on last_err=-5",
+                                 "TX writer worker: alive=on created=on last_err=-5",
                                  "sched=SCHED_OTHER/0 req=60", "affinity=0",
                                  "errors(rt/fb/cpu/lock/query)=1/0/0/12/0 mlock=on",
-                                 "TX fault: none", "TX rate=2,000,000 S/s source=mic dev=+/-2500 Hz",
-                                 "TX 430.225000 MHz actual=unavailable", "power(req/est)=-12/unavailable dBm"):
+                                 "TX fault: none", "TX sample rate=2,000,000 S/s TX source=mic TX deviation=+/-2500 Hz",
+                                 "TX frequency=430.225000 MHz  TX actual frequency=unavailable", "power(req/est)=-12/unavailable dBm"):
                     self.assertIn(expected, text)
-                for absent in ("RX audio FIFO:", "Playback:", "RX reader:", "reader worker:"):
+                for absent in ("RX audio FIFO:", "RX playback:", "RX reader:", "RX reader worker:"):
                     self.assertNotIn(absent, text)
                 self.assertEqual(len(client._format_tx_instrumentation(value["tx"], value["control"])), 8)
                 self.assertTrue(all(len(line) <= 159 for line in lines if " worker:" in line))
@@ -822,7 +822,7 @@ class IQRegisterDisplayTests(unittest.TestCase):
         self.assertEqual(len(lines), 8)
         text = "\n".join(lines)
         for expected in ("hardware paced=unknown", "TX driver: unavailable", "TX audio: unavailable",
-                         "capture worker: alive=unknown created=unknown", "SMI write=unavailable"):
+                         "TX capture worker: alive=unknown created=unknown", "SMI write=unavailable"):
             self.assertIn(expected, text)
         for absent in ("FIFO=32768", "completed=0", "underruns=0", "correction=+0.0"):
             self.assertNotIn(absent, text)
@@ -841,7 +841,7 @@ class IQRegisterDisplayTests(unittest.TestCase):
         for expected in ("running=unknown", "TX writer: calls=unavailable samples=unavailable",
                          "partial/zero writes=unavailable/unavailable", "errors=unavailable",
                          "TX capture: unavailable", "ALSA capture counters unavailable",
-                         "producer worker: alive=unknown created=unknown",
+                         "TX producer worker: alive=unknown created=unknown",
                          "sched=unavailable/unavailable", "TX fault: writer failure"):
             self.assertIn(expected, text)
         for absent in ("overruns=0", "overruns=4", "calls=0", "errors=0", "\x1b"):
@@ -859,7 +859,7 @@ class IQRegisterDisplayTests(unittest.TestCase):
 
     def test_optional_rx_instrumentation_does_not_invent_data_for_older_publishers(self):
         text = "\n".join(client.format_snapshot(snapshot(rx={"running": True})))
-        for label in ("RX audio FIFO:", "Playback:", "RX reader:", " worker:"):
+        for label in ("RX audio FIFO:", "RX playback:", "RX reader:", " worker:"):
             with self.subTest(label=label):
                 self.assertNotIn(label, text)
 
@@ -877,12 +877,12 @@ class IQRegisterDisplayTests(unittest.TestCase):
         new_rx["workers"]["audio"]["scheduling"] = []
         text = "\n".join(client.format_snapshot(snapshot(rx=new_rx)))
         for expected in ("RX audio FIFO: unavailable/unavailable", "drops=unavailable",
-                         "Playback: unavailable", "ALSA counters unavailable",
+                         "RX playback: unavailable", "ALSA counters unavailable",
                          "RX reader: calls=unavailable", "short/zero reads=unavailable/unavailable",
-                         "reader worker: alive=off created=on last_error=unavailable",
+                         "RX reader worker: alive=off created=on last_err=unavailable",
                          "sched=unavailable/unavailable",
                          "req=80", "errors(rt/fb/cpu/lock/query)=1/0/0/12/3",
-                         "demod worker: alive=unknown created=unknown",
+                         "RX demod worker: alive=unknown created=unknown",
                          "affinity=unavailable"):
             with self.subTest(expected=expected):
                 self.assertIn(expected, text)
@@ -1041,7 +1041,7 @@ class PassiveClientTests(unittest.TestCase):
         self.assertEqual(client.queue_rates(old, new), {})
         self.assertEqual(client.queue_rates(dict(old, control={"pipeline_generation": 2}), new),
                          {"rx": (100, 100)})
-        self.assertIn("config=4  pipeline=2", "\n".join(client.format_snapshot(new)))
+        self.assertIn("config=4  RX pipeline=2", "\n".join(client.format_snapshot(new)))
 
     def test_tx_generation_prevents_rates_across_transmitter_restart(self):
         old = snapshot(monotonic_s=10, control={"tx_pipeline_generation": 1},
@@ -1056,21 +1056,46 @@ class PassiveClientTests(unittest.TestCase):
         # incomplete publisher temporarily leaves the other field unchanged.
         self.assertEqual(client.queue_rates(dict(same, control={"tx_pipeline_generation": 1}), new), {})
         self.assertEqual(client.queue_rates(dict(same, tx=old["tx"]), new), {})
+        self.assertIn("TX pipeline=2", "\n".join(client.format_snapshot(new)))
         reset = snapshot(3, monotonic_s=14, control={"tx_pipeline_generation": 2},
                          tx={"generation": 2, "queue": {"puts": 1, "gets": 0}})
         self.assertEqual(client.queue_rates(new, reset), {})
 
     def test_formatting_marks_stale_cache_and_safe_labels(self):
-        value = snapshot(monotonic_s=10, hardware_monotonic_s=8,
-                         channel="HiF\x1b[2J\n", config={"sample_rate_hz": 1000000})
+        value = snapshot(monotonic_s=10, hardware_monotonic_s=8, rx_mode="NBFM",
+                         channel="HiF\x1b[2J\n", config={"sample_rate_hz": 1000000,
+                         "rx_frequency_hz": 430125000, "tx_frequency_hz": 430225000})
         lines = client.format_snapshot(value, now=12)
         text = "\n".join(lines)
         self.assertIn("STALE", text)
         self.assertIn("Snapshot age=2.0s", text)
         self.assertIn("hardware age=4.0s", text)
-        self.assertIn("1,000,000 S/s", text)
+        self.assertIn("RX mode=NBFM  RX sample rate=1,000,000 S/s", text)
+        self.assertIn("RX frequency=430.125000 MHz  TX frequency=430.225000 MHz", text)
+        self.assertIn("RX squelch:", text)
+        self.assertIn("RX noise detector:", text)
         self.assertNotIn("\x1b", text)
         self.assertIn("simulated", text.lower())
+
+    def test_tx_analog_filter_cutoff_uses_published_hz_value(self):
+        value = snapshot(config={"rx_bandwidth_hz": 160000,
+                                 "tx_bandwidth_hz": 1000000})
+        text = "\n".join(client.format_snapshot(value))
+        self.assertIn("RX bandwidth=160 kHz  TX bandwidth=1000 kHz", text)
+        self.assertNotIn("TX analog filter cutoff=", text)
+
+    def test_unavailable_or_older_tx_cutoff_stays_unknown(self):
+        for config in ({}, {"tx_bandwidth_hz": None}):
+            with self.subTest(config=config):
+                value = snapshot(channel="RF24", config=config,
+                                 hardware={"rf24": {"valid": True,
+                                                    "registers": {"TXCUTC": 11}}})
+                text = "\n".join(client.format_snapshot(value, register_view="tx"))
+                self.assertIn("TX bandwidth=unknown", text)
+                # Raw register rows remain useful with older publishers, but
+                # the summary must use the supplied config measurement.
+                self.assertIn("LPFCUT=11(1000kHz)", text)
+                self.assertNotIn("TX analog filter cutoff=", text)
 
     def test_agc_bit_fields_and_target(self):
         decoded = client.decode_agc(0xFD, 0xF5, 0x10)

@@ -9,7 +9,7 @@ src = root/'software/libcariboulite/src'
 wraps = [
     'alsa_source_open', 'alsa_source_reset', 'alsa_source_get_stats',
     'cariboulite_radio_set_frequency', 'cariboulite_radio_set_tx_power',
-    'cariboulite_radio_set_tx_samp_cutoff_flt', 'cariboulite_radio_get_tx_samp_cutoff_flt',
+    'cariboulite_radio_set_tx_bandwidth', 'cariboulite_radio_set_tx_samp_cutoff',
     'caribou_fpga_get_sys_ctrl_tx_sample_gap', 'caribou_fpga_set_io_ctrl_mode',
     'cariboulite_radio_activate_channel', 'caribou_smi_set_driver_streaming_state',
     'caribou_smi_get_native_batch_samples', 'caribou_smi_write_samples',

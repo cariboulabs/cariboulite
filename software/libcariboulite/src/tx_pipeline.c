@@ -365,6 +365,60 @@ static int tx_restore_write_timing(tx_pipeline_t* p)
     return 0;
 }
 
+static cariboulite_radio_sample_rate_en tx_rate_code(unsigned rate)
+{
+    switch (rate) {
+        case 1000000: return cariboulite_radio_rx_sample_rate_1000khz;
+        case 2000000: return cariboulite_radio_rx_sample_rate_2000khz;
+        case 4000000: return cariboulite_radio_rx_sample_rate_4000khz;
+        default: return 0;
+    }
+}
+
+/* NBFM uses the narrowest modem TX filters: analog 80 kHz and digital Fs/8.
+ * The lifecycle owner holds HW_LOCK with both workers gated. Tuning can leave
+ * TXPREP active, so confirm TRXOFF before configuring the frontend. */
+static int tx_configure_nbfm_profile(tx_pipeline_t* p, int requested_power)
+{
+    cariboulite_radio_state_st* radio = p->radio;
+    const bool low = radio->type == cariboulite_channel_s1g;
+    const unsigned rate = (unsigned)p->tx_ctrl.frame_samples * 100;
+    const cariboulite_radio_sample_rate_en rate_code = tx_rate_code(rate);
+    if (!rate_code) return -1;
+    uint8_t state = 0;
+    if (cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, false) != 0 ||
+        at86rf215_read_buffer(&p->sys->modem, low ? REG_RF09_STATE : REG_RF24_STATE,
+                             &state, 1) != 0 ||
+        (state & 7) != at86rf215_radio_state_cmd_trx_off) {
+        fprintf(stderr, "[tx_pipeline] NBFM TX idle verification failed\n");
+        return -1;
+    }
+    int bandwidth_error = cariboulite_radio_set_tx_bandwidth(radio,
+        cariboulite_radio_tx_cut_off_80khz);
+    int rate_error = cariboulite_radio_set_tx_samp_cutoff(radio, rate_code,
+        cariboulite_radio_rx_f_cut_0_25_half_fs);
+    /* Both filter setters rewrite PAC using an uncalibrated power mapping.
+     * Restore requested calibrated power, including after a setter failure.
+     * These APIs retain the existing 16 us PA ramp and disable direct mode. */
+    int power_error = cariboulite_radio_set_tx_power(radio, requested_power);
+    if (bandwidth_error || rate_error || power_error) {
+        fprintf(stderr, "[tx_pipeline] NBFM TX filter setup failed\n");
+        return -1;
+    }
+    uint8_t filters[2] = {0}, gap = 255;
+    int filter_error = at86rf215_read_buffer(&p->sys->modem,
+        low ? REG_RF09_TXCUTC : REG_RF24_TXCUTC, filters, sizeof(filters));
+    int gap_error = caribou_fpga_get_sys_ctrl_tx_sample_gap(&p->sys->fpga, &gap);
+    if (filter_error || gap_error || (filters[0] & 0xcf) != 0x80 ||
+        filters[1] != (unsigned)rate_code || gap != 4000000 / rate - 1) {
+        fprintf(stderr, "[tx_pipeline] NBFM TX filter/rate/gap verification failed: "
+            "TXCUTC=0x%02X TXDFE=0x%02X expected=0x%02X rc=%d gap=%u rc=%d\n",
+            filters[0], filters[1], (unsigned)rate_code, filter_error, gap, gap_error);
+        return -1;
+    }
+    return 0;
+}
+
 int tx_pipeline_init(tx_pipeline_t* p, sys_st* sys,
                      cariboulite_radio_state_st* radio,
                      const tx_params_t* par)
@@ -492,22 +546,11 @@ int tx_pipeline_init(tx_pipeline_t* p, sys_st* sys,
     HW_UNLOCK();
     if (tune_error || power_error) goto fail;
 
-    // Configure and verify rate before creating threads or allowing TX.
-    uint8_t gap = 255;
-    float actual_fs = 0;
+    // Configure and verify filters/rate before creating threads or allowing TX.
     HW_LOCK();
-    int rate_error = cariboulite_radio_set_tx_samp_cutoff_flt(radio, rf_fs);
-    int rate_read_error = cariboulite_radio_get_tx_samp_cutoff_flt(radio, &actual_fs);
-    int gap_error = caribou_fpga_get_sys_ctrl_tx_sample_gap(&sys->fpga, &gap);
-    /* Rate/bandwidth setters rewrite PAC, and the getter replaces the cached
-     * requested dBm with an inverse estimate. Restore the calibrated setting. */
-    power_error = cariboulite_radio_set_tx_power(radio, par->tx_power_dbm);
+    int profile_error = tx_configure_nbfm_profile(p, par->tx_power_dbm);
     HW_UNLOCK();
-    if (rate_error || rate_read_error || gap_error || power_error ||
-        actual_fs != rf_fs || gap != 4000000 / rf_fs - 1) {
-        fprintf(stderr, "[tx_pipeline] rate/gap verification failed\n");
-        goto fail;
-    }
+    if (profile_error) goto fail;
 
     // Prepare DSP/Writer threads (running idle until .start)
     p->dsp_ctrl.active = true;
@@ -551,28 +594,31 @@ static int tx_verify_start_profile(tx_pipeline_t* p, int requested_power)
     if (power_code < 0) power_code = 0;
     if (power_code > 31) power_code = 31;
     unsigned rate = (unsigned)p->tx_ctrl.frame_samples * 100;
-    unsigned rate_code = rate == 1000000 ? at86rf215_radio_rx_sample_rate_1000khz
-                       : rate == 2000000 ? at86rf215_radio_rx_sample_rate_2000khz
-                       : at86rf215_radio_rx_sample_rate_4000khz;
-    uint8_t pac = 0, txdfe = 0, state = 0, gap = 255;
+    unsigned rate_code = tx_rate_code(rate);
+    uint8_t pac = 0, txcutc = 0, txdfe = 0, state = 0, gap = 255;
     int pac_error = at86rf215_read_buffer(&p->sys->modem,
         low ? REG_RF09_PAC : REG_RF24_PAC, &pac, 1);
+    int cutoff_error = at86rf215_read_buffer(&p->sys->modem,
+        low ? REG_RF09_TXCUTC : REG_RF24_TXCUTC, &txcutc, 1);
     int rate_error = at86rf215_read_buffer(&p->sys->modem,
         low ? REG_RF09_TXDFE : REG_RF24_TXDFE, &txdfe, 1);
     int state_error = at86rf215_read_buffer(&p->sys->modem,
         low ? REG_RF09_STATE : REG_RF24_STATE, &state, 1);
     int gap_error = caribou_fpga_get_sys_ctrl_tx_sample_gap(&p->sys->fpga, &gap);
-    unsigned expected_dfe = (((unsigned)p->radio->tx_fcut & 7) << 5) | rate_code;
-    bool mismatch = pac_error || rate_error || state_error || gap_error
-        || (pac & 0x7f) != (0x60 | power_code) || txdfe != expected_dfe
+    unsigned expected_dfe = rate_code; /* RCUT=0 (Fs/8), DM=0. */
+    bool mismatch = pac_error || cutoff_error || rate_error || state_error || gap_error
+        || (pac & 0x7f) != (0x60 | power_code) || (txcutc & 0xcf) != 0x80
+        || txdfe != expected_dfe
         || gap != 4000000 / rate - 1
         || ((state & 7) != at86rf215_radio_state_cmd_tx_prep
             && (state & 7) != at86rf215_radio_state_cmd_tx);
     if (mismatch)
         fprintf(stderr, "[tx_pipeline] start profile mismatch: "
-            "PAC=0x%02X expected=0x%02X rc=%d TXDFE=0x%02X expected=0x%02X rc=%d "
+            "PAC=0x%02X expected=0x%02X rc=%d TXCUTC=0x%02X expected=0x80 rc=%d "
+            "TXDFE=0x%02X expected=0x%02X rc=%d "
             "STATE=0x%02X rc=%d gap=%u expected=%u rc=%d\n",
-            pac, 0x60 | power_code, pac_error, txdfe, expected_dfe, rate_error,
+            pac, 0x60 | power_code, pac_error, txcutc, cutoff_error,
+            txdfe, expected_dfe, rate_error,
             state, state_error, gap, 4000000 / rate - 1, gap_error);
     return mismatch ? -1 : 0;
 }
@@ -737,8 +783,12 @@ int tx_pipeline_start(tx_pipeline_t* p)
     int timing_error = admission_error ? admission_error : tx_apply_write_timing(p);
     if (timing_error && p->tx_ctrl.hardware_paced)
         fprintf(stderr, "[tx_pipeline] SMI TX write-profile setup failed: %d\n", timing_error);
-    int fpga_error = caribou_fpga_set_io_ctrl_mode(&p->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
-    int radio_error = timing_error || fpga_error ? -1 :
+    /* A retained allocation can outlive RX or generic radio configuration.
+     * Reapply the NBFM profile on every start while the sample gate is shut. */
+    int filter_error = timing_error ? -1 : tx_configure_nbfm_profile(p, requested_power);
+    int fpga_error = filter_error ? -1 :
+        caribou_fpga_set_io_ctrl_mode(&p->sys->fpga, 0, caribou_fpga_io_ctrl_rfm_tx_lowpass);
+    int radio_error = timing_error || filter_error || fpga_error ? -1 :
         cariboulite_radio_activate_channel(p->radio, cariboulite_channel_dir_tx, true);
     /* Activation's bandwidth setter uses an uncalibrated PAC mapping. Restore
      * the requested calibrated power before the first opening-cue sample. */
@@ -751,10 +801,10 @@ int tx_pipeline_start(tx_pipeline_t* p)
         struct timespec ts = { .tv_sec = 0, .tv_nsec = 30*1000*1000 };
         nanosleep(&ts, NULL);
     }
-    int stream_error = fpga_error || radio_error || power_error || profile_error || timing_error
+    int stream_error = fpga_error || radio_error || power_error || profile_error || timing_error || filter_error
         ? -1 : caribou_smi_set_driver_streaming_state(&p->sys->smi, smi_stream_tx_channel);
     HW_UNLOCK();
-    if (fpga_error || radio_error || power_error || profile_error || timing_error || stream_error
+    if (fpga_error || radio_error || power_error || profile_error || timing_error || filter_error || stream_error
         || atomic_load(&p->tx_ctrl.abort_requested)) {
         tx_pipeline_abort(p);
         return -3;

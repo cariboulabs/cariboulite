@@ -57,6 +57,12 @@ int modem_snapshot_refresh(modem_snapshot *snapshot, at86rf215_st *modem,
                            at86rf215_rf_channel_en channel,
                            pthread_mutex_t *hardware_mutex);
 
+/* Decode the active radio's cached TXCUTC analog filter cutoff in Hz.
+ * Returns 0 for an unavailable byte, reserved cutoff, or invalid cache.
+ * This performs no hardware access and does not estimate occupied bandwidth.
+ */
+int modem_snapshot_tx_analog_cutoff_hz(const modem_snapshot *snapshot);
+
 /* Write the JSON hardware object (without the enclosing "hardware" key).
  * Returns the number of bytes written excluding NUL, or -1 on failure.
  * This only formats the cache and performs no hardware access.

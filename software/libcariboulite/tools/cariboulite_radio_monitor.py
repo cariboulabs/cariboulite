@@ -157,7 +157,7 @@ def _format_worker(name, value):
     return (
         f"{name} worker: alive={_on(worker.get('alive'))}"
         f" created={_on(worker.get('created'))}"
-        f" last_error={_integer(worker.get('last_error'))}"
+        f" last_err={_integer(worker.get('last_error'))}"
         f" sched={policy}/{priority}"
         f" req={_integer(scheduling.get('requested_priority'))}"
         f" cpu(req/applied)={_integer(scheduling.get('requested_cpu'))}/"
@@ -184,7 +184,7 @@ def _format_rx_instrumentation(rx):
         playback = _mapping(rx["playback"])
         if playback.get("valid") is True:
             lines += [
-                f"Playback: calls={_counter(playback, 'write_calls')}"
+                f"RX playback: calls={_counter(playback, 'write_calls')}"
                 f"  frames(req/written)={_counter(playback, 'frames_requested')}/"
                 f"{_counter(playback, 'frames_written')}"
                 f"  partial={_counter(playback, 'partial_writes')}"
@@ -197,7 +197,7 @@ def _format_rx_instrumentation(rx):
                 f"  last_error={_integer(playback.get('last_error'))}",
             ]
         else:
-            lines += ["Playback: unavailable", "  ALSA counters unavailable"]
+            lines += ["RX playback: unavailable", "  ALSA counters unavailable"]
     if "reader" in rx:
         reader = _mapping(rx["reader"])
         lines.append(
@@ -210,7 +210,7 @@ def _format_rx_instrumentation(rx):
     if "workers" in rx:
         workers = _mapping(rx["workers"])
         for name in ("reader", "demod", "audio"):
-            lines.append(_format_worker(name, workers.get(name)))
+            lines.append(_format_worker(f"RX {name}", workers.get(name)))
     return lines
 
 
@@ -282,7 +282,7 @@ def _format_tx_instrumentation(tx, control):
         lines.extend(["TX capture: unavailable (ALSA capture counters unavailable)"] if extended else
                      ["TX capture: unavailable", "  ALSA capture counters unavailable"])
     for name in (("producer", "writer", "capture") if extended else ("producer", "writer")):
-        lines.append(_format_worker(name, workers.get(name)))
+        lines.append(_format_worker(f"TX {name}", workers.get(name)))
     fault = tx.get("fault")
     fault_label = "none" if "fault" in tx and fault is None else (
         _label(fault) if isinstance(fault, str) and fault else "unavailable")
@@ -306,14 +306,14 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="auto"):
     state = control.get("state") or snapshot.get("state")
     tx_active = state in ("TX_STARTING", "TX", "TX_STOPPING")
     effective_register_view = ("tx" if tx_active else "rx") if register_view == "auto" else register_view
-    tx_settings = (f"  TX rate={_formatted(config.get('tx_sample_rate_hz'), ',.0f')} S/s"
-                   f" source={_label(config.get('tx_source'))}"
-                   f" dev=+/-{_formatted(config.get('tx_deviation_hz'), 'g')} Hz") if (
+    tx_settings = (f"  TX sample rate={_formatted(config.get('tx_sample_rate_hz'), ',.0f')} S/s"
+                   f" TX source={_label(config.get('tx_source'))}"
+                   f" TX deviation=+/-{_formatted(config.get('tx_deviation_hz'), 'g')} Hz") if (
                        "tx_sample_rate_hz" in config) else ""
     tx_actual = config.get("tx_actual_frequency_hz")
     tx_frequency = _frequency(config.get("tx_frequency_hz"))
     if "tx_actual_frequency_hz" in config:
-        tx_frequency += " actual=" + (_frequency(tx_actual) if _number(tx_actual) and tx_actual > 0 else "unavailable")
+        tx_frequency += "  TX actual frequency=" + (_frequency(tx_actual) if _number(tx_actual) and tx_actual > 0 else "unavailable")
     tx_power = _formatted(config.get("tx_power_dbm"), "g")
     if "tx_actual_power_dbm" in config:
         tx_power = f"power(req/est)={tx_power}/{_formatted(config.get('tx_actual_power_dbm'), 'g', 'unavailable')} dBm"
@@ -323,16 +323,18 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="auto"):
     inactive_tx_fault = f"  TX fault={_label(tx_fault)}" if (
         not tx_active and isinstance(tx_fault, str) and tx_fault) else ""
     generations = (f"  config={_label(control.get('config_generation'))}"
-                   f"  pipeline={_label(control.get('pipeline_generation'))}") if control else ""
+                   f"  RX pipeline={_label(control.get('pipeline_generation'))}") if control else ""
+    if "tx_pipeline_generation" in control:
+        generations += f"  TX pipeline={_label(control.get('tx_pipeline_generation'))}"
     rates = rates or {}
     noise_valid = noise.get("valid") is True
     lines = [
         f"Data source: {source_label(snapshot)}",
         f"{_label(snapshot.get('channel'))}  state={_label(state)}{inactive_tx_fault}"
-        f"  mode={_label(snapshot.get('rx_mode'))}"
-        f"  sample rate={_formatted(config.get('sample_rate_hz'), ',.0f')} S/s",
-        f"RX {_frequency(config.get('rx_frequency_hz'))}"
-        f"  TX {tx_frequency}  TX {tx_power}",
+        f"  RX mode={_label(snapshot.get('rx_mode'))}"
+        f"  RX sample rate={_formatted(config.get('sample_rate_hz'), ',.0f')} S/s",
+        f"RX frequency={_frequency(config.get('rx_frequency_hz'))}"
+        f"  TX frequency={tx_frequency}  TX {tx_power}",
         f"RX bandwidth={_bandwidth(config.get('rx_bandwidth_hz'))}"
         f"  TX bandwidth={_bandwidth(config.get('tx_bandwidth_hz'))}{tx_settings}",
         f"Session={_label(snapshot.get('session'))}"
@@ -361,10 +363,10 @@ def format_snapshot(snapshot, now=None, rates=None, register_view="auto"):
     lines.extend(_format_tx_instrumentation(tx, control) if tx_active else _format_rx_instrumentation(rx))
     lines += [
         "",
-        f"Squelch: noise={_on(rx.get('noise_enabled'))}"
+        f"RX squelch: noise={_on(rx.get('noise_enabled'))}"
         f"  carrier={_on(rx.get('carrier_enabled'))}"
         f"  audio gate={_on(rx.get('gate_open'))}",
-        f"Noise detector: valid={_on(noise.get('valid'))}"
+        f"RX noise detector: valid={_on(noise.get('valid'))}"
         f"  open={_on(noise.get('detector_open') if noise_valid else None)}"
         f"  RMS={_formatted(noise.get('rms'), '.4f') if noise_valid else 'unavailable'}"
         f"  open/close={_formatted(noise.get('open_rms'), '.4f')}/"

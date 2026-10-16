@@ -260,7 +260,7 @@ status. Neither mode sends requests to the publisher.
 ## Display and protocol
 
 The client displays the source identity, RX/TX state, frequencies, sample
-rate, bandwidths, application RF queue counters, squelch/noise status, RSSI,
+rate, RX/TX bandwidths, application RF queue counters, squelch/noise status, RSSI,
 selected RF registers, FPGA status and loopback
 status when supplied. Shared RF registers appear once, followed by only the
 selected RF09 or RF24 radio. Each register has one row containing its name,
@@ -271,8 +271,8 @@ register follow datasheet order from the highest bit to the lowest. For example:
 ```text
 RF24 AGCC=0x01 AGCI=0(FILT) AVGS=0(8) RST=0 FRZS=0 FRZC=0 EN=1
 RF24 AGCS=0x15 TGT=0(-21dBFS) GCW=21/21(MAX)
-RF24 TXDFE=0x84 RCUT=4(1.0*Fs/2) DM=0 SR=4(1000kHz)
-RF24 TXCUTC=0x40 PARAMP=1(8us) LPFCUT=0(80kHz)
+RF24 TXDFE=0x04 RCUT=0(0.25*Fs/2) DM=0 SR=4(1000kHz)
+RF24 TXCUTC=0x80 PARAMP=2(16us) LPFCUT=0(80kHz)
 RF24 PAC=0x60 PACUR=3(FULL) TXPWR=0(MIN)
 ```
 
@@ -280,6 +280,31 @@ The raw byte is retained even when some bits are reserved. Reserved selections
 are labelled, and fields are not decoded from missing or invalid bytes.
 Snapshot and cached hardware ages are
 separate; readings older than one second are marked stale.
+
+Direction-specific summary fields and diagnostics use explicit `RX` and `TX`
+labels, including frequency, sample rate, bandwidth, pipeline generations,
+and workers.
+
+The **TX bandwidth** summary reports the analog filter cutoff using
+`config.tx_bandwidth_hz`, keeping the existing JSON field name for compatibility.
+The backend decodes it from
+the active RF09 or RF24 radio's cached `TXCUTC.LPFCUT` readback, without adding
+hardware reads. A 1 MHz cutoff appears as `1000 kHz`. This is the analog
+filter setting; NBFM's occupied signal bandwidth depends on deviation and
+audio content and is not measured by this field. Missing or unavailable
+readbacks, reserved cutoff selections, and older snapshots without the field
+display `unknown`. The hardware age applies to this cached reading too.
+
+The NBFM TX pipeline selects the 80 kHz analog cutoff when initialized or
+started, so the summary reports `TX bandwidth=80 kHz` after that profile is
+applied and sampled. The live backend initializes TX on the first `tx start`;
+before then, an idle radio may still report the initial `1000 kHz` cutoff.
+The display always follows the cached hardware readback, not the saved TX
+settings. The separate digital cutoff, shown by `TXDFE.RCUT=0`,
+is `fS / 8`: 125, 250 or 500 kHz at 1, 2 or 4 MS/s. The 16 µs PA ramp remains
+unchanged. These readbacks confirm the programmed settings, not a measured RF
+spectrum or achieved deviation. RX retains its 160 kHz NBFM and 250 kHz WBFM
+analog profiles. See [TX filter setup and checks](radio-control.md#half-duplex-nbfm-transmission).
 
 The compact RX view contains these 16 rows, in this order:
 

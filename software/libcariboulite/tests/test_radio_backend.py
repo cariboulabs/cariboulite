@@ -90,6 +90,7 @@ class RadioBackendTests(unittest.TestCase):
         self.assertIn("SIMULATED DATA", client.source_label(snapshot))
         self.assertEqual(snapshot["state"], "DRY_RUN")
         self.assertEqual(snapshot["channel"], channel)
+        self.assertIsNone(snapshot["config"]["tx_bandwidth_hz"])
         self.assertIs(snapshot["rx"]["running"], False)
         self.assertIsNone(snapshot["rx"]["queue"])
         self.assertIsNone(snapshot["rx"]["audio_queue"])
@@ -346,10 +347,10 @@ int main(int argc, char **argv) {
         self.assert_transport_only(snapshot)
         display = "\n".join(client.format_snapshot(snapshot))
         self.assertIn("RX audio FIFO: unavailable/unavailable", display)
-        self.assertIn("Playback: unavailable", display)
+        self.assertIn("RX playback: unavailable", display)
         self.assertIn("RX reader: calls=unavailable", display)
         for name in ("reader", "demod", "audio"):
-            self.assertIn(f"{name} worker: alive=off created=off", display)
+            self.assertIn(f"RX {name} worker: alive=off created=off", display)
         self.assertNotIn("sched=SCHED_OTHER/0", display,
                          "Dry-run guessed a policy for workers it did not create")
 
@@ -483,6 +484,28 @@ int main(void) {
     size = make_snapshot(packet, sizeof(packet), &options, "fixture", UINT64_MAX,
         "RX", &pipeline, &stats, &modem, &publisher, NULL, &txstats);
     assert(size > 0); puts(packet);
+
+    // The displayed cutoff comes from the captured active radio, including
+    // while idle. Ramp-time bits must not change LPFCUT decoding; missing
+    // samples and reserved LPFCUT values cannot become guessed defaults.
+    size_t txcut_index = MODEM_SNAPSHOT_RADIO_COUNT;
+    for (size_t i = 0; i < MODEM_SNAPSHOT_RADIO_COUNT; ++i)
+        if (!strcmp(modem_snapshot_radio_names[i], "TXCUTC")) txcut_index = i;
+    assert(txcut_index < MODEM_SNAPSHOT_RADIO_COUNT);
+    const at86rf215_rf_channel_en channels[] = {
+        at86rf215_rf_channel_900mhz, at86rf215_rf_channel_2400mhz};
+    const int16_t txcut_values[] = {0x8b, 0xc3, 0x4c, -1};
+    options.playback = "fixture";
+    for (size_t ch = 0; ch < sizeof(channels) / sizeof(channels[0]); ++ch) {
+        options.channel = ch == 0 ? "RF09" : "RF24";
+        for (size_t value = 0; value < sizeof(txcut_values) / sizeof(txcut_values[0]); ++value) {
+            modem_snapshot_init(&modem, channels[ch]);
+            modem.radio[txcut_index] = txcut_values[value];
+            size = make_snapshot(packet, sizeof(packet), &options, "fixture", 1,
+                "IDLE", NULL, NULL, &modem, &publisher, NULL, NULL);
+            assert(size > 0); puts(packet);
+        }
+    }
     return 0;
 }
 ''')
@@ -498,7 +521,7 @@ int main(void) {
         self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
         result = subprocess.run([str(binary)], check=True, capture_output=True, timeout=3)
         packets = result.stdout.splitlines()
-        self.assertEqual(len(packets), 3)
+        self.assertEqual(len(packets), 11)
         snapshot = client.parse_snapshot(packets[0])
         self.assertEqual(snapshot["source"]["kind"], "live")
         rx = snapshot["rx"]
@@ -542,6 +565,19 @@ int main(void) {
         for packet in packets:
             self.assertLessEqual(len(packet), client.MAX_PACKET_BYTES)
             json.loads(packet)
+        for packet in packets[:3]:
+            self.assertIsNone(client.parse_snapshot(packet)["config"]["tx_bandwidth_hz"])
+        cutoff_cases = ((0x8b, 1000000), (0xc3, 160000), (0x4c, None), (None, None))
+        for channel_index, channel in enumerate(("RF09", "RF24")):
+            for case_index, (raw, cutoff_hz) in enumerate(cutoff_cases):
+                with self.subTest(channel=channel, txcut=raw):
+                    captured = client.parse_snapshot(packets[3 + channel_index * 4 + case_index])
+                    self.assertEqual(captured["channel"], channel)
+                    self.assertEqual(captured["state"], "IDLE")
+                    self.assertEqual(captured["config"]["tx_bandwidth_hz"], cutoff_hz)
+                    self.assertEqual(captured["hardware"][channel.lower()]["registers"]["TXCUTC"], raw)
+                    inactive = "rf24" if channel == "RF09" else "rf09"
+                    self.assertIs(captured["hardware"][inactive]["valid"], False)
         extreme = client.parse_snapshot(packets[1])
         self.assertEqual(extreme["config"]["playback"], "\x01" * 255)
         self.assertEqual(extreme["rx"]["playback"]["underruns"], 2 ** 64 - 1)

@@ -193,7 +193,8 @@ int __wrap_at86rf215_read_buffer(at86rf215_st* dev, uint16_t reg, uint8_t* value
     bool state=reg==REG_RF09_STATE || reg==REG_RF24_STATE;
     bool filter=reg==REG_RF09_RXBWC || reg==REG_RF24_RXBWC;
     bool agc=reg==REG_RF09_AGCC || reg==REG_RF24_AGCC;
-    assert((state && length==1) || ((filter || agc) && length==2));
+    bool txfilter=reg==REG_RF09_TXCUTC || reg==REG_RF24_TXCUTC;
+    assert((state && length==1) || ((filter || agc || txfilter) && length==2));
     if ((state && modem_fault==MODEM_STATE_READ) ||
         (filter && modem_fault==MODEM_FILTER_READ) ||
         (agc && modem_fault==MODEM_AGC_READ)) return -1;
@@ -278,10 +279,24 @@ static float test_tx_rate = 4000000;
 static cariboulite_radio_state_st* rate_tx_radio;
 static int forced_tx_gap = -1;
 static unsigned tx_gap_reads;
-int __wrap_cariboulite_radio_set_tx_samp_cutoff_flt(cariboulite_radio_state_st* r, float fs) {
-    test_tx_rate=fs; rate_tx_radio=r; return 0;
+int __wrap_cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* r,
+                                            cariboulite_radio_tx_cut_off_en bw) {
+    assert(!r->active && modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
+    assert(bw==cariboulite_radio_tx_cut_off_80khz);
+    r->tx_bw=bw;
+    modem_regs[modem_reg(r,REG_RF09_TXCUTC)]=0x80|(uint8_t)bw;
+    return 0;
 }
-int __wrap_cariboulite_radio_get_tx_samp_cutoff_flt(cariboulite_radio_state_st* r, float* fs) { *fs=test_tx_rate; return 0; }
+int __wrap_cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* r,
+        cariboulite_radio_sample_rate_en fs, cariboulite_radio_f_cut_en cutoff) {
+    assert(!r->active && modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
+    assert(cutoff==cariboulite_radio_rx_f_cut_0_25_half_fs);
+    test_tx_rate=fs==cariboulite_radio_rx_sample_rate_1000khz ? 1000000 :
+        fs==cariboulite_radio_rx_sample_rate_2000khz ? 2000000 : 4000000;
+    r->tx_fs=fs; r->tx_fcut=cutoff; rate_tx_radio=r;
+    modem_regs[modem_reg(r,REG_RF09_TXDFE)]=((uint8_t)cutoff<<5)|(uint8_t)fs;
+    return 0;
+}
 int __wrap_caribou_fpga_get_sys_ctrl_tx_sample_gap(caribou_fpga_st* f, uint8_t* gap) {
     ++tx_gap_reads;
     *gap=forced_tx_gap<0 ? 4000000/test_tx_rate-1 : forced_tx_gap;

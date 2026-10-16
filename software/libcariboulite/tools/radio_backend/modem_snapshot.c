@@ -124,6 +124,21 @@ int modem_snapshot_refresh(modem_snapshot *snapshot, at86rf215_st *modem,
     return snapshot->failed_blocks == 0 ? 0 : 1;
 }
 
+int modem_snapshot_tx_analog_cutoff_hz(const modem_snapshot *snapshot)
+{
+    static const int cutoff_hz[] = {
+        80000, 100000, 125000, 160000, 200000, 250000,
+        315000, 400000, 500000, 625000, 800000, 1000000,
+    };
+    if (snapshot == NULL || !valid_channel(snapshot->channel))
+        return 0;
+    const int txcutc = snapshot->radio[19]; /* TXCUTC in modem_snapshot_radio_names. */
+    if (txcutc < 0 || txcutc > 255)
+        return 0;
+    const unsigned cutoff = (unsigned)txcutc & 0x0f;
+    return cutoff < sizeof(cutoff_hz) / sizeof(cutoff_hz[0]) ? cutoff_hz[cutoff] : 0;
+}
+
 typedef struct {
     char *buffer;
     size_t capacity;

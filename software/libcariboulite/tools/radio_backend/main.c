@@ -1457,6 +1457,10 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
     const double actual_freq = o->actual_rx_frequency ? o->actual_rx_frequency
         : radio ? radio->actual_rf_frequency : o->frequency;
     char tx_actual_freq[64] = "null", tx_actual_power[48] = "null";
+    char tx_bandwidth[32] = "null";
+    const int tx_analog_cutoff_hz = modem_snapshot_tx_analog_cutoff_hz(modem);
+    if (tx_analog_cutoff_hz > 0)
+        snprintf(tx_bandwidth, sizeof(tx_bandwidth), "%d", tx_analog_cutoff_hz);
     if (o->actual_tx_frequency > 0) snprintf(tx_actual_freq, sizeof(tx_actual_freq), "%.3f", o->actual_tx_frequency);
     if (o->actual_tx_power != INT_MIN) snprintf(tx_actual_power, sizeof(tx_actual_power), "%d", o->actual_tx_power);
     int result = snprintf(out, capacity,
@@ -1465,7 +1469,7 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         "\"source\":{\"kind\":\"%s\",\"label\":\"C radio backend%s\"},"
         "\"owner_pid\":%ld,\"channel\":\"%s\",\"state\":\"%s\",\"rx_mode\":\"%s\","
         "\"config\":{\"sample_rate_hz\":%.0f,\"rx_frequency_hz\":%.3f,"
-        "\"requested_frequency_hz\":%.3f,\"rx_bandwidth_hz\":%.0f,"
+        "\"requested_frequency_hz\":%.3f,\"rx_bandwidth_hz\":%.0f,\"tx_bandwidth_hz\":%s,"
         "\"playback\":%s,\"pcm_gain\":%.3f,\"deemphasis_us\":%.3f,\"rx_deviation_hz\":%.3f,"
         "\"tx_frequency_hz\":%.3f,\"tx_actual_frequency_hz\":%s,\"tx_power_dbm\":%d,"
         "\"tx_actual_power_dbm\":%s,\"tx_sample_rate_hz\":%u,\"tx_source\":\"%s\","
@@ -1487,7 +1491,7 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         session, sequence, clock_seconds(CLOCK_MONOTONIC), clock_seconds(CLOCK_REALTIME),
         modem->monotonic_s, o->dry_run ? "simulated" : "live", o->dry_run ? " transport-only dry run" : "",
         (long)getpid(), o->channel, state, o->rx.mode == AUDIO_DEMOD_NBFM ? "NBFM" : "WBFM mono",
-        (double)o->rx.fs_rf, actual_freq, o->frequency, bandwidth, playback,
+        (double)o->rx.fs_rf, actual_freq, o->frequency, bandwidth, tx_bandwidth, playback,
         (double)o->rx.pcm_gain, o->rx.deemph_tau_s * 1e6,
         (double)(o->rx.nbfm_deviation_hz != 0 ? o->rx.nbfm_deviation_hz : NBFM_DEFAULT_DEVIATION_HZ),
         o->tx.freq_hz, tx_actual_freq, o->tx.tx_power_dbm, tx_actual_power,

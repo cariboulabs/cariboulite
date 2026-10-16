@@ -499,10 +499,25 @@ frequency, rate and pipeline generations.
 Backend launch options select the saved TX defaults: `--tx-frequency HZ`,
 `--tx-mode nbfm`, `--tx-power DBM`, `--tx-sample-rate HZ`, `--tx-source mic|tone`,
 `--tx-microphone DEVICE` and `--tx-deviation HZ` (default `2500`). These do not
-start transmission. The backend rejects
+start transmission.
+
+NBFM TX uses the modem's narrowest transmit filters: `TXCUTC.LPFCUT=0`
+selects the 80 kHz analog cutoff and `TXDFE.RCUT=0` selects the digital cutoff
+`fS / 8`. At 1, 2 and 4 MS/s, the digital cutoffs are 125, 250 and 500 kHz,
+respectively. The existing 16 µs PA ramp is preserved. The shared TX pipeline
+applies and checks this profile before creating workers, reapplies it on
+retained-pipeline starts, and restores the requested calibrated driver power
+setting after filter/rate configuration. The backend also verifies the
+filters after modem activation, before releasing opening-cue IQ. RX continues
+to use its separate 160 kHz NBFM or 250 kHz WBFM analog profile.
+This shared pipeline profile also applies to `test_app` NBFM TX.
+These are programmed filter settings; RF spectrum and achieved deviation
+have not been measured for this profile.
+
+The backend rejects
 TX when the modem's IQ loopback bit is set and rechecks it before keying.
 Before sending opening-cue IQ, it restores the calibrated driver power
-setting after activation and verifies PAC/current reduction, TXDFE, FPGA
+setting after activation and verifies PAC/current reduction, TXDFE, TXCUTC, FPGA
 sample gap and the armed modem state. Completion additionally requires
 modem TX state and positive SMI writer progress. This check waits up to
 500 ms after the opening cue, allowing temporary `TXPREP`/`TRANSITION`

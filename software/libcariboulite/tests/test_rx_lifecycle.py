@@ -12,7 +12,7 @@ with tempfile.TemporaryDirectory(prefix='rx-lifecycle-') as directory:
     wraps = ['at86rf215_read_buffer','at86rf215_write_buffer','audio_demod_create',
              'audio_demod_set_nbfm_deviation','alsa_sink_open',
              'cariboulite_radio_set_rx_bandwidth','cariboulite_radio_set_rx_samp_cutoff',
-             'cariboulite_radio_set_rx_sample_rate_flt','cariboulite_radio_set_tx_samp_cutoff_flt','cariboulite_radio_get_tx_samp_cutoff_flt','caribou_fpga_get_sys_ctrl_tx_sample_gap','cariboulite_radio_set_tx_power','malloc','calloc','free','cariboulite_radio_read_samples','pthread_create','pthread_cancel','pthread_join',
+             'cariboulite_radio_set_rx_sample_rate_flt','cariboulite_radio_set_tx_bandwidth','cariboulite_radio_set_tx_samp_cutoff','caribou_fpga_get_sys_ctrl_tx_sample_gap','cariboulite_radio_set_tx_power','malloc','calloc','free','cariboulite_radio_read_samples','pthread_create','pthread_cancel','pthread_join',
              'cariboulite_radio_set_frequency','cariboulite_radio_activate_channel',
              'caribou_smi_set_driver_streaming_state','caribou_smi_get_native_batch_samples',
              'ioctl','caribou_fpga_set_io_ctrl_mode']

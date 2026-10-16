@@ -111,6 +111,7 @@ static void check_channel(at86rf215_rf_channel_en channel)
     for (unsigned i = 0; i < MODEM_SNAPSHOT_RADIO_COUNT; ++i)
         assert(cache.radio[i] == -1);
     assert(cache.polls == 0 && cache.spi_transactions == 0 && cache.monotonic_s == 0);
+    assert(modem_snapshot_tx_analog_cutoff_hz(&cache) == 0);
 
     configure_mock(channel, -1, 1);
     assert(modem_snapshot_refresh(&cache, &device, channel, &hardware_mutex) == 0);
@@ -119,6 +120,8 @@ static void check_channel(at86rf215_rf_channel_en channel)
     assert(cache.monotonic_s > 0 && cache.read_duration_s >= 0);
     check_values(&cache, -1);
     check_mutex_released();
+    assert(modem_snapshot_tx_analog_cutoff_hz(&cache) == 125000);
+    assert(calls == 6); /* Decoding the cache must not perform another SPI read. */
 
     int length = modem_snapshot_hardware_json(&cache, json, sizeof json);
     assert(length > 0 && (size_t)length == strlen(json));
@@ -149,6 +152,8 @@ static void check_channel(at86rf215_rf_channel_en channel)
         assert(cache.spi_failures == (uint64_t)(failed + 1));
         check_values(&cache, failed);
         check_mutex_released();
+        assert(modem_snapshot_tx_analog_cutoff_hz(&cache) == (failed == 2 ? 0 : 125000));
+        assert(calls == 6);
         assert(modem_snapshot_hardware_json(&cache, json, sizeof json) > 0);
         assert(strstr(json, "\"failed_blocks\":1") != NULL);
     }
@@ -157,6 +162,35 @@ static void check_channel(at86rf215_rf_channel_en channel)
     configure_mock(channel, -1, 0);
     assert(modem_snapshot_refresh(&cache, &device, channel, NULL) == 0);
     check_values(&cache, -1);
+}
+
+static void check_tx_analog_cutoff(void)
+{
+    static const int expected[] = {
+        80000, 100000, 125000, 160000, 200000, 250000,
+        315000, 400000, 500000, 625000, 800000, 1000000, 0, 0, 0, 0,
+    };
+    const at86rf215_rf_channel_en channels[] = {
+        at86rf215_rf_channel_900mhz, at86rf215_rf_channel_2400mhz,
+    };
+    assert(strcmp(modem_snapshot_radio_names[19], "TXCUTC") == 0);
+    for (unsigned channel = 0; channel < sizeof(channels) / sizeof(channels[0]); ++channel) {
+        modem_snapshot cache;
+        modem_snapshot_init(&cache, channels[channel]);
+        for (int byte = 0; byte <= 255; ++byte) {
+            cache.radio[19] = byte;
+            assert(modem_snapshot_tx_analog_cutoff_hz(&cache) == expected[byte & 15]);
+        }
+        const int invalid[] = {-32768, -1, 256, 32767};
+        for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+            cache.radio[19] = invalid[i];
+            assert(modem_snapshot_tx_analog_cutoff_hz(&cache) == 0);
+        }
+        cache.radio[19] = 11;
+        cache.channel = (at86rf215_rf_channel_en)9;
+        assert(modem_snapshot_tx_analog_cutoff_hz(&cache) == 0);
+    }
+    assert(modem_snapshot_tx_analog_cutoff_hz(NULL) == 0);
 }
 
 static void check_invalid_arguments_and_bounds(void)
@@ -205,6 +239,7 @@ int main(void)
 {
     check_channel(at86rf215_rf_channel_2400mhz);
     check_channel(at86rf215_rf_channel_900mhz);
+    check_tx_analog_cutoff();
     check_invalid_arguments_and_bounds();
     assert(pthread_mutex_destroy(&hardware_mutex) == 0);
     puts("modem snapshot tests passed (mock SPI, no hardware access)");

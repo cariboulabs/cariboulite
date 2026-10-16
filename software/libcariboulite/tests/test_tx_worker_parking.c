@@ -21,12 +21,20 @@ static atomic_bool missing_mic;
 static atomic_bool fail_writer;
 static atomic_uint start_tone_frames, stop_tone_frames;
 static unsigned current_rate;
-static uint8_t pac_code, modem_state;
+static uint8_t pac_code, modem_state, txcutc, txdfe;
+static unsigned bandwidth_sets, cutoff_sets, filter_readbacks;
 static atomic_uint profile_checks;
 enum { PROFILE_OK, PAC_READ_FAIL, DFE_READ_FAIL, STATE_READ_FAIL,
        GAP_READ_FAIL, WRONG_POWER, WRONG_CURRENT, WRONG_RATE, WRONG_CUTOFF,
-       DIRECT_MODULATION, WRONG_STATE, WRONG_GAP, POWER_SET_FAIL, OWNER_ABORT, STREAM_FAIL };
+       DIRECT_MODULATION, WRONG_STATE, WRONG_GAP, POWER_SET_FAIL, OWNER_ABORT, STREAM_FAIL,
+       CUTOFF_READ_FAIL, WRONG_ANALOG_CUTOFF, WRONG_RAMP };
 static unsigned profile_failure;
+enum { FILTER_OK, DEACTIVATE_FAIL, IDLE_READ_FAIL, NOT_IDLE, BANDWIDTH_SET_FAIL,
+       CUTOFF_SET_FAIL, FILTER_READ_FAIL, FILTER_ANALOG_MISMATCH,
+       FILTER_DIGITAL_MISMATCH, FILTER_RAMP_MISMATCH, FILTER_DIRECT_MODULATION,
+       FILTER_RATE_MISMATCH, FILTER_GAP_READ_FAIL, FILTER_GAP_MISMATCH,
+       FILTER_POWER_FAIL };
+static unsigned filter_failure;
 static unsigned expected_power_code(const cariboulite_radio_state_st* radio, int power)
 {
     float x = power;
@@ -88,26 +96,38 @@ int __wrap_cariboulite_radio_set_frequency(cariboulite_radio_state_st* radio,
 int __wrap_cariboulite_radio_set_tx_power(cariboulite_radio_state_st* radio, int power)
 {
     if (radio->active && profile_failure == POWER_SET_FAIL) return -1;
+    if (!radio->active && filter_failure == FILTER_POWER_FAIL) return -1;
     radio->tx_power = power;
     pac_code = 0x60 | expected_power_code(radio, power);
     if (radio->active && profile_failure == WRONG_POWER) pac_code ^= 1;
     if (radio->active && profile_failure == WRONG_CURRENT) pac_code &= ~0x20;
     return 0;
 }
-int __wrap_cariboulite_radio_set_tx_samp_cutoff_flt(cariboulite_radio_state_st* radio, float rate)
+int __wrap_cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* radio,
+                                             cariboulite_radio_tx_cut_off_en bandwidth)
 {
-    current_rate = (unsigned)rate;
-    radio->tx_fs = rate == 1000000 ? cariboulite_radio_rx_sample_rate_1000khz
-                 : rate == 2000000 ? cariboulite_radio_rx_sample_rate_2000khz
-                 : cariboulite_radio_rx_sample_rate_4000khz;
+    assert(!radio->active && modem_state == at86rf215_radio_state_cmd_trx_off);
+    assert(bandwidth == cariboulite_radio_tx_cut_off_80khz);
+    ++bandwidth_sets;
+    if (filter_failure == BANDWIDTH_SET_FAIL) return -1;
+    radio->tx_bw = bandwidth;
+    txcutc = 0x80 | bandwidth;
     pac_code = 0x60 | ((18 + radio->tx_power) & 31);
     return 0;
 }
-int __wrap_cariboulite_radio_get_tx_samp_cutoff_flt(cariboulite_radio_state_st* radio, float* rate)
+int __wrap_cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* radio,
+        cariboulite_radio_sample_rate_en rate, cariboulite_radio_f_cut_en cutoff)
 {
-    /* The real getter also replaces the requested power with an estimate. */
-    radio->tx_power = 3;
-    *rate = current_rate;
+    assert(!radio->active && modem_state == at86rf215_radio_state_cmd_trx_off);
+    assert(cutoff == cariboulite_radio_rx_f_cut_0_25_half_fs);
+    ++cutoff_sets;
+    if (filter_failure == CUTOFF_SET_FAIL) return -1;
+    current_rate = rate == cariboulite_radio_rx_sample_rate_1000khz ? 1000000
+                 : rate == cariboulite_radio_rx_sample_rate_2000khz ? 2000000 : 4000000;
+    radio->tx_fs = rate;
+    radio->tx_fcut = cutoff;
+    txdfe = (cutoff << 5) | rate;
+    pac_code = 0x60 | ((18 + radio->tx_power) & 31);
     return 0;
 }
 int __wrap_caribou_fpga_get_sys_ctrl_tx_sample_gap(caribou_fpga_st* fpga, uint8_t* gap)
@@ -116,16 +136,38 @@ int __wrap_caribou_fpga_get_sys_ctrl_tx_sample_gap(caribou_fpga_st* fpga, uint8_
     bool active = current->radio && current->radio->active;
     if (active) atomic_fetch_or(&profile_checks, 8);
     if (active && profile_failure == GAP_READ_FAIL) return -1;
+    if (!active && filter_failure == FILTER_GAP_READ_FAIL) return -1;
     *gap = 4000000 / current_rate - 1;
     if (active && profile_failure == WRONG_GAP) *gap ^= 1;
+    if (!active && filter_failure == FILTER_GAP_MISMATCH) *gap ^= 1;
     return 0;
 }
 int __wrap_at86rf215_read_buffer(at86rf215_st* modem, uint16_t address,
                                  uint8_t* value, uint8_t length)
 {
     (void)modem;
-    assert(length == 1 && current->radio->active);
+    assert(current->radio && (length == 1 || length == 2));
     bool low = current->radio->type == cariboulite_channel_s1g;
+    if (!current->radio->active) {
+        if (address == (low ? REG_RF09_STATE : REG_RF24_STATE)) {
+            assert(length == 1);
+            if (filter_failure == IDLE_READ_FAIL) return -1;
+            *value = filter_failure == NOT_IDLE ? at86rf215_radio_state_cmd_rx : modem_state;
+        } else {
+            assert(address == (low ? REG_RF09_TXCUTC : REG_RF24_TXCUTC) && length == 2);
+            ++filter_readbacks;
+            if (filter_failure == FILTER_READ_FAIL) return -1;
+            value[0] = txcutc;
+            value[1] = txdfe;
+            if (filter_failure == FILTER_ANALOG_MISMATCH) value[0] ^= 1;
+            if (filter_failure == FILTER_RAMP_MISMATCH) value[0] ^= 0x40;
+            if (filter_failure == FILTER_DIGITAL_MISMATCH) value[1] ^= 0x20;
+            if (filter_failure == FILTER_DIRECT_MODULATION) value[1] ^= 0x10;
+            if (filter_failure == FILTER_RATE_MISMATCH) value[1] ^= 1;
+        }
+        return 0;
+    }
+    assert(length == 1);
     if (address == (low ? REG_RF09_PAC : REG_RF24_PAC)) {
         atomic_fetch_or(&profile_checks, 1);
         if (profile_failure == PAC_READ_FAIL) return -1;
@@ -133,10 +175,20 @@ int __wrap_at86rf215_read_buffer(at86rf215_st* modem, uint16_t address,
     } else if (address == (low ? REG_RF09_TXDFE : REG_RF24_TXDFE)) {
         atomic_fetch_or(&profile_checks, 2);
         if (profile_failure == DFE_READ_FAIL) return -1;
-        *value = (current->radio->tx_fcut << 5) | current->radio->tx_fs;
+        *value = txdfe;
         if (profile_failure == WRONG_RATE) *value ^= 1;
-        if (profile_failure == WRONG_CUTOFF) *value ^= 0x20;
+        if (profile_failure == WRONG_CUTOFF) {
+            /* A matching stale cache must not redefine the required profile. */
+            current->radio->tx_fcut = cariboulite_radio_rx_f_cut_0_375_half_fs;
+            *value ^= 0x20;
+        }
         if (profile_failure == DIRECT_MODULATION) *value |= 0x10;
+    } else if (address == (low ? REG_RF09_TXCUTC : REG_RF24_TXCUTC)) {
+        atomic_fetch_or(&profile_checks, 32);
+        if (profile_failure == CUTOFF_READ_FAIL) return -1;
+        *value = txcutc;
+        if (profile_failure == WRONG_ANALOG_CUTOFF) *value ^= 1;
+        if (profile_failure == WRONG_RAMP) *value ^= 0x40;
     } else {
         assert(address == (low ? REG_RF09_STATE : REG_RF24_STATE));
         atomic_fetch_or(&profile_checks, 4);
@@ -164,8 +216,10 @@ int __wrap_cariboulite_radio_activate_channel(cariboulite_radio_state_st* radio,
                                               bool active)
 {
     assert(direction == cariboulite_channel_dir_tx);
+    if (!active && filter_failure == DEACTIVATE_FAIL) return -1;
     radio->active = active;
     if (active) {
+        assert(txcutc == 0x80 && txdfe == radio->tx_fs);
         pac_code = 0x60 | ((18 + radio->tx_power) & 31);
         modem_state = at86rf215_radio_state_cmd_tx_prep;
         atomic_store(&profile_checks, 0);
@@ -186,7 +240,8 @@ int __wrap_caribou_smi_write_samples(caribou_smi_st* smi, caribou_smi_channel_en
                                      const caribou_smi_sample_complex_int16* samples, int count)
 {
     (void)smi; (void)channel; (void)samples;
-    if (current->tx_ctrl.verify_start_profile) assert(atomic_load(&profile_checks) == 31);
+    if (current->tx_ctrl.verify_start_profile) assert(atomic_load(&profile_checks) == 63);
+    assert(txcutc == 0x80 && txdfe == current->radio->tx_fs);
     assert((pac_code & 31) == expected_power_code(current->radio, -3));
     assert(current->radio->tx_power == -3);
     modem_state = at86rf215_radio_state_cmd_tx;
@@ -251,12 +306,14 @@ static void assert_parked(tx_pipeline_t* p, bool healthy)
 
 int main(void)
 {
-    alarm(25);
+    alarm(45);
     int pipe_fds[2]; assert(pipe(pipe_fds) == 0);
     sys_st sys = {0};
     sys.smi.filedesc = pipe_fds[1];
     sys.radio_high.sys = &sys;
     sys.radio_high.type = cariboulite_channel_hif;
+    sys.radio_low.sys = &sys;
+    sys.radio_low.type = cariboulite_channel_s1g;
     tx_pipeline_t pipeline;
     current = &pipeline;
     tx_params_t params = {.freq_hz = 430125000, .rf_fs = 1000000,
@@ -303,11 +360,73 @@ int main(void)
     tx_pipeline_destroy(&pipeline);
     assert(!pipeline.inited && !pipeline.tx_ctrl.gate_initialized);
     atomic_store(&missing_mic, false);
+    /* Both radios and every supported rate receive the fixed analog/digital
+     * profile before workers exist, and a retained start repairs stale hardware
+     * and cached settings before activation. Calibrated power survives setters
+     * that use the driver's older, uncalibrated PAC mapping. */
+    for (unsigned channel = 0; channel < 2; ++channel) {
+        cariboulite_radio_state_st *radio = channel ? &sys.radio_high : &sys.radio_low;
+        for (unsigned rate = 1000000; rate <= 4000000; rate *= 2) {
+            params.rf_fs = rate;
+            unsigned bw_before = bandwidth_sets, cutoff_before = cutoff_sets;
+            unsigned reads_before = filter_readbacks;
+            assert(!tx_pipeline_init(&pipeline, &sys, radio, &params));
+            assert(bandwidth_sets == bw_before + 1 && cutoff_sets == cutoff_before + 1);
+            assert(filter_readbacks == reads_before + 1);
+            assert(txcutc == 0x80 && txdfe == radio->tx_fs);
+            assert(radio->tx_power == -3 && (pac_code & 31) == expected_power_code(radio, -3));
+            for (unsigned repeat = 0; repeat < 2; ++repeat) {
+                radio->tx_bw = cariboulite_radio_tx_cut_off_1000khz;
+                radio->tx_fcut = cariboulite_radio_rx_f_cut_half_fs;
+                txcutc = 0x8b;
+                txdfe = 0x80 | radio->tx_fs;
+                assert(!tx_pipeline_start(&pipeline));
+                assert(bandwidth_sets == bw_before + 2 + repeat);
+                assert(cutoff_sets == cutoff_before + 2 + repeat);
+                assert(filter_readbacks == reads_before + 2 + repeat);
+                assert(radio->tx_bw == cariboulite_radio_tx_cut_off_80khz);
+                assert(radio->tx_fcut == cariboulite_radio_rx_f_cut_0_25_half_fs);
+                assert(txcutc == 0x80 && txdfe == radio->tx_fs);
+                assert(radio->tx_power == -3);
+                tx_pipeline_stop(&pipeline);
+            }
+            tx_pipeline_destroy(&pipeline);
+        }
+    }
+    /* Setters or checked readback can fail during construction or before a
+     * retained restart. Neither path may submit IQ; failed construction never
+     * creates workers, while failed restart leaves healthy workers parked. */
+    for (unsigned failure = DEACTIVATE_FAIL; failure <= FILTER_POWER_FAIL; ++failure) {
+        params.rf_fs = failure % 3 == 0 ? 1000000 : failure % 3 == 1 ? 2000000 : 4000000;
+        cariboulite_radio_state_st *radio = failure % 2 ? &sys.radio_high : &sys.radio_low;
+        unsigned writes = atomic_load(&accepted_writes);
+        unsigned cues = atomic_load(&start_tone_frames);
+        filter_failure = failure;
+        assert(tx_pipeline_init(&pipeline, &sys, radio, &params) < 0);
+        assert(!pipeline.inited && !pipeline.dsp_thread_created && !pipeline.tx_thread_created);
+        assert(atomic_load(&accepted_writes) == writes && atomic_load(&start_tone_frames) == cues);
+        filter_failure = FILTER_OK;
+        assert(!tx_pipeline_init(&pipeline, &sys, radio, &params));
+        for (unsigned i = 0; i < 100 && !tx_pipeline_healthy(&pipeline); ++i) delay_ms(1);
+        filter_failure = failure;
+        assert(tx_pipeline_start(&pipeline) < 0);
+        assert(!radio->active && !tx_pipeline_running(&pipeline));
+        /* A repeated deactivation failure is also a shutdown error; all
+         * other injected faults leave the retained workers reusable. */
+        assert(tx_pipeline_healthy(&pipeline) == (failure != DEACTIVATE_FAIL));
+        assert(atomic_load(&pipeline.dsp_ctrl.alive) && atomic_load(&pipeline.tx_ctrl.alive));
+        assert(!pipeline.tx_ctrl.gate_enabled);
+        assert(atomic_load(&accepted_writes) == writes && atomic_load(&start_tone_frames) == cues);
+        if (failure != FILTER_POWER_FAIL)
+            assert((pac_code & 31) == expected_power_code(radio, -3));
+        filter_failure = FILTER_OK;
+        tx_pipeline_destroy(&pipeline);
+    }
     /* Read errors and mismatched hardware reject start before a cue frame or
      * SMI write. Failed starts fully unkey and retain parked healthy workers. */
     params.pacing_mode = TX_PACING_AUTO;
     unsigned initial_cues = atomic_load(&start_tone_frames);
-    for (unsigned failure = PAC_READ_FAIL; failure <= STREAM_FAIL; ++failure) {
+    for (unsigned failure = PAC_READ_FAIL; failure <= WRONG_RAMP; ++failure) {
         profile_failure = failure;
         params.rf_fs = failure % 3 == 0 ? 1000000 : failure % 3 == 1 ? 2000000 : 4000000;
         sys.radio_high.type = failure % 2 ? cariboulite_channel_hif : cariboulite_channel_s1g;
@@ -338,7 +457,8 @@ int main(void)
     tx_pipeline_destroy(&pipeline);
     close(pipe_fds[0]); close(pipe_fds[1]);
     puts("PASS: retained TX workers park without wakeups/read/write/DSP; repeated "
-         "Quindar sessions, calibrated pre-cue profile, readback failures before "
+         "Quindar sessions, both channels/all rates/restarts at 80 kHz/Fs/8, "
+         "16 us ramp and calibrated power, setup/readback failures before "
          "any IQ write, preserved owner cancellation, live diagnostics, "
          "reader-owned resets, unchanged legacy SMI timing and bounded abort");
 }
