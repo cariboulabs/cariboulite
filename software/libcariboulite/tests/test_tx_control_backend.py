@@ -125,6 +125,124 @@ class TxControlBackendTests(unittest.TestCase):
         snapshot = self.snapshot_matching(self.connect(self.status_path))
         self.assert_simulated(snapshot)
 
+    def test_joint_settings_change_both_saved_paths_once_and_are_idempotent(self):
+        self.start_backend("--rx-frequency", "430125000", "--tx-frequency", "430225000",
+                           "--rx-sample-rate", "1000000", "--tx-sample-rate", "4000000",
+                           start=False)
+        peer = self.controller()
+        initial = self.command(peer, "get")
+        previous = initial
+        for command, expected in (
+            ("both_frequency 430325000", {"requested": 430325000,
+                                          "tx_requested_frequency": 430325000}),
+            ("both_sample_rate 2000000", {"rate": 2000000, "tx_rate": 2000000}),
+            ("both_sample_rate 4000000", {"rate": 4000000, "tx_rate": 4000000}),
+            ("both_sample_rate 1000000", {"rate": 1000000, "tx_rate": 1000000}),
+            ("both_mode wbfm", {"mode": "wbfm"}),
+            ("both_mode nbfm", {"mode": "nbfm"}),
+        ):
+            with self.subTest(command=command):
+                changed = self.command(peer, command)
+                for field, value in expected.items():
+                    self.assertEqual(changed[field], value)
+                self.assertEqual(changed["state"], "IDLE")
+                self.assertFalse(changed["tx_requested"])
+                self.assertEqual(changed["config_generation"], previous["config_generation"] + 1)
+                self.assertEqual(changed["pipeline_generation"], initial["pipeline_generation"])
+                self.assertEqual(changed["tx_pipeline_generation"], initial["tx_pipeline_generation"])
+                for field in ("tx_requested_power", "tx_source", "tx_tone_hz", "tx_tone_amp",
+                              "tx_deviation", "tx_actual_frequency"):
+                    self.assertEqual(changed[field], initial[field])
+                self.assertEqual(self.settings(self.command(peer, command)), self.settings(changed))
+                previous = changed
+
+        # A joint edit still counts as one change if only one path differs.
+        self.command(peer, "tx_frequency 430425000")
+        before = self.command(peer, "get")
+        changed = self.command(peer, "both_frequency 430325000")
+        self.assertEqual(changed["requested"], before["requested"])
+        self.assertEqual(changed["tx_requested_frequency"], changed["requested"])
+        self.assertEqual(changed["config_generation"], before["config_generation"] + 1)
+        self.command(peer, "tx_sample_rate 2000000")
+        before = self.command(peer, "get")
+        changed = self.command(peer, "both_sample_rate 1000000")
+        self.assertEqual(changed["rate"], before["rate"])
+        self.assertEqual(changed["tx_rate"], changed["rate"])
+        self.assertEqual(changed["config_generation"], before["config_generation"] + 1)
+
+        # Legacy RX wire commands still affect only RX, even over v2.
+        before = changed
+        for command in ("frequency 430525000", "mode wbfm", "sample_rate 2000000"):
+            changed = self.command(peer, command)
+            for field in ("tx_requested_frequency", "tx_rate", "tx_pipeline_generation"):
+                self.assertEqual(changed[field], before[field])
+        self.assertEqual(changed["requested"], 430525000)
+        self.assertEqual(changed["mode"], "wbfm")
+        self.assertEqual(changed["rate"], 2000000)
+        before = changed
+        for command in ("tx_frequency 430625000", "tx_sample_rate 4000000"):
+            changed = self.command(peer, command)
+            for field in ("requested", "rate", "mode", "pipeline_generation"):
+                self.assertEqual(changed[field], before[field])
+
+    def test_joint_commands_require_both_rx_and_tx_stopped(self):
+        self.start_backend()
+        peer = self.controller()
+        edits = ("both_frequency 430225000", "both_mode wbfm", "both_sample_rate 2000000")
+        receiving = self.command(peer, "get")
+        for command in edits:
+            with self.subTest(state="RX", command=command):
+                denied = self.command(peer, command, "RX_RUNNING")
+                self.assertEqual(self.settings(denied), self.settings(receiving))
+        self.command(peer, "stop")
+        self.command(peer, "tx_start", "ACCEPTED")
+        transmitting = self.wait_state(peer, "TX")
+        for command in edits:
+            with self.subTest(state="TX", command=command):
+                denied = self.command(peer, command, "TX_RUNNING")
+                self.assertEqual(self.settings(denied), self.settings(transmitting))
+        self.command(peer, "tx_stop", "ACCEPTED")
+        self.wait_state(peer, "IDLE")
+
+    def test_joint_frequency_rejection_preserves_rx_and_tx_at_rf09_band_gaps(self):
+        self.start_backend("--channel", "RF09", "--rx-frequency", "430125000",
+                           "--tx-frequency", "430225000", start=False)
+        peer = self.controller()
+        before = self.command(peer, "get")
+        for frequency in (376999999, 530000001, 778999999, 1020000001):
+            with self.subTest(frequency=frequency):
+                denied = self.command(peer, f"both_frequency {frequency}", "FREQ_RANGE")
+                self.assertEqual(self.settings(denied), self.settings(before))
+
+    def test_built_controller_joint_commands_update_real_dry_run_settings(self):
+        self.assertTrue(CONTROLLER.is_file(), "Build the C controller before running this test")
+        self.start_backend("--status-hz", "20", "--tx-frequency", "430225000",
+                           "--tx-sample-rate", "2000000", start=False)
+        status = self.connect(self.status_path)
+        initial = self.snapshot_matching(status)
+        result = subprocess.run(
+            [str(CONTROLLER), "--socket", str(self.control_path)],
+            input="frequency 430.325\nrate 4\nmode wbfm\nq\n",
+            capture_output=True, text=True, timeout=3, env=helpers.ENVIRONMENT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        latest = self.snapshot_matching(status, lambda snapshot:
+            snapshot["control"]["config_generation"] ==
+            initial["control"]["config_generation"] + 3)
+        self.assertEqual(latest["control"]["state"], "IDLE")
+        self.assertEqual(latest["config"]["rx_frequency_hz"], 430325000)
+        self.assertEqual(latest["config"]["tx_frequency_hz"], 430325000)
+        self.assertEqual(latest["config"]["sample_rate_hz"], 4000000)
+        self.assertEqual(latest["config"]["tx_sample_rate_hz"], 4000000)
+        self.assertEqual(latest["rx_mode"], "WBFM mono")
+        self.assertEqual(latest["control"]["pipeline_generation"],
+                         initial["control"]["pipeline_generation"])
+        self.assertEqual(latest["control"]["tx_pipeline_generation"],
+                         initial["control"]["tx_pipeline_generation"])
+        receive, transmit = result.stdout.rsplit("  Transmit\n", 1)
+        self.assertRegex(receive, r"Mode\s+WBFM \(mono\)")
+        self.assertRegex(transmit, r"Mode\s+NBFM")
+
     def test_saved_tx_settings_can_change_during_rx_without_restarting_it(self):
         self.start_backend()
         peer = self.controller()

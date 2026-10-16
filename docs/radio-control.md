@@ -249,6 +249,9 @@ information only, so no Transmit section is shown.
 | Command | Meaning |
 | --- | --- |
 | `status` or `get` | Request current settings; also reconnect after a lost connection. |
+| `frequency 430.125` | Set RX and TX frequency together in MHz; requires both stopped. |
+| `mode nbfm` or `mode wbfm` | Set the supported RX and TX modes together; WBFM changes RX only, with TX remaining NBFM. Requires both stopped. |
+| `rate 1`, `rate 2` or `rate 4` | Set RX and TX sample rates together in MS/s; requires both stopped. |
 | `rx start` or `rx stop` | Start reception with the saved configuration, or stop and release the RX pipeline. |
 | `rx frequency 430.125` | Set receive frequency in MHz. |
 | `rx mode nbfm` or `rx mode wbfm` | Select NBFM or mono WBFM. |
@@ -268,12 +271,31 @@ information only, so no Transmit section is shown.
 | `help` or `?` | Show available commands. |
 | `q` or `quit` | Disconnect; RX continues, while active TX is stopped. |
 
-Squelch commands also accept an explicit RX prefix, for example
-`rx squelch noise on`. The original unprefixed RX and squelch commands remain
-accepted as compatibility aliases. `freq` and `sample-rate` also remain aliases
-for `frequency` and `rate`.
+The `rx` and `tx` prefixes restrict frequency and rate changes to that side.
+Unprefixed `frequency`, `mode` and `rate` change both sides where supported,
+and require stopped RX and TX with no transition or fault. TX supports NBFM
+only, so `mode wbfm` selects mono WBFM for RX and leaves TX in NBFM.
+Each combined command is one backend operation: a rejected command retains
+both accepted configurations. It never starts RX or TX.
 
-For example:
+Squelch commands also accept an explicit RX prefix, for example
+`rx squelch noise on`. Unprefixed `start`, `stop` and squelch commands continue
+to address RX. `freq` and `sample-rate` remain aliases for `frequency` and
+`rate`, including with an `rx` or `tx` prefix.
+
+With the header showing `IDLE`, for example:
+
+```text
+frequency 430.125
+mode wbfm
+rate 2
+```
+
+This saves 430.125 MHz and 2 MS/s for both RX and TX, with WBFM on RX and
+NBFM on TX. Use `rx frequency`, `rx mode` and `rx rate` to change only RX,
+or `tx frequency` and `tx rate` to change only TX.
+
+For a separate receive configuration:
 
 ```text
 rx stop
@@ -288,11 +310,12 @@ status
 q
 ```
 
-Frequency, mode and sample-rate commands require stopped RX. A stopped
-frequency change tunes the radio and verifies that it remains idle. Mode and
-sample-rate changes update saved settings; their DSP and hardware profiles
-are applied at the next `rx start`. Every restart creates a fresh pipeline, so
-old IQ or PCM frames cannot carry across a retune or mode change.
+RX frequency, mode and sample-rate commands require stopped RX; combined
+commands require both RX and TX stopped. A stopped RX frequency change tunes
+the radio and verifies that it remains idle. Mode and sample-rate changes
+update saved settings; their DSP and hardware profiles are applied at the next
+start of the corresponding pipeline. Every RX restart creates a fresh pipeline,
+so old IQ or PCM frames cannot carry across a retune or mode change.
 
 At RX start, NBFM selects 160 kHz modem analog bandwidth and WBFM selects
 250 kHz. Both select the minimum digital cutoff, `fS / 8` (±125 kHz at
@@ -342,6 +365,7 @@ A single command can also be issued from the shell:
 ```sh
 build/radio-backend/cariboulite_radio_controller --command 'status'
 build/radio-backend/cariboulite_radio_controller --command 'rx stop'
+build/radio-backend/cariboulite_radio_controller --command 'frequency 430.125'
 ```
 
 These commands connect, execute once and disconnect. `--command 'tx start'`
@@ -456,7 +480,9 @@ that the carrier is already on or off.
 RX frequency, mode and sample-rate changes remain blocked during TX. TX
 settings may be saved while RX is stable because they do not program the
 hardware until TX starts; they are blocked during active TX and transitions.
-RX and TX have separate frequency, rate and pipeline generations.
+Unprefixed frequency, mode and rate commands require stopped RX and TX;
+use the prefixes to change the settings independently. RX and TX have separate
+frequency, rate and pipeline generations.
 
 | TX setting | Default and accepted values |
 | --- | --- |
@@ -586,7 +612,10 @@ remain available after a failed start or tune.
 state changes, and on a fault-state transition. `get`, unchanged settings
 while idle, and repeated successful `rx start`/`rx stop` commands leave it
 unchanged. Frequency/mode/rate commands while RX is running are rejected,
-including requests for the existing value.
+including requests for the existing value. A combined command advances the
+configuration generation once if either side changes. If combined frequency
+tuning fails, both saved frequencies remain unchanged; the backend attempts
+the same checked hardware rollback described above.
 
 `pipeline_generation` advances when a new pipeline is successfully
 initialized. It also advances if initialization succeeds but subsequent
@@ -611,8 +640,7 @@ Default socket paths are:
 /tmp/cariboulite-monitor-<effective UID>/control.sock
 ```
 
-These executable and terminal-command names do not change the existing socket
-paths, status schema or wire protocol.
+The executable names leave the existing socket paths and status schema unchanged.
 
 The backend's `--socket PATH` selects its status socket. Unless overridden
 with `--control-socket PATH`, its command socket is named `control.sock` in
@@ -697,10 +725,21 @@ v2 ID tx_power DBM
 v2 ID tx_sample_rate 1000000|2000000|4000000
 v2 ID tx_source mic|tone
 v2 ID tx_tone HZ AMPLITUDE
+v2 ID both_frequency HZ
+v2 ID both_mode nbfm|wbfm
+v2 ID both_sample_rate 1000000|2000000|4000000
 v2 ID fpga_program
 v2 ID fpga_soft_reset
 v2 ID fpga_hard_reset
 ```
+
+The existing wire commands `frequency`, `mode` and `sample_rate` still address
+RX only in both protocol versions; the controller uses them for explicitly
+prefixed RX commands. Its unprefixed frequency, mode and rate commands use
+the new `both_*` requests. These require both pipelines stopped and apply
+accepted settings in one operation. `both_mode wbfm` changes RX only because
+TX remains NBFM. Older backends without these requests reject them with
+`PROTOCOL`; the controller does not split them into separate operations.
 
 The boolean suffix fields use `0` or `1`; `TX_TONE_MODE=1` selects the tone
 source. `TX_REQUESTED` describes requested TX state, `RX_RESUME` records prior

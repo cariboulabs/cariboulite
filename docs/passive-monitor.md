@@ -113,8 +113,10 @@ For radio controls, open another terminal and run
 `squelch carrier` and `squelch levels` for its squelch controls. The monitor stays
 optional. Closing the monitor leaves radio operation unchanged. Closing the
 controller leaves RX in its current state, but releases its TX and restores
-previously running RX. Frequency, mode and sample-rate edits require stopped RX.
-Squelch edits work during reception.
+previously running RX. RX frequency, mode and sample-rate edits require stopped
+RX. Unprefixed `frequency`, `mode` and `rate` update RX and TX together where
+supported and require both stopped; WBFM changes RX only because TX remains
+NBFM. Squelch edits work during reception.
 See [controller commands, validation and restart behavior](radio-control.md).
 
 Launch options:

@@ -1014,6 +1014,114 @@ static void test_fpga_modem_recovery(void)
     puts("FPGA recovery from unavailable modem SPI and final idle verification passed");
 }
 
+static control_reply_t joint_command(backend_control_t *owner, control_request_t request,
+                                     const char *code, const char *state)
+{
+    control_reply_t reply;
+    request.id = 44;
+    request.protocol_version = 2;
+    backend_control_command(owner, &request, &reply);
+    assert(reply.id == request.id && !strcmp(reply.code, code) && !strcmp(reply.state, state));
+    assert(reply.ok == !strcmp(code, "OK") && !reply.simulated);
+    assert(reply.pipeline_generation == 3 && reply.tx_pipeline_generation == 0);
+    return reply;
+}
+
+static void test_joint_settings(void)
+{
+    options_t options;
+    sys_st sys;
+    cariboulite_radio_state_st radio;
+    rx_pipeline_t pipeline;
+    backend_control_t owner;
+    control_reply_t reply;
+    const double previous_tx = accepted_frequency + 100000;
+    const control_request_t tune = {.command=CONTROL_BOTH_FREQUENCY,
+        .frequency_hz=rejected_frequency};
+
+    /* The RX tune is checked before either accepted setting is changed. */
+    for (unsigned rollback_fails = 0; rollback_fails < 2; ++rollback_fails) {
+        owner = context(&options, &sys, &radio, &pipeline);
+        options.tx.freq_hz = previous_tx;
+        tune_new_fails = true;
+        tune_all_fails = rollback_fails != 0;
+        reply = joint_command(&owner, tune, "HARDWARE", rollback_fails ? "FAULT" : "IDLE");
+        assert(tune_calls == 2 && reply.config_generation == 7 + rollback_fails);
+        assert(options.frequency == accepted_frequency && options.rx.freq_hz == accepted_frequency);
+        assert(options.tx.freq_hz == previous_tx && reply.tx_requested_frequency_hz == previous_tx);
+        assert(options.control_fault == (rollback_fails != 0));
+        assert(!owner.tx_configuration_dirty);
+        assert(!options.rx_requested && !options.tx_requested);
+        assert(!pipeline.inited && !mock_tx_pipeline.inited);
+        if (!rollback_fails) assert(reply.actual_frequency_hz == accepted_frequency + 7.8125);
+    }
+
+    owner = context(&options, &sys, &radio, &pipeline);
+    options.tx.freq_hz = previous_tx;
+    reply = joint_command(&owner, tune, "OK", "IDLE");
+    assert(reply.config_generation == 8 && tune_calls == 1);
+    assert(options.frequency == rejected_frequency && options.rx.freq_hz == rejected_frequency);
+    assert(options.tx.freq_hz == rejected_frequency && options.actual_tx_frequency == 0);
+    assert(owner.tx_configuration_dirty);
+    assert(reply.actual_frequency_hz == rejected_frequency + 7.8125);
+    reply = joint_command(&owner, tune, "OK", "IDLE");
+    assert(reply.config_generation == 8 && tune_calls == 1);
+    assert(init_calls == 0 && tx_init_calls == 0);
+
+    /* Synchronizing TX to an already accepted RX setting requires no retune. */
+    owner = context(&options, &sys, &radio, &pipeline);
+    options.tx.freq_hz = previous_tx;
+    reply = joint_command(&owner, (control_request_t){.command=CONTROL_BOTH_FREQUENCY,
+        .frequency_hz=accepted_frequency}, "OK", "IDLE");
+    assert(reply.config_generation == 8 && tune_calls == 0);
+    assert(options.tx.freq_hz == accepted_frequency && options.actual_tx_frequency == 0);
+
+    owner = context(&options, &sys, &radio, &pipeline);
+    options.channel = "RF09";
+    options.tx.freq_hz = previous_tx;
+    reply = joint_command(&owner, (control_request_t){.command=CONTROL_BOTH_FREQUENCY,
+        .frequency_hz=600000000}, "FREQ_RANGE", "IDLE");
+    assert(reply.config_generation == 7 && tune_calls == 0);
+    assert(options.frequency == accepted_frequency && options.tx.freq_hz == previous_tx);
+
+    /* Requested state and actual worker state each prohibit joint edits. */
+    static const control_command_t edits[] = {CONTROL_BOTH_FREQUENCY,
+        CONTROL_BOTH_MODE, CONTROL_BOTH_SAMPLE_RATE};
+    static const char *codes[] = {"RX_RUNNING", "RX_RUNNING", "TX_RUNNING",
+        "TX_RUNNING", "TRANSITION", "FAULT", "FPGA_REQUIRED"};
+    static const char *states[] = {"RX", "IDLE", "TX", "IDLE", "TX_STARTING",
+        "FAULT", "FPGA_NEEDS_PROGRAM"};
+    for (unsigned state = 0; state < sizeof(codes) / sizeof(codes[0]); ++state) {
+        for (unsigned edit = 0; edit < sizeof(edits) / sizeof(edits[0]); ++edit) {
+            owner = context(&options, &sys, &radio, &pipeline);
+            options.tx.freq_hz = previous_tx;
+            options.tx.rf_fs = 4000000;
+            switch (state) {
+            case 0: options.rx_requested = true; break;
+            case 1: pipeline.running = true; break;
+            case 2: options.tx_requested = true; break;
+            case 3: mock_tx_pipeline.running = true; break;
+            case 4:
+                owner.lifecycle_active = true;
+                owner.lifecycle_action = 1;
+                options.transition = 1;
+                break;
+            case 5: options.control_fault = true; break;
+            case 6: options.fpga_needs_programming = true; break;
+            }
+            reply = joint_command(&owner, (control_request_t){.command=edits[edit],
+                .frequency_hz=rejected_frequency, .wbfm=true, .sample_rate_hz=2000000},
+                codes[state], states[state]);
+            assert(reply.config_generation == 7 && tune_calls == 0);
+            assert(options.frequency == accepted_frequency && options.rx.freq_hz == accepted_frequency);
+            assert(options.tx.freq_hz == previous_tx && options.actual_tx_frequency == 0);
+            assert(options.rx.mode == AUDIO_DEMOD_NBFM && options.rx.fs_rf == 1000000);
+            assert(options.tx.rf_fs == 4000000 && init_calls == 0 && tx_init_calls == 0);
+        }
+    }
+    puts("Joint RX/TX settings and rollback fault injection passed");
+}
+
 int main(void)
 {
     options_t options;
@@ -1366,6 +1474,7 @@ int main(void)
     test_fpga_programming();
     test_fpga_resets();
     test_fpga_modem_recovery();
+    test_joint_settings();
     puts("TX control fault injection passed");
     puts("RX control fault injection passed");
     return 0;

@@ -234,6 +234,15 @@ int control_request_parse(const char *packet, size_t bytes,
              parse_float(tokens[5], &request->noise_open_rms) == 0 &&
              parse_float(tokens[6], &request->noise_close_rms) == 0)
         request->command = CONTROL_SQUELCH;
+    else if (request->protocol_version == 2 && !strcmp(tokens[2], "both_frequency") && count == 4 &&
+             !parse_double(tokens[3], &request->frequency_hz))
+        request->command = CONTROL_BOTH_FREQUENCY;
+    else if (request->protocol_version == 2 && !strcmp(tokens[2], "both_mode") && count == 4 &&
+             !parse_mode(tokens[3], &request->wbfm))
+        request->command = CONTROL_BOTH_MODE;
+    else if (request->protocol_version == 2 && !strcmp(tokens[2], "both_sample_rate") && count == 4 &&
+             !parse_rate(tokens[3], &request->sample_rate_hz))
+        request->command = CONTROL_BOTH_SAMPLE_RATE;
     else if (request->protocol_version == 2 && !strcmp(tokens[2], "tx_start") && count == 3)
         request->command = CONTROL_TX_START;
     else if (request->protocol_version == 2 && !strcmp(tokens[2], "tx_stop") && count == 3)
@@ -395,16 +404,25 @@ int control_request_format(const control_request_t *request,
                          request->command == CONTROL_START ? "start" : "stop");
         break;
     case CONTROL_FREQUENCY:
-        bytes = snprintf(packet, capacity, "v%u %" PRIu64 " frequency %.17g\n",
-                         version, request->id, request->frequency_hz);
+    case CONTROL_BOTH_FREQUENCY:
+        bytes = snprintf(packet, capacity, "v%u %" PRIu64 " %s %.17g\n",
+                         version, request->id,
+                         request->command == CONTROL_BOTH_FREQUENCY ? "both_frequency" : "frequency",
+                         request->frequency_hz);
         break;
     case CONTROL_MODE:
-        bytes = snprintf(packet, capacity, "v%u %" PRIu64 " mode %s\n",
-                         version, request->id, request->wbfm ? "wbfm" : "nbfm");
+    case CONTROL_BOTH_MODE:
+        bytes = snprintf(packet, capacity, "v%u %" PRIu64 " %s %s\n",
+                         version, request->id,
+                         request->command == CONTROL_BOTH_MODE ? "both_mode" : "mode",
+                         request->wbfm ? "wbfm" : "nbfm");
         break;
     case CONTROL_SAMPLE_RATE:
-        bytes = snprintf(packet, capacity, "v%u %" PRIu64 " sample_rate %u\n",
-                         version, request->id, request->sample_rate_hz);
+    case CONTROL_BOTH_SAMPLE_RATE:
+        bytes = snprintf(packet, capacity, "v%u %" PRIu64 " %s %u\n",
+                         version, request->id,
+                         request->command == CONTROL_BOTH_SAMPLE_RATE ? "both_sample_rate" : "sample_rate",
+                         request->sample_rate_hz);
         break;
     case CONTROL_SQUELCH:
         bytes = snprintf(packet, capacity,

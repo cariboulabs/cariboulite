@@ -235,17 +235,18 @@ class RadioControlTests(unittest.TestCase):
         for command, expected in (
             ("rx frequency 430.125", ["frequency", "430125000"]),
             ("rx freq 430.125", ["frequency", "430125000"]),
-            ("frequency 430.125", ["frequency", "430125000"]),
-            ("freq 430.125", ["frequency", "430125000"]),
+            ("frequency 430.125", ["both_frequency", "430125000"]),
+            ("freq 430.125", ["both_frequency", "430125000"]),
             ("rx mode nbfm", ["mode", "nbfm"]),
             ("rx mode wbfm", ["mode", "wbfm"]),
-            ("mode wbfm", ["mode", "wbfm"]),
+            ("mode nbfm", ["both_mode", "nbfm"]),
+            ("mode wbfm", ["both_mode", "wbfm"]),
             ("rx rate 1", ["sample_rate", "1000000"]),
             ("rx rate 2", ["sample_rate", "2000000"]),
             ("rx rate 4", ["sample_rate", "4000000"]),
             ("rx sample-rate 2", ["sample_rate", "2000000"]),
-            ("rate 2", ["sample_rate", "2000000"]),
-            ("sample-rate 2", ["sample_rate", "2000000"]),
+            ("rate 2", ["both_sample_rate", "2000000"]),
+            ("sample-rate 2", ["both_sample_rate", "2000000"]),
             ("rx stop", ["stop"]),
             ("stop", ["stop"]),
             ("rx start", ["start"]),
@@ -257,7 +258,7 @@ class RadioControlTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.wait_for_packets(owner, 2)
                 self.assertEqual(owner.packets[0], ["v2", "1", "get"])
-                self.assertEqual(owner.packets[1][2:], expected)
+                self.assertEqual(owner.packets[1], ["v2", "2", *expected])
                 owner.close()
                 self.path.unlink()
 
@@ -382,13 +383,55 @@ class RadioControlTests(unittest.TestCase):
                 return reply(packet, result="ERROR", code="RX_RUNNING")
             return reply(packet)
         owner = self.owner(handler)
-        result = self.once("frequency 435")
+        result = self.once("rx frequency 435")
         self.assertEqual(result.returncode, 1)
         self.assertIn("Command rejected: RX_RUNNING", result.stderr)
         self.assert_field(result.stdout, "Frequency", "430.125000 MHz")
         self.assertIn("ERROR: Stop receive before changing settings", result.stdout)
         self.assertNotIn("uncertain", result.stderr)
         self.assertEqual(len(owner.packets), 2)
+
+    def test_joint_commands_use_one_authoritative_backend_request_while_busy(self):
+        for command, wire, code, state in (
+            ("frequency 435", "both_frequency", "RX_RUNNING", "RX"),
+            ("mode wbfm", "both_mode", "TX_RUNNING", "TX"),
+            ("rate 2", "both_sample_rate", "TRANSITION", "TX_STARTING"),
+        ):
+            with self.subTest(command=command):
+                def handler(number, packet):
+                    if packet.decode().split()[2] == wire:
+                        return reply(packet, version=2, state=state, result="ERROR", code=code)
+                    return reply(packet, version=2, state=state)
+
+                owner = self.owner(handler)
+                result = self.once(command)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(f"Command rejected: {code}", result.stderr)
+                self.assertEqual([packet[2] for packet in owner.packets], ["get", wire])
+                self.assert_field(result.stdout, "Frequency", "430.125000 MHz")
+                self.assert_field(result.stdout, "Frequency", "430.225000 MHz")
+                self.assertNotIn("uncertain", result.stderr)
+                owner.close()
+                self.path.unlink()
+
+    def test_older_backend_rejects_joint_commands_without_retry_or_rx_fallback(self):
+        for command, wire in (("frequency 435", "both_frequency"),
+                              ("mode wbfm", "both_mode"),
+                              ("rate 2", "both_sample_rate")):
+            with self.subTest(command=command):
+                def handler(number, packet):
+                    if packet.decode().split()[2] == "get":
+                        return reply(packet, state="IDLE")
+                    return reply(packet, state="IDLE", result="ERROR", code="PROTOCOL")
+
+                owner = self.owner(handler)
+                result = self.once(command)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn("Command rejected: PROTOCOL", result.stderr)
+                self.assertEqual([packet[2] for packet in owner.packets], ["get", wire])
+                self.assertNotIn("uncertain", result.stderr)
+                owner.close()
+                self.path.unlink()
 
     def test_interactive_quit_and_eof_do_not_stop_receiver(self):
         for input_text in ("q\n", ""):

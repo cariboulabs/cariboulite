@@ -963,6 +963,8 @@ static void backend_control_command(void *opaque, const control_request_t *reque
     options_t *o = c->options;
     const char *code = "OK";
     bool changed = false;
+    const bool both = request->command == CONTROL_BOTH_FREQUENCY ||
+        request->command == CONTROL_BOTH_MODE || request->command == CONTROL_BOTH_SAMPLE_RATE;
     if (request->command == CONTROL_INVALID) code = "PROTOCOL";
     else if (request->command == CONTROL_BUSY) code = "BUSY";
     else if (c->lifecycle_active && request->command != CONTROL_GET) {
@@ -983,6 +985,10 @@ static void backend_control_command(void *opaque, const control_request_t *reque
     else if (o->tx_requested && request->command != CONTROL_GET
              && request->command != CONTROL_TX_START && request->command != CONTROL_TX_STOP
              && request->command != CONTROL_SQUELCH) code = "TX_RUNNING";
+    else if (both && (o->rx_requested || (!o->dry_run && c->pipeline->running)))
+        code = "RX_RUNNING";
+    else if (both && !o->dry_run && c->tx_pipeline && c->tx_pipeline->running)
+        code = "TX_RUNNING";
     else switch (request->command) {
     case CONTROL_GET: break;
     case CONTROL_FPGA_PROGRAM:
@@ -1023,10 +1029,12 @@ static void backend_control_command(void *opaque, const control_request_t *reque
         }
         break;
     case CONTROL_FREQUENCY:
+    case CONTROL_BOTH_FREQUENCY:
         if (!control_frequency_valid(o, c->sys, request->frequency_hz)) code = "FREQ_RANGE";
         else if (o->rx_requested) code = "RX_RUNNING";
-        else if (o->frequency != request->frequency_hz) {
-            if (backend_tune(c, request->frequency_hz) != 0) {
+        else {
+            if (o->frequency != request->frequency_hz &&
+                backend_tune(c, request->frequency_hz) != 0) {
                 code = "HARDWARE";
                 /* Preserve accepted configuration and attempt its checked
                  * restoration. An unsuccessful rollback is explicit FAULT. */
@@ -1034,21 +1042,41 @@ static void backend_control_command(void *opaque, const control_request_t *reque
                     o->control_fault = true;
                     changed = true;
                 }
-            } else { o->frequency = o->rx.freq_hz = request->frequency_hz; changed = true; }
+                break;
+            }
+            /* Commit both saved frequencies only after RX tuning succeeds. */
+            if (o->frequency != request->frequency_hz) {
+                o->frequency = o->rx.freq_hz = request->frequency_hz;
+                changed = true;
+            }
+            if (both && o->tx.freq_hz != request->frequency_hz) {
+                o->tx.freq_hz = request->frequency_hz;
+                c->tx_configuration_dirty = true;
+                changed = true;
+            }
         }
         break;
-    case CONTROL_MODE: {
+    case CONTROL_MODE:
+    case CONTROL_BOTH_MODE: {
+        /* TX supports NBFM only; WBFM changes just the saved RX mode. */
         audio_demod_mode_t mode = request->wbfm ? AUDIO_DEMOD_WBFM : AUDIO_DEMOD_NBFM;
         if (o->rx_requested) code = "RX_RUNNING";
         else if (mode != o->rx.mode) { o->rx.mode = mode; changed = true; }
         break;
     }
     case CONTROL_SAMPLE_RATE:
+    case CONTROL_BOTH_SAMPLE_RATE:
         if (request->sample_rate_hz != 1000000 && request->sample_rate_hz != 2000000
             && request->sample_rate_hz != 4000000) code = "INVALID";
         else if (o->rx_requested) code = "RX_RUNNING";
-        else if (o->rx.fs_rf != request->sample_rate_hz) {
-            o->rx.fs_rf = (float)request->sample_rate_hz; changed = true;
+        else {
+            if (o->rx.fs_rf != request->sample_rate_hz) {
+                o->rx.fs_rf = (float)request->sample_rate_hz; changed = true;
+            }
+            if (both && o->tx.rf_fs != request->sample_rate_hz) {
+                o->tx.rf_fs = request->sample_rate_hz;
+                c->tx_configuration_dirty = true; changed = true;
+            }
         }
         break;
     case CONTROL_SQUELCH: {

@@ -69,6 +69,9 @@ static void command_help(void)
 {
     puts("Commands:\n"
          "  status | get          read current settings\n"
+         "  frequency MHz         set RX and TX frequency while both are stopped\n"
+         "  mode nbfm|wbfm        set mode while both are stopped; TX stays NBFM\n"
+         "  rate 1|2|4            set RX and TX sample rate in MS/s while stopped\n"
          "  rx start | rx stop    start/stop reception\n"
          "  rx frequency MHz      saved RX frequency, for example 430.125\n"
          "  rx mode nbfm|wbfm     WBFM is mono\n"
@@ -87,7 +90,9 @@ static void command_help(void)
          "  fpga hard reset       hardware reset; run fpga program afterwards\n"
          "  help                  show commands\n"
          "  q | quit              disconnect; unkey owned TX and resume prior RX\n"
-         "Squelch commands also accept the rx prefix. Legacy unprefixed RX commands still work.\n"
+         "Unprefixed frequency/mode/rate commands require stopped RX and TX.\n"
+         "Use rx or tx prefixes to change one direction's settings.\n"
+         "Unprefixed start/stop and squelch commands still control RX.\n"
          "RX frequency/mode/rate changes require stopped RX.\n"
          "TX settings can be saved during RX; changes require stopped TX.\n"
          "FPGA programming requires stopped RX/TX and no active transition.\n"
@@ -142,9 +147,11 @@ static int parse_command(const char *input, ui_command_t *command)
     if (!count) return 1;
     char **tokens = words;
     const char *name = tokens[0];
+    bool rx_only = false;
     /* Normalize RX and squelch groups to the existing request mapping.
      * Only RX settings can follow rx; a nested tx/help/quit is invalid. */
     if (!strcmp(name, "rx")) {
+        rx_only = true;
         if (count < 2) return -1;
         ++tokens;
         --count;
@@ -181,17 +188,17 @@ static int parse_command(const char *input, ui_command_t *command)
         double value;
         if (parse_number(tokens[1], &value) || value <= 0 ||
             !isfinite(value * 1e6)) return -1;
-        command->request.command = CONTROL_FREQUENCY;
+        command->request.command = rx_only ? CONTROL_FREQUENCY : CONTROL_BOTH_FREQUENCY;
         command->request.frequency_hz = value * 1e6;
     } else if (count == 2 && !strcmp(name, "mode") &&
                (!strcmp(tokens[1], "nbfm") || !strcmp(tokens[1], "wbfm"))) {
-        command->request.command = CONTROL_MODE;
+        command->request.command = rx_only ? CONTROL_MODE : CONTROL_BOTH_MODE;
         command->request.wbfm = !strcmp(tokens[1], "wbfm");
     } else if (count == 2 && (!strcmp(name, "rate") || !strcmp(name, "sample-rate"))) {
         double rate;
         if (parse_number(tokens[1], &rate) || (rate != 1 && rate != 2 && rate != 4))
             return -1;
-        command->request.command = CONTROL_SAMPLE_RATE;
+        command->request.command = rx_only ? CONTROL_SAMPLE_RATE : CONTROL_BOTH_SAMPLE_RATE;
         command->request.sample_rate_hz = (unsigned)rate * 1000000;
     } else if (count == 2 && (!strcmp(name, "noise") || !strcmp(name, "carrier")) &&
                (!strcmp(tokens[1], "on") || !strcmp(tokens[1], "off"))) {

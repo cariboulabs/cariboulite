@@ -1,6 +1,7 @@
 #include "command_protocol.h"
 
 #include <errno.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +46,17 @@ static void test_requests(void)
         { "v2 24 fpga_program", CONTROL_FPGA_PROGRAM },
         { "\tv2 25\r fpga_program\n", CONTROL_FPGA_PROGRAM },
         { "v2 26 fpga_soft_reset", CONTROL_FPGA_SOFT_RESET },
-        { "\t v2 27\r fpga_hard_reset\n", CONTROL_FPGA_HARD_RESET }
+        { "\t v2 27\r fpga_hard_reset\n", CONTROL_FPGA_HARD_RESET },
+        { "v2 28 both_frequency 430125000", CONTROL_BOTH_FREQUENCY },
+        { "v2 28 both_frequency 4.30125e8", CONTROL_BOTH_FREQUENCY },
+        { "v2 29 both_mode nbfm", CONTROL_BOTH_MODE },
+        { "v2 29 both_mode wbfm", CONTROL_BOTH_MODE },
+        { "v2 30 both_sample_rate 1000000", CONTROL_BOTH_SAMPLE_RATE },
+        { "v2 30 both_sample_rate 2000000", CONTROL_BOTH_SAMPLE_RATE },
+        { "\tv2 30\r both_sample_rate\n 4000000\f", CONTROL_BOTH_SAMPLE_RATE },
+        { "v2 31 frequency 430125000", CONTROL_FREQUENCY },
+        { "v2 32 mode wbfm", CONTROL_MODE },
+        { "v2 33 sample_rate 2000000", CONTROL_SAMPLE_RATE }
     };
     static const char *const bad[] = {
         "", "v1", "v1 1", "v3 1 get", "v1 0 get", "v1 -1 get",
@@ -152,6 +163,87 @@ static void test_requests(void)
         CHECK(control_request_format(&request, packet, sizeof(packet)) > 0);
         CHECK(!strcmp(packet, resets[i].packet));
     }
+}
+
+static void test_combined_requests(void)
+{
+    static const struct {
+        control_command_t command;
+        const char *packet;
+    } commands[] = {
+        { CONTROL_BOTH_FREQUENCY, "v2 1 both_frequency 430125000\n" },
+        { CONTROL_BOTH_MODE, "v2 1 both_mode nbfm\n" },
+        { CONTROL_BOTH_SAMPLE_RATE, "v2 1 both_sample_rate 2000000\n" }
+    };
+    static const char *const bad[] = {
+        "v1 1 both_frequency 430125000", "v1 1 both_mode nbfm",
+        "v1 1 both_sample_rate 1000000", "v2 1 both_frequency",
+        "v2 1 both_frequency 430125000 extra", "v2 1 both_frequency nan",
+        "v2 1 both_frequency inf", "v2 1 both_frequency -Infinity",
+        "v2 1 both_frequency 1e999", "v2 1 both_frequency 1e-999",
+        "v2 1 both_frequency 0x10", "v2 1 both_frequency 430125000Hz",
+        "v2 1 both_mode", "v2 1 both_mode nbfm extra",
+        "v2 1 both_mode fm", "v2 1 both_mode WBFM",
+        "v2 1 both_sample_rate", "v2 1 both_sample_rate 1000000 extra",
+        "v2 1 both_sample_rate 0", "v2 1 both_sample_rate 500000",
+        "v2 1 both_sample_rate 3000000", "v2 1 both_sample_rate -1000000",
+        "v2 1 both_sample_rate +1000000", "v2 1 both_sample_rate 1000000.0",
+        "v2 1 both_sample_rate 4294967296",
+        "v2 1 both_sample_rate 18446744073709551616"
+    };
+    control_request_t request = {
+        .id = 1,
+        .frequency_hz = 430125000,
+        .sample_rate_hz = 2000000
+    }, decoded;
+    char packet[CONTROL_PROTOCOL_MAX_PACKET_BYTES + 1];
+    int bytes;
+    for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); ++i) {
+        request.command = commands[i].command;
+        for (unsigned version = 0; version < 2; ++version) {
+            request.protocol_version = version;
+            CHECK(control_request_format(&request, packet, sizeof(packet)) == -1);
+        }
+        request.protocol_version = 2;
+        bytes = control_request_format(&request, packet, sizeof(packet));
+        CHECK(bytes > 0 && !strcmp(packet, commands[i].packet));
+        CHECK(!control_request_parse(packet, (size_t)bytes, &decoded));
+        CHECK(decoded.command == request.command && decoded.id == request.id);
+        CHECK(decoded.frequency_hz == (request.command == CONTROL_BOTH_FREQUENCY ?
+                                      request.frequency_hz : 0));
+        CHECK(decoded.sample_rate_hz == (request.command == CONTROL_BOTH_SAMPLE_RATE ?
+                                        request.sample_rate_hz : 0));
+        CHECK(!decoded.wbfm);
+    }
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
+        CHECK(control_request_parse(bad[i], strlen(bad[i]), &decoded) == -1);
+        CHECK(decoded.id == 1 && decoded.command == CONTROL_INVALID);
+    }
+    static const char embedded_nul[] = "v2 1 both_mode nbfm\0extra";
+    CHECK(control_request_parse(embedded_nul, sizeof(embedded_nul) - 1, &decoded) == -1);
+    request.command = CONTROL_BOTH_FREQUENCY;
+    /* Like RX/TX frequency packets, the wire accepts every finite frequency;
+     * hardware bounds are checked by the backend before applying settings. */
+    static const double finite_frequencies[] = { 0, -1, DBL_MAX, -DBL_MAX };
+    for (size_t i = 0; i < sizeof(finite_frequencies) / sizeof(finite_frequencies[0]); ++i) {
+        request.frequency_hz = finite_frequencies[i];
+        bytes = control_request_format(&request, packet, sizeof(packet));
+        CHECK(bytes > 0 && !control_request_parse(packet, (size_t)bytes, &decoded));
+        CHECK(decoded.frequency_hz == request.frequency_hz);
+    }
+    static const double nonfinite_frequencies[] = { NAN, INFINITY, -INFINITY };
+    for (size_t i = 0; i < sizeof(nonfinite_frequencies) / sizeof(nonfinite_frequencies[0]); ++i) {
+        request.frequency_hz = nonfinite_frequencies[i];
+        CHECK(control_request_format(&request, packet, sizeof(packet)) == -1);
+    }
+    request.command = CONTROL_BOTH_SAMPLE_RATE;
+    request.sample_rate_hz = 3000000;
+    CHECK(control_request_format(&request, packet, sizeof(packet)) == -1);
+    request.command = CONTROL_BOTH_MODE;
+    request.wbfm = true;
+    bytes = control_request_format(&request, packet, sizeof(packet));
+    CHECK(bytes > 0 && !strcmp(packet, "v2 1 both_mode wbfm\n"));
+    CHECK(!control_request_parse(packet, (size_t)bytes, &decoded) && decoded.wbfm);
 }
 
 static void test_v2_replies(void)
@@ -268,6 +360,7 @@ static void test_replies(void)
 int main(void)
 {
     test_requests();
+    test_combined_requests();
     test_replies();
     test_v2_replies();
     puts("command protocol: strict packets, numeric limits and roundtrips passed");
