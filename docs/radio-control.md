@@ -12,6 +12,10 @@ Receiver controls are RX start/stop, frequency, NBFM or mono WBFM, sample
 rate, and squelch. Half-duplex NBFM TX controls add start/stop, a separate
 frequency and sample rate, output power, and microphone or tone input. Radio
 channel, playback and microphone devices remain backend launch settings.
+RX launch settings use `--rx-` options; TX settings use `--tx-` options, with
+`--tx-deviation HZ` selecting the TX NBFM deviation. `--rx-deviation HZ`
+independently selects NBFM receive audio normalization. `--channel` selects
+the radio shared by RX and TX.
 Stereo decoding, RDS, CTCSS and adjustable carrier RSSI thresholds remain
 outside this implementation.
 
@@ -43,6 +47,10 @@ driver as part of the [installation procedure](../installation.md).
 The staging paths below preserve the October 14–15 validation setup and are
 not required to build or run the current checkout. They refer to local,
 ignored artifacts from the original test hosts, which may be absent here.
+The older unprefixed RX options in those records remain accepted as
+compatibility aliases by the current backend. Those builds started RX
+automatically unless `--start-stopped` was given; the current backend starts
+with RX stopped unless `--rx-start` is given.
 
 <a id="tested-pi-zero-staging-checkout"></a>
 
@@ -148,8 +156,8 @@ as the same user. In terminal 1, initialize the backend with RX stopped:
 
 ```sh
 build/radio-backend/cariboulite_radio_backend \
-  --channel RF24 --frequency 430125000 --sample-rate 1000000 \
-  --mode nbfm --playback plughw:Loopback,0,0 --start-stopped
+  --channel RF24 --rx-frequency 430125000 --rx-sample-rate 1000000 \
+  --rx-mode nbfm --rx-playback plughw:Loopback,0,0
 ```
 
 In terminal 2, open the controller:
@@ -172,10 +180,29 @@ inventory. These options affect only the passive register display; pipeline
 instrumentation still follows radio state, and hardware polling is unchanged.
 See the [register layouts](passive-monitor.md#display-and-protocol).
 
-Omitting `--start-stopped` preserves the backend's automatic RX startup.
+The backend starts with RX stopped. Add `--rx-start` to start reception
+automatically using the saved RX settings, or use `rx start` in the controller.
 `--seconds N` limits the backend's wall time after initial setup, including
 time spent with RX stopped; it is not accumulated reception time. Ctrl+C in
 the backend stops reception and releases its hardware and sockets.
+
+RX and TX modes are independent. For example, save a mono WBFM receiver at
+96.2 MHz and an NBFM transmitter at 430.1 MHz with ±5 kHz nominal deviation:
+
+```sh
+build/radio-backend/cariboulite_radio_backend \
+  --channel RF24 --rx-frequency 96200000 --rx-mode wbfm \
+  --rx-sample-rate 1000000 \
+  --tx-frequency 430100000 --tx-mode nbfm --tx-sample-rate 1000000 \
+  --tx-power -12 --tx-source mic --tx-microphone plughw:Loopback,1,1 \
+  --tx-deviation 5000
+```
+
+This waits for controller commands and does not start TX. See the
+[complete launch options](passive-monitor.md#receive-with-a-monitor-in-another-terminal).
+The previous unprefixed RX options remain compatibility aliases;
+`--microphone` aliases `--tx-microphone`. The older `--start-stopped` option
+still explicitly selects stopped RX.
 
 ## Use the controller
 
@@ -274,6 +301,24 @@ internal shifted IF is 320 kHz nominal; the modem delivers zero-centered IQ.
 See the [WBFM modem profile](nbfm-rx-sensitivity-context.md#wbfm-modem-rx-bandwidth-2026-10-11)
 for the per-rate settings and listening-test status.
 
+Set `--rx-deviation HZ` at backend launch to choose the NBFM demodulator's
+reference deviation, from `1` through `24000` Hz; the default is `2500`.
+For example, `--rx-mode nbfm --rx-deviation 5000` normalizes a ±5 kHz input
+to the same reference audio level that `--rx-deviation 2500` gives a ±2.5 kHz
+input. For an identical input, `5000` halves the normalized level before
+audio processing compared with `2500`. This setting is independent of TX's
+`--tx-deviation` option. WBFM keeps its fixed 75 kHz normalization and ignores
+the saved NBFM reference until NBFM is selected.
+
+The reference changes audio scaling, not receiver bandwidth. The existing
+NBFM complex filter keeps its ±6 kHz passband and ±9 kHz stopband; accepting
+a reference up to `24000` does not establish support for receiving that RF
+deviation. Noise squelch uses its existing discriminator reference, so
+changing `--rx-deviation` leaves squelch thresholds and decisions unchanged.
+The launch setting appears as `config.rx_deviation_hz` in backend status JSON;
+the compact controller display and command protocol do not expose an edit
+for it.
+
 Squelch controls work during reception and while stopped. Noise thresholds
 use 0.001 RMS resolution and must satisfy `0 < open < close <= 8.0` after
 rounding. A pair that collapses to the same rounded value is rejected.
@@ -307,7 +352,7 @@ reply timeout is 2 seconds; the accepted range is greater than 0 through 60.
 
 ## FPGA programming after reboot
 
-Start the backend from the repository root with `--start-stopped`, as shown
+Start the backend from the repository root with RX stopped (the default), as shown
 above. In the controller, use:
 
 ```text
@@ -416,17 +461,19 @@ RX and TX have separate frequency, rate and pipeline generations.
 | TX setting | Default and accepted values |
 | --- | --- |
 | Frequency | 430.125 MHz; the same board/channel frequency limits as RX. |
+| Mode | NBFM; `nbfm` is the only supported TX mode. |
 | Sample rate | 1 MS/s; 1, 2 or 4 MS/s. |
 | Power | −12 dBm; RF24 accepts −12 through +14 dBm, RF09 −14 through +14 dBm. |
 | Source | Microphone; `mic` or `tone`. |
 | Microphone device | `plughw:Loopback,1,1`, selected at backend launch. |
 | Tone frequency | 600 Hz; greater than 0 through 3000 Hz. |
 | Tone amplitude | 0.4; greater than 0 through 1.0. |
-| Maximum deviation | Fixed at ±2.5 kHz. |
+| Nominal deviation | ±2.5 kHz at unit audio amplitude; configurable from 0 through 24000 Hz at launch. |
 
 Backend launch options select the saved TX defaults: `--tx-frequency HZ`,
-`--tx-power DBM`, `--tx-sample-rate HZ`, `--tx-source mic|tone` and
-`--microphone DEVICE`. These do not start transmission. The backend rejects
+`--tx-mode nbfm`, `--tx-power DBM`, `--tx-sample-rate HZ`, `--tx-source mic|tone`,
+`--tx-microphone DEVICE` and `--tx-deviation HZ` (default `2500`). These do not
+start transmission. The backend rejects
 TX when the modem's IQ loopback bit is set and rechecks it before keying.
 Before sending opening-cue IQ, it restores the calibrated driver power
 setting after activation and verifies PAC/current reduction, TXDFE, FPGA
@@ -444,7 +491,9 @@ remains unchanged.
 
 Power is a requested modem/driver setting; it is not a calibrated antenna
 connector measurement. A tone amplitude of 1.0 requests full configured
-deviation. TX is always NBFM, including when the saved receiver mode is WBFM.
+nominal deviation. The deviation setting scales unit-amplitude audio; it is
+not an RF deviation limiter or a calibrated measurement. TX is always NBFM,
+including when the saved receiver mode is WBFM.
 The opening and closing Quindar behavior and
 [closing-tone carrier-release fix](tx-tail-timing.md) remain in use.
 
@@ -670,7 +719,7 @@ Use a dry-run backend with the same controller and optional monitor:
 
 ```sh
 build/radio-backend/cariboulite_radio_backend \
-  --dry-run --start-stopped --seconds 60
+  --dry-run --seconds 60
 ```
 
 Dry-run opens no radio or audio devices. Controller replies are explicitly

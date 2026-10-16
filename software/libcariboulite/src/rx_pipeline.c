@@ -174,6 +174,17 @@ int rx_pipeline_init(rx_pipeline_t* p, sys_st* sys,
         par->fs_audio != 48000 ||
         (par->mode != AUDIO_DEMOD_NBFM && par->mode != AUDIO_DEMOD_WBFM)) return -1;
 
+    /* Bit validation remains effective with the production -ffast-math flags. */
+    uint32_t deviation_bits;
+    _Static_assert(sizeof(deviation_bits) == sizeof(par->nbfm_deviation_hz),
+                   "32-bit float required");
+    memcpy(&deviation_bits, &par->nbfm_deviation_hz, sizeof(deviation_bits));
+    if ((deviation_bits & 0x7f800000u) == 0x7f800000u) return -1;
+    const float deviation = par->nbfm_deviation_hz != 0
+        ? par->nbfm_deviation_hz : NBFM_DEFAULT_DEVIATION_HZ;
+    if (deviation < NBFM_RX_MIN_DEVIATION_HZ || deviation > NBFM_RX_MAX_DEVIATION_HZ)
+        return -1;
+
     uint32_t noise_levels = noise_squelch_default_levels();
     if ((par->noise_squelch_open_rms != 0 || par->noise_squelch_close_rms != 0) &&
         !noise_squelch_pack_levels(par->noise_squelch_open_rms,
@@ -233,6 +244,11 @@ int rx_pipeline_init(rx_pipeline_t* p, sys_st* sys,
     };
     p->demod.dsp = audio_demod_create(par->mode, &dsp_config);
     if (!p->demod.dsp) { error = -4; goto fail; }
+    if (par->mode == AUDIO_DEMOD_NBFM &&
+        audio_demod_set_nbfm_deviation(p->demod.dsp, deviation) != 0) {
+        error = -4;
+        goto fail;
+    }
 
     if (pthread_create(&p->demod_thread, NULL, audio_demod_thread, &p->demod) != 0) {
         error = -4;

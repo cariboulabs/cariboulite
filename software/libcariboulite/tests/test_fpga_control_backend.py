@@ -33,7 +33,9 @@ class FpgaControlBackendTests(unittest.TestCase):
     snapshot_matching = helpers.TxControlBackendTests.snapshot_matching
     assert_simulated = helpers.TxControlBackendTests.assert_simulated
 
-    def start_backend(self, *arguments):
+    def start_backend(self, *arguments, start=True):
+        if start:
+            arguments = ("--rx-start", *arguments)
         process = subprocess.Popen(
             [str(rx_helpers.BACKEND), "--dry-run", "--socket", str(self.status_path),
              "--seconds", "10", "--status-hz", "20", *arguments],
@@ -61,7 +63,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.assertEqual(self.settings(self.command(peer, "get")), self.settings(before))
 
     def test_running_tx_refuses_programming_then_idle_allows_it(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         self.command(peer, "tx_start", "ACCEPTED")
         transmitting = self.wait_state(peer, "TX")
@@ -80,7 +82,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.assertFalse(idle["rx_resume"])
 
     def test_programming_publishes_transition_then_idle_without_hardware(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         status = self.connect(self.status_path)
         before = self.command(peer, "get")
@@ -103,7 +105,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.assertFalse(completed["control"]["rx_requested"])
 
     def test_active_transition_refuses_programming(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         self.command(peer, "tx_start", "ACCEPTED")
         # Both the pending job and completed TX must refuse a reset. The
@@ -117,7 +119,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.wait_state(peer, "IDLE")
 
     def test_programming_survives_controller_disconnect_and_leaves_rx_stopped(self):
-        backend = self.start_backend("--start-stopped")
+        backend = self.start_backend(start=False)
         peer = self.controller()
         status = self.connect(self.status_path)
         before = self.command(peer, "get")
@@ -135,7 +137,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.assertEqual(self.command(replacement, "get")["state"], "IDLE")
 
     def test_built_controller_one_shot_programming_completes_after_exit(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         status = self.connect(self.status_path)
         before = self.snapshot_matching(status)
         result = subprocess.run(
@@ -152,7 +154,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.assertFalse(completed["control"]["rx_requested"])
 
     def test_v1_and_firmware_path_packets_remain_protocol_errors(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         before = self.command(peer, "get")
         for command in ("fpga_program", "fpga_soft_reset", "fpga_hard_reset"):
@@ -170,7 +172,7 @@ class FpgaControlBackendTests(unittest.TestCase):
             self.assertEqual(denied["state"], "IDLE")
 
     def test_soft_reset_preserves_configuration_without_loading_firmware(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         self.assertFalse((Path(self.temporary.name) / "firmware/top.bin").exists())
         peer = self.controller()
         status = self.connect(self.status_path)
@@ -192,7 +194,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.assertEqual(idle["config_generation"], before["config_generation"] + 2)
 
     def test_soft_then_hard_reset_requires_programming_before_radio_mutations(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         self.assertFalse((Path(self.temporary.name) / "firmware/top.bin").exists())
         peer = self.controller()
         self.command(peer, "fpga_soft_reset", "ACCEPTED")
@@ -222,7 +224,7 @@ class FpgaControlBackendTests(unittest.TestCase):
         self.wait_state(peer, "RX")
 
     def test_reset_survives_disconnect_without_restarting_rx_or_tx(self):
-        backend = self.start_backend("--start-stopped")
+        backend = self.start_backend(start=False)
         status = self.connect(self.status_path)
         for command, completed_state in (("fpga_soft_reset", "IDLE"),
                                          ("fpga_hard_reset", "FPGA_NEEDS_PROGRAM")):
@@ -241,7 +243,7 @@ class FpgaControlBackendTests(unittest.TestCase):
                 self.assertIsNone(backend.poll())
 
     def test_built_controller_one_shot_reset_commands(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         status = self.connect(self.status_path)
         for command, completed_state in (("fpga soft reset", "IDLE"),
                                          ("fpga hard reset", "FPGA_NEEDS_PROGRAM")):

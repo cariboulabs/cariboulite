@@ -86,31 +86,40 @@ static void usage(FILE *out, const char *program)
 {
     fprintf(out,
         "Usage: %s [options]\n"
-        "Half-duplex radio owner; starts RX unless --start-stopped.\n"
-        "  --channel RF24|RF09       default RF24 (HiF)\n"
-        "  --frequency HZ            default 430125000\n"
-        "  --sample-rate HZ          1000000, 2000000 or 4000000 (default 1000000)\n"
-        "  --mode nbfm|wbfm          default nbfm; WBFM is mono\n"
-        "  --playback DEVICE         default plughw:Loopback,0,0\n"
-        "  --microphone DEVICE       TX capture; default plughw:Loopback,1,1\n"
-        "  --tx-frequency HZ         default 430125000\n"
-        "  --tx-power DBM            default -12; RF24 -12..14, RF09 -14..14\n"
-        "  --tx-sample-rate HZ       1000000, 2000000 or 4000000 (default 1000000)\n"
-        "  --tx-source mic|tone      default mic; tone 600 Hz, amplitude 0.4\n"
+        "Half-duplex radio owner; RX and TX start stopped.\n"
+        "Shared options:\n"
+        "  --channel RF24|RF09       shared RX/TX radio; default RF24 (HiF)\n"
         "  --socket PATH             default /tmp/cariboulite-monitor-<UID>/status.sock\n"
         "  --control-socket PATH     default control.sock beside the status socket\n"
-        "  --start-stopped            initialize hardware and wait for RX start\n"
         "  --seconds SECONDS         exit after this wall time (default until Ctrl+C)\n"
         "  --status-hz HZ            0.5..20, default 5\n"
-        "  --no-noise-squelch         bypass noise squelch\n"
-        "  --carrier-squelch          enable carrier squelch (default off)\n"
-        "  --noise-open RMS          default %.2f\n"
-        "  --noise-close RMS         default %.2f\n"
-        "  --gain GAIN               PCM gain, default 8000\n"
-        "  --deemphasis-us US         50 or 75, default 50\n"
-        "  --dry-run                  exercise status IPC without hardware or audio\n"
-        "  --help                     show this help\n",
-        program, (double)NOISE_SQUELCH_OPEN_RMS, (double)NOISE_SQUELCH_CLOSE_RMS);
+        "  --dry-run                 exercise status IPC without hardware or audio\n"
+        "  --help                    show this help\n"
+        "Receive options:\n"
+        "  --rx-start                start reception after initialization\n"
+        "  --rx-frequency HZ         default 430125000\n"
+        "  --rx-sample-rate HZ       1000000, 2000000 or 4000000 (default 1000000)\n"
+        "  --rx-mode nbfm|wbfm       default nbfm; WBFM is mono\n"
+        "  --rx-deviation HZ         NBFM audio normalization 1..24000 (default %.0f)\n"
+        "  --rx-playback DEVICE      default plughw:Loopback,0,0\n"
+        "  --rx-no-noise-squelch      bypass noise squelch\n"
+        "  --rx-carrier-squelch       enable carrier squelch (default off)\n"
+        "  --rx-noise-open RMS        default %.2f\n"
+        "  --rx-noise-close RMS       default %.2f\n"
+        "  --rx-gain GAIN            PCM gain, default 8000\n"
+        "  --rx-deemphasis-us US      50 or 75, default 50\n"
+        "Transmit options:\n"
+        "  --tx-frequency HZ         default 430125000\n"
+        "  --tx-power DBM            default -12; RF24 -12..14, RF09 -14..14\n"
+        "  --tx-mode nbfm            only supported TX mode (default nbfm)\n"
+        "  --tx-deviation HZ         nominal NBFM deviation 0..24000 (default %.0f)\n"
+        "  --tx-sample-rate HZ       1000000, 2000000 or 4000000 (default 1000000)\n"
+        "  --tx-source mic|tone      default mic; tone 600 Hz, amplitude 0.4\n"
+        "  --tx-microphone DEVICE    default plughw:Loopback,1,1\n"
+        "Legacy unprefixed RX options, --microphone and --start-stopped remain accepted.\n",
+        program, (double)NBFM_DEFAULT_DEVIATION_HZ,
+        (double)NOISE_SQUELCH_OPEN_RMS, (double)NOISE_SQUELCH_CLOSE_RMS,
+        (double)NBFM_DEFAULT_DEVIATION_HZ);
 }
 
 static int number(const char *text, double *result, double low, double high)
@@ -129,12 +138,14 @@ static int parse_options(int argc, char **argv, options_t *o)
     *o = (options_t){
         .channel = "RF24", .playback = "plughw:Loopback,0,0",
         .microphone = "plughw:Loopback,1,1", .actual_tx_power = INT_MIN,
+        .start_stopped = true,
         .frequency = 430125000, .status_hz = 5, .config_generation = 1,
         .tx = {.freq_hz = 430125000, .tx_power_dbm = -12, .rf_fs = 1000000,
             .tone_hz = 600, .tone_amp = .4f, .out_scale = 4000,
             .f_dev_hz = NBFM_DEFAULT_DEVIATION_HZ, .verify_start_profile = true,
             .pacing_mode = TX_PACING_HARDWARE_REQUIRED},
         .rx = {.freq_hz = 430125000, .fs_rf = 1000000, .fs_audio = 48000,
+            .nbfm_deviation_hz = NBFM_DEFAULT_DEVIATION_HZ,
             .deemph_tau_s = 50e-6f, .pcm_gain = 8000,
             .noise_squelch_open_rms = NOISE_SQUELCH_OPEN_RMS,
             .noise_squelch_close_rms = NOISE_SQUELCH_CLOSE_RMS,
@@ -142,31 +153,50 @@ static int parse_options(int argc, char **argv, options_t *o)
     };
     enum { CHANNEL = 1000, FREQ, RATE, MODE, PLAYBACK, SOCKET, SECONDS,
         STATUS_HZ, NO_NOISE, CARRIER, NOISE_OPEN, NOISE_CLOSE, GAIN, DEEMPH, DRY_RUN,
-        CONTROL_SOCKET, START_STOPPED, MICROPHONE, TX_FREQ, TX_POWER, TX_RATE, TX_SOURCE };
+        CONTROL_SOCKET, START_STOPPED, MICROPHONE, TX_FREQ, TX_POWER, TX_RATE, TX_SOURCE,
+        RX_START, TX_MODE, TX_DEVIATION, RX_DEVIATION };
     static const struct option long_options[] = {
         {"channel", required_argument, NULL, CHANNEL},
+        {"rx-start", no_argument, NULL, RX_START},
+        {"rx-frequency", required_argument, NULL, FREQ},
+        {"rx-sample-rate", required_argument, NULL, RATE},
+        {"rx-mode", required_argument, NULL, MODE},
+        {"rx-deviation", required_argument, NULL, RX_DEVIATION},
+        {"rx-playback", required_argument, NULL, PLAYBACK},
+        {"rx-no-noise-squelch", no_argument, NULL, NO_NOISE},
+        {"rx-carrier-squelch", no_argument, NULL, CARRIER},
+        {"rx-noise-open", required_argument, NULL, NOISE_OPEN},
+        {"rx-noise-close", required_argument, NULL, NOISE_CLOSE},
+        {"rx-gain", required_argument, NULL, GAIN},
+        {"rx-deemphasis-us", required_argument, NULL, DEEMPH},
+        {"tx-microphone", required_argument, NULL, MICROPHONE},
+        {"tx-frequency", required_argument, NULL, TX_FREQ},
+        {"tx-power", required_argument, NULL, TX_POWER},
+        {"tx-mode", required_argument, NULL, TX_MODE},
+        {"tx-deviation", required_argument, NULL, TX_DEVIATION},
+        {"tx-sample-rate", required_argument, NULL, TX_RATE},
+        {"tx-source", required_argument, NULL, TX_SOURCE},
+        {"socket", required_argument, NULL, SOCKET},
+        {"control-socket", required_argument, NULL, CONTROL_SOCKET},
+        {"seconds", required_argument, NULL, SECONDS},
+        {"status-hz", required_argument, NULL, STATUS_HZ},
+        {"dry-run", no_argument, NULL, DRY_RUN},
+        {"help", no_argument, NULL, 'h'},
+        /* Compatibility names keep existing launch scripts usable. */
         {"frequency", required_argument, NULL, FREQ},
         {"sample-rate", required_argument, NULL, RATE},
         {"mode", required_argument, NULL, MODE},
         {"playback", required_argument, NULL, PLAYBACK},
         {"microphone", required_argument, NULL, MICROPHONE},
-        {"tx-frequency", required_argument, NULL, TX_FREQ},
-        {"tx-power", required_argument, NULL, TX_POWER},
-        {"tx-sample-rate", required_argument, NULL, TX_RATE},
-        {"tx-source", required_argument, NULL, TX_SOURCE},
-        {"socket", required_argument, NULL, SOCKET},
-        {"control-socket", required_argument, NULL, CONTROL_SOCKET},
         {"start-stopped", no_argument, NULL, START_STOPPED},
-        {"seconds", required_argument, NULL, SECONDS},
-        {"status-hz", required_argument, NULL, STATUS_HZ},
+        {"rx-start-stopped", no_argument, NULL, START_STOPPED},
         {"no-noise-squelch", no_argument, NULL, NO_NOISE},
         {"carrier-squelch", no_argument, NULL, CARRIER},
         {"noise-open", required_argument, NULL, NOISE_OPEN},
         {"noise-close", required_argument, NULL, NOISE_CLOSE},
         {"gain", required_argument, NULL, GAIN},
         {"deemphasis-us", required_argument, NULL, DEEMPH},
-        {"dry-run", no_argument, NULL, DRY_RUN},
-        {"help", no_argument, NULL, 'h'}, {0},
+        {0},
     };
     int key;
     double value;
@@ -187,6 +217,11 @@ static int parse_options(int argc, char **argv, options_t *o)
             else if (!strcmp(optarg, "wbfm")) o->rx.mode = AUDIO_DEMOD_WBFM;
             else return -1;
             break;
+        case RX_DEVIATION:
+            if (number(optarg, &value, NBFM_RX_MIN_DEVIATION_HZ,
+                       NBFM_RX_MAX_DEVIATION_HZ)) return -1;
+            o->rx.nbfm_deviation_hz = (float)value;
+            break;
         case PLAYBACK:
             if (!*optarg || strlen(optarg) > 255) return -1;
             o->playback = optarg; break;
@@ -199,6 +234,14 @@ static int parse_options(int argc, char **argv, options_t *o)
         case TX_POWER:
             if (number(optarg, &value, -14, 14) || floor(value) != value) return -1;
             o->tx.tx_power_dbm = (int)value; break;
+        case TX_MODE:
+            if (strcmp(optarg, "nbfm")) return -1;
+            break;
+        case TX_DEVIATION:
+            if (number(optarg, &value, 0, 24000)) return -1;
+            o->tx.f_dev_hz = (float)value;
+            if (value != 0 && o->tx.f_dev_hz == 0) return -1;
+            break;
         case TX_RATE:
             if (number(optarg, &value, 1e6, 4e6)
                 || (value != 1e6 && value != 2e6 && value != 4e6)) return -1;
@@ -208,6 +251,7 @@ static int parse_options(int argc, char **argv, options_t *o)
             o->tx.tone_mode = !strcmp(optarg, "tone"); break;
         case SOCKET: o->socket_path = optarg; break;
         case CONTROL_SOCKET: o->control_socket_path = optarg; break;
+        case RX_START: o->start_stopped = false; break;
         case START_STOPPED: o->start_stopped = true; break;
         case SECONDS:
             if (number(optarg, &o->seconds, 0.1, 86400)) return -1;
@@ -1394,7 +1438,7 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         "\"owner_pid\":%ld,\"channel\":\"%s\",\"state\":\"%s\",\"rx_mode\":\"%s\","
         "\"config\":{\"sample_rate_hz\":%.0f,\"rx_frequency_hz\":%.3f,"
         "\"requested_frequency_hz\":%.3f,\"rx_bandwidth_hz\":%.0f,"
-        "\"playback\":%s,\"pcm_gain\":%.3f,\"deemphasis_us\":%.3f,"
+        "\"playback\":%s,\"pcm_gain\":%.3f,\"deemphasis_us\":%.3f,\"rx_deviation_hz\":%.3f,"
         "\"tx_frequency_hz\":%.3f,\"tx_actual_frequency_hz\":%s,\"tx_power_dbm\":%d,"
         "\"tx_actual_power_dbm\":%s,\"tx_sample_rate_hz\":%u,\"tx_source\":\"%s\","
         "\"tx_tone_hz\":%.3f,\"tx_tone_amp\":%.3f,\"tx_deviation_hz\":%.3f},"
@@ -1417,6 +1461,7 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         (long)getpid(), o->channel, state, o->rx.mode == AUDIO_DEMOD_NBFM ? "NBFM" : "WBFM mono",
         (double)o->rx.fs_rf, actual_freq, o->frequency, bandwidth, playback,
         (double)o->rx.pcm_gain, o->rx.deemph_tau_s * 1e6,
+        (double)(o->rx.nbfm_deviation_hz != 0 ? o->rx.nbfm_deviation_hz : NBFM_DEFAULT_DEVIATION_HZ),
         o->tx.freq_hz, tx_actual_freq, o->tx.tx_power_dbm, tx_actual_power,
         o->tx.rf_fs, o->tx.tone_mode ? "tone" : "mic", (double)o->tx.tone_hz,
         (double)o->tx.tone_amp, (double)o->tx.f_dev_hz,

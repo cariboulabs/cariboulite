@@ -13,6 +13,10 @@ int nbfm_demod_set_audio(nbfm_demod_t* s, float tau, float gain)
 {
     return s && s->mode == FM_MODE_WBFM ? wb_demod_set_audio(s,tau,gain) : nb_demod_set_audio(s,tau,gain);
 }
+int nbfm_demod_set_deviation(nbfm_demod_t* s, float deviation_hz)
+{
+    return nb_demod_set_deviation(s, deviation_hz);
+}
 nbfm_demod_result_t nbfm_demod_process_with_raw(nbfm_demod_t* s,
     const iq16_t* input, size_t count, int16_t* output, float* raw,
     size_t capacity, double correction)
@@ -50,6 +54,8 @@ void audio_demod_destroy(audio_demod_t* s) { nbfm_demod_destroy(s); }
 void audio_demod_reset(audio_demod_t* s) { nbfm_demod_reset(s); }
 int audio_demod_set_audio(audio_demod_t* s, float tau, float gain)
 { return nbfm_demod_set_audio(s,tau,gain); }
+int audio_demod_set_nbfm_deviation(audio_demod_t* s, float deviation_hz)
+{ return nbfm_demod_set_deviation(s, deviation_hz); }
 audio_demod_result_t audio_demod_process_with_raw(audio_demod_t* s,
     const iq16_t* input, size_t count, int16_t* output, float* raw,
     size_t capacity, double correction)

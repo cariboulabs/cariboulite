@@ -322,8 +322,8 @@ def trial(kind, index, args, output):
             else:
                 socket_path = str(Path(socket_dir)/"status.sock")
                 owner = TerminalProcess([str(ROOT/"build/radio-backend/cariboulite_radio_backend"),
-                    "--channel", "RF24", "--frequency", str(args.frequency), "--sample-rate", str(args.sample_rate),
-                    "--mode", "nbfm", "--status-hz", "5", "--socket", socket_path], directory/"owner.ansi.log", args.rows, args.columns)
+                    "--channel", "RF24", "--rx-start", "--rx-frequency", str(args.frequency), "--rx-sample-rate", str(args.sample_rate),
+                    "--rx-mode", "nbfm", "--status-hz", "5", "--socket", socket_path], directory/"owner.ansi.log", args.rows, args.columns)
                 terms.append(owner)
                 owner.expect("RX started", 45)
                 monitor = TerminalProcess([str(ROOT/"build/radio-backend/cariboulite_radio_monitor"), "--socket", socket_path],

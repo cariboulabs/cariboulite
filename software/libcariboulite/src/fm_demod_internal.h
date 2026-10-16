@@ -6,6 +6,7 @@ struct nbfm_demod { fm_demod_mode_t mode; };
 nbfm_demod_t* nb_demod_create(const nbfm_demod_config_t* config);
 void nb_demod_reset(nbfm_demod_t* dsp);
 int nb_demod_set_audio(nbfm_demod_t* dsp, float tau, float gain);
+int nb_demod_set_deviation(nbfm_demod_t* dsp, float deviation_hz);
 nbfm_demod_result_t nb_demod_process_with_raw(nbfm_demod_t* dsp,
     const iq16_t* input, size_t count, int16_t* output, float* raw,
     size_t capacity, double correction);

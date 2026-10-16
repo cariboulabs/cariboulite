@@ -50,6 +50,7 @@ typedef struct {
     // Supported rates
     float  fs_rf;               // 1e6, 2e6 or 4e6
     float  fs_audio;            // 48e3
+    float  nbfm_deviation_hz;   // audio normalization; zero selects the default
 } rx_params_t;
 
 typedef struct {

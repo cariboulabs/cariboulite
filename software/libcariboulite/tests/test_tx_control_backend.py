@@ -206,9 +206,12 @@ class TxControlBackendTests(unittest.TestCase):
         self.assertEqual(self.settings(self.command(peer, "tx_stop")), self.settings(resumed))
 
     def test_tx_from_idle_returns_to_idle_and_transitions_reject_edits(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         before = self.command(peer, "get")
+        self.assertEqual(before["state"], "IDLE")
+        self.assertEqual(before["pipeline_generation"], 0)
+        self.assertFalse(before["rx_resume"])
         starting = self.command(peer, "tx_start", "ACCEPTED")
         self.assertTrue(starting["transition"])
         # If the asynchronous job finishes between replies, the stable TX
@@ -223,11 +226,12 @@ class TxControlBackendTests(unittest.TestCase):
         self.command(peer, "tx_stop", "ACCEPTED")
         idle = self.wait_state(peer, "IDLE")
         self.assertFalse(idle["tx_requested"])
+        self.assertFalse(idle["rx_resume"])
         self.assertEqual(idle["pipeline_generation"], before["pipeline_generation"])
         self.assertEqual(idle["tx_pipeline_generation"], transmitting["tx_pipeline_generation"])
 
     def test_rf09_power_range_and_supported_tx_rate_endpoints(self):
-        self.start_backend("--channel", "RF09", "--start-stopped")
+        self.start_backend("--channel", "RF09", start=False)
         peer = self.controller()
         for power in (-14, 14):
             with self.subTest(power=power):
@@ -245,7 +249,7 @@ class TxControlBackendTests(unittest.TestCase):
         self.assertEqual(tone["tx_tone_amp"], 1)
 
     def test_every_tx_session_uses_fresh_generation_with_saved_settings(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         self.command(peer, "tx_start", "ACCEPTED")
         first = self.wait_state(peer, "TX")

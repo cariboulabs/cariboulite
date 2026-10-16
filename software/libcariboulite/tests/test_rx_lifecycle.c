@@ -9,17 +9,51 @@
 static bool real_threads, live[1024];
 static int creates, fail_create, joins, hardware_active;
 static bool fail_malloc, fail_calloc, fail_demod_create;
+static unsigned malloc_calls, calloc_calls, alsa_sink_opens, demod_create_calls;
+static unsigned deviation_sets, demod_thread_creates;
+static bool verify_deviation_wiring, deviation_configured, fail_deviation_set;
+static float last_deviation;
+static audio_demod_t* last_demod_created;
+static audio_demod_mode_t last_demod_mode;
 audio_demod_t* __real_audio_demod_create(audio_demod_mode_t, const audio_demod_config_t*);
 audio_demod_t* __wrap_audio_demod_create(audio_demod_mode_t mode, const audio_demod_config_t* c) {
-    return fail_demod_create ? NULL : __real_audio_demod_create(mode,c);
+    ++demod_create_calls;
+    last_demod_mode=mode;
+    deviation_configured=false;
+    last_demod_created=fail_demod_create ? NULL : __real_audio_demod_create(mode,c);
+    return last_demod_created;
+}
+int __real_audio_demod_set_nbfm_deviation(audio_demod_t*, float);
+int __wrap_audio_demod_set_nbfm_deviation(audio_demod_t* dsp, float deviation_hz) {
+    ++deviation_sets;
+    if (verify_deviation_wiring) {
+        assert(dsp && dsp==last_demod_created && last_demod_mode==AUDIO_DEMOD_NBFM);
+        assert(!deviation_configured);
+    }
+    last_deviation=deviation_hz;
+    int result=fail_deviation_set ? -EINVAL :
+        __real_audio_demod_set_nbfm_deviation(dsp,deviation_hz);
+    deviation_configured=result==0;
+    return result;
+}
+audio_sink_t* __real_alsa_sink_open(const char*, unsigned);
+audio_sink_t* __wrap_alsa_sink_open(const char* device, unsigned rate) {
+    ++alsa_sink_opens;
+    return __real_alsa_sink_open(device,rate);
 }
 static size_t fail_calloc_count;
 static void* metadata_allocation;
 static bool track_metadata;
+static const rx_pipeline_t* tracked_cleanup_rx;
+static unsigned cleanup_fifo_frees;
 static pthread_barrier_t reader_ready;
 void __real_free(void*);
 void __wrap_free(void* p) {
     if (p == metadata_allocation) metadata_allocation = NULL;
+    if (tracked_cleanup_rx && p) {
+        if (p==tracked_cleanup_rx->rxq.q) cleanup_fifo_frees|=1;
+        if (p==tracked_cleanup_rx->afifo.q) cleanup_fifo_frees|=2;
+    }
     __real_free(p);
 }
 void *__real_malloc(size_t);
@@ -28,12 +62,24 @@ int __real_pthread_create(pthread_t*, const pthread_attr_t*, void*(*)(void*), vo
 int __real_pthread_cancel(pthread_t);
 int __real_pthread_join(pthread_t, void**);
 void *__wrap_malloc(size_t n) {
+    if (verify_deviation_wiring) ++malloc_calls;
     void* p = fail_malloc ? NULL : __real_malloc(n);
     if (track_metadata) metadata_allocation = p;
     return p;
 }
-void *__wrap_calloc(size_t n, size_t s) { return (fail_calloc || (fail_calloc_count && n==fail_calloc_count)) ? NULL : __real_calloc(n,s); }
+void *__wrap_calloc(size_t n, size_t s) {
+    if (verify_deviation_wiring) ++calloc_calls;
+    return (fail_calloc || (fail_calloc_count && n==fail_calloc_count)) ? NULL : __real_calloc(n,s);
+}
 int __wrap_pthread_create(pthread_t* t, const pthread_attr_t* a, void*(*fn)(void*), void* v) {
+    if (fn==audio_demod_thread) {
+        ++demod_thread_creates;
+        if (verify_deviation_wiring) {
+            const audio_demod_ctrl_t* ctrl=v;
+            assert(ctrl->dsp==last_demod_created);
+            assert(deviation_configured==(ctrl->mode==AUDIO_DEMOD_NBFM));
+        }
+    }
     if (real_threads) return __real_pthread_create(t,a,fn,v);
     ++creates;
     if (creates == fail_create) return EAGAIN;
@@ -559,6 +605,79 @@ static void test_modem_policy(void) {
     }
     puts("PASS: RF09/RF24 NBFM/WBFM filter restoration at 1/2/4 MS/s, isolated registers, mode transitions, failed configuration blocks RX and retries cleanly");
 }
+static void test_rx_deviation_wiring(void) {
+    sys_st sys={0};
+    sys.radio_high.sys=&sys;
+    sys.radio_high.type=cariboulite_channel_hif;
+    rx_params_t par={.freq_hz=430125000,.pcm_dev="null",.fs_rf=1000000,.fs_audio=48000};
+    rx_pipeline_t rx={0};
+    verify_deviation_wiring=true;
+
+    const float references[]={0,1,2500,5000,24000};
+    for (unsigned rate=0; rate<sizeof(monitor_rates)/sizeof(*monitor_rates); ++rate) {
+        par.fs_rf=monitor_rates[rate].fs;
+        for (unsigned i=0; i<sizeof(references)/sizeof(*references); ++i) {
+            par.nbfm_deviation_hz=references[i];
+            unsigned before_sets=deviation_sets, before_threads=demod_thread_creates;
+            assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)==0);
+            assert(deviation_sets==before_sets+1 && demod_thread_creates==before_threads+1);
+            assert(last_deviation==(references[i] ? references[i] : 2500));
+            assert(rx.demod.dsp==last_demod_created && deviation_configured);
+            assert(par.nbfm_deviation_hz==references[i]); // legacy zero stays an omitted setting
+            rx_pipeline_destroy(&rx); check_clean(&rx);
+        }
+
+        // A saved NBFM reference must not be applied to the WBFM demodulator.
+        par.mode=AUDIO_DEMOD_WBFM;
+        par.nbfm_deviation_hz=5000;
+        unsigned before_sets=deviation_sets, before_threads=demod_thread_creates;
+        assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)==0);
+        assert(deviation_sets==before_sets && demod_thread_creates==before_threads+1);
+        assert(!deviation_configured && rx.demod.mode==AUDIO_DEMOD_WBFM);
+        rx_pipeline_destroy(&rx); check_clean(&rx);
+        par.mode=AUDIO_DEMOD_NBFM;
+    }
+
+    const float invalid[]={-1,.5f,24001,NAN,INFINITY,-INFINITY};
+    for (unsigned mode=0; mode<2; ++mode) {
+        par.mode=mode ? AUDIO_DEMOD_WBFM : AUDIO_DEMOD_NBFM;
+        for (unsigned i=0; i<sizeof(invalid)/sizeof(*invalid); ++i) {
+            par.nbfm_deviation_hz=invalid[i];
+            int before_creates=creates;
+            unsigned before_malloc=malloc_calls, before_calloc=calloc_calls;
+            unsigned before_alsa=alsa_sink_opens, before_demod=demod_create_calls;
+            unsigned before_sets=deviation_sets;
+            assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)<0);
+            assert(creates==before_creates && malloc_calls==before_malloc && calloc_calls==before_calloc);
+            assert(alsa_sink_opens==before_alsa && demod_create_calls==before_demod && deviation_sets==before_sets);
+            assert(!rx.rxq.q && !rx.afifo.q);
+            check_clean(&rx);
+        }
+    }
+
+    // Setter failure joins the already-created writer and releases all resources;
+    // it must never start the demodulator, and a later initialization can succeed.
+    par.mode=AUDIO_DEMOD_NBFM;
+    par.nbfm_deviation_hz=5000;
+    fail_deviation_set=true;
+    tracked_cleanup_rx=&rx;
+    cleanup_fifo_frees=0;
+    int before_creates=creates, before_joins=joins;
+    unsigned before_sets=deviation_sets, before_threads=demod_thread_creates;
+    assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)<0);
+    assert(creates==before_creates+1 && joins==before_joins+1);
+    assert(deviation_sets==before_sets+1 && demod_thread_creates==before_threads);
+    assert(cleanup_fifo_frees==3);
+    check_clean(&rx);
+    tracked_cleanup_rx=NULL;
+    fail_deviation_set=false;
+    assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)==0);
+    assert(last_deviation==5000 && deviation_configured);
+    rx_pipeline_destroy(&rx); check_clean(&rx);
+    verify_deviation_wiring=false;
+    puts("PASS: RX deviation defaults/ranges and NBFM-only configuration before demod startup; validation and setter failures clean up safely");
+}
+
 static void test_noise_level_controls(void) {
     float opening=0, closing=0;
     assert(monitor_parse_noise_levels("0.120 0.180",&opening,&closing));
@@ -635,6 +754,7 @@ int main(void) {
     test_rssi_capture();
     test_shared_rx_stats();
     test_modem_policy();
+    test_rx_deviation_wiring();
     test_noise_level_controls();
     sys_st sys = {0};
     sys.radio_low.sys = sys.radio_high.sys = &sys;

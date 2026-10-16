@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import pty
+import re
 import select
 import signal
 import socket
@@ -130,6 +131,11 @@ class RadioBackendTests(unittest.TestCase):
         self.assertEqual(snapshot["owner_pid"], process.pid)
         self.assertEqual(snapshot["config"]["rx_frequency_hz"], 430125000)
         self.assertEqual(snapshot["config"]["sample_rate_hz"], 1000000)
+        self.assertEqual(snapshot["control"]["state"], "IDLE")
+        self.assertIs(snapshot["control"]["rx_requested"], False)
+        self.assertEqual(snapshot["control"]["pipeline_generation"], 0)
+        self.assertEqual(snapshot["config"]["rx_deviation_hz"], 2500)
+        self.assertEqual(snapshot["config"]["tx_deviation_hz"], 2500)
         self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(self.path.parent.stat().st_mode), 0o700)
         _, errors = process.communicate(timeout=3)
@@ -137,6 +143,14 @@ class RadioBackendTests(unittest.TestCase):
         self.assertIn(b"SIMULATED TRANSPORT ONLY", errors)
         self.assertNotIn(b"ALSA: opened", errors)
         self.assertFalse(self.path.exists(), "Timed stop left the owned socket behind")
+
+    def test_explicit_rx_start_requests_reception_without_dry_run_hardware(self):
+        self.start_backend("--rx-start")
+        snapshot = self.once()
+        self.assert_transport_only(snapshot)
+        self.assertEqual(snapshot["control"]["state"], "RX")
+        self.assertIs(snapshot["control"]["rx_requested"], True)
+        self.assertEqual(snapshot["control"]["pipeline_generation"], 1)
 
     def test_named_monitor_launcher_reads_dry_run_snapshot(self):
         process = self.start_backend()
@@ -161,15 +175,32 @@ class RadioBackendTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr.decode())
                 self.assertIn(application.name, result.stdout.decode())
 
+    def test_backend_help_advertises_canonical_radio_options(self):
+        result = subprocess.run([str(BACKEND), "--dry-run", "--help"],
+                                capture_output=True, text=True, timeout=3, env=ENVIRONMENT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        options = set(re.findall(r"(?m)^\s+(--[a-z-]+)\b", result.stdout))
+        self.assertTrue({
+            "--channel", "--rx-frequency", "--rx-sample-rate", "--rx-mode", "--rx-playback",
+            "--rx-start", "--rx-no-noise-squelch", "--rx-carrier-squelch", "--rx-noise-open",
+            "--rx-noise-close", "--rx-gain", "--rx-deemphasis-us", "--tx-microphone",
+            "--tx-mode", "--tx-deviation", "--rx-deviation",
+        }.issubset(options), result.stdout)
+        self.assertFalse({
+            "--frequency", "--sample-rate", "--mode", "--playback", "--start-stopped",
+            "--rx-start-stopped", "--no-noise-squelch", "--carrier-squelch", "--noise-open",
+            "--noise-close", "--gain", "--deemphasis-us", "--microphone", "--deviation",
+        } & options, result.stdout)
+
     def test_rf09_settings_and_escaped_playback_survive_transport(self):
         # A nonexistent, unusual device name must not be opened in dry-run.
         playback = 'nonexistent-device:"quoted"\\path\nsecond line'
         process = self.start_backend(
-            "--channel", "RF09", "--frequency", "430125000",
-            "--sample-rate", "4000000", "--playback", playback,
-            "--status-hz", "10", "--no-noise-squelch", "--carrier-squelch",
-            "--noise-open", "0.18", "--noise-close", "0.28",
-            "--gain", "1234", "--deemphasis-us", "75", seconds=".8")
+            "--channel", "RF09", "--rx-frequency", "430125000",
+            "--rx-sample-rate", "4000000", "--rx-playback", playback,
+            "--status-hz", "10", "--rx-no-noise-squelch", "--rx-carrier-squelch",
+            "--rx-noise-open", "0.18", "--rx-noise-close", "0.28",
+            "--rx-gain", "1234", "--rx-deemphasis-us", "75", seconds=".8")
         snapshot = self.once()
         self.assert_transport_only(snapshot, "RF09")
         self.assertEqual(snapshot["config"]["playback"], playback)
@@ -184,9 +215,123 @@ class RadioBackendTests(unittest.TestCase):
         self.assertEqual(process.returncode, 0, errors.decode())
         self.assertFalse(self.path.exists())
 
+    def test_legacy_rx_aliases_match_canonical_launch_configuration(self):
+        canonical = (
+            "--rx-frequency", "430130000", "--rx-sample-rate", "2000000",
+            "--rx-mode", "nbfm", "--rx-playback", "nonexistent-legacy-playback",
+            "--rx-no-noise-squelch", "--rx-carrier-squelch", "--rx-noise-open", ".18",
+            "--rx-noise-close", ".28", "--rx-gain", "1234", "--rx-deemphasis-us", "75",
+        )
+        aliases = {
+            "--rx-frequency": "--frequency", "--rx-sample-rate": "--sample-rate",
+            "--rx-mode": "--mode", "--rx-playback": "--playback",
+            "--rx-no-noise-squelch": "--no-noise-squelch",
+            "--rx-carrier-squelch": "--carrier-squelch", "--rx-noise-open": "--noise-open",
+            "--rx-noise-close": "--noise-close", "--rx-gain": "--gain",
+            "--rx-deemphasis-us": "--deemphasis-us",
+        }
+        reference = None
+        for arguments in (canonical, tuple(aliases.get(value, value) for value in canonical)):
+            with self.subTest(arguments=arguments):
+                process = self.start_backend(*arguments)
+                snapshot = self.once()
+                settings = {key: snapshot[key] for key in ("config", "rx_mode", "control")}
+                settings["noise"] = snapshot["rx"]["noise"]
+                settings["noise_enabled"] = snapshot["rx"]["noise_enabled"]
+                settings["carrier_enabled"] = snapshot["rx"]["carrier_enabled"]
+                if reference is None:
+                    reference = settings
+                else:
+                    self.assertEqual(settings, reference)
+                self.stop_backend(process)
+
+    def test_legacy_stop_options_override_explicit_rx_start(self):
+        for option in ("--start-stopped", "--rx-start-stopped"):
+            with self.subTest(option=option):
+                process = self.start_backend("--rx-start", option)
+                snapshot = self.once()
+                self.assertEqual(snapshot["control"]["state"], "IDLE")
+                self.assertIs(snapshot["control"]["rx_requested"], False)
+                self.assertEqual(snapshot["control"]["pipeline_generation"], 0)
+                self.stop_backend(process)
+
+    def test_nbfm_transmit_deviation_publishes_exact_supported_values(self):
+        for value in ("0", "3750.5", "24000"):
+            with self.subTest(value=value):
+                process = self.start_backend("--tx-mode", "nbfm", "--tx-deviation", value,
+                                             "--tx-source", "tone", "--rx-mode", "wbfm",
+                                             "--rx-deviation", "5123.5")
+                snapshot = self.once()
+                self.assert_transport_only(snapshot)
+                self.assertEqual(snapshot["rx_mode"], "WBFM mono")
+                self.assertEqual(snapshot["config"]["tx_deviation_hz"], float(value))
+                self.assertEqual(snapshot["config"]["rx_deviation_hz"], 5123.5)
+                self.assertEqual(snapshot["config"]["tx_source"], "tone")
+                self.assertIs(snapshot["control"]["tx_requested"], False)
+                peer = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+                self.addCleanup(peer.close)
+                peer.settimeout(2)
+                peer.connect(str(self.path.with_name("control.sock")))
+                peer.sendall(b"v2 1 get")
+                fields = peer.recv(4096).decode("ascii").split()
+                self.assertEqual(len(fields), 30)
+                self.assertEqual(fields[:4], ["v2", "1", "OK", "OK"])
+                self.assertEqual(float(fields[26]), float(value))
+                peer.close()
+                self.stop_backend(process)
+
+    def test_receive_deviation_is_independent_of_transmit_and_keeps_nbfm_bandwidth(self):
+        for value in ("1", "3750.5", "24000"):
+            with self.subTest(value=value):
+                process = self.start_backend("--rx-deviation", value)
+                snapshot = self.once()
+                self.assert_transport_only(snapshot)
+                self.assertEqual(snapshot["rx_mode"], "NBFM")
+                self.assertEqual(snapshot["config"]["rx_deviation_hz"], float(value))
+                self.assertEqual(snapshot["config"]["tx_deviation_hz"], 2500)
+                self.assertEqual(snapshot["config"]["rx_bandwidth_hz"], 160000)
+                self.stop_backend(process)
+
+    def test_microphone_option_and_legacy_alias_bind_the_capture_device(self):
+        # A parser fixture observes the capture device passed to the pipeline;
+        # dry-run snapshots intentionally contain no ALSA device diagnostics.
+        src = ROOT / "software/libcariboulite/src"
+        backend = CLIENT.parent / "radio_backend"
+        fixture = Path(self.temporary.name) / "capture_options.c"
+        fixture.write_text(r'''
+#define _GNU_SOURCE
+#define main unused_backend_main
+#include "main.c"
+#undef main
+#include <assert.h>
+int main(int argc, char **argv) {
+    options_t options;
+    assert(!parse_options(argc, argv, &options));
+    assert(!strcmp(options.microphone, "nonexistent-capture:quoted\\device"));
+    assert(options.tx.mic_dev);
+    assert(!strcmp(options.tx.mic_dev, options.microphone));
+    assert(!options.tx.tone_mode);
+    return 0;
+}
+''')
+        binary = Path(self.temporary.name) / "capture_options"
+        compilation = subprocess.run([
+            "cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter",
+            "-Wno-missing-braces", "-ffunction-sections", "-fdata-sections",
+            "-I" + str(src), "-I" + str(backend), str(fixture), str(src / "noise_squelch.c"),
+            "-Wl,--gc-sections", "-pthread", "-lm", "-o", str(binary),
+        ], capture_output=True)
+        self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
+        for option in ("--tx-microphone", "--microphone"):
+            with self.subTest(option=option):
+                result = subprocess.run([str(binary), "--dry-run", option,
+                                         "nonexistent-capture:quoted\\device"],
+                                        capture_output=True, timeout=3)
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+
     def test_wbfm_selection_has_no_fake_reception_or_noise_measurements(self):
-        process = self.start_backend("--mode", "wbfm", "--frequency", "100100000",
-                                     "--sample-rate", "2000000", seconds=".8")
+        process = self.start_backend("--rx-mode", "wbfm", "--rx-frequency", "100100000",
+                                     "--rx-sample-rate", "2000000", seconds=".8")
         snapshot = self.once()
         self.assert_transport_only(snapshot)
         self.assertEqual(snapshot["rx_mode"], "WBFM mono")
@@ -210,7 +355,7 @@ class RadioBackendTests(unittest.TestCase):
 
     def test_maximum_escaped_device_name_fits_packet_limit_with_instrumentation(self):
         playback = "\x01" * 255
-        self.start_backend("--playback", playback)
+        self.start_backend("--rx-playback", playback)
         peer = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         self.addCleanup(peer.close)
         peer.settimeout(2)
@@ -491,30 +636,45 @@ int main(void) {
 
     def test_invalid_cli_fails_before_creating_status_directory(self):
         invalid = (
-            ("--frequency", "nan"), ("--frequency", "inf"),
-            ("--frequency", "430125000x"), ("--frequency", "0"),
-            ("--sample-rate", "nan"), ("--sample-rate", "3000000"),
-            ("--sample-rate", "1000001"), ("--channel", "RF12"),
-            ("--channel", "RF09", "--frequency", "100100000"),
-            ("--mode", "am"), ("--status-hz", "nan"),
+            ("--rx-frequency", "nan"), ("--rx-frequency", "inf"),
+            ("--rx-frequency", "430125000x"), ("--rx-frequency", "0"),
+            ("--rx-sample-rate", "nan"), ("--rx-sample-rate", "3000000"),
+            ("--rx-sample-rate", "1000001"), ("--channel", "RF12"),
+            ("--channel", "RF09", "--rx-frequency", "100100000"),
+            ("--rx-mode", "am"), ("--status-hz", "nan"),
             ("--status-hz", "0"), ("--status-hz", "21"),
             ("--seconds", "inf"), ("--seconds", "0"),
-            ("--gain", "nan"), ("--gain", "-1"),
-            ("--noise-open", "nan"), ("--noise-close", "9"),
-            ("--noise-open", "0.30", "--noise-close", "0.20"),
-            ("--noise-open", "0.3001", "--noise-close", "0.3002"),
-            ("--deemphasis-us", "60"), ("--playback", ""),
+            ("--rx-gain", "nan"), ("--rx-gain", "-1"),
+            ("--rx-noise-open", "nan"), ("--rx-noise-close", "9"),
+            ("--rx-noise-open", "0.30", "--rx-noise-close", "0.20"),
+            ("--rx-noise-open", "0.3001", "--rx-noise-close", "0.3002"),
+            ("--rx-deemphasis-us", "60"), ("--rx-playback", ""),
+            ("--rx-frequency",), ("--tx-microphone",), ("--tx-microphone", ""),
+            ("--tx-mode", "wbfm"), ("--tx-mode", "am"), ("--tx-mode", "NBFM"),
+            ("--tx-mode", ""), ("--tx-mode",),
             ("unexpected-positional-argument",),
         )
+        invalid += tuple(("--tx-deviation", value)
+                         for value in ("-1", "24000.1", "nan", "inf", "-inf",
+                                       "1e-50", "1e-9999", "2500Hz", ""))
+        invalid += (("--deviation", "5000"), ("--deviation=5000",),
+                    ("--deviation",), ("--tx-deviation",), ("--frequency", "nan"))
+        invalid += tuple(("--rx-deviation", value)
+                         for value in ("0", "-1", "0.5", "24000.1", "nan", "inf", "-inf",
+                                       "1e-50", "1e-9999", "2500Hz", ""))
+        invalid += (("--rx-deviation",),)
         for index, arguments in enumerate(invalid):
             with self.subTest(arguments=arguments):
                 path = Path(self.temporary.name) / f"invalid-{index}" / "status.sock"
+                control_path = Path(self.temporary.name) / f"invalid-control-{index}" / "control.sock"
                 result = subprocess.run(
-                    [str(BACKEND), "--dry-run", "--socket", str(path), *arguments],
+                    [str(BACKEND), "--dry-run", "--socket", str(path),
+                     "--control-socket", str(control_path), *arguments],
                     capture_output=True, timeout=3, env=ENVIRONMENT)
                 self.assertEqual(result.returncode, 2, result.stderr.decode())
                 self.assertIn(b"Usage:", result.stderr)
                 self.assertFalse(path.parent.exists(), "Invalid CLI reached publisher setup")
+                self.assertFalse(control_path.parent.exists(), "Invalid CLI reached controller setup")
                 self.assertNotIn(b"driver initializing", result.stderr.lower())
 
     def test_existing_unknown_socket_is_preserved_and_stays_usable(self):

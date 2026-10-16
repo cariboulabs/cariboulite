@@ -321,7 +321,11 @@ class Baseline:
                                                 "Reply unavailable", "Request not sent",
                                                 "Backend connection closed", "Invalid command")):
                 self.controller_problem = text
-            if "requested=" in text and "transition=" in text:
+            # The compact controller ends its TX settings with the audio
+            # source. Retain the older final-line marker for staged binaries.
+            if (("requested=" in text and "transition=" in text) or
+                    text.split() in (["Audio", "source", "Microphone"],
+                                     ["Audio", "source", "Tone"])):
                 self.controller_replies.append(text)
 
     def status_read(self):
@@ -427,11 +431,11 @@ class Baseline:
         control_path = self.socket_directory / "control.sock"
         backup_seconds = min(86400, 180 + len(self.runlist) *
                              (self.args.duration + 2 * self.args.transition_timeout + 30))
-        backend_command = [str(self.args.backend), "--start-stopped", "--channel", self.args.channel,
-                           "--frequency", str(self.args.frequency), "--tx-frequency", str(self.args.frequency),
-                           "--tx-power", str(self.args.power), "--sample-rate", "1000000",
+        backend_command = [str(self.args.backend), "--channel", self.args.channel,
+                           "--rx-frequency", str(self.args.frequency), "--tx-frequency", str(self.args.frequency),
+                           "--tx-power", str(self.args.power), "--rx-sample-rate", "1000000",
                            "--tx-sample-rate", str(self.args.rates[0]), "--tx-source", self.args.sources[0],
-                           "--microphone", self.args.microphone, "--playback", self.args.playback,
+                           "--tx-microphone", self.args.microphone, "--rx-playback", self.args.playback,
                            "--socket", str(status_path), "--control-socket", str(control_path),
                            "--status-hz", str(self.args.status_hz), "--seconds", str(backup_seconds)]
         if self.args.dry_run:

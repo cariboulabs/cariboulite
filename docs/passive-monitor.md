@@ -26,12 +26,13 @@ records both instrumented applications, including the Python monitor, before
 the menu-14 layout was restored.
 
 The backend runs **instead of `test_app`** and owns the hardware and radio
-pipeline. It automatically starts RX using launch settings, demodulates NBFM
-or mono WBFM, plays audio, and publishes status. A separate C
+pipeline. It starts with RX stopped; use `--rx-start` to receive immediately
+using the launch settings. While receiving, it demodulates NBFM or mono WBFM,
+plays audio, and publishes status. A separate C
 [radio controller](radio-control.md) provides RX start/stop, frequency,
 mode, sample rate and squelch, plus half-duplex NBFM TX with separate frequency,
 power, rate and microphone/test-tone source, through a second Unix socket.
-Use `--start-stopped` to wait for the controller before starting reception. The
+Omit `--rx-start` to wait for the controller before starting reception. The
 `test_app` retains its original menu-14 display and does not publish socket
 telemetry. Shared audio/playback/reader/worker counters remain collected, but
 their added display rows have been removed from menu 14. The included Python
@@ -73,8 +74,8 @@ In terminal 1:
 
 ```sh
 build/radio-backend/cariboulite_radio_backend \
-  --channel RF24 --frequency 430125000 --sample-rate 1000000 \
-  --mode nbfm --playback plughw:Loopback,0,0
+  --channel RF24 --rx-frequency 430125000 --rx-sample-rate 1000000 \
+  --rx-mode nbfm --rx-playback plughw:Loopback,0,0 --rx-start
 ```
 
 In terminal 2:
@@ -85,9 +86,17 @@ build/radio-backend/cariboulite_radio_monitor
 
 These launch settings select HiF/RF24 at 430.125 MHz and 1 MS/s. The playback
 device matches menu 14's ALSA loopback output; select another playback device
-with `--playback DEVICE` if needed. The existing NBFM channel filter,
+with `--rx-playback DEVICE` if needed. The existing NBFM channel filter,
 discriminator, AGC profile and squelch remain in use. WBFM is selected with
-`--mode wbfm`; choose the station frequency with `--frequency HZ`.
+`--rx-mode wbfm`; choose the station frequency with `--rx-frequency HZ`.
+For NBFM, `--rx-deviation 2500` is the default audio normalization reference;
+use `--rx-deviation 5000` for a ±5 kHz reference. For the same discriminator
+input, `5000` gives half the normalized audio level before audio processing
+compared with `2500`. This changes neither noise-squelch decisions nor the
+existing ±6 kHz passband/±9 kHz stopband complex filter. The accepted reference
+range is not a statement of usable RF deviation or channel bandwidth.
+WBFM retains its fixed 75 kHz normalization. TX deviation is set separately
+with `--tx-deviation`.
 
 Press Ctrl+C in the backend terminal to stop RX, join workers and release the
 radio. Pressing `q` in the monitor closes only that monitor; reception and
@@ -112,28 +121,41 @@ Launch options:
 
 | Option | Meaning/default |
 | --- | --- |
-| `--channel RF24\|RF09` | Active radio; default `RF24`. |
-| `--frequency HZ` | Receive frequency; default `430125000`. |
-| `--sample-rate HZ` | `1000000`, `2000000` or `4000000`; default `1000000`. |
-| `--mode nbfm\|wbfm` | Demodulation; default `nbfm`. WBFM audio is mono. |
-| `--playback DEVICE` | ALSA device; default `plughw:Loopback,0,0`. |
-| `--microphone DEVICE` | TX capture device; default `plughw:Loopback,1,1`. |
+| `--channel RF24\|RF09` | Active radio shared by RX and TX; default `RF24`. |
+| `--rx-frequency HZ` | Receive frequency; default `430125000`. |
+| `--rx-sample-rate HZ` | `1000000`, `2000000` or `4000000`; default `1000000`. |
+| `--rx-mode nbfm\|wbfm` | Demodulation; default `nbfm`. WBFM audio is mono. |
+| `--rx-deviation HZ` | NBFM demodulator normalization reference: `1` through `24000`; default `2500`. Independent of TX; does not change filter bandwidth or squelch. |
+| `--rx-playback DEVICE` | RX ALSA playback device; default `plughw:Loopback,0,0`. |
+| `--tx-microphone DEVICE` | TX capture device; default `plughw:Loopback,1,1`. |
 | `--tx-frequency HZ` | Saved TX frequency; default `430125000`. |
+| `--tx-mode nbfm` | TX modulation; default and only supported mode `nbfm`, independent of RX mode. |
 | `--tx-power DBM` | Requested TX power; default `-12`. |
 | `--tx-sample-rate HZ` | TX rate: `1000000`, `2000000` or `4000000`; default `1000000`. |
 | `--tx-source mic\|tone` | TX source; default `mic`. |
+| `--tx-deviation HZ` | Nominal NBFM deviation at unit audio amplitude: `0` through `24000`; default `2500` (±2.5 kHz). |
 | `--socket PATH` | Status socket; default path described below. |
 | `--control-socket PATH` | Command socket; default `control.sock` beside the status socket. |
-| `--start-stopped` | Initialize/tune hardware and wait for an RX start command. |
+| `--rx-start` | Start RX automatically after initialization; RX otherwise remains stopped until a controller command. |
 | `--seconds N` | Exit after this wall time after initial setup, including time with RX stopped. |
 | `--status-hz HZ` | Hardware/status update frequency; default `5`. |
-| `--no-noise-squelch` | Bypass NBFM noise squelch, enabled by default. |
-| `--carrier-squelch` | Enable carrier squelch, disabled by default. |
-| `--noise-open RMS` | NBFM opening threshold; default `0.20`. |
-| `--noise-close RMS` | NBFM closing threshold; default `0.30`. |
-| `--gain VALUE` | PCM gain; default `8000`. |
-| `--deemphasis-us VALUE` | Audio deemphasis time; default `50` microseconds. |
+| `--rx-no-noise-squelch` | Bypass NBFM noise squelch, enabled by default. |
+| `--rx-carrier-squelch` | Enable carrier squelch, disabled by default. |
+| `--rx-noise-open RMS` | NBFM opening threshold; default `0.20`. |
+| `--rx-noise-close RMS` | NBFM closing threshold; default `0.30`. |
+| `--rx-gain VALUE` | PCM gain; default `8000`. |
+| `--rx-deemphasis-us VALUE` | Audio deemphasis time; default `50` microseconds. |
 | `--dry-run` | Simulated status/IPC exercise; no hardware or audio access. |
+| `--help` | Show launch options and exit. |
+
+The previous unprefixed RX options remain accepted as compatibility aliases
+for the corresponding `--rx-` options. `--microphone` aliases
+`--tx-microphone`. The TX deviation value scales unit-amplitude audio and
+does not impose an RF deviation limit.
+Launch settings never start TX; use the controller's `tx start` command.
+The older `--start-stopped` option still explicitly selects stopped RX.
+Older builds started RX automatically unless that option was present;
+current builds require `--rx-start` for automatic reception.
 
 For a hardware-free check of the compiled backend, start it with
 `--dry-run --seconds 30`, then connect the monitor in another terminal. The
@@ -381,6 +403,9 @@ an unknown source, rather than assuming live radio data. Optional
 `hardware_monotonic_s` dates the cached hardware sample; `realtime_s` dates
 the snapshot in wall-clock seconds. The demo source illustrates the basic
 display fields; the C backend also supplies the shared RX instrumentation.
+The C backend's `config.rx_deviation_hz` reports the saved NBFM normalization
+reference in Hz, including while WBFM is selected. It is a launch setting;
+the compact controller display and command protocol remain unchanged.
 
 Within `rx.queue` and `tx.queue`, the fields are `capacity`, `depth`, `puts`,
 `gets`, `drops`, `timeouts_put`, `timeouts_get`, `min_depth` and `max_depth`.
@@ -669,7 +694,7 @@ whole-application CPU measurement was performed.
 
 The controller's [`fpga program`](radio-control.md#fpga-programming-after-reboot)
 command loads the same `firmware/top.bin` as test-app menu option 3. Start
-the backend from the repository root with `--start-stopped` after reboot,
+the backend from the repository root with RX stopped (the default) after reboot,
 program, and wait for `IDLE` before starting RX. The monitor displays
 `FPGA_PROGRAMMING` while the lifecycle worker performs the reset/load sequence.
 During that job the backend suspends hardware register polling and reports

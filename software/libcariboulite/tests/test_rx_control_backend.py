@@ -76,7 +76,9 @@ class RxControlBackendTests(unittest.TestCase):
             process.kill()
             process.communicate(timeout=3)
 
-    def start_backend(self, *arguments, seconds="10", control_path=None):
+    def start_backend(self, *arguments, seconds="10", control_path=None, start=True):
+        if start:
+            arguments = ("--rx-start", *arguments)
         if control_path is not None:
             self.control_path = Path(control_path)
             arguments = (*arguments, "--control-socket", str(control_path))
@@ -151,7 +153,7 @@ class RxControlBackendTests(unittest.TestCase):
         self.assertIsNone(snapshot["rx"]["audio_queue"])
         self.assertEqual(snapshot["hardware"]["register_poll"]["polls"], 0)
 
-    def test_default_intent_permissions_and_timed_cleanup(self):
+    def test_requested_rx_start_permissions_and_timed_cleanup(self):
         process = self.start_backend(seconds="1")
         reply = self.command(self.controller(), "get")
         self.assertEqual(reply["state"], "RX")
@@ -172,7 +174,7 @@ class RxControlBackendTests(unittest.TestCase):
 
     def test_built_controller_canonical_rx_commands_change_real_dry_run_status(self):
         self.assertTrue(CONTROLLER.is_file(), "Build the C controller before running this test")
-        backend = self.start_backend("--start-stopped", "--status-hz", "20")
+        backend = self.start_backend("--status-hz", "20", start=False)
         status = self.connect(self.status_path)
         initial = self.snapshot_matching(status)
         result = subprocess.run(
@@ -199,7 +201,7 @@ class RxControlBackendTests(unittest.TestCase):
         self.assertIsNone(backend.poll(), "Controller disconnect stopped the backend")
 
     def test_start_stop_are_idempotent_and_identify_new_pipeline_lifetimes(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         initial = self.command(peer, "get")
         self.assertEqual(initial["state"], "IDLE")
@@ -269,7 +271,7 @@ class RxControlBackendTests(unittest.TestCase):
                 self.assertEqual(self.configuration(error), self.configuration(updated))
 
     def test_wbfm_disables_noise_detection_and_restores_nbfm_preference(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         nbfm = self.command(peer, "squelch 1 1 .18 .28")
         wbfm = self.command(peer, "mode wbfm")
@@ -283,8 +285,34 @@ class RxControlBackendTests(unittest.TestCase):
         self.assertAlmostEqual(restored["open"], nbfm["open"])
         self.assertAlmostEqual(restored["close"], nbfm["close"])
 
+    def test_rx_deviation_survives_wbfm_and_nbfm_pipeline_restarts(self):
+        self.start_backend("--rx-deviation", "5100.5", "--tx-deviation", "3700.25")
+        peer = self.controller()
+        status = self.connect(self.status_path)
+        initial = self.command(peer, "get")
+        before = self.snapshot_matching(status)
+        self.assertEqual(before["config"]["rx_deviation_hz"], 5100.5)
+        self.assertEqual(before["config"]["tx_deviation_hz"], 3700.25)
+        generation = initial["pipeline_generation"]
+        for mode, label, bandwidth in (("wbfm", "WBFM mono", 250000),
+                                        ("nbfm", "NBFM", 160000)):
+            with self.subTest(mode=mode):
+                self.command(peer, "stop")
+                self.command(peer, f"mode {mode}")
+                running = self.command(peer, "start")
+                self.assertEqual(running["pipeline_generation"], generation + 1)
+                generation = running["pipeline_generation"]
+                snapshot = self.snapshot_matching(status, lambda value:
+                    value["control"]["config_generation"] == running["config_generation"])
+                self.assert_truthful_simulation(snapshot, running)
+                self.assertEqual(snapshot["rx_mode"], label)
+                self.assertEqual(snapshot["config"]["rx_deviation_hz"], 5100.5)
+                self.assertEqual(snapshot["config"]["tx_deviation_hz"], 3700.25)
+                self.assertEqual(snapshot["config"]["rx_bandwidth_hz"], bandwidth)
+                self.assertIs(snapshot["rx"]["noise_enabled"], mode == "nbfm")
+
     def test_all_supported_rates_and_rf24_frequency_boundaries(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         for rate in (1000000, 2000000, 4000000):
             with self.subTest(rate=rate):
@@ -301,7 +329,7 @@ class RxControlBackendTests(unittest.TestCase):
                 self.assertEqual(self.configuration(denied), self.configuration(previous))
 
     def test_rf09_band_edges_and_gap_are_validated_before_mutation(self):
-        self.start_backend("--channel", "RF09", "--start-stopped")
+        self.start_backend("--channel", "RF09", start=False)
         peer = self.controller()
         for frequency in (377000000, 530000000, 779000000, 1020000000):
             with self.subTest(frequency=frequency):
@@ -315,7 +343,7 @@ class RxControlBackendTests(unittest.TestCase):
                 self.assertEqual(self.configuration(denied), self.configuration(previous))
 
     def test_malformed_packets_are_rejected_without_configuration_changes(self):
-        self.start_backend("--start-stopped")
+        self.start_backend(start=False)
         peer = self.controller()
         before = self.command(peer, "get")
         packets = (
@@ -357,7 +385,7 @@ class RxControlBackendTests(unittest.TestCase):
         self.assertIsNone(process.poll(), "Closing the controller stopped the backend")
 
     def test_connected_monitor_tracks_control_changes_without_becoming_controller(self):
-        process = self.start_backend("--start-stopped", "--status-hz", "10")
+        process = self.start_backend("--status-hz", "10", start=False)
         status = self.connect(self.status_path)
         peer = self.controller()
         initial = self.command(peer, "get")
@@ -388,7 +416,7 @@ class RxControlBackendTests(unittest.TestCase):
 
     def test_custom_control_path_and_sigterm_remove_both_owned_sockets(self):
         path = Path(self.temporary.name) / "commands.sock"
-        process = self.start_backend("--start-stopped", control_path=path)
+        process = self.start_backend(control_path=path, start=False)
         self.assertEqual(self.command(self.controller(), "get")["state"], "IDLE")
         process.send_signal(signal.SIGTERM)
         _, errors = process.communicate(timeout=3)
