@@ -1,4 +1,7 @@
 /* One radio owner, passive status clients and half-duplex radio controls. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "cariboulite_setup.h"
 #include "rx_pipeline.h"
 #include "tx_pipeline.h"

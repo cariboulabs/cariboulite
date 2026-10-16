@@ -1,5 +1,8 @@
 /* Radio controls only. The backend remains the sole hardware owner.
  * No timer, status subscription, signal to the owner, or command retry is used. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "command_protocol.h"
 
 #include <errno.h>
