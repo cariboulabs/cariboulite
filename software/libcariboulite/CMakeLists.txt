@@ -156,6 +156,7 @@ set(SOURCES_TEST_MAIN
     src/pipeline_runtime.c
     src/mod_worker.c
     src/tx_pipeline.c
+    src/tx_audio_buffer.c
     src/rx_pipeline.c
     src/modem_selftest.c
     src/alsa_source.c

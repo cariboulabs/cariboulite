@@ -3,6 +3,11 @@
 Date: 2026-09-20. Status: design recommendation, not an implemented refactor.
 Code reviewed at `44fee8a`. Companion to the
 [demodulator architecture research](demodulator-architecture-research.md).
+Source status checked 2026-10-16: NBFM is still the only implemented TX mode.
+The common FM core and additional waveform families below remain proposals.
+Current transport supports hardware-paced TX and independent microphone
+capture; see [TX design](tx-hardware-paced-design.md) and
+[implemented interfaces](audio-dsp-interfaces.md#added-after-the-refactoring-hardware-paced-tx-and-microphone-buffering).
 
 ## Recommendation
 
@@ -23,7 +28,7 @@ parameterized FM waveform core is a strong candidate for both NBFM and mono
 WBFM TX**. Both integrate an instantaneous-frequency command into carrier phase.
 Their audio bandwidth, pre-emphasis, peak-deviation control and rate plans belong
 in distinct validated profiles. The current NB/WB receivers have more substantial
-algorithm and reset differences, so the case for a single RX implementation is
+algorithm and rate-plan differences, so the case for a single RX implementation is
 weaker. This is a design inference from the present code, not a completed
 performance comparison.
 
@@ -41,7 +46,7 @@ The standalone implementation is
 | Area | Current behavior | Consequence for extension |
 | --- | --- | --- |
 | Input | Normalized mono float, exactly 48 kHz | Good audio source contract; inappropriate as a symbol/key-event API |
-| Output | IQ16 at exactly 2 or 4 MS/s | Preserve supported hardware rates initially |
+| Output | IQ16 at exactly 1, 2 or 4 MS/s | Preserve validated rate presets |
 | Configuration | Deviation 0–24 kHz; optional pre-emphasis; IQ scale 0–32767; hold/linear frequency interpolation | Cannot configure nominal ±75 kHz WBFM as-is |
 | Defaults | 48 kHz → 4 MS/s, 2.5 kHz deviation, pre-emphasis off, scale 12000, linear interpolation | Standalone defaults differ from some application settings |
 | Input queue | 4096 float samples, copied into owned storage | Bounded buffering; preserve short-consumption semantics |
@@ -53,7 +58,9 @@ The standalone implementation is
 | Allocation | At creation only; no retained caller buffer pointers | Retain for all future waveform engines |
 
 [mod_worker.c](../software/libcariboulite/src/mod_worker.c) consumes 480 audio
-samples per iteration and produces one 10 ms RF frame. It chooses microphone,
+samples per iteration and produces one 10 ms RF frame. Hardware-paced microphone
+TX reads through `tx_audio_buffer`; legacy TX reads the source directly.
+It chooses microphone,
 tone or injected audio and treats short processing or reported held audio as a
 TX error. It also inserts the hardware TX-enable marker in the I sample's low
 bit; that operation belongs to transport packing, not a future generic modulator.
@@ -255,10 +262,11 @@ empty and samples actually transmitted. The current queue drain cannot establish
 that every downstream device buffer has finished. Define the observable completion
 level rather than claiming exact on-air timing from a producer acknowledgement.
 
-Live microphone and radio sample clocks can differ. Future audio TX may need
-bounded source-rate adaptation at the audio input; it must not alter nominal RF
-sample rate or corrupt data/key timing. This is not the RX audio FIFO servo
-reused unchanged. Symbols and Morse events should be scheduled on the IQ sample
+Live microphone and radio sample clocks can differ. Hardware-paced NBFM TX now
+uses bounded source-rate adaptation in `tx_audio_buffer`; future audio modes
+must also account for that clock difference without altering the nominal RF
+sample rate or data/key timing. The TX adaptation and RX audio FIFO servo use
+independent control state. Symbols and Morse events should be scheduled on the IQ sample
 timeline. If a separate event clock exists, define its mapping explicitly.
 
 A future common IQ producer should distinguish output ready, need input, draining,
@@ -343,7 +351,7 @@ update the direct build examples and Python test source lists too.
 Use independent measurements in addition to modulator→demodulator round trips:
 matching mistakes can cancel. Check FM phase increments and spectral content,
 AM envelope depth, SSB spectra, PSK reference symbols/EVM and CW event timing.
-Test both 2 and 4 MS/s, varying input/output block sizes, zero capacity, starvation,
+Test 1, 2 and 4 MS/s, varying input/output block sizes, zero capacity, starvation,
 EOF, cancellation and repeated reset. Long CW messages should preserve fractional
 timing without drift; decoder success alone is not a timing measurement.
 

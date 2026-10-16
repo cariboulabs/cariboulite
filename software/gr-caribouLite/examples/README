@@ -1,3 +1,15 @@
-It is considered good practice to add examples in here to demonstrate the
-functionality of your OOT module. Python scripts, GRC flow graphs or other
-code can go here.
+GNU Radio source examples
+========================
+
+read_samples.grc is a GNU Radio Companion receive flowgraph using the native
+CaribouLite source. Install the module with Python/GRC support before opening
+it; see ../README.md. Review its channel, frequency, sample rate and connected
+outputs for your setup before running it.
+
+cariboulite_source_test/ contains generated C++ source and a separate CMake
+project. Unlike the module's GNU Radio 3.10 minimum, this example requests
+GNU Radio 3.11 and many components. It is not built by the parent module's
+CMakeLists.txt. Do not assume it builds unchanged with a GNU Radio 3.10 package.
+
+Neither example is a recorded end-to-end RX qualification, and there is no
+native TX flowgraph/sink in this module.

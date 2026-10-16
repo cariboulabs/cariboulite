@@ -1,5 +1,14 @@
 # CaribouLite Rev 2.8 Full — BOM sourcing first pass
 
+Historical sourcing snapshot. The
+[manufacturer-direct follow-up](cariboulite_rev2_8_bom_sourcing_manufacturer_update.md)
+supersedes this pass, particularly the L3 obsolescence assessment. Stock and
+lifecycle observations below refer to 2026-09-12 and were not rechecked in the
+2026-10-16 documentation review. The
+[quotation package](manufacturing/rev2.8-full-eurocircuits/README.md) records the
+current BOM decisions and unresolved fabrication holds; no order is authorized
+by this snapshot.
+
 **Date checked:** 2026-09-12  
 **Source BOM:** `cariboulite_bom.xlsx` from the public CaribouLite Rev 2.8 production package  
 **Build assumption:** 5 assembled Full boards  

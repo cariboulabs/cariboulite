@@ -63,17 +63,19 @@ samples from this input at each RF rate.
 | `audio_source`, `audio_sink`, `audio_format`, `iq16` | Sample types and contracts; no device or thread dependencies | Counts and status remain separate |
 | `tone_source`, `memory_audio` | Standard C and, for tone generation, math; one caller owns each instance | Nonblocking; destroy adapter state after the last call |
 | `alsa_source`, `alsa_sink` | ALSA configuration and I/O; pipeline-owned adapters | Capture cancellation and playback recovery follow their documented contracts; join workers before destruction |
+| `tx_audio_buffer` | Borrowed source, capture thread and bounded float audio storage | Hardware-paced TX capture/resampling; park/join before source reset/destruction |
 | `nbfm_mod`, `nbfm_demod` | C/math and sample types; one serialized owner per DSP state | Explicit progress/errors, module-specific reset; no radio, UI, ALSA, FIFO or scheduler calls |
 | `mod_worker`, `demod_worker` | DSP plus application transport/runtime | Pacing, injection, frame packing and RX queue-depth clock correction remain here |
 | `tx_pipeline`, `rx_pipeline` | Adapters, DSP, workers, queues and radio | One control owner serializes lifecycle; stop/cancel/join before freeing resources |
 | `app_menu` | Pipeline configuration and status | Select routes/settings and request lifecycle changes |
 
 The production pipelines still share process-wide runtime state and a hardware
-lock. They are not general concurrent multi-device objects. The ALSA capture
-implementation retains its existing shared ring limitation. Adapter and DSP
+lock. They are not general concurrent multi-device objects. ALSA capture
+retains a shared temporary conversion buffer, so separate instances must not
+read concurrently; each instance owns its own ring. Adapter and DSP
 calls are not independently thread-safe; ownership is part of the contract.
-Worker failures do not yet provide comprehensive pipeline-wide error propagation.
-The control owner remains responsible for normal shutdown and cleanup.
+Retained worker errors and health snapshots let the backend stop faulted
+sessions; the control owner remains responsible for shutdown and cleanup.
 
 ## Implement another source or sink
 
@@ -106,7 +108,7 @@ with zero progress, even at EOF or full capacity.
 Connect a new adapter to the offline example first. The
 [contract tests](../software/libcariboulite/tests/test_memory_audio.c) demonstrate
 substitution of memory and generated-tone sources, reads limited to 13 frames,
-and writes limited to 7 frames, with byte-identical recovered PCM at both rates.
+and writes limited to 7 frames, with byte-identical recovered PCM at all three RF rates.
 They also cover borrowed-buffer bounds, final data with EOF/error, allocation
 failures, exhausted sinks and no-progress handling.
 
@@ -115,9 +117,11 @@ Production `tx_pipeline_init` currently constructs ALSA or tone sources;
 arbitrary adapters into these initializers. Add deliberate factory/configuration
 selection there and the new build input when introducing a production adapter.
 Keep the workers unchanged only when its format, pacing and cancellation
-semantics meet their requirements. In particular, live TX currently reads exact
-480-frame blocks and treats EOF/error as fatal, discarding an incomplete final
-block. Supporting finite streams there requires an explicit tail policy; the
+semantics meet their requirements. Hardware-paced microphone TX specifically
+uses a nonblocking source through `tx_audio_buffer` and its independent capture
+thread; legacy TX reads the source in the producer. Both paths feed exact
+480-frame modulation blocks and treat EOF/error as fatal, discarding an
+incomplete final block. Supporting finite streams requires an explicit tail policy; the
 offline example does not change it. A fatal sink error ends its writer and still
 requires owner cleanup.
 

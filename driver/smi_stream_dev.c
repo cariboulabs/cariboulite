@@ -63,6 +63,7 @@
 #include <linux/poll.h>
 #include <linux/init.h>
 #include <linux/vmalloc.h>
+#include <linux/atomic.h>
 
 #include "smi_stream_dev.h"
 
@@ -114,6 +115,13 @@ struct bcm2835_smi_dev_instance
     struct mutex read_lock;
     struct mutex write_lock;
     struct mutex transition_lock;
+    /* A zero limit preserves the legacy allocated FIFO admission threshold. */
+    u32 tx_fifo_limit_bytes;
+    atomic64_t tx_session_generation;
+    atomic64_t tx_completed_periods;
+    atomic64_t tx_underrun_periods;
+    atomic64_t tx_accepted_bytes;
+    atomic64_t tx_fifo_dequeued_bytes;
     wait_queue_head_t poll_event;
     uint32_t current_read_chunk;
     uint32_t counter_missed;
@@ -159,6 +167,99 @@ static struct bcm2835_smi_dev_instance *inst = NULL;
  */
 static DEFINE_MUTEX(open_lock);
 static bool device_open;
+
+static unsigned int smi_tx_fifo_available(struct bcm2835_smi_dev_instance *i)
+{
+    unsigned int limit = READ_ONCE(i->tx_fifo_limit_bytes);
+    unsigned int queued;
+
+    if (!limit)
+        return kfifo_avail(&i->tx_fifo);
+    queued = kfifo_len(&i->tx_fifo);
+    return queued < limit ? limit - queued : 0;
+}
+
+/* The SMI's packed 8-bit format sends this native word in protocol order,
+ * matching caribou_smi_generate_data: SOF=1, control=0, signed I=Q=0.
+ * Firmware currently holds its LVDS TX_EN high even for control=0: zero IQ
+ * padding is valid framing, not a substitute for radio unkeying.
+ */
+static void smi_tx_fill_quiet(void *buffer, unsigned int bytes)
+{
+    u32 *words = buffer;
+    unsigned int n;
+
+    for (n = 0; n < bytes / sizeof(*words); n++)
+        words[n] = 0x80000000U;
+}
+
+static long smi_tx_set_buffer_limit(unsigned long arg)
+{
+    struct smi_stream_tx_buffer_limit request;
+    long ret = 0;
+
+    if (copy_from_user(&request, (void __user *)arg, sizeof(request)))
+        return -EFAULT;
+    if (request.abi_version != SMI_STREAM_TX_ABI_VERSION ||
+        request.struct_size != sizeof(request) || request.reserved)
+        return -EINVAL;
+    if (request.fifo_limit_bytes &&
+        (request.fifo_limit_bytes < DMA_BOUNCE_BUFFER_SIZE / 4 ||
+         request.fifo_limit_bytes > kfifo_size(&inst->tx_fifo) ||
+         (request.fifo_limit_bytes & 3)))
+        return -EINVAL;
+
+    mutex_lock(&inst->transition_lock);
+    mutex_lock(&inst->write_lock);
+    if (READ_ONCE(inst->state) != smi_stream_idle ||
+        (request.fifo_limit_bytes &&
+         (kfifo_len(&inst->tx_fifo) > request.fifo_limit_bytes ||
+          (kfifo_len(&inst->tx_fifo) & 3)))) {
+        ret = -EBUSY;
+    } else {
+        WRITE_ONCE(inst->tx_fifo_limit_bytes, request.fifo_limit_bytes);
+    }
+    mutex_unlock(&inst->write_lock);
+    mutex_unlock(&inst->transition_lock);
+    if (!ret)
+        wake_up_interruptible(&inst->poll_event);
+    return ret;
+}
+
+static long smi_tx_get_status(unsigned long arg)
+{
+    struct smi_stream_tx_status status = {
+        .abi_version = SMI_STREAM_TX_ABI_VERSION,
+        .struct_size = sizeof(status),
+        .period_bytes = DMA_BOUNCE_BUFFER_SIZE / 4,
+        .ring_bytes = DMA_BOUNCE_BUFFER_SIZE,
+    };
+
+    /* Pin the session/state against transition/reset. The callback can retire
+     * periods during this snapshot; the counters remain individually atomic.
+     */
+    mutex_lock(&inst->transition_lock);
+    mutex_lock(&inst->write_lock);
+    status.state = READ_ONCE(inst->state);
+    status.fifo_queued_bytes = kfifo_len(&inst->tx_fifo);
+    status.fifo_capacity_bytes = kfifo_size(&inst->tx_fifo);
+    status.fifo_limit_bytes = READ_ONCE(inst->tx_fifo_limit_bytes);
+    if (status.fifo_limit_bytes)
+        status.flags |= SMI_STREAM_TX_STATUS_BOUNDED_FIFO;
+    else
+        status.fifo_limit_bytes = status.fifo_capacity_bytes;
+    if (status.state == smi_stream_tx_channel &&
+        READ_ONCE(inst->transfer_thread_running))
+        status.flags |= SMI_STREAM_TX_STATUS_DMA_RUNNING;
+    status.session_generation = atomic64_read(&inst->tx_session_generation);
+    status.completed_periods = atomic64_read(&inst->tx_completed_periods);
+    status.underrun_periods = atomic64_read(&inst->tx_underrun_periods);
+    status.accepted_bytes = atomic64_read(&inst->tx_accepted_bytes);
+    status.fifo_dequeued_bytes = atomic64_read(&inst->tx_fifo_dequeued_bytes);
+    mutex_unlock(&inst->write_lock);
+    mutex_unlock(&inst->transition_lock);
+    return copy_to_user((void __user *)arg, &status, sizeof(status)) ? -EFAULT : 0;
+}
 
 static const char *const ioctl_names[] = 
 {
@@ -380,6 +481,11 @@ static int set_state(smi_stream_state_en new_state)
             goto out_unlock;
         }
         kfifo_reset(&inst->tx_fifo);
+        atomic64_inc(&inst->tx_session_generation);
+        atomic64_set(&inst->tx_completed_periods, 0);
+        atomic64_set(&inst->tx_underrun_periods, 0);
+        atomic64_set(&inst->tx_accepted_bytes, 0);
+        atomic64_set(&inst->tx_fifo_dequeued_bytes, 0);
         mutex_unlock(&inst->write_lock);
 
         inst->writeable = true;
@@ -649,6 +755,10 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
     
     switch (cmd) 
     {
+    case SMI_STREAM_IOC_GET_TX_STATUS:
+        return smi_tx_get_status(arg);
+    case SMI_STREAM_IOC_SET_TX_BUFFER_LIMIT:
+        return smi_tx_set_buffer_limit(arg);
     //-------------------------------
     case BCM2835_SMI_IOC_GET_SETTINGS:
     {
@@ -927,32 +1037,36 @@ static void stream_smi_write_dma_callback(void *param)
     const size_t q = DMA_BOUNCE_BUFFER_SIZE / 4;
     uint8_t *base = (uint8_t *)smi_inst->bounce.buffer[0];
     uint8_t *cur, *prev;
+    unsigned int copied = 0;
 
     /* Refill the period that just finished */
     cur  = base + q * (inst->current_read_chunk & 3);
     prev = base + q * ((inst->current_read_chunk + 3) & 3);
 
-    // if (kfifo_len(&inst->tx_fifo) >= q) {
-    //     (void)kfifo_out(&inst->tx_fifo, cur, q);
-    // } else {
-    //     /* Producer starved -> repeat previous quarter (or memset to carrier) */
-    //     memcpy(cur, prev, q);
-    //     inst->counter_missed++;
-    // }
-
-    if (kfifo_len(&inst->tx_fifo) >= q) {
-    unsigned int copied = kfifo_out(&inst->tx_fifo, cur, q);
-    if (copied != q) {
-        /* producer underrun: pad the remainder (reuse previous or zero) */
-        memcpy(cur + copied, prev + copied, q - copied);
-        inst->counter_missed++;
-    }
+    if (READ_ONCE(inst->tx_fifo_limit_bytes)) {
+        /* Opt-in callers use bounded latency: retire available whole IQ words
+         * and quiet-pad shortages instead of retaining/replaying stale audio.
+         */
+        unsigned int available = min_t(unsigned int, kfifo_len(&inst->tx_fifo), q) & ~3U;
+        copied = kfifo_out(&inst->tx_fifo, cur, available);
+        if (copied < q)
+            smi_tx_fill_quiet(cur + copied, q - copied);
+    } else if (kfifo_len(&inst->tx_fifo) >= q) {
+        copied = kfifo_out(&inst->tx_fifo, cur, q);
+        if (copied < q)
+            memcpy(cur + copied, prev + copied, q - copied);
     } else {
-        /* not enough data: repeat previous quarter (or memset to carrier) */
+        /* Preserve legacy callers' underrun repeat policy. */
         memcpy(cur, prev, q);
-        inst->counter_missed++;
     }
-
+    if (copied < q) {
+        inst->counter_missed++;
+        atomic64_inc(&inst->tx_underrun_periods);
+    }
+    atomic64_add(copied, &inst->tx_fifo_dequeued_bytes);
+    atomic64_inc(&inst->tx_completed_periods);
+    /* Refilled coherent DMA memory must be visible before the ring returns. */
+    dma_wmb();
     inst->current_read_chunk++;
 
     if (!(inst->current_read_chunk % 111)) {
@@ -1155,7 +1269,31 @@ int transfer_thread_init(struct bcm2835_smi_dev_instance *inst,
     inst->counter_missed       = 0;
     inst->count_since_refresh  = 0;
 
-    /* Prepare cyclic DMA */
+    /* Prime coherent memory before submitting/issuing DMA. Raw zero bytes
+     * are invalid protocol frames and expanded fourfold in the SMI collector.
+     * A fresh ring also prevents stale IQ from a previous TX session replaying.
+     */
+    if (dir == DMA_MEM_TO_DEV) {
+        uint8_t *base = (uint8_t *)inst->smi_inst->bounce.buffer[0];
+        const unsigned int q = DMA_BOUNCE_BUFFER_SIZE / 4;
+        unsigned int n;
+
+        for (n = 0; n < 4; n++) {
+            unsigned int copied = kfifo_out(&inst->tx_fifo, base + n * q, q);
+            if (copied < q) {
+                if (READ_ONCE(inst->tx_fifo_limit_bytes))
+                    smi_tx_fill_quiet(base + n * q + copied, q - copied);
+                else
+                    memset(base + n * q + copied, 0, q - copied);
+            }
+            atomic64_add(copied, &inst->tx_fifo_dequeued_bytes);
+        }
+        dma_wmb();
+    }
+
+    /* Submit DMA only after initial periods are initialized (and framed for
+     * bounded callers). Legacy callers retain their historical raw padding.
+     */
     spin_lock(&inst->smi_inst->transaction_lock);
     {
         struct dma_async_tx_descriptor *desc =
@@ -1169,38 +1307,6 @@ int transfer_thread_init(struct bcm2835_smi_dev_instance *inst,
     }
     spin_unlock(&inst->smi_inst->transaction_lock);
     if (errors) return -2;
-
-    /* If TX, prefill the 4 periods so DMA has data immediately */
-    // if (dir == DMA_MEM_TO_DEV) {
-    //     uint8_t *base = (uint8_t *)inst->smi_inst->bounce.buffer[0];
-    //     const size_t q = DMA_BOUNCE_BUFFER_SIZE / 4;
-    //     int i;
-    //     for (i = 0; i < 4; i++) {
-    //         if (kfifo_len(&inst->tx_fifo) >= q) {
-    //             (void)kfifo_out(&inst->tx_fifo, base + i * q, q);
-    //         } else {
-    //             memset(base + i * q, 0, q);  /* steady I/Q if underrun at start */
-    //         }
-    //     }
-    // }
-
-    /* If TX, prefill the 4 periods so DMA has data immediately */
-    if (dir == DMA_MEM_TO_DEV) {
-        uint8_t *base = (uint8_t *)inst->smi_inst->bounce.buffer[0];
-        const size_t q = DMA_BOUNCE_BUFFER_SIZE / 4;
-
-        for (int i = 0; i < 4; i++) {
-            if (kfifo_len(&inst->tx_fifo) >= q) {
-                unsigned int copied = kfifo_out(&inst->tx_fifo, base + i * q, q);
-                if (copied != q) {
-                    memset(base + i * q + copied, 0, q - copied);
-                    inst->counter_missed++;
-                }
-            } else {
-                memset(base + i * q, 0, q); /* steady I/Q at start */
-            }
-        }
-    }
 
     /* Enable SMI and arm a long window */
     smi_enable_streaming(inst->smi_inst, dir);
@@ -1295,6 +1401,7 @@ static int smi_stream_open(struct inode *inode, struct file *file)
 
     kfifo_init(&inst->rx_fifo, inst->rx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
     kfifo_init(&inst->tx_fifo, inst->tx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
+    WRITE_ONCE(inst->tx_fifo_limit_bytes, 0);
     // when file is being openned, stream state is still idle
     set_state(smi_stream_idle);
     
@@ -1377,6 +1484,7 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
     unsigned int num_bytes_available = 0;
     unsigned int num_to_push = 0;
     unsigned int actual_copied = 0;
+    bool bounded;
     
     if (mutex_lock_interruptible(&inst->write_lock))
     {
@@ -1384,13 +1492,32 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
     }
     
     // check how many bytes are available in the tx fifo
-    num_bytes_available = kfifo_avail(&inst->tx_fifo);
+    bounded = READ_ONCE(inst->tx_fifo_limit_bytes) != 0;
+    if (bounded && (count & 3)) {
+        mutex_unlock(&inst->write_lock);
+        return -EINVAL;
+    }
+    num_bytes_available = smi_tx_fifo_available(inst);
     num_to_push = num_bytes_available > count ? count : num_bytes_available;
     ret = kfifo_from_user(&inst->tx_fifo, user_ptr, num_to_push, &actual_copied);
+    if (bounded && (actual_copied & 3)) {
+        /* A user fault can publish a partial IQ word. There is one producer
+         * under write_lock; the bounded consumer only removes whole words,
+         * so this trailing fragment cannot have been consumed. Roll it back.
+         */
+        unsigned int fragment = actual_copied & 3;
+        WRITE_ONCE(inst->tx_fifo.kfifo.in, inst->tx_fifo.kfifo.in - fragment);
+        actual_copied -= fragment;
+    }
+    atomic64_add(actual_copied, &inst->tx_accepted_bytes);
 
     //dev_info(inst->dev, "smi_stream_write_file: pushed %ld bytes of %ld, available was %ld", actual_copied, count, num_bytes_available);
     mutex_unlock(&inst->write_lock);
 
+    if (!ret && count && !actual_copied && bounded)
+        return -EAGAIN;
+    if (actual_copied && bounded)
+        return (ssize_t)actual_copied;
     return ret ? ret : (ssize_t)actual_copied;
 }
 
@@ -1408,7 +1535,7 @@ static unsigned int smi_stream_poll(struct file *filp, struct poll_table_struct 
         mask |= ( POLLIN | POLLRDNORM );
     }
     
-    if (!kfifo_is_full(&inst->tx_fifo))
+    if (smi_tx_fifo_available(inst))
     {
         //dev_info(inst->dev, "poll_wait result => writeable=%d", inst->writeable);
         inst->writeable = false;

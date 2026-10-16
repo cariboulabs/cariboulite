@@ -2,12 +2,34 @@
 #include <alsa/asoundlib.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 typedef struct {
     audio_sink_t base;
     snd_pcm_t* pcm;
     unsigned channels;
+    atomic_uint_fast64_t write_calls, frames_requested, frames_written;
+    atomic_uint_fast64_t partial_writes, would_block, zero_writes, underruns;
+    atomic_uint_fast64_t recovery_attempts, recovery_successes, recovery_failures;
+    atomic_uint_fast64_t write_errors;
+    atomic_int last_error;
 } alsa_sink_t;
+
+static void init_stats(alsa_sink_t* s)
+{
+#define INIT(field) atomic_init(&s->field, 0)
+    INIT(write_calls); INIT(frames_requested); INIT(frames_written);
+    INIT(partial_writes); INIT(would_block); INIT(zero_writes); INIT(underruns);
+    INIT(recovery_attempts); INIT(recovery_successes); INIT(recovery_failures);
+    INIT(write_errors); INIT(last_error);
+#undef INIT
+}
+
+static void count_error(alsa_sink_t* s, int error)
+{
+    atomic_fetch_add_explicit(&s->write_errors, 1, memory_order_relaxed);
+    atomic_store_explicit(&s->last_error, error, memory_order_relaxed);
+}
 
 static audio_sink_result_t sink_write(audio_sink_t* base, const int16_t* mono, size_t frames)
 {
@@ -20,13 +42,33 @@ static audio_sink_result_t sink_write(audio_sink_t* base, const int16_t* mono, s
         for (size_t i = 0; i < frames; ++i) stereo[2*i] = stereo[2*i+1] = mono[i];
         samples = stereo;
     }
+    atomic_fetch_add_explicit(&s->write_calls, 1, memory_order_relaxed);
+    atomic_fetch_add_explicit(&s->frames_requested, frames, memory_order_relaxed);
     snd_pcm_sframes_t n = snd_pcm_writei(s->pcm, samples, frames);
     if (n == -EPIPE) {
+        atomic_fetch_add_explicit(&s->underruns, 1, memory_order_relaxed);
+        atomic_fetch_add_explicit(&s->recovery_attempts, 1, memory_order_relaxed);
         int rc = snd_pcm_prepare(s->pcm);
+        if (rc < 0) {
+            atomic_fetch_add_explicit(&s->recovery_failures, 1, memory_order_relaxed);
+            count_error(s, rc);
+        } else {
+            atomic_fetch_add_explicit(&s->recovery_successes, 1, memory_order_relaxed);
+        }
         return (audio_sink_result_t){0, rc < 0 ? AUDIO_SINK_ERROR : AUDIO_SINK_AGAIN, rc < 0 ? rc : 0};
     }
-    if (n == -EAGAIN || n == 0) return (audio_sink_result_t){0, AUDIO_SINK_AGAIN, 0};
-    if (n < 0) return (audio_sink_result_t){0, AUDIO_SINK_ERROR, (int)n};
+    if (n == -EAGAIN || n == 0) {
+        atomic_fetch_add_explicit(n == -EAGAIN ? &s->would_block : &s->zero_writes,
+                                  1, memory_order_relaxed);
+        return (audio_sink_result_t){0, AUDIO_SINK_AGAIN, 0};
+    }
+    if (n < 0) {
+        count_error(s, (int)n);
+        return (audio_sink_result_t){0, AUDIO_SINK_ERROR, (int)n};
+    }
+    atomic_fetch_add_explicit(&s->frames_written, (uint64_t)n, memory_order_relaxed);
+    if ((size_t)n < frames)
+        atomic_fetch_add_explicit(&s->partial_writes, 1, memory_order_relaxed);
     return (audio_sink_result_t){(size_t)n, AUDIO_SINK_OK, 0};
 }
 static void sink_destroy(audio_sink_t* base)
@@ -39,7 +81,21 @@ static const char* sink_state(audio_sink_t* base)
 {
     return snd_pcm_state_name(snd_pcm_state(((alsa_sink_t*)base)->pcm));
 }
-static const audio_sink_ops_t ops = {sink_write, sink_destroy, sink_state};
+static bool sink_get_stats(audio_sink_t* base, audio_sink_stats_t* out)
+{
+    alsa_sink_t* s = (alsa_sink_t*)base;
+#define SNAPSHOT(field) out->field = atomic_load_explicit(&s->field, memory_order_relaxed)
+    SNAPSHOT(write_calls); SNAPSHOT(frames_requested); SNAPSHOT(frames_written);
+    SNAPSHOT(partial_writes); SNAPSHOT(would_block); SNAPSHOT(zero_writes);
+    SNAPSHOT(underruns); SNAPSHOT(recovery_attempts); SNAPSHOT(recovery_successes);
+    SNAPSHOT(recovery_failures); SNAPSHOT(write_errors); SNAPSHOT(last_error);
+#undef SNAPSHOT
+    return true;
+}
+static const audio_sink_ops_t ops = {
+    .write=sink_write, .destroy=sink_destroy, .state=sink_state,
+    .get_stats=sink_get_stats
+};
 unsigned alsa_sink_channels(const audio_sink_t* sink)
 {
     return sink ? ((const alsa_sink_t*)sink)->channels : 0;
@@ -50,6 +106,7 @@ audio_sink_t* alsa_sink_open(const char* device, unsigned sample_rate)
     if (sample_rate != 48000) { errno = EINVAL; return NULL; }
     alsa_sink_t* s = calloc(1, sizeof(*s));
     if (!s) return NULL;
+    init_stats(s);
     snd_pcm_hw_params_t* hw = NULL;
     snd_pcm_sw_params_t* sw = NULL;
     const char* dev = device && *device ? device : "default";

@@ -48,7 +48,7 @@ static audio_sink_result_t short_write(audio_sink_t* base, const int16_t* src, s
     return audio_sink_write(s->inner, src, count);
 }
 static const audio_source_ops_t short_source_ops = {short_read, NULL};
-static const audio_sink_ops_t short_sink_ops = {short_write, NULL, NULL};
+static const audio_sink_ops_t short_sink_ops = {.write=short_write};
 
 static void adapter_contracts(void)
 {

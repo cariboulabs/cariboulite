@@ -15,13 +15,21 @@ src = Path(__file__).resolve().parents[1] / 'src'
 s = (src / 'tx_pipeline.c').read_text()
 h = s.index('static unsigned tx_tail_padding_frames(')
 i = s.index('\nint tx_pipeline_init(', h)
+# Hardware admission setup is tested with real workers and a mock driver in
+# test_tx_hardware_pacing.py; this simulator deliberately models legacy DMA.
+tail_end = s.index('\nstatic int tx_detect_pacing(', h)
 a = s.index('static inline int ms_to_frames_10ms(')
 b = s.index('\nint tx_pipeline_start(', a)
 c = s.index('static bool tx_wait_written(', b)
-d = s.index('\nvoid tx_pipeline_destroy(', c)
-code = s[h:i] + s[a:b] + s[c:d]
+d = s.index('\nvoid tx_pipeline_request_abort(', c)
+park_start = s.index('static int tx_park_workers(', a)
+park_end = s.index('static void tx_clear_injection(', park_start)
+# Model the exact cue/drain/shutdown phases; real retained-worker parking is
+# exercised separately with pthreads by test_tx_worker_parking.py.
+code = s[h:tail_end] + s[a:park_start] + s[park_end:b] + s[c:d]
 pre = r'''
 #include <assert.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdatomic.h>
@@ -31,6 +39,7 @@ pre = r'''
 #include <time.h>
 #include <limits.h>
 static pthread_mutex_t g_tx_injection_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_tx_injection_changed = PTHREAD_COND_INITIALIZER;
 #define HW_LOCK() ((void)0)
 #define HW_UNLOCK() ((void)0)
 #define cariboulite_channel_dir_tx 1
@@ -42,10 +51,13 @@ typedef struct {
     bool inited,running;
     struct {
         bool active;
+        void* audio_buffer;
         size_t frame_samples;
         unsigned tail_padding_frames;
         uint64_t next_sequence;
         atomic_uint_fast64_t written_sequence;
+        atomic_int last_error;
+        atomic_bool abort_requested;
         struct {
             float hz;
             int frames_left;
@@ -53,7 +65,7 @@ typedef struct {
             bool hold_silence,fast_padding;
         } inj;
     } tx_ctrl;
-    struct { bool active; } dsp_ctrl;
+    struct { bool active; atomic_int last_error; } dsp_ctrl;
     sys_st* sys;
     void* radio;
     rf10_stats_t txq;
@@ -63,6 +75,14 @@ static uint64_t now;
 static tx_pipeline_t* current;
 static int idle_calls,off_calls,low_calls;
 static uint64_t mono_ns(void) { return now; }
+static int tx_park_workers(tx_pipeline_t* p) { (void)p; return 0; }
+/* This simulator deliberately exercises legacy transport, whose restoration
+ * helper is a no-op. Real timing ownership/failure retries use the pthread
+ * hardware-demand mock in test_tx_hardware_pacing.py. */
+int tx_restore_write_timing(tx_pipeline_t* p) { (void)p; return 0; }
+static void tx_audio_buffer_set_cue(void* buffer,bool cue) {
+    (void)cue;assert(!buffer);
+}
 
 /* kfifo and cyclic DMA operate in samples, matching the public SMI getter. */
 #define NATIVE_SAMPLES 131072u
@@ -169,7 +189,10 @@ static int fake_sleep(const struct timespec* t,struct timespec* rest) {
     assert(t->tv_sec==0 && t->tv_nsec==2000000);
     now+=2000000;
     advance_rf();
-    if(mode==FAILED_WORKER && now>=20000000) nbfm_tx_active=false;
+    if(mode==FAILED_WORKER && now>=20000000) {
+        atomic_store(&current->tx_ctrl.last_error,-EIO);
+        nbfm_tx_active=false;
+    }
     if(nbfm_tx_active && current->tx_ctrl.active && current->dsp_ctrl.active) {
         bool fast=current->tx_ctrl.inj.fast_padding &&
                   current->tx_ctrl.inj.frames_left>0 &&
@@ -266,6 +289,7 @@ int main(void) {
             tx_pipeline_stop(&p);
             assert_shutdown(&p);
             if(scenario==NORMAL || scenario==DELAY_LAST_WRITE) {
+                assert(atomic_load(&p.tx_ctrl.last_error)==0);
                 assert(generated_tone_frames==25);
                 assert(tone_samples==25*p.tx_ctrl.frame_samples);
                 assert(last_rf_tone_ns-first_rf_tone_ns+
@@ -280,9 +304,18 @@ int main(void) {
                     if(tail>longest_tail) longest_tail=tail;
                 }
             }
-            if(scenario==STALLED_PRODUCER) assert(now>=1000000000ULL);
-            if(scenario==FAILED_WORKER) assert(now==20000000);
+            if(scenario==STALLED_PRODUCER) {
+                assert(now>=1000000000ULL);
+                assert(atomic_load(&p.tx_ctrl.last_error)==-ETIMEDOUT);
+            }
+            if(scenario==STALLED_WRITER)
+                assert(atomic_load(&p.tx_ctrl.last_error)==-ETIMEDOUT);
+            if(scenario==FAILED_WORKER) {
+                assert(now==20000000);
+                assert(atomic_load(&p.tx_ctrl.last_error)==-EIO);
+            }
             if(scenario==STALL_LAST_WRITE) {
+                assert(atomic_load(&p.tx_ctrl.last_error)==-ETIMEDOUT);
                 assert(writer_busy && p.txq.count==0);
                 assert(atomic_load(&p.tx_ctrl.written_sequence)<p.tx_ctrl.inj.last_sequence);
                 assert(now>=final_queued_ns+1250000000ULL &&
@@ -304,6 +337,14 @@ int main(void) {
         else nbfm_tx_active=false;
         tx_pipeline_stop(&p);assert_shutdown(&p);assert(now==0);
     }
+    /* A retained producer error remains authoritative when the tail cannot
+     * run; shutdown must not manufacture a competing writer timeout. */
+    reset(&p,&sys,1000000,6,NORMAL,2,false);
+    atomic_store(&p.dsp_ctrl.last_error,-ENODEV);
+    nbfm_tx_active=false;
+    tx_pipeline_stop(&p);assert_shutdown(&p);
+    assert(atomic_load(&p.dsp_ctrl.last_error)==-ENODEV);
+    assert(atomic_load(&p.tx_ctrl.last_error)==0);
     /* Demonstrate the regression: fixed 250 ms padding truncates at 1 MS/s. */
     reset(&p,&sys,1000000,6,NORMAL,0,false);
     p.tx_ctrl.tail_padding_frames=25;
@@ -328,10 +369,22 @@ with tempfile.TemporaryDirectory(prefix='tx-stop-') as directory:
     c = Path(directory) / 'test.c'
     exe = Path(directory) / 'test'
     c.write_text(pre + code + post)
-    subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+    # This exhaustive simulator visits individual RF samples across 216 cases.
+    # Optimization preserves every assertion and virtual deadline while keeping
+    # its wall-time watchdog practical on the Zero's slower CPU.
+    subprocess.run(['cc', '-std=gnu11', '-O2', '-Wall', '-Wextra', '-Werror',
                     '-Wno-unused-parameter', str(c),
                     '-pthread', '-o', str(exe)], check=True)
-    result = subprocess.run([str(exe)], capture_output=True, text=True, timeout=30)
+    try:
+        result = subprocess.run([str(exe)], capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired as error:
+        # communicate() retains progress on timeout, but the default traceback
+        # omits it. Preserve those completed scenario rows for diagnosis.
+        for partial in (error.stdout, error.stderr):
+            if partial:
+                print(partial.decode(errors='replace') if isinstance(partial, bytes)
+                      else partial, end='')
+        raise
     print(result.stdout, end='')
     if result.returncode:
         print(result.stderr, end='')

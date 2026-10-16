@@ -3,6 +3,12 @@
 Run after building the app with the install script. This is a new repeatable
 procedure for the updated Raspberry Pi OS; its first successful run was
 confirmed by Jan on 2026-09-19. Earlier H0 acceptance remains a separate recorded result.
+The runner still covers **2 and 4 MS/s** only, although the current pipelines
+also support 1 MS/s. TX uses AUTO pacing: the current driver selects hardware
+backpressure, while an older driver returning `ENOTTY` selects legacy pacing.
+The September acceptance records below predate hardware-paced TX; later
+[Pi Zero](pi-zero-tx-queue-test-2026-10-15.md) and
+[Pi 4](pi4-tx-validation-2026-10-15.md) trials record that transport's validation.
 
 ## Recorded setup
 
@@ -57,12 +63,12 @@ firmware and performs the post-programming soft reset. It then runs:
 | --- | --- | --- | --- | --- |
 | 1 | 11 | TX | 2 MS/s | 600 Hz tone; Quindar start/end |
 | 2 | 11 | TX | 4 MS/s | Same 600 Hz pitch; Quindar start/end |
-| 3 | 12 | RX | 2 MS/s | Receiver noise from Jabra |
-| 4 | 12 | RX | 4 MS/s | Receiver noise from Jabra |
+| 3 | 12 | RX | 2 MS/s | Idle-channel audio is gated by default noise squelch |
+| 4 | 12 | RX | 4 MS/s | Same squelched receiver behavior |
 | 5 | 14 | TX | 2 MS/s | Quindar start/end; Jabra microphone audio |
 | 6 | 14 | TX | 4 MS/s | Quindar start/end; Jabra microphone audio |
-| 7 | 14 | RX | 2 MS/s | Receiver noise from Jabra |
-| 8 | 14 | RX | 4 MS/s | Receiver noise from Jabra |
+| 7 | 14 | RX | 2 MS/s | Idle-channel audio is gated by default noise squelch |
+| 8 | 14 | RX | 4 MS/s | Same squelched receiver behavior |
 
 All pipelines are stopped/destroyed before rate changes. A soft reset between
 sessions clears shared FPGA FIFO state. Normal TX startup/shutdown supplies
@@ -106,7 +112,12 @@ Copy accepted result directories outside `build/` before deleting it for a clean
 rebuild, or use `--output /path/to/persistent/results`.
 
 Report whether both option 11 tones had the correct 600 Hz pitch, all four TX
-sessions had both Quindar tones, and all four RX sessions produced noise. Identify
+sessions had both Quindar tones, and describe the RX audio/gating. The original
+September checklist asks for receiver noise and predates default noise squelch;
+the current runner supplies no known RF signal and no squelch-bypass option,
+so muted idle RX is expected and cannot by itself establish playback failure.
+Use an interactive RX session with noise squelch bypassed for an audible
+noise/playback check. Identify
 any failure by option and rate. Automation never marks the listening checks passed.
 Ctrl-C requests cleanup. The supervisor enforces an overall deadline and, if
 cleanup hangs, escalates termination and records that the radio state must be

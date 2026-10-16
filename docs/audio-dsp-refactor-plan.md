@@ -3,6 +3,10 @@
 Status: H0 accepted by Jan on 2026-09-19; steps 1–8 are implemented; H1–H6 passed. Each numbered step is a small,
 reviewable change. The demodulator DSP is now independent of application FIFOs, playback and
 threading; its pipeline worker retains those responsibilities.
+This is the completed September refactoring record. Later 1 MS/s support,
+receiver DSP corrections, squelch/control additions and hardware-paced TX
+change some of the original implementation details and validation scope;
+see the living [interface reference](audio-dsp-interfaces.md) for current behavior.
 
 Target paths:
 
@@ -25,7 +29,8 @@ has confirmed the physical result (or explicitly deferred the checkpoint).
 Record failures and resolve them before proceeding. Commit accepted increments
 individually when requested; do not combine several checkpoints into one change.
 
-Software checks currently available:
+Core software checks used for the refactoring (see [testing](testing.md) for
+the current hardware-free suite):
 
 ```sh
 cmake --build build --target cariboulite_test_app -j2
@@ -45,9 +50,10 @@ checks do not establish physical RF performance.
   names, RF modem/connector route, frequency, gains, and the actual RF test setup.
 - [x] Accept H0 from Jan's clean rebuild and physical radio test (2026-09-19).
   This is a functional baseline; see the evidence log for its recorded scope.
-- [ ] Resolve documentation/configuration mismatches in the recorded procedure.
-  In particular, current monitor initialization selects `radio_high` (RF24),
-  while some existing documentation describes RF09. Do not silently change it.
+- [x] Reconcile the current procedure's radio selection: menus 11/12/14 and the
+  baseline runner use `radio_high` (RF24/HiF). Earlier RF09 tests and routing
+  observations remain labelled as historical; they are not rewritten as RF24
+  acceptance. Missing metadata for the original H0 remains a recorded limitation.
 
 Exit: a reproducible baseline with known limitations and measured comparisons.
 
@@ -221,18 +227,22 @@ remain documented limitations, not uncompleted refactoring steps.
 
 ## Follow-up: preserve requested TX power across radio configuration
 
-Status: planned; separate from the completed audio/DSP extraction.
+Status checked 2026-10-16: the generic driver power-conversion cleanup below
+remains open. The TX pipeline now reapplies requested power after rate setup
+and activation; the backend additionally checks the calibrated register profile
+before sending cue IQ. These local mitigations do not make the generic
+bandwidth/rate setters preserve the calibrated code for every caller.
 
 `cariboulite_radio_set_tx_power()` in `software/libcariboulite/src/cariboulite_radio.c`
-(currently line 398) maps requested dBm to the modem power register using a
-channel-specific polynomial. `cariboulite_radio_set_tx_bandwidth()` (currently
-line 481) instead writes `18 + radio->tx_power`; the TX sample-rate/cutoff setter
+maps requested dBm to the modem power register using a
+channel-specific polynomial. `cariboulite_radio_set_tx_bandwidth()`
+instead writes `18 + radio->tx_power`; the TX sample-rate/cutoff setter
 does the same. TX activation calls the bandwidth setter, so starting TX can
 overwrite the register value selected by the power setter.
 
 - [x] Unify menu 14's requested power under `txpar.tx_power_dbm`, including
   startup setup, pipeline configuration and display; remove the duplicate local
-  `tx_power`. Current requested value is -6 dBm; incremental application build
+  `tx_power`. The then-requested value was -6 dBm; incremental application build
   passed.
 - [ ] Make the power setter the single authority for converting requested dBm
   to the modem power code. Bandwidth and sample-rate/cutoff changes must preserve

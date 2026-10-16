@@ -1,7 +1,17 @@
 # Menu 14 NBFM RX chain and sensitivity investigation
 
+Artifact paths under `build/` below refer to local files on the original test
+host. Missing raw artifacts are not included in this checkout; committed
+reports preserve the recorded results and scope.
+
 Recorded 2026-10-10 from source inspection at revision
 `60c6138` (`Fix TX-to-RX stream handoff`).
+Current behavior checked 2026-10-16. The dated entries preserve the investigation
+sequence; current NBFM noise thresholds are **0.20 open / 0.30 close**, with
+the CIC/FIR channel filter, corrected discriminator and interpolation enabled.
+Menus 11/12/14 select HiF/RF24. The backend separately defaults to RF24 and
+1 MS/s; menu 14 starts at 4 MS/s. See [RX squelch](rx-squelch.md) and
+[radio controls](radio-control.md) for the current settings.
 
 ## Deviation configuration (2026-10-10)
 
@@ -16,9 +26,11 @@ physical baseline runner, modem self-test, memory demo and the modulator's
 NULL-config default, as well as NBFM RX normalization. Explicit caller-supplied
 TX deviation values retain their usual meaning.
 
-Noise-squelch RMS thresholds are restored to **0.12/0.18**, with the original
-RX PCM and raw discriminator scaling. Filtering, the angle approximation and
-the captured IQ are unchanged by this experiment.
+At this point in the experiment, noise-squelch RMS thresholds were restored to
+**0.12/0.18**, with the original RX PCM and raw discriminator scaling. That
+deviation-only revert did not change filtering, the then-used angle
+approximation or captured IQ. Later updates below replaced the approximation,
+corrected interpolation and selected the current **0.20/0.30** thresholds.
 
 After changing the shared constant, rebuild:
 
@@ -86,8 +98,8 @@ Before configuring the frontend, the pipeline stops the modem and confirms
 **TRXOFF**. It then reads back the bandwidth, cutoff, sample rate and AGC
 controls before enabling RX. A configuration or readback failure prevents RX
 startup and permits retry. The profile is reapplied after rate changes,
-TX/RX switches and interface loopback. WBFM RX restores the previous wide
-2 MHz analog filter and `fS / 2` digital cutoff when it starts.
+TX/RX switches and interface loopback. WBFM RX now uses a separate
+250 kHz analog filter and `fS / 8` digital cutoff; see the WBFM profile below.
 
 The policy is local to the app's
 [RX pipeline](../software/libcariboulite/src/rx_pipeline.c); generic radio API
@@ -323,7 +335,7 @@ The log contains **1,872 SMI read timeout messages**. The demodulation FIFO
 also overwrote **57 RF blocks after the raw-IQ capture tap**. Raw samples have
 no hardware timestamps, so continuity remains unverified and interval times
 are nominal. These diagnostics are retained with the recording.
-See the [capture report](../build/iq-captures/20261010T212317+0200_hif_idle/README.md)
+See the capture report (`build/iq-captures/20261010T212317+0200_hif_idle/README.md`)
 for metadata, detector traces and the 10-second active excerpt.
 
 ### 5. S1G antenna matching network at 430 MHz (earlier setup)
@@ -397,8 +409,10 @@ On 2026-10-11, the user proposed separate terminals for instrumentation and
 radio controls. The [two-terminal design](runtime-profiling-and-decoder-plan.md#separate-control-and-instrumentation-terminals-2026-10-11)
 keeps one process in charge of the radio and pipelines, with serialized control
 commands and cached, nonblocking status for observers. This is feasible with
-modest expected IPC/display overhead, pending measurement; it is recorded as
-a proposed roadmap item rather than an implemented feature.
+modest IPC/display overhead. It was initially a proposal; the backend,
+controller and passive monitor are now implemented, and the
+[application comparison](rx-application-comparison.md) records measured CPU
+and memory cost. The following dated entries preserve that development sequence.
 
 ## AGCC/AGCS interpretation and proposed display (2026-10-11)
 
@@ -451,3 +465,282 @@ RF09 and RF24, including every two-byte register combination, targeted field
 isolation checks and a compile-time assertion that the renamed enum is code 7.
 The same register cases exposed failures in the previous decoder. The app and
 shared library rebuilt successfully; no physical RX/TX test was performed.
+
+## Shared receiver instrumentation (2026-10-11)
+
+The separate C RX backend and passive Unix-socket monitor are implemented,
+and the user confirmed good audio and normal squelch. For a fair comparison
+with menu 14, both apps now share audio FIFO accounting, ALSA playback and
+recovery counters, radio read counters, worker lifetime/error status and
+actual startup scheduling/affinity diagnostics. The empty RF queue warning
+no longer claims an underrun. DSP, modem profiles, scheduling requests and
+existing recovery behavior remain the accepted baseline.
+
+After this update, the user confirmed on 2026-10-11 that everything was
+working as expected. This validates expected operation with the new
+instrumentation. A subsequent [physical application comparison](rx-application-comparison.md)
+measured menu 14 at 7.90% of one CPU core and backend plus monitor at 9.66%
+(backend 6.14%, monitor 3.53%) on the Pi 4 at a controlled 1.8 GHz. Both
+setups recorded zero IQ/audio queue drops, ALSA underruns and RX errors;
+the collected kernel SMI diagnostics reported `missed:0`. Combined PSS was
+48.33 MiB for backend plus monitor versus 64.01 MiB for menu 14. Marginal
+instrumentation overhead was not isolated, and upstream continuity remains
+unproven.
+
+See [the passive monitor documentation](passive-monitor.md#shared-rx-instrumentation-2026-10-11)
+for counter definitions, reset/lifetime rules, build commands and comparison
+procedure. Application counters cannot prove kernel/FPGA sample continuity;
+upstream loss metadata and stage latency profiling remain roadmap items.
+
+## Separate receiver controls (2026-10-11)
+
+The [standalone C receiver controller](radio-control.md) now controls the RX
+backend through a separate Unix-domain command socket. It supports RX
+start/stop, frequency, NBFM/mono WBFM, 1/2/4 MS/s and noise/carrier squelch,
+including noise opening/closing thresholds. The monitor remains passive and
+optional; the controller waits for input while idle. Frequency/mode/rate
+changes require stopped RX, while atomic squelch changes work during reception.
+
+The backend validates settings, confirms RX startup and checked idle state,
+and reports failed commands with the retained configuration. Stop releases
+the entire pipeline; restart creates fresh queues with an explicit pipeline
+generation. Shared DSP and `test_app` remain unchanged by this addition.
+
+A short physical RF24 check exercised five RX sessions across NBFM at
+1/2/4 MS/s and WBFM mono at 2 MS/s, including frequency and live squelch
+changes. Application queue drops, ALSA underruns/write errors and RX read
+errors stayed zero. It validates control/lifecycle behavior; reception
+quality and CPU overhead of this new build still need separate measurements.
+
+## Half-duplex controller TX
+
+The separate backend/controller now supports NBFM TX with independent saved
+frequency, requested power, 1/2/4 MS/s and microphone/test-tone source.
+Maximum deviation remains ±2.5 kHz. TX fully releases the RX pipeline before
+keying; normal stop returns to the saved RX configuration if RX was running.
+Controller disconnect also requests normal TX stop, while monitor disconnect
+leaves radio operation unchanged.
+
+The 2525 Hz opening and 2475 Hz closing Quindar tones remain 250 ms each, with
+the accepted silence stages, fast final padding and write acknowledgement.
+Stopped TX buffers can remain allocated; producer/writer threads now block
+on a condition variable. Each subsequent TX start joins both pipelines,
+soft-resets the FPGA and initializes fresh TX resources, following menu 14's
+validated clean-start sequence. Capture is reset with its reader parked,
+preventing old microphone samples from entering a new transmission.
+
+TX settings and lifecycle status use protocol v2, with compatibility for the
+existing v1 RX commands. Hardware activation/profile checks and persistent
+TX/capture counters accompany the controls. Shared TX workers and capture
+adapter are improved for both applications; RX DSP and menu-14 controls
+remain the regression baseline. Software validation covers handoff, faults,
+disconnect, worker parking and existing Quindar drain regressions. Successful
+physical TX listening confirmation is recorded below; a new CPU baseline
+has not been measured.
+See [radio controls and validation](radio-control.md).
+
+### First backend TX startup check
+
+The user reported `TX_STARTING` followed by `FAULT`. A passive RF24 snapshot
+at 1 MS/s showed 40 opening-cue frames (400000 IQ samples) accepted by SMI,
+zero writer/producer/capture errors and no microphone reads yet. PAC was
+`0x60` and TXDFE `0x84` after shutdown. These observations locate the failure
+after the opening cue; they do not establish successful RF transmission.
+
+The backend's immediate post-cue `STATE=TX` requirement was replaced with a
+bounded 500 ms check for TX state and sample progress. Embedded IQ control
+can report TXPREP while waiting for buffered data or between frames. Runtime
+state checks use a corresponding bounded recheck; persistent failure still
+unkeys TX. Backend error output and monitor faults now retain the startup
+stage. At this point, hardware confirmation still required another user test.
+The original passive snapshot is saved in
+`build/radio-backend/tx-start-fault-20261011.json`.
+
+### Persistent TXPREP and missing FPGA clean start
+
+The user's next RF24/1 MS/s attempt reported `TX_STATE_TIMEOUT`, SPI return
+zero, `STATE=0x03`, `PAC=0x60`, 880000 accepted samples and zero worker errors.
+The user confirmed no carrier or opening Quindar tone. Thus the bounded state
+check exposed a persistent delivery problem, rather than resolving startup.
+Linux FIFO acceptance does not prove delivery through SMI and the FPGA.
+
+Comparison with `app_menu.c` found that menu 14 destroys both pipelines and
+soft-resets the FPGA before every TX start. The backend had omitted this
+step. The earlier [FPGA study](fpga-gap-study-2026-09-13.md) documented similar
+stalls with tiny SMI transfer lengths and recovery using this clean start.
+The backend now joins RX/TX workers, confirms idle SMI, performs the checked
+FPGA reset, and creates fresh TX resources with the requested rate/gap.
+This advances the TX pipeline generation on each start. No FPGA image,
+kernel driver, shared DSP or menu-14 controls were changed by this correction.
+
+Failed pipeline starts also log modem IQ-interface synchronization/failsafe
+and FPGA routing/FIFO/profile readbacks before cleanup clears their state.
+The diagnostic reads `IQIFC2.SYNC` once on failure, leaving normal monitoring
+unchanged. Software regressions cover reset order/failure and diagnostic
+read failures.
+
+### Successful backend TX listening test (2026-10-11)
+
+After restoring the FPGA clean-start sequence, the user confirmed TX works:
+the opening and closing Quindar tones are audible, and both test-tone and
+microphone modulation are received. This confirms successful audible TX
+following the RF24/1 MS/s startup-fault investigation. The FPGA reset/recreation
+correction resolved the reported failure on the tested setup. The user also
+confirmed RX → TX → RX transitions and controller disconnect during TX:
+transmission stops and the backend returns to RX. No new CPU,
+carrier-release timing or sample-continuity measurements were supplied.
+
+## Radio application naming and command cleanup (2026-10-11)
+
+The current executables under `build/radio-backend/` are
+`cariboulite_radio_backend`, `cariboulite_radio_controller` and
+`cariboulite_radio_monitor`. The backend's former RX-only name reflected its
+initial scope. Backend and controller remain C applications; the monitor remains
+a Python 3 client.
+
+Receiver commands now use `rx start`, `rx stop`, `rx frequency`, `rx mode` and
+`rx rate`, matching the TX command prefix. Squelch controls use
+`squelch noise on|off`, `squelch carrier on|off` and
+`squelch levels OPEN CLOSE`; an explicit `rx squelch` prefix is also accepted.
+Original unprefixed commands remain aliases. Socket paths, protocol versions
+and radio/DSP behavior remain unchanged by this interface cleanup. See the
+[current command examples](radio-control.md#use-the-controller).
+
+Validation passed four C suites and 108 Python checks, including the named
+monitor launcher, controller-to-backend RX commands and partial squelch edits
+that preserve the other fields. These checks used isolated simulated sessions.
+
+## WBFM modem RX bandwidth (2026-10-11)
+
+The shared RX pipeline now selects **250 kHz analog bandwidth** for WBFM
+and the minimum modem digital cutoff, **`fS / 8`**, instead of the previous
+2 MHz analog bandwidth and `fS / 2` cutoff. This applies to both menu 14 in
+`cariboulite_test_app` and `cariboulite_radio_backend`, on RF09 and RF24.
+The backend also publishes the updated 250000 Hz bandwidth to the monitor.
+
+| IQ rate | Analog bandwidth | Digital cutoff | RXBWC / RXDFE |
+| --- | --- | --- | --- |
+| 1 MS/s | 250 kHz | ±125 kHz | `0x12` / `0x04` |
+| 2 MS/s | 250 kHz | ±250 kHz | `0x12` / `0x02` |
+| 4 MS/s | 250 kHz | ±500 kHz | `0x12` / `0x01` |
+
+250 kHz is the starting point for listening tests. Its nominal analog
+half-bandwidth is 125 kHz, leaving more margin around the existing software
+channel filter's ±100 kHz cutoff than the supported 200 kHz setting would.
+With the existing IF shift enabled (`IFS=1`, `IFI=0`), the modem's nominal
+internal IF becomes **320 kHz**. Its digital mixer converts this to
+zero-centered IQ; this IF is not a tuning error or an extra frequency offset.
+See the [AT86RF215 datasheet](<datasheet/Atmel-42415-WIRELESS-AT86RF215_Datasheet 2.pdf>),
+receiver frontend and RXBWC/RXDFE descriptions (pages 52–59).
+
+The selected sample rate, WBFM DSP and existing AGC policy remain in use.
+Narrowing the modem filter therefore does not reduce SMI traffic or DSP CPU
+work by itself. The current WBFM output is mono. Stereo and RDS still require
+additional DSP and a fresh review of the RF filter widths.
+
+Hardware-free lifecycle checks passed for both channels at 1/2/4 MS/s,
+including NBFM/WBFM transitions, inactive-register-bank protection, injected
+WBFM configuration/readback failures and successful retries. WBFM DSP checks
+also passed at all three rates, including ±75 kHz modulation, streaming/reset
+behavior and audio filter checks. Both applications built successfully, and
+the backend's four C suites and 58 Python checks passed using simulated
+sessions. Physical listening confirmation with this modem profile is pending.
+Reproduce the shared-pipeline checks with:
+
+```sh
+python3 software/libcariboulite/tests/test_rx_lifecycle.py
+python3 software/libcariboulite/tests/test_wbfm_demod.py
+```
+
+## Restore the menu-14 UI baseline (2026-10-11)
+
+For merging this branch into `main`, the user requested the original
+`app_menu` screen layout. The added audio FIFO, ALSA playback, RX reader and
+worker/scheduling rows have been removed from menu 14. The existing rate
+counter guards remain so resetting counters does not produce invalid rates;
+an empty FIFO is no longer labelled as proof of an underrun. Apart from these
+diagnostic corrections, the menu layout matches `main`.
+
+Shared RX/TX instrumentation, modem and DSP improvements, Quindar behavior
+and the separate backend/controller/monitor remain in place. The backend
+continues to publish full instrumentation to the passive monitor. Menu 14
+still obtains the shared snapshot, but only displays its original IQ FIFO
+statistics and status rows.
+
+The [application comparison](rx-application-comparison.md) remains a record
+of its instrumented builds and expanded menu-14 display. Its measurements
+have not been repeated for the restored UI. The comparison tools accept the
+original layout and explicitly report its undisplayed audio FIFO, playback,
+reader and worker measurements as unavailable. No new physical listening,
+CPU or pipeline-health results are established by this UI restoration.
+
+Validation passed the `cariboulite_test_app` build, hardware-free RX/TX
+lifecycle and loopback checks, and 27 comparison parser/collector checks.
+Replaying one archived instrumented comparison also reproduced its 433
+snapshots and original IQ/audio/playback/reader counter deltas.
+
+## Controller FPGA programming (2026-10-11)
+
+The radio controller adds `fpga program` for restoring the current FPGA
+configuration after a reboot. It uses `firmware/top.bin` from the backend's
+working directory and preserves test-app menu option 3's hard reset, forced
+file programming, soft reset, 100 ms wait, version read and low-power mode.
+The command requires stopped RX/TX, preflights the file and checks SPI
+communication and final mode before completing. No test-app UI changes are
+needed. See [startup and command behavior](radio-control.md#fpga-programming-after-reboot).
+
+Programming uses the existing lifecycle worker, exposes `FPGA_PROGRAMMING`
+and pauses hardware register polling while keeping status IPC available.
+Success returns to `IDLE`; failure leaves `FAULT` with a stage logged in the
+backend, and retry remains available. Both pipelines stay stopped and retain
+their saved settings. The loaded FPGA configuration is volatile; this does
+not change the boot firmware. Physical programming validation is pending.
+
+The applications build successfully. All four C suites, 69 Python application
+checks and 56 passive-monitor checks passed without radio hardware access.
+The mocked backend verifies the exact reset/load sequence, firmware preflight,
+14 injected stage failures and retries, checked completion readbacks and
+command blocking during programming. Simulated IPC checks confirm status
+transitions and continued programming after controller disconnection.
+
+The controller also provides independent `fpga soft reset` and `fpga hard
+reset` commands using the test app's reset GPIO calls. Both require stopped
+RX/TX, release retained pipelines and expose `FPGA_RESETTING` asynchronously.
+Soft reset preserves the loaded firmware and verifies final low-power mode.
+Hard reset leaves `FPGA_NEEDS_PROGRAM`; only successful `fpga program`
+clears that requirement. Ordinary stop or soft reset cannot bypass it,
+including after a failed programming attempt. Reset commands do not read a
+firmware file and leave RX/TX stopped. Physical reset validation is pending.
+
+After adding the standalone resets, the build, all four C suites and all 77
+Python application checks passed. The mocked backend covers reset order,
+checked failures, retained-resource invalidation and programming-required
+guards. Simulated sessions cover both reset commands, status transitions,
+disconnect behavior and programming recovery.
+
+### Recovery after hard-reset IDLE failure
+
+The user reported successful soft and hard resets followed by repeated
+`[radio_backend] FPGA programming failed: IDLE` errors. That stage runs before
+the bitstream is loaded. The backend was requiring a fresh modem-state read
+after the configuration reset, even though it had already confirmed idle
+before resetting and blocked subsequent radio starts.
+
+Recovery now retains that pre-reset idle proof, checks SMI idle again and
+defers modem SPI verification until after programming and FPGA readback.
+Completion additionally commands modem TRXOFF and checks it with a bounded
+50 ms settling window. Failure logs include radio, SMI and state-read return
+codes plus the observed state; a failed final proof retains `FAULT` and the
+programming requirement.
+
+Shared SPI configuration is a possible reason the pre-program modem read
+failed: the [board schematic](../hardware/rev2/schematics/CaribouLite.PDF#page=4)
+describes SPI-master boot when reset is released with SS high. This hardware
+mechanism has not been confirmed by a physical readback. The GPIO reset calls
+and menu-3 file-programming sequence remain unchanged. Physical recovery
+confirmation with this correction is pending.
+
+The rebuilt backend passed all four C suites and 77 Python application checks.
+The expanded mock fixture covers soft → hard → program with modem reads
+unavailable until programming, repeated resets, recovery SMI failures,
+persistent final verification failures and transient states that settle.

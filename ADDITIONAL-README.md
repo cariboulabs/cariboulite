@@ -1,18 +1,55 @@
 # Additional CaribouLite notes
 
 Development priorities and acceptance criteria are tracked in the
-[development roadmap](ROADMAP.md). The [documentation audit](docs/documentation-audit-2026-09-16.md) records what
-was checked and what remains open. These installation notes
-combine historical recipes and work in progress; they are not a freshly verified
-installation guide. Before applying manual source patches, check whether the
-current checkout already contains them. For recorded development state, see the
+[development roadmap](ROADMAP.md). The [documentation audit](docs/documentation-audit-2026-10-16.md) records what
+was checked and what remains open. These notes include a successful fresh
+Pi Zero 2 W / Trixie installation reported on October 14, 2026, alongside
+historical recipes and work in progress. Before applying manual source patches,
+check whether the current checkout already contains them. For recorded development state, see the
 [software baseline](docs/software-baseline-2026-09-13.md) and
 [FPGA study](docs/fpga-gap-study-2026-09-13.md); neither certifies the current setup.
 
-# Install CaribouLite with Raspberry pi OS Trixie (64bit) [WIP]
-These Trixie notes are a historical workaround and need revalidation against the
-current kernel, login/session limits and driver permissions. A Debian-wide policy
-change has not been established here. The settings below change system-wide
+Reviewed against `dev-passive-monitor` at `953c1f0` on 2026-10-16. Hardware-paced
+TX is included in this branch; the 64-frame FIFO growth described below belongs
+to the earlier implementation. With the updated driver, current automatic pacing
+uses a four-frame IQ queue and independent microphone capture. See the
+[implemented TX design](docs/tx-hardware-paced-design.md) and
+[documentation index](docs/README.md).
+
+The standalone radio applications are `cariboulite_radio_backend`,
+`cariboulite_radio_controller` and `cariboulite_radio_monitor`, built under
+`build/radio-backend/`. See [radio controls](docs/radio-control.md) for building
+and launching them, including symmetric `rx frequency` / `tx frequency`
+commands and grouped squelch controls. The [passive monitor](docs/passive-monitor.md)
+remains optional and runs in its own terminal.
+
+# Install CaribouLite with Raspberry Pi OS Trixie (64-bit)
+
+On October 14, 2026, a successful fresh build and installation was reported on
+a **Raspberry Pi Zero 2 W running 64-bit Raspberry Pi OS Trixie**, following
+this README. In that initial test, NBFM TX worked without distortion when the RF sample rate was
+reduced to **1 MS/s**. WBFM RX was also tested at **4 MS/s**.
+NBFM was also successfully tested against a known repeater. During NBFM TX
+testing at **1 MS/s**, the Linux/application TX FIFO was observed slowly filling to
+**100% (64/64) in about 90 seconds**, with modulation audio apparently
+unaffected. The same queue growth was not observed at **4 MS/s**.
+See [TX FIFO occupancy](#tx-fifo-occupancy) for its interpretation.
+The [backend/controller/passive-monitor follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md)
+also reproduced gradual queue growth at 1 MS/s. At 4 MS/s it showed lower
+production rates and capture overruns. The subsequent
+[automated baseline](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14)
+reproduced both behaviors with the existing build.
+
+Follow the installation steps in the next section after the Trixie settings
+below, and [create the ALSA Loopback device](#creating-the-alsa-loopback-device)
+before using the test application's audio modes. In menu option 14, stop TX
+and RX, then press `1`, `2` or `4` to select the RF sample rate. The later
+hardware-paced TX trials cover all three rates; the original installation
+report used 1 MS/s NBFM TX and 4 MS/s WBFM RX. ALSA audio remains at 48 kHz.
+
+The settings below were part of the installation recipe; their necessity for
+each launch method and login/session still needs checking. A Debian-wide policy
+change has not been established here. These settings change system-wide
 locked-memory limits; they do not by themselves establish device access or
 real-time scheduling permissions.
 
@@ -47,6 +84,10 @@ cat /proc/self/limits | grep -i "Max locked memory"
 ```
 
 # Install CaribouLite with Raspberry Pi OS Bookworm (Lite) (64bit)
+
+This section retains the May 2025 recipe and subsequent development notes.
+Use the [installation guide](installation.md) for the current installer flow;
+the Trixie report above records a newer tested setup.
 
 My goal is to install the cariboulite on a Raspberry Pi0_2W and/or a Pi4. Requirements:
 - Connected to the Pi over ethernet and ultimately provide power to the Pi with POE
@@ -124,7 +165,9 @@ sudo apt install git cmake
 ```
 
 # SoapySDR (optional)
-If you want to have more control over where SoapySDR en SoapyRemote are installed, execute these steps first. If you use these steps, you should say `No` to the `install SoapySDR` question from the CaribouLite install script.
+For a manual SoapySDR/SoapyRemote installation, use the recorded recipe below.
+If `SoapySDRUtil` is already on `PATH`, the CaribouLite installer skips its
+Soapy build section; it does not separately check whether SoapyRemote is installed.
 
 Create a directory where you want to keep your source code. I call mine: `src`.
 
@@ -171,19 +214,15 @@ mkdir -p ~/src
 cd ~/src
 ```
 
-Get the source code:
+For this fork's hardware-paced TX and standalone radio applications, clone
+the development branch and its submodule:
 
 ```
-git clone https://github.com/cariboulabs/cariboulite.git
+git clone --branch dev-passive-monitor --recurse-submodules https://github.com/Habraken/cariboulite.git
 ```
 
-Or if you don't want to patch yourself:
-
-```
-git clone https://github.com/Habraken/cariboulite.git
-```
-
-To make the nbfm_tx and nbfm_rx examples work you also need to install the dev tools for ALSA:
+The installer includes the ALSA development dependencies. For a manual build,
+install them first:
 
 ```
 sudo apt install -y libasound2-dev pkg-config
@@ -198,10 +237,19 @@ are already in this checkout; switching to `feature/nbfm_rx` is not an
 installation prerequisite.
 
 The top-level installer builds the blob generator before the driver and invokes
-the driver installer itself; a driver-first installation is unnecessary. It also
-runs `git pull`, installs packages and writes system configuration. Its legacy
-header/Python package choices still require fresh Bookworm/Trixie validation;
-see [DOC-01](ROADMAP.md#documentation-validation-backlog).
+the driver installer itself; a driver-first installation is unnecessary. It builds
+the main library, standard test application and the standalone backend,
+controller and monitor. It also
+runs `git pull`, installs packages and writes system configuration. The fresh
+Pi Zero 2 W / Trixie installation reported above succeeded with this recipe;
+broader package, permissions and platform validation remains tracked in
+[DOC-01](ROADMAP.md#documentation-validation-backlog).
+
+On October 15, a separate recursive GitHub clone of `dev-passive-monitor` at
+`37d2414` built the native blob generator, kernel driver, embedded driver header,
+main library, standard test application and all three standalone radio apps.
+This check used the Pi 4's existing OS dependencies and matching kernel headers;
+it did not run the system installer or validate installation on a fresh OS image.
 
 Then in the cariboulite directory:
 
@@ -283,13 +331,17 @@ Found device 1
   version = 0x0001
 ```
 
-Now it is also possible to interact with the CaribouLite board with the provided `cariboulite_test_app` in the `~/src/cariboulite/build` directory.
+Before using the audio modes in `cariboulite_test_app`,
+[create the ALSA Loopback device](#creating-the-alsa-loopback-device).
+Then interact with the CaribouLite board with the provided `cariboulite_test_app`
+in the `~/src/cariboulite/build` directory.
 
 ```
 cd ~/src/cariboulite
 ./build/cariboulite_test_app
 ```
-At the end of a lot of ouput there should be something like this:
+The following May 2025 capture predates the NBFM and monitor entries. The current
+menu is shown in [NBFM and modem monitor](#nbfm-and-modem-monitor):
 
 ```
 
@@ -315,7 +367,8 @@ At the end of a lot of ouput there should be something like this:
  [99]  Quit
     Choice:
 ```
->Note: If you try option `9` and then select option `2` there will errors that look like this:
+The same historical test recorded synchronization errors after option `9`,
+sub-option `2`:
 >
 ```
 FF D0 FF F4 FF 02 C0 D8  FF C0 FF FC FF C2 FF E6  |  ................
@@ -368,13 +421,17 @@ must be checked rather than inferred from the branch name. The historical
 [baseline](docs/software-baseline-2026-09-13.md) records Jan's startup and
 programming procedure, with its validation limits.
 
-Options 12 and 14 need configured ALSA playback. In the current option 14
-configuration, both TX and RX use RF09 (Sub-1 GHz). TX captures `plughw:Loopback,1,1`, RX plays to
+Options 12, 13 and 14 need the [ALSA Loopback device](#creating-the-alsa-loopback-device).
+In the current option 14
+configuration, both TX and RX use HiF/RF24 (`sys->radio_high`). TX captures `plughw:Loopback,1,1`, RX plays to
 `plughw:Loopback,0,0`, and both default to 430.100 MHz. `tone_mode` defaults to
 false; the internal tone parameter is 600 Hz. Therefore pressing T does not
-by itself select the historical 650 Hz tone. Audio/device and RF parameters
-remain hardcoded (roadmap items 2 and 5). The separate L interface-loopback
-diagnostic still uses RF24 reception; T/R normal operation uses RF09.
+by itself select the historical 650 Hz tone. Audio endpoints, channel selection
+and default power (-13 dBm in menu 14) remain set in source (roadmap items 2 and 5). TX/RX frequencies
+are editable while stopped using `F`/`G`; see
+[frequency controls](docs/monitor-frequency.md). The separate L interface-loopback
+diagnostic also uses RF24 reception. Earlier RF09 captures below retain their
+original channel identity; they do not describe the current menu default.
 
 In option 14, stop TX and RX, then press `1`, `2` or `4` to select a shared
 1, 2 or 4 MS/s RF sample rate. The rate applies to both TX and RX, including
@@ -383,9 +440,193 @@ while the separate `L` interface-loopback diagnostic is enabled.
 
 Stopping TX sends a 250 ms trailing Quindar tone, followed by silence long
 enough to clear the kernel and DMA buffers before switching the radio off.
-This takes longer at 1 MS/s; the tone duration stays at 250 ms.
+The tone duration stays at 250 ms. The old buffering path required more padding
+at 1 MS/s; current hardware-paced TX uses bounded driver buffering and fast
+final padding. Actual release time still depends on transport/backpressure;
+see [TX tail timing](docs/tx-tail-timing.md).
 
-This is how the monitor modem status output should look like:
+### TX FIFO occupancy
+
+The 64-frame measurements and clock-paced production discussion in this section
+describe the **pre-hardware-paced baseline**. Current source uses driver demand
+and a four-frame bound when the new TX ABI is available. `TX_PACING_AUTO` falls
+back to the legacy 64-frame path only when the driver returns `ENOTTY` for the
+status ioctl; explicit legacy selection also retains that path. Inspect the
+active pacing mode and driver counters before interpreting queue occupancy.
+
+The repeated Pi Zero 2 W / Trixie NBFM TX test reported above confirmed that
+at **1 MS/s** the application TX FIFO slowly fills to **64/64**, with **max:64**,
+during active transmission. It takes approximately **90 seconds** to reach full
+occupancy, while the modulation audio appears unaffected. This established
+accumulating backlog in the old implementation; the later demand-paced transport
+and compute changes address it in the recorded trials below.
+
+The user clarified that this filling does **not** occur at **4 MS/s**:
+
+| TX RF rate | IQ samples per 10 ms frame | Reported application TX queue behavior |
+| --- | --- | --- |
+| 1 MS/s | 10,000 | Gradually fills to 64/64 in approximately 90 seconds |
+| 4 MS/s | 40,000 | Does not show the same filling |
+
+Both settings retain a 64-frame queue representing 640 ms of signal. The
+4 MS/s modulator processes four times as many IQ samples per frame, while
+driver/DMA buffers have fixed byte capacities and therefore different durations
+at the two rates. Lower production under the heavier 4 MS/s workload could
+also keep its queue from filling. Compare long-term producer rates, accepted
+writer sample rates and capture/driver diagnostics at both settings to
+distinguish that possibility from slower draining at 1 MS/s. The reported
+distortion-free TX audio remains the result recorded for 1 MS/s.
+
+The subsequent backend/controller test on the same Pi Zero 2 W installation
+also showed gradual growth at 1 MS/s: depth 29/64, max 30, puts/gets 4582/4553
+and displayed rates 99.8/99.8 frames/s. This represents 290 ms of application
+backlog. At 4 MS/s, the supplied snapshot showed depth 0/64, max 3 and
+79.7/79.7 frames/s, with a reported range around 80–90. Each frame still
+represents 10 ms, so those lower rates point toward insufficient production
+under the heavier workload. Capture recorded 48 overruns and 48 successful
+recoveries at 4 MS/s, versus zero in the 1 MS/s excerpt. Successful recovery
+does not restore lost audio. Both workers reported actual `SCHED_OTHER/0`;
+requested FIFO priorities 40/48 were not active. Full counters, interpretation
+and the timed comparisons are in the
+[backend follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md#backendcontroller-observations-2026-10-14).
+
+The automated Pi Zero baseline at 430.100 MHz then measured both sources for
+three minutes at each rate. At 1 MS/s, microphone and internal-tone queues
+both filled after about 129 seconds, with production near 100 frames/s before
+saturation and dequeue near 99.59 frames/s. At 4 MS/s, microphone/tone averaged
+82.81/88.84 frames/s and CPU 0 was approximately 98–100% busy; both TX workers
+were pinned there. Kernel TX missed counters increased at 4 MS/s for both
+sources. The measured microphone capture overrun deltas were 2 at 1 MS/s and
+383 at 4 MS/s. This confirms capture-independent backlog at 1 MS/s and a
+separate processing/scheduling limit at 4 MS/s. That baseline used the unchanged
+TX implementation. Full rates, window definitions, recorder overhead and limitations
+are in the [physical baseline report](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14).
+
+The subsequent [hardware-paced TX implementation](docs/tx-hardware-paced-design.md)
+passed six three-minute microphone/tone trials at 1/2/4 MS/s and 430.100 MHz.
+It sustains approximately 100 frames/s within a four-frame application bound,
+with zero driver underruns or microphone/audio-buffer losses. At 4 MS/s the
+producer uses approximately 55% of one core. Verified SMI write timing is
+restored on stop, and same-backend automatic RX restoration passed at 1/4 MS/s.
+Those physical trials used a separately staged build and runtime driver reload
+on the Zero. The implementation was subsequently merged at `37d2414`; a new
+installation builds it from source. The historical staging arrangement is not an
+installation prerequisite. RF waveform accuracy remains separately unmeasured.
+
+On October 15, the user also confirmed successful quick tests of this staged
+version at 1 and 4 MS/s, with substantially better modulation audio at 4 MS/s.
+This [listening observation](docs/pi-zero-tx-queue-test-2026-10-15.md#user-listening-checks-2026-10-15)
+supplements the automated transport measurements.
+
+The unchanged staged candidate subsequently passed the
+[Pi 4 transport and RX restoration checks](docs/pi4-tx-validation-2026-10-15.md).
+The user then confirmed **perfect modulation audio at 4 MS/s**, with no
+noticeable hiss while the microphone was quiet, using an RSP2pro connected
+through 30 dB / 2 W and 20 dB / 2 W attenuators. SDRconnect with AGC enabled
+indicated **−61.2 dBm**. The
+[manual listening record](docs/pi4-tx-validation-2026-10-15.md#user-rsp2pro-listening-check--4-mss-2026-10-15)
+keeps this qualitative result and nominal 50 dB path separate from calibrated
+RF measurements.
+
+If the queue starts near empty, the observed growth corresponds to
+`64 / 90 ≈ 0.71` excess frames per second, about **0.7%** of the nominal
+100 frames/s. More generally, use `(64 - starting_depth) / elapsed_seconds`.
+This estimates the application's enqueue/dequeue imbalance; the initial depth
+and individual long-term producer/writer rates still need recording.
+
+An earlier screenshot showed the following counters at 1 MS/s:
+
+```text
+Linux TX FIFO: 10000 samples/frame (10 ms)
+    depth: 48/64 (75%), min:0 max:51
+    puts:8318 gets:8270 drops:0 tO_put:0 tO_get:0
+    rate: puts 98.8/s, gets 98.8/s  (expect ~100 fps @ 10ms)
+    NOTE: Under-runs observed (producer late)
+```
+
+This snapshot contains 480 ms of queued signal, with a recorded maximum of
+510 ms (51/64, approximately 80%). The matching enqueue/dequeue rates indicate
+no net queue growth during that display interval, to the displayed precision.
+The writer was draining the queue, and `8318 - 8270 = 48` agrees with its depth.
+One short rate interval cannot establish a sustained sample-rate mismatch or
+explain the accumulated backlog.
+
+The user subsequently clarified that both TX rates fluctuate between **98 and
+103 frames/s**. Menu 14 calculates each rate from counter changes since the
+previous refresh, over approximately 200 ms plus register reads and screen
+work. One frame crossing a 200 ms interval boundary changes the displayed rate
+by about 5 frames/s, so this range is consistent with short-interval counting
+and scheduling variation. For a longer-term check, divide cumulative counter
+changes by elapsed time over 30–60 seconds of continuous TX, excluding startup,
+shutdown and counter resets. The repeated 90-second fill establishes a sustained
+imbalance despite this short-interval rate variation.
+
+The screenshot's underrun warning comes from an older display condition:
+`min_depth == 0`. TX startup flushes the queue and sets that minimum to zero,
+so the warning can appear without producer lateness or an RF underrun.
+Commit `bcc7efe` (October 11, 2026) removed this misleading check; the current
+source does not print that warning. The exact revision of the binary used
+for the screenshot has not been identified.
+
+The `Linux TX FIFO` panel measures the application's IQ queue between the
+modulator and SMI writer. It holds **64 frames of 10 ms each**, so a full queue
+contains **640 ms of queued signal**, before kernel/DMA and audio-device
+buffering. Selecting 1 MS/s reduces the number of IQ samples per frame, while
+each frame still represents 10 ms.
+
+The producer waits when this queue is full instead of overwriting frames.
+Full occupancy alone therefore does not establish lost IQ or distorted RF.
+However, normal TX is paced at one frame every 10 ms; sustained saturation
+needs investigation of writer throughput, transport timing and queued latency.
+Clean-sounding audio can coexist with the accumulating delay because the
+application queue preserves its frames and blocks further production at full
+capacity. The [profiling follow-up](ROADMAP.md#i-runtime-profiling-broadcast-decoding-and-adjustable-ctcss)
+tracks timed producer/writer measurements and capture/driver diagnostics.
+Final silence during TX shutdown is deliberately generated without that pacing
+and can temporarily fill the queue.
+
+During steady TX, compare the displayed `puts` and `gets` rates over several
+updates: both should average approximately **100 frames/s**. A full queue with
+`gets` no longer advancing indicates that the writer is not draining it.
+Both TX queue operations wait without a timeout, and overwriting is disabled,
+so zero `drops`, `tO_put` and `tO_get` counters do not prove healthy transmission.
+Microphone capture overruns and driver errors need checking separately.
+
+These queue and pacing details are defined in
+[`tx_pipeline.c`](software/libcariboulite/src/tx_pipeline.c),
+[`mod_worker.c`](software/libcariboulite/src/mod_worker.c) and
+[`pipeline_transport.c`](software/libcariboulite/src/pipeline_transport.c).
+
+### RX FIFO snapshot
+
+A further screenshot taken during RX at 1 MS/s showed:
+
+| Queue | Current depth | Recorded maximum | Puts / gets | Displayed puts / gets rate |
+| --- | --- | --- | --- | --- |
+| TX (inactive during RX) | 63/64 (98%) | 64 | 20219 / 20156 | 0.0 / 0.0 frames/s |
+| RX | 0/64 (0%) | 4 | 3339 / 3339 | 95.4 / 95.4 frames/s |
+
+Both queues reported zero drops and put/get timeouts. The TX queue remains
+allocated after stopping TX, and starting RX does not flush it; its displayed
+depth and historical maximum can therefore persist with no TX queue activity.
+Final stop padding can fill the queue, but this snapshot does not establish
+when its maximum was reached or which frames remained. A near-full inactive
+TX queue does not indicate that the RX path is overloaded.
+
+The RX demodulator had consumed all 3339 enqueued frames, with a maximum
+observed backlog of four frames (40 ms of signal). Its matching reader and
+demodulator rates show no net application IQ queue growth during the displayed
+interval. A single 95.4 frames/s reading does not establish sustained throughput
+below the nominal 100 frames/s or upstream sample loss.
+
+The older `Under-runs observed (reader late)` message was also triggered merely
+by `min_depth == 0`. Normal consumption of the last available frame sets this
+minimum to zero; it does not establish an underrun. RX queue counters do not
+measure kernel/FPGA sample continuity or ALSA playback underruns.
+
+### Historical monitor display
+
+This historical capture illustrates an earlier monitor layout and queue model:
 ```
 CaribouLite Radio    [T]=TX ON/OFF  [R]=RX ON/OFF  [Q]=QUIT  [X]=RES  1766328674
     TX Loopback: off    TX Frequency: 430100000 Hz    TX Power: -3 d     0.00361
@@ -421,7 +662,10 @@ Linux RX FIFO:
 ```
 With `T` you toggle TX and with `R` you toggle RX. Supply audio to the TX loopback endpoint as described in the ALSA section.
 
->Caution! There is no squelch yet, so when no carrier is present, loud noise is emitted from the speaker or headphones! Reduce your volume before you try this!
+Current NBFM reception has noise squelch, with optional RSSI squelch; mono WBFM
+supports RSSI squelch. Menu 14 uses `N` and `C` for the applicable toggles and
+`S` for NBFM noise thresholds. See [RX squelch](docs/rx-squelch.md) for defaults
+and behavior.
 
 # Modifying the firmware (FPGA)
 
@@ -450,6 +694,9 @@ repository root. Avoid `make clean` as a routine prerequisite: it removes local
 artifacts, including a potentially useful previously validated image.
 
 # SDR++
+
+This is a recorded integration recipe; a current SDR++ build, package and
+end-to-end server check remain [DOC-07](ROADMAP.md#documentation-validation-backlog).
 
 ### Increase the swapfile size (Pi Zero only?)
 During the SDR++ build `make` ran out of memory (on the Pi Zero?). Hence I increased the swap file from 512 to 1024.
@@ -586,6 +833,10 @@ On your remote computer you should now start SDR++ and select SDR++ Server as So
 
 
 # Trouble shooting faulty board
+
+This section preserves the May 2025 board investigation. These logs are not
+expected output for a current installation; the unresolved evidence is tracked
+under [DOC-08](ROADMAP.md#documentation-validation-backlog).
 
 ### System
 
@@ -729,32 +980,54 @@ I have also tried all the other options such as hard reset of the fpga, soft res
 
 # ALSA
 
-ALSA is complicated. To have some flexibility for testing the nbfm modulator and demodulator it can be helpfull to not have to depend on a physical audio device, such as a sound card.This can be done with a ALSA utility: snd_aloop. What I describe here is based on this article:
+### Creating the ALSA Loopback device
 
-based on: https://linuxvox.com/blog/linux-without-hardware-soundcard-capture-audio-playback-and-record-it-to-file/
+The current `cariboulite_test_app` uses the ALSA `Loopback` card for NBFM RX
+(option 12), the modem self-test (option 13), and the modem monitor's TX/RX
+audio (option 14). Create it before entering these modes. The
+[`snd-aloop` kernel module](https://github.com/torvalds/linux/blob/master/sound/drivers/aloop.c)
+provides this virtual sound card; installing the ALSA development libraries
+alone does not load it.
 
-### Prerequisites:
+Install the command-line utilities used below and load the module immediately:
 
-Ensure
-```alsa-utils```  ```ffmpeg``` ```sox```
-are installed.
+```bash
+sudo apt install -y alsa-utils
+sudo modprobe snd-aloop
+```
 
-note :both alsa-utils and ffmpeg, are already part of the Raspberry OS usualy.
+Also configure it to load at every boot, using
+[systemd's modules-load.d configuration](https://github.com/systemd/systemd/blob/main/man/modules-load.d.xml):
 
-### Making the Loopback Module Persistent
+```bash
+sudo mkdir -p /etc/modules-load.d
+sudo tee /etc/modules-load.d/alsa-loopback.conf >/dev/null <<'EOF'
+snd-aloop
+EOF
+```
 
-The modprobe command loads the module temporarily (it will unload on reboot). To make it persistent:
+Verify the device now, and repeat these checks after the next reboot to confirm
+boot-time loading:
 
-Create a configuration file in /etc/modules-load.d/ to load the module at boot:
+```bash
+lsmod | grep snd_aloop
+cat /proc/asound/cards
+aplay -l
+arecord -l
+```
 
-sudo nano /etc/modules-load.d/alsa-loopback.conf
-Add the following line and save the file:
+The card lists should include `Loopback`, with PCM devices 0 and 1 available
+for both playback and capture. The default module settings provide enough
+substreams; the application needs substreams 0 and 1. Use the card name `Loopback` in
+commands, since its numeric card index can change.
 
-```snd-aloop```
-Reboot to test persistence (optional, but recommended):
+| Audio route | External audio endpoint | Application endpoint |
+| --- | --- | --- |
+| Microphone or test tone to TX | Play to `plughw:Loopback,0,1` | Captures `plughw:Loopback,1,1` |
+| RX audio to speaker or recorder | Capture from `plughw:Loopback,1,0` | Plays to `plughw:Loopback,0,0` |
 
-sudo reboot
-After reboot, re-run lsmod | grep snd_aloop to confirm the module is loaded.
+These routes use 48 kHz mono S16_LE audio. Loading the module creates the virtual
+card; use the bridges below to connect it to a physical microphone or speaker.
 
 ### Long-running audio bridges
 
@@ -801,7 +1074,9 @@ arecord -D plughw:Loopback,1,0 -t raw -f S16_LE -c 1 -r 48000 |
 
 If faced with ```overruns!!!``` one could also use:
 
-```alsaloop -C plughw:Loopback,1,0 -P plughw:4,0 -r 48000 -c 1 -f S16_LE -t 50000```
+```sh
+alsaloop -C plughw:Loopback,1,0 -P plughw:CARD=USB,DEV=0 -r 48000 -c 1 -f S16_LE -t 50000
+```
 
 or
 
@@ -817,6 +1092,24 @@ arecord -D plughw:Loopback,1,0 -t raw -f S16_LE -c 1 -r 48000 |
   aplay -D plughw:CARD=Headphones,DEV=0 -t raw -f S16_LE -c 1 -r 48000
 ```
 
+# Standalone radio applications
+
+The top-level installer builds these applications under `build/radio-backend/`:
+
+- `cariboulite_radio_backend` owns the radio, audio and streaming workers.
+- `cariboulite_radio_controller` sends commands through the local control socket.
+- `cariboulite_radio_monitor` displays cached status in another terminal.
+
+For a manual build, first build the main library, then run from the repository root:
+
+```sh
+make -C software/libcariboulite/tools/radio_backend
+```
+
+Launch from the repository root using the paths in
+[radio controls](docs/radio-control.md); that guide documents defaults, RX/TX
+commands, FPGA controls and the hardware-free `--dry-run` mode. The passive
+monitor is optional. These applications have no system installation target.
 
 # GNU-RADIO (WIP)
 ```

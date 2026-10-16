@@ -6,6 +6,8 @@ the original proposed contracts remain design history. See the
 [extension guide](audio-dsp-extension-guide.md) for composition and future modems.
 Update this file with every interface-changing increment. Menu 14 now also
 provides [separate TX/RX frequency controls](monitor-frequency.md).
+Current contracts were checked against the source on 2026-10-16. Dated
+validation paragraphs describe their original builds and test scope.
 
 ## Current implementation
 
@@ -13,6 +15,7 @@ provides [separate TX/RX frequency controls](monitor-frequency.md).
 | --- | --- | --- |
 | `audio_source.h` | Format + read-result + destroy operations | Common source boundary; used by ALSA, tone and memory sources |
 | `alsa_source.c/.h` | ALSA capture -> mono float audio at 48 kHz | Owns capture handle, conversion and buffering; used by TX |
+| `tx_audio_buffer.c/.h` | Independent microphone capture -> buffered, clock-adapted float audio | Hardware-paced TX only; owns one capture thread and bounded audio storage |
 | `tone_source.c/.h` | Frequency/amplitude -> 48 kHz mono float audio | Common source implementation for TX, injection and self-test tones |
 | `memory_audio.c/.h` | Borrowed float input / S16 output arrays | Finite nonblocking adapters; no devices or workers |
 | `nbfm_memory_demo.c` | Source -> NBFM IQ -> PCM -> sink | Standalone composition; C and math only |
@@ -51,13 +54,18 @@ flowchart TB
 
     subgraph tx["tx_pipeline — transmit"]
         txctl["TX lifecycle / configuration"]
-        mic["alsa_source<br/>Microphone capture"]
+        mic["alsa_source<br/>Nonblocking microphone capture"]
+        capture["tx_audio_buffer capture thread"]
+        micq[("Microphone audio buffer<br/>3360-frame occupancy target")]
         tone["tone_source<br/>Continuous test tone"]
         cue["Tone / silence injection<br/>Opening and closing cues"]
-        mod["mod_worker thread<br/>Source selection and injection priority<br/>nbfm_mod DSP"]
-        txq[("TX RF FIFO<br/>64 × 10 ms blocks<br/>Block when full")]
+        mod["mod_worker thread<br/>Source selection and injection priority<br/>Adaptive microphone read; nbfm_mod DSP"]
+        txq[("TX RF FIFO<br/>4 × 10 ms blocks in hardware mode<br/>64 in legacy mode; block when full")]
         writer["SMI writer thread<br/>Hardware sample packing / TX control bits"]
-        mic -->|"audio_source: float mono 48 kHz"| mod
+        mic -->|"audio_source: float mono 48 kHz"| capture
+        capture --> micq
+        micq -->|"480 frames at hardware demand cadence"| mod
+        mic -->|"Legacy mode: direct 480-frame reads"| mod
         tone -->|"audio_source: float mono 48 kHz"| mod
         cue --> mod
         mod -->|"IQ16: 1, 2 or 4 MS/s"| txq
@@ -113,11 +121,14 @@ measurement continues with its gate bypassed; RMS and the detector decision
 are distinct from the combined gate. See [RX squelch](rx-squelch.md) for thresholds, interfaces,
 ownership, physical acceptance and regression checks.
 
-`pipeline_transport` implements the three application FIFOs shown above. Each
-RF block holds 10,000 IQ pairs at 1 MS/s, 20,000 at 2 MS/s or 40,000 at 4 MS/s. TX source reads use
-480 audio samples per block; there is no separate application audio FIFO before
-the modulator. ALSA buffering and kernel/FPGA transport buffers are internal to
-their respective layers and are not expanded here. The TX/RX paths share one
+`pipeline_transport` implements the three RF/playback FIFOs shown above. Each
+RF block holds 10,000 IQ pairs at 1 MS/s, 20,000 at 2 MS/s or 40,000 at 4 MS/s.
+TX modulation consumes 480 audio samples per block. Hardware-paced microphone
+TX uses the separate `tx_audio_buffer` capture thread and adaptive resampler,
+targeting 3360 buffered audio frames (70 ms); legacy TX reads the source directly.
+Tone-only TX has no capture thread. The diagram shows both alternatives; they
+do not read the same source concurrently. ALSA and kernel/FPGA transport buffers
+are internal to their respective layers. The TX/RX paths share one
 device and runtime; this diagram does not imply simultaneous duplex operation.
 
 ### Hardware-free adapter composition
@@ -228,8 +239,10 @@ composition without introducing a public live-pipeline injection API.
 
 [Header](../software/libcariboulite/src/alsa_source.h) and
 [implementation](../software/libcariboulite/src/alsa_source.c).
-Step 1 renames the module and API only; it does not implement the proposed
-common audio-source contract above or add configurable sample rates.
+The original step 1 renamed the module and API only; later changes added the
+common source contract and nonblocking capture. The adapter still has no
+configurable sample rate. The declarations and behavior below describe the
+current implementation.
 
 ```c
 typedef struct alsa_source alsa_source_t;
@@ -238,7 +251,7 @@ size_t alsa_source_read(alsa_source_t* s, float* dst, size_t max_frames);
 void alsa_source_destroy(alsa_source_t* s);
 ```
 
-- Creation opens blocking ALSA capture; a null device selects `default`.
+- Creation opens nonblocking ALSA capture; a null device selects `default`.
   Configuration remains exactly 48 kHz mono, signed 16-bit little-endian input.
   Creation returns null on initialization failure.
 - Output is mono float audio: input divided by 32768, multiplied by `gain`,
@@ -247,8 +260,8 @@ void alsa_source_destroy(alsa_source_t* s);
   does not retain the pointer. Reads return the actual count, possibly short or
   zero. Errors are not reported separately from lack of samples.
 - Reads drain the internal ring and attempt up to eight capture calls as needed.
-  Blocking ALSA reads and suspend recovery mean this is not a guaranteed wall-clock
-  timeout. Overflow drops the oldest buffered audio.
+  `EAGAIN`/`EINTR` end the attempt without waiting for another period; suspend
+  recovery tries resume once, then prepare. Overflow drops the oldest buffered audio.
 - One worker reads a source. The implementation also shares a static conversion
   buffer across instances, so concurrent reads from different instances are not
   supported. Stop/join the reading worker before destruction; destroy accepts null.
@@ -267,8 +280,8 @@ if (source) {
 }
 ```
 
-Validation: application build and `test_rx_lifecycle.py`; the implementation is
-unchanged apart from names. The [step 1 physical retest](baselines/20260919T075122.967948Z/summary.json)
+Original step 1 validation: application build and `test_rx_lifecycle.py`; the
+implementation at that increment changed names only. The [step 1 physical retest](baselines/20260919T075122.967948Z/summary.json)
 also completed successfully; Jan confirmed all tones at the correct pitch.
 
 ## Implemented: common audio source (step 2)
@@ -296,20 +309,27 @@ valid buffered frames. ALSA never returns EOF; its unrecovered capture failures
 return ERROR with any buffered samples. Zero-length reads succeed without I/O;
 invalid source/buffer arguments return ERROR/-EINVAL.
 
-The TX worker retries AGAIN/short reads to fill its existing 480-frame block.
-On ERROR or EOF it drops the unfinished block, logs failure and clears the TX
-stream-active flag; normal pipeline stop/destroy performs final cleanup.
-This avoids indefinite retries after a permanent capture failure. Existing
-Quindar generation and normal sample conversion are unchanged.
+Legacy TX retries AGAIN/short reads to fill a 480-frame block. Hardware-paced
+microphone TX uses the independent capture/buffering helper described below.
+ERROR or EOF terminates the affected worker rather than padding an unfinished
+block. The backend observes retained worker health and stops TX; pipeline
+stop/destroy owns cleanup. Quindar generation and sample conversion remain
+separate from capture.
 
 The source has immutable format and operations pointers; an adapter embeds it
 and implements read/destroy. No common factory, audio resampler or source-switch
 logic is introduced yet. Step 3 replaces the old `audio48k_source` tone interface with `tone_source`. DSP modules do not depend on this I/O interface.
 
-Blocking behavior is still adapter-specific: ALSA uses the existing blocking
-reads, recovery, and worker cancellation. No new timeout or cross-thread stop API
-is claimed. One reader owns the adapter; stop/join it before destroy. ALSA's
+Blocking behavior is adapter-specific: ALSA now uses nonblocking reads, so an
+empty source returns AGAIN and the caller owns retry timing. One reader owns
+the adapter; park/join it before reset or destroy. ALSA's
 shared conversion buffer still excludes concurrent reads across instances.
+
+`alsa_source_get_stats` returns lifetime atomic capture/overrun/recovery/error
+counters for an ALSA source and false for other adapters.
+`alsa_source_reset(source, prepare)` drops capture/ring backlog; `prepare=true`
+prepares fresh capture, while false leaves it dropped. Call reset only after
+the source reader has parked or joined.
 
 ```c
 audio_source_t* source = alsa_source_open("plughw:Loopback,1,1", 1.0f,
@@ -470,7 +490,7 @@ int nbfm_demod_set_audio(nbfm_demod_t* dsp, float deemph_tau, float pcm_gain);
 void nbfm_demod_destroy(nbfm_demod_t* dsp);
 ```
 
-Configuration explicitly supplies RF rate (2,000,000 or 4,000,000 Hz), audio rate
+Configuration explicitly supplies RF rate (1,000,000, 2,000,000 or 4,000,000 Hz), audio rate
 (48,000 Hz), finite nonnegative de-emphasis tau in seconds (zero bypasses it),
 and finite nonnegative PCM gain. Creation validates these and returns NULL/errno
 EINVAL for invalid configuration or NULL on allocation failure. No implicit
@@ -681,10 +701,12 @@ use lifecycle/status operations rather than mutate worker fields.
 | [demod_worker](../software/libcariboulite/src/demod_worker.h) | Existing RX DSP worker, audio frame packing, FIFO-depth correction and heartbeat |
 | [modem_selftest](../software/libcariboulite/src/modem_selftest.h) | Existing option 13 cue/modem/playback sequence |
 
-The TX worker now has the entry point `nbfm_mod_thread`; the old thread name,
-priority and affinity remain unchanged. This complements `nbfm_demod_thread`
-without creating another thread. No DSP algorithm, input/output level, hardware
-route or sample packing changes accompany the move. Shared runtime state is
+The TX worker entry point is `nbfm_mod_thread`. The original extraction retained
+thread naming, priority and affinity and complemented `nbfm_demod_thread`
+without adding a thread. It did not change DSP, input/output levels, hardware
+routing or sample packing. Later hardware-paced TX assigns its producer/writer
+to CPUs 1/2 where available and adds microphone capture on CPU 0; RX now uses
+the neutral `audio_demod_thread` entry point. Shared runtime state is
 explicitly shared across translation units: the menu and both pipelines still
 use the same hardware lock. The injection mutex remains shared by the TX control
 path and mod worker. The existing one-device/global-stream model remains; this
@@ -711,10 +733,13 @@ Call init on a fresh/destroyed handle, not a live one. Unsupported rates fail
 before workers start. Initialization stages queue storage, audio/DSP objects and
 threads; failures use destroy to join created threads and release owned objects.
 Return values remain zero for success and negative on failure. Inspect the existing
-logs for stage-specific errors; this extraction does not add pipeline-wide worker
-error propagation or start checking every hardware return code.
+logs for stage-specific errors. Later instrumentation adds retained worker
+errors, actual scheduling and I/O counters; the backend acts on worker faults.
+The extraction's original validation did not establish exhaustive hardware
+error handling.
 
-TX retains a 64-frame RF queue, 480-frame source blocks and rate-dependent
+TX uses a four-frame RF queue with hardware pacing, or the original 64-frame
+queue in legacy mode, with 480-frame audio blocks and rate-dependent
 10,000/20,000/40,000-IQ blocks. The mod worker gives injection priority over tone or
 microphone audio. The SMI writer keeps the existing nonblocking/poll/chunking
 behavior and radio channel selection. Start sends the existing opening cue;
@@ -722,11 +747,12 @@ stop sends the closing cue and conservative downstream-buffer padding within
 a rate-dependent deadline, then waits for complete-frame writer acknowledgement
 before idling hardware. Final silent padding now bypasses the producer's audio
 clock and drains under FIFO/writer backpressure, eliminating the unnecessary
-capacity-duration carrier hang. Ordinary audio and both cues remain paced;
+capacity-duration carrier hang. Hardware-paced audio and cues follow SMI/DMA
+backpressure; legacy mode retains source/timer pacing;
 see [TX tail timing](tx-tail-timing.md). Destroy stops the
 queue, cancels/joins created workers and releases source, modulator and buffers.
 
-RX retains a 128-frame RF queue that drops oldest on overflow and a 24-frame
+RX uses a 64-frame RF queue that drops oldest on overflow and a 24-frame
 480-sample audio queue. Init creates playback/DSP workers; start allocates/starts
 the reader and activates the selected RF stream. Stop halts reception while the
 pipeline remains initialized for restart. Destroy stops both queues, cancels/joins
@@ -740,8 +766,8 @@ Both directions provide `*_pipeline_running`, `*_pipeline_frame_samples`,
 FIFO statistics through these APIs, and menu display/rate controls no longer
 reach into DSP/worker fields for frame sizes or reset FIFO statistics directly.
 Existing latest-sample diagnostic globals remain available; they are not promised
-as coherent synchronized snapshots. Frequency/power/audio setter functions were
-moved unchanged; their existence does not add an interactive retuning control.
+as coherent synchronized snapshots. Menu 14 and the separate radio controller
+now expose stopped frequency edits; live squelch controls use atomic state.
 
 ```c
 tx_pipeline_t tx = {0};
@@ -821,11 +847,45 @@ create a new adapter to start again.
 
 The demo connects generic adapters to both standalone DSP modules without ALSA,
 radio, FIFOs or threads. Contract tests compare memory and tone sources exactly
-at 2 and 4 MS/s, including short reads/writes, terminal progress, storage bounds,
-allocation failures and no-progress errors. The recovered 600 Hz tone measures
-599.99 Hz at both rates. All eleven relevant software suites pass. The
+at 1, 2 and 4 MS/s, including short reads/writes, terminal progress, storage bounds,
+allocation failures and no-progress errors. The recovered tone remains
+approximately 600 Hz at all three rates. The original step-8 validation passed
+all eleven then-relevant software suites. The
 [extension guide](audio-dsp-extension-guide.md) gives build commands, ownership,
 production integration limitations and the future modem procedure.
+
+## Added after the refactoring: hardware-paced TX and microphone buffering
+
+`tx_params_t.pacing_mode` selects `TX_PACING_AUTO` (zero/default),
+`TX_PACING_HARDWARE_REQUIRED` or `TX_PACING_LEGACY`. AUTO uses the demand-driven
+driver ABI when available and falls back only when its query returns `ENOTTY`.
+The standalone backend requires hardware pacing; menu/baseline callers use
+AUTO. Hardware mode bounds driver admission to two native periods and uses
+four application RF frames. It also saves the idle SMI write timing, applies
+setup/strobe/hold 1/4/2, verifies readback and restores the original write tuple
+on stop, abort or failed start. See the
+[TX design and qualification record](tx-hardware-paced-design.md).
+
+[tx_audio_buffer.h](../software/libcariboulite/src/tx_audio_buffer.h) owns the
+hardware-paced microphone helper. It borrows a nonblocking 48 kHz mono source;
+destroy the helper before the source. Creation starts one parked capture thread.
+The lifecycle owner serializes resume/park/destroy and counter reset; only the
+modulation worker calls the buffer's read operation. Park acknowledges capture
+quiescence before returning. Resume clears stale samples and resets the parked
+ALSA source.
+Reads request at most 480 output frames and use occupancy-driven interpolation
+with an 8192-frame capacity, 3360-frame target, ±4% ratio correction and maximum
+slew of 100 ppm per 10 ms block. Positive read timeouts fault on starvation instead of filling with
+silence. Overflow and sustained correction-limit faults are also retained.
+
+Capture continues through opening/closing cues; cue mode discards excess oldest
+microphone audio while retaining recent input. Tone-only TX bypasses this helper.
+The producer, capture thread and writer park on condition variables after stop.
+`tx_pipeline_get_stats` exposes capture, buffer, driver, write progress, actual
+SMI timing and worker scheduling/health separately; unavailable fields have
+explicit validity flags. `tx_pipeline_request_abort` is a thread-safe request;
+the serialized lifecycle owner calls `tx_pipeline_abort`, which skips the
+normal closing cue on a fault/shutdown path.
 
 ## Added after the refactoring: RX squelch
 

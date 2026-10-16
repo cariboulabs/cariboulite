@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <stdatomic.h>
 
 #ifndef CLAMPF
 #define CLAMPF(x,lo,hi) ((x) < (lo) ? (lo) : ((x) > (hi) ? (hi) : (x)))
@@ -12,6 +13,10 @@
 struct alsa_source {
     audio_source_t base;
     int last_error;
+    atomic_uint_fast64_t read_calls, frames_read, overruns;
+    atomic_uint_fast64_t recovery_attempts, recovery_successes, recovery_failures;
+    atomic_uint_fast64_t read_errors;
+    atomic_int retained_error;
     snd_pcm_t*      pcm;
     float           gain;
 
@@ -36,16 +41,11 @@ struct alsa_source {
 static int alsa_recover_xrun(snd_pcm_t* pcm, int err)
 {
     if (err == -EPIPE) { // overrun/underrun
-        snd_pcm_prepare(pcm);
-        return 0;
+        return snd_pcm_prepare(pcm);
     } else if (err == -ESTRPIPE) {
         // suspended, try to resume
-        while ((err = snd_pcm_resume(pcm)) == -EAGAIN) {
-            struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 };
-            nanosleep(&ts, NULL);
-        }
-        if (err < 0) snd_pcm_prepare(pcm);
-        return 0;
+        err = snd_pcm_resume(pcm);
+        return err < 0 ? snd_pcm_prepare(pcm) : 0;
     }
     return err;
 }
@@ -140,6 +140,14 @@ alsa_source_t* alsa_source_create(const char* device, float gain)
 {
     alsa_source_t* s = (alsa_source_t*)calloc(1, sizeof(*s));
     if (!s) return NULL;
+    atomic_init(&s->read_calls, 0);
+    atomic_init(&s->frames_read, 0);
+    atomic_init(&s->overruns, 0);
+    atomic_init(&s->recovery_attempts, 0);
+    atomic_init(&s->recovery_successes, 0);
+    atomic_init(&s->recovery_failures, 0);
+    atomic_init(&s->read_errors, 0);
+    atomic_init(&s->retained_error, 0);
 
     s->fs  = 48000;
     s->ch  = 1;
@@ -147,10 +155,12 @@ alsa_source_t* alsa_source_create(const char* device, float gain)
     s->gain = gain;
 
     const char* dev = device ? device : "default";
-    int rc = snd_pcm_open(&s->pcm, dev, SND_PCM_STREAM_CAPTURE, 0 /* blocking */);
+    /* The TX producer assembles exact frames, waiting briefly between AGAIN
+     * results. Nonblocking capture lets an abort interrupt a missing input. */
+    int rc = snd_pcm_open(&s->pcm, dev, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
     if (rc < 0) { free(s); return NULL; }
 
-    // recommend blocking capture; we keep our own small ring and do quick reads
+    // Keep a small ring and return AGAIN while the next period is unavailable.
     s->period  = 480; // target 10 ms
     s->bufsize = s->period * 8;
 
@@ -220,14 +230,39 @@ static size_t ring_pop(alsa_source_t* s, float* dst, size_t n)
 
 static int pcm_capture_once(alsa_source_t* s)
 {
-    // read up to one period (blocking read is OK; period is small)
+    // Read up to one period; this handle is nonblocking in production.
+    atomic_fetch_add_explicit(&s->read_calls, 1, memory_order_relaxed);
     snd_pcm_sframes_t got = snd_pcm_readi(s->pcm, s->cap_i16, s->period);
+    if (got == -EAGAIN || got == -EINTR) return 0;
     if (got < 0) {
-        if (alsa_recover_xrun(s->pcm, (int)got) < 0) return (int)got;
+        if (got == -EPIPE || got == -ESTRPIPE) {
+            if (got == -EPIPE)
+                atomic_fetch_add_explicit(&s->overruns, 1, memory_order_relaxed);
+            atomic_fetch_add_explicit(&s->recovery_attempts, 1, memory_order_relaxed);
+            int rc = alsa_recover_xrun(s->pcm, (int)got);
+            if (rc < 0) {
+                atomic_fetch_add_explicit(&s->recovery_failures, 1, memory_order_relaxed);
+                atomic_fetch_add_explicit(&s->read_errors, 1, memory_order_relaxed);
+                atomic_store_explicit(&s->retained_error, rc, memory_order_relaxed);
+                return rc;
+            }
+            atomic_fetch_add_explicit(&s->recovery_successes, 1, memory_order_relaxed);
+        } else {
+            atomic_fetch_add_explicit(&s->read_errors, 1, memory_order_relaxed);
+            atomic_store_explicit(&s->retained_error, (int)got, memory_order_relaxed);
+            return (int)got;
+        }
+        atomic_fetch_add_explicit(&s->read_calls, 1, memory_order_relaxed);
         got = snd_pcm_readi(s->pcm, s->cap_i16, s->period);
-        if (got < 0) return (int)got;
+        if (got == -EAGAIN || got == -EINTR) return 0;
+        if (got < 0) {
+            atomic_fetch_add_explicit(&s->read_errors, 1, memory_order_relaxed);
+            atomic_store_explicit(&s->retained_error, (int)got, memory_order_relaxed);
+            return (int)got;
+        }
     }
     if (got == 0) return 0;
+    atomic_fetch_add_explicit(&s->frames_read, (uint64_t)got, memory_order_relaxed);
 
     // convert to float and push
     const float g = s->gain;
@@ -274,9 +309,8 @@ size_t alsa_source_read(alsa_source_t* s, float* dst, size_t max_frames)
             break;
         }
         if (rc == 0) {
-            // No new data; brief nap
-            struct timespec ts = { .tv_sec = 0, .tv_nsec = 2000000 }; // 2 ms
-            nanosleep(&ts, NULL);
+            // The producer owns pacing and can observe an abort between reads.
+            break;
         }
         loops++;
     }
@@ -309,6 +343,38 @@ static void alsa_audio_destroy(audio_source_t* source)
 }
 
 static const audio_source_ops_t alsa_audio_ops = {alsa_audio_read, alsa_audio_destroy};
+
+bool alsa_source_get_stats(audio_source_t* source, alsa_source_stats_t* out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof(*out));
+    if (!source || source->ops != &alsa_audio_ops) return false;
+    alsa_source_t* s = (alsa_source_t*)source;
+#define READ_STAT(field) out->field = atomic_load_explicit(&s->field, memory_order_relaxed)
+    READ_STAT(read_calls); READ_STAT(frames_read); READ_STAT(overruns);
+    READ_STAT(recovery_attempts); READ_STAT(recovery_successes);
+    READ_STAT(recovery_failures); READ_STAT(read_errors);
+#undef READ_STAT
+    out->last_error = atomic_load_explicit(&s->retained_error, memory_order_relaxed);
+    return true;
+}
+
+int alsa_source_reset(audio_source_t* source, bool prepare)
+{
+    if (!source || source->ops != &alsa_audio_ops) return -ENOTSUP;
+    alsa_source_t* s = (alsa_source_t*)source;
+    int rc = snd_pcm_drop(s->pcm);
+    /* A newly prepared stream may already be stopped. */
+    if (rc == -EBADFD && snd_pcm_state(s->pcm) != SND_PCM_STATE_RUNNING) rc = 0;
+    s->rhead = s->rtail = s->rcount = 0;
+    s->last_error = 0;
+    if (rc >= 0 && prepare) rc = snd_pcm_prepare(s->pcm);
+    if (rc < 0) {
+        atomic_fetch_add_explicit(&s->read_errors, 1, memory_order_relaxed);
+        atomic_store_explicit(&s->retained_error, rc, memory_order_relaxed);
+    }
+    return rc;
+}
 
 audio_source_t* alsa_source_open(const char* device, float gain, audio_format_t format)
 {

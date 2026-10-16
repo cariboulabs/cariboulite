@@ -38,6 +38,7 @@
 #define _SMI_STREAM_DEV_H_
 
 #include <linux/ioctl.h>
+#include <linux/types.h>
 
 #ifndef __KERNEL__
 	#include <stdint.h>
@@ -106,6 +107,44 @@ struct bcm2835_smi_instance {
 #define SMI_STREAM_IOC_GET_ADDR_DIR_OFFSET 	    _IO(BCM2835_SMI_IOC_MAGIC,(BCM2835_SMI_IOC_MAX+8))
 #define SMI_STREAM_IOC_GET_ADDR_CH_OFFSET 	    _IO(BCM2835_SMI_IOC_MAGIC,(BCM2835_SMI_IOC_MAX+9))
 #define SMI_STREAM_IOC_FLUSH_FIFO 	            _IO(BCM2835_SMI_IOC_MAGIC,(BCM2835_SMI_IOC_MAX+10))
+
+/* Versioned, fixed-width TX ABI. DMA retirement measures entry into the SMI
+ * path, not RF emission; the cyclic ring and FPGA still contain samples.
+ * All counters are per TX session and reset on a new TX transition.
+ */
+#define SMI_STREAM_TX_ABI_VERSION 1
+#define SMI_STREAM_TX_STATUS_BOUNDED_FIFO (1U << 0)
+#define SMI_STREAM_TX_STATUS_DMA_RUNNING  (1U << 1)
+struct smi_stream_tx_status {
+    __u32 abi_version;
+    __u32 struct_size;
+    __u32 state;
+    __u32 flags;
+    __u32 fifo_queued_bytes;
+    __u32 fifo_capacity_bytes;
+    __u32 fifo_limit_bytes;
+    __u32 period_bytes;
+    __u32 ring_bytes;
+    __u32 reserved;
+    __aligned_u64 session_generation;
+    __aligned_u64 completed_periods;
+    __aligned_u64 underrun_periods;
+    __aligned_u64 accepted_bytes;
+    __aligned_u64 fifo_dequeued_bytes;
+};
+struct smi_stream_tx_buffer_limit {
+    __u32 abi_version;
+    __u32 struct_size;
+    /* 0 restores legacy capacity/padding; otherwise whole IQ words, >= one
+     * period. Set only while idle. Limits admission independently of allocation.
+     */
+    __u32 fifo_limit_bytes;
+    __u32 reserved;
+};
+#define SMI_STREAM_IOC_GET_TX_STATUS \
+    _IOR(BCM2835_SMI_IOC_MAGIC, BCM2835_SMI_IOC_MAX+11, struct smi_stream_tx_status)
+#define SMI_STREAM_IOC_SET_TX_BUFFER_LIMIT \
+    _IOW(BCM2835_SMI_IOC_MAGIC, BCM2835_SMI_IOC_MAX+12, struct smi_stream_tx_buffer_limit)
 
 
 #endif /* _SMI_STREAM_DEV_H_ */

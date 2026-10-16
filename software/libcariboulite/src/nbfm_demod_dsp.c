@@ -13,6 +13,7 @@ typedef struct nb_state {
     nbfm_demod_config_t config;
     int use_limiter;
     float K_norm;
+    float audio_deviation_scale;
     nbfm_channel_filter_t channel;
     float pi50, pq50;
     int have_prev50;
@@ -28,6 +29,21 @@ int nb_demod_set_audio(nbfm_demod_t* dsp, float tau, float gain)
         return -EINVAL;
     s->config.deemph_tau = tau;
     s->config.pcm_gain = gain;
+    return 0;
+}
+int nb_demod_set_deviation(nbfm_demod_t* dsp, float deviation_hz)
+{
+    // isfinite() may be optimized away by the production -ffast-math flags.
+    uint32_t bits;
+    _Static_assert(sizeof(bits) == sizeof(deviation_hz), "32-bit float required");
+    memcpy(&bits, &deviation_hz, sizeof(bits));
+    if (!dsp || dsp->mode != FM_MODE_NBFM ||
+        (bits & 0x7f800000u) == 0x7f800000u ||
+        deviation_hz < NBFM_RX_MIN_DEVIATION_HZ ||
+        deviation_hz > NBFM_RX_MAX_DEVIATION_HZ)
+        return -EINVAL;
+    nb_state_t* s = (nb_state_t*)dsp;
+    s->audio_deviation_scale = NBFM_DEFAULT_DEVIATION_HZ / deviation_hz;
     return 0;
 }
 nbfm_demod_t* nb_demod_create(const nbfm_demod_config_t* config)
@@ -46,6 +62,7 @@ nbfm_demod_t* nb_demod_create(const nbfm_demod_config_t* config)
     nbfm_channel_filter_init(&s->channel, config->rf_rate);
     s->use_limiter = 1;
     s->K_norm = 50000.0f / (2.0f * (float)M_PI * NBFM_DEFAULT_DEVIATION_HZ);
+    s->audio_deviation_scale = 1.0f;
     fm_audio_init(&s->audio);
     return &s->base;
 }
@@ -116,7 +133,8 @@ nbfm_demod_result_t nb_demod_process_with_raw(nbfm_demod_t* dsp,
 
             if (raw_audio) raw_audio[result.produced] = y_lin;
 
-            output[result.produced++] = fm_audio_process(&s->audio, y_lin,
+            output[result.produced++] = fm_audio_process(&s->audio,
+                y_lin * s->audio_deviation_scale,
                 s->config.deemph_tau, s->config.pcm_gain, 1);
 
             // Keep fractional remainder, including across process calls.

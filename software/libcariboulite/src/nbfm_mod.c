@@ -135,8 +135,10 @@ static size_t generate_iq(nbfm_mod_t* m, iq16_t* dst, size_t N, size_t* held)
         if (m->phase >  M_PI) m->phase -= 2.0 * M_PI;
         if (m->phase < -M_PI) m->phase += 2.0 * M_PI;
 
-        float ci = (float)cos(m->phase);
-        float sq = (float)sin(m->phase);
+        // IQ is quantized to int16; float trig is sufficient at this final step.
+        // Keep phase and rate integration double to avoid accumulating drift.
+        float ci = cosf((float)m->phase);
+        float sq = sinf((float)m->phase);
         int32_t I = (int32_t)lrintf(ci * m->out_scale);
         int32_t Q = (int32_t)lrintf(sq * m->out_scale);
         if (I >  32767) I =  32767; else if (I < -32768) I = -32768;

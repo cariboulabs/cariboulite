@@ -44,10 +44,17 @@ bool aud10_fifo_put(aud10_fifo_t* f, const aud10_frame_t* frm, int timeout_ms){
     pthread_cleanup_push(fifo_unlock_cleanup, &f->m);
     while(!f->stop && f->count==f->cap){
         if(timeout_ms<0){ pthread_cond_wait(&f->can_put,&f->m); }
-        else if(pthread_cond_timedwait(&f->can_put,&f->m,&ts)==ETIMEDOUT){ goto out; }
+        else if(pthread_cond_timedwait(&f->can_put,&f->m,&ts)==ETIMEDOUT){
+            /* A concurrent stop may have woken/timed out this waiter. */
+            if(f->stop){ f->shutdown_puts++; }
+            else { f->timeouts_put++; f->drops++; }
+            goto out;
+        }
     }
-    if(f->stop){ goto out; }
+    if(f->stop){ f->shutdown_puts++; goto out; }
     f->q[f->w] = *frm; f->w=(f->w+1)%f->cap; f->count++;
+    f->puts++;
+    if(f->count > f->max_depth) f->max_depth = f->count;
     pthread_cond_signal(&f->can_get);
     result = true;
 out:
@@ -62,10 +69,16 @@ bool aud10_fifo_get(aud10_fifo_t* f, aud10_frame_t* out, int timeout_ms){
     pthread_cleanup_push(fifo_unlock_cleanup, &f->m);
     while(!f->stop && f->count==0){
         if(timeout_ms<0){ pthread_cond_wait(&f->can_get,&f->m); }
-        else if(pthread_cond_timedwait(&f->can_get,&f->m,&ts)==ETIMEDOUT){ goto out; }
+        else if(pthread_cond_timedwait(&f->can_get,&f->m,&ts)==ETIMEDOUT){
+            if(f->stop){ f->shutdown_gets++; }
+            else { f->timeouts_get++; }
+            goto out;
+        }
     }
-    if(f->stop){ goto out; }
+    if(f->stop){ f->shutdown_gets++; goto out; }
     *out = f->q[f->r]; f->r=(f->r+1)%f->cap; f->count--;
+    f->gets++;
+    if(f->count < f->min_depth) f->min_depth = f->count;
     pthread_cond_signal(&f->can_put);
     result = true;
 out:
@@ -80,6 +93,34 @@ void aud10_fifo_peek_depth(aud10_fifo_t* f, size_t* count, size_t* cap){
     *cap   = f->cap;
     pthread_mutex_unlock(&f->m);
 }
+
+void aud10_fifo_reset_stats(aud10_fifo_t* f)
+{
+    pthread_mutex_lock(&f->m);
+    f->puts = f->gets = f->drops = 0;
+    f->timeouts_put = f->timeouts_get = 0;
+    f->shutdown_puts = f->shutdown_gets = 0;
+    f->max_depth = f->min_depth = f->count;
+    pthread_mutex_unlock(&f->m);
+}
+
+void aud10_fifo_get_stats(aud10_fifo_t* f, aud10_stats_t* s)
+{
+    pthread_mutex_lock(&f->m);
+    s->cap = f->cap;
+    s->count = f->count;
+    s->puts = f->puts;
+    s->gets = f->gets;
+    s->drops = f->drops;
+    s->timeouts_put = f->timeouts_put;
+    s->timeouts_get = f->timeouts_get;
+    s->max_depth = f->max_depth;
+    s->min_depth = f->min_depth;
+    s->shutdown_puts = f->shutdown_puts;
+    s->shutdown_gets = f->shutdown_gets;
+    pthread_mutex_unlock(&f->m);
+}
+
 void rf10_fifo_init(rf10_fifo_t* f, size_t cap, bool drop_oldest)
 {
     memset(f, 0, sizeof(*f));

@@ -6,6 +6,7 @@
 #include "pipeline_transport.h"
 #include "nbfm_mod.h"
 #include <assert.h>
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,9 +20,19 @@ static double phase;
 static const char* test_sink_state(audio_sink_t* sink) { (void)sink; return "TEST"; }
 static const audio_sink_ops_t test_sink_ops = {.state=test_sink_state};
 int set_rt_and_affinity_prio(int prio, int cpu) { (void)prio; (void)cpu; return 0; }
+int set_rt_and_affinity_prio_record(int prio, int cpu, pipeline_thread_diagnostics_t* d)
+{
+    if (d) {
+        d->status=(pipeline_thread_status_t){.valid=true,.requested_priority=prio,
+            .requested_cpu=cpu,.applied_cpu=cpu,.policy=SCHED_OTHER,.priority=0};
+        atomic_store_explicit(&d->ready,true,memory_order_release);
+    }
+    return set_rt_and_affinity_prio(prio,cpu);
+}
 bool rf10_fifo_get(rf10_fifo_t* f, rf10_frame_t* frame, int timeout)
 {
     (void)f; (void)timeout;
+    assert(worker && atomic_load(&worker->alive));
     if (block == 240) { worker->active = false; return false; }
     unsigned stage = block / 60;
     if (block % 60 == 59) {
@@ -181,6 +192,72 @@ static void raw_tap(void)
     assert(memcmp(p1,p2,x.produced*sizeof(int16_t)));
     nbfm_demod_destroy(d1); nbfm_demod_destroy(d2);
 }
+static void receive_deviation(void)
+{
+    // Leave headroom for the initial channel-filter transient so clipping
+    // cannot mask the expected audio scaling relationship.
+    nbfm_demod_config_t config={rate,48000,0,1000};
+    audio_demod_t* nominal=audio_demod_create(AUDIO_DEMOD_NBFM, &config);
+    audio_demod_t* explicit_default=audio_demod_create(AUDIO_DEMOD_NBFM, &config);
+    nbfm_demod_t* wider=nbfm_demod_create(&config);
+    audio_demod_t* broadcast=audio_demod_create(AUDIO_DEMOD_WBFM, &config);
+    assert(nominal && explicit_default && wider && broadcast);
+    assert(audio_demod_set_nbfm_deviation(NULL,2500)==-EINVAL);
+    assert(nbfm_demod_set_deviation(NULL,2500)==-EINVAL);
+    assert(audio_demod_set_nbfm_deviation(broadcast,2500)==-EINVAL);
+    assert(nbfm_demod_set_deviation(broadcast,2500)==-EINVAL);
+    assert(!audio_demod_set_nbfm_deviation(explicit_default,NBFM_RX_MIN_DEVIATION_HZ));
+    assert(!audio_demod_set_nbfm_deviation(explicit_default,NBFM_RX_MAX_DEVIATION_HZ));
+    assert(!audio_demod_set_nbfm_deviation(explicit_default,NBFM_DEFAULT_DEVIATION_HZ));
+    assert(!nbfm_demod_set_deviation(wider,2*NBFM_DEFAULT_DEVIATION_HZ));
+
+    iq16_t iq[40000];
+    for (unsigned i=0;i<rate/100;++i) {
+        double ph=2500.0/600*cos(2*M_PI*600*i/rate);
+        iq[i]=(iq16_t){(int16_t)(11000*cos(ph)),(int16_t)(11000*sin(ph))};
+    }
+    const float invalid[]={0,-0.0f,-1,0.999f,24000.1f,25000,NAN,INFINITY,-INFINITY};
+    double nominal_energy=0,wider_energy=0;
+    for (unsigned part=0;part<12;++part) {
+        if (part==3 || part==8) {
+            for (unsigned i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i) {
+                assert(audio_demod_set_nbfm_deviation(wider,invalid[i])==-EINVAL);
+                assert(nbfm_demod_set_deviation(wider,invalid[i])==-EINVAL);
+            }
+        }
+        if (part==6) {
+            audio_demod_reset(nominal);
+            audio_demod_reset(explicit_default);
+            nbfm_demod_reset(wider);
+        }
+        float raw1[512],raw2[512],raw3[512];
+        int16_t pcm1[512],pcm2[512],pcm3[512];
+        audio_demod_result_t x=audio_demod_process_with_raw(nominal,iq,rate/100,pcm1,raw1,512,0);
+        audio_demod_result_t y=audio_demod_process_with_raw(explicit_default,iq,rate/100,pcm2,raw2,512,0);
+        nbfm_demod_result_t z=nbfm_demod_process_with_raw(wider,iq,rate/100,pcm3,raw3,512,0);
+        assert(!x.error && !y.error && !z.error && x.consumed==rate/100);
+        assert(x.consumed==y.consumed && x.consumed==z.consumed);
+        assert(x.produced==y.produced && x.produced==z.produced);
+        assert(!memcmp(raw1,raw2,x.produced*sizeof(float)));
+        assert(!memcmp(raw1,raw3,x.produced*sizeof(float)));
+        assert(!memcmp(pcm1,pcm2,x.produced*sizeof(int16_t)));
+        for (size_t i=0;i<x.produced;++i) {
+            // Twice the expected deviation halves recovered audio, within
+            // independent signed-16-bit rounding. The raw detector tap stays
+            // identical through rejected updates and signal-history resets.
+            assert(fabs((double)pcm1[i]-2.0*pcm3[i])<=1.0);
+            nominal_energy+=(double)pcm1[i]*pcm1[i];
+            wider_energy+=(double)pcm3[i]*pcm3[i];
+        }
+    }
+    assert(nominal_energy>1e8 && wider_energy>1e8);
+    assert(fabs(sqrt(nominal_energy/wider_energy)-2.0)<0.001);
+    audio_demod_destroy(nominal);
+    audio_demod_destroy(explicit_default);
+    nbfm_demod_destroy(wider);
+    audio_demod_destroy(broadcast);
+    printf("rate=%u configurable RX deviation preserves raw squelch scale and reset setting\n",rate);
+}
 static void integration(void)
 {
     rf10_fifo_t rf={0}; aud10_fifo_t af={0};
@@ -190,6 +267,9 @@ static void integration(void)
         .pcm_gain=8000,.deemph_tau=50e-6f};
     unsigned flags = mode == 4 ? 0 : mode == 0 || mode == 5 || mode == 6 ? RX_SQUELCH_NOISE :
         mode == 1 ? RX_SQUELCH_CARRIER : RX_SQUELCH_NOISE|RX_SQUELCH_CARRIER;
+    atomic_init(&c.alive,false);
+    atomic_init(&c.last_error,0);
+    atomic_init(&c.scheduling.ready,false);
     atomic_init(&c.squelch_flags, flags);
     atomic_init(&c.squelch_open, 0);
     atomic_init(&c.noise_squelch_levels, 0); // existing/offline callers retain defaults
@@ -204,6 +284,7 @@ static void integration(void)
     memset(rms, 0, sizeof(rms)); memset(detector_open, 0, sizeof(detector_open));
     memset(metric_valid, 0, sizeof(metric_valid)); memset(effective_open, 0, sizeof(effective_open));
     nbfm_demod_thread(&c);
+    assert(!atomic_load(&c.alive) && atomic_load(&c.scheduling.ready));
     assert(out_block>=239); // closed squelch must still enqueue audio on time
     if (mode < 4 || mode == 6) {
         assert(energy[0]>1e8 && energy[1]==0 && energy[2]>1e8);
@@ -237,6 +318,7 @@ int main(void)
     measured_noise_levels();
     for(rate=1000000;rate<=4000000;rate*=2) {
         raw_tap();
+        receive_deviation();
         for(mode=0;mode<7;++mode) integration();
     }
     puts("Squelch detectors and RX worker integration pass at 1/2/4 MS/s");

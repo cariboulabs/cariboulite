@@ -1,133 +1,92 @@
 # CaribouLite development fork
 
-This repository builds on the original **CaribouLabs CaribouLite** hardware,
-software and FPGA project. Jan's development work focuses on practical RX/TX
-operation, NBFM audio, better diagnostics, and more reliable sample streaming.
+This repository builds on the original CaribouLabs hardware, FPGA and software
+project. This fork adds NBFM TX/RX, mono WBFM RX, audio pipelines, streaming
+fixes, diagnostics and standalone radio control.
 
-**The accepted NBFM TX/RX and mono WBFM RX work is now on
-[`main`](https://github.com/Habraken/cariboulite/tree/main).**
-The FM refactoring steps 1–4 were accepted and merged on 4 October 2026.
-New receive-mode work starts on
-[`dev-additional-modes`](https://github.com/Habraken/cariboulite/tree/dev-additional-modes),
-with CW listening first, followed by AM and SSB. These additional modes are
-planned, not selectable features. The original `dev` branch is retained.
+As reviewed on **16 October 2026**, the current development checkout is
+[`dev-passive-monitor`](https://github.com/Habraken/cariboulite/tree/dev-passive-monitor).
+It includes the separate radio backend/controller/passive monitor and the
+hardware-paced TX implementation committed on 15 October. The accepted FM
+refactoring through step 4 was merged to `main` on 4 October. That historical
+`main` milestone does not include every later feature described here.
 
-## What has changed?
+## Start here
 
-The original CaribouLabs project provides the foundation: board support, modem
-and mixer control, FPGA interfaces, SMI transport and SDR APIs. This fork extends
-that foundation and addresses defects found while developing and testing it.
+- [Installation](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/installation.md): current installer behavior, boot configuration and checks.
+- [Additional setup and audio notes](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/ADDITIONAL-README.md): reported Pi Zero 2 W / 64-bit Trixie installation, audio routing and historical recipes.
+- [Radio backend and controller](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/radio-control.md): independent C applications for RX and half-duplex NBFM TX.
+- [Passive monitor](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/passive-monitor.md): optional Python status display in another terminal.
+- [Hardware-free checks](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/testing.md): software regression entry points and prerequisites.
+- [Documentation index](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/README.md): architecture, diagnostics, validation records and hardware references.
 
-| Area | Accepted work on `main` |
-| --- | --- |
-| NBFM transmit and receive | NBFM TX/RX, mono WBFM RX, and audio pipelines in the diagnostic application, including ALSA audio routing. |
-| Interactive diagnostics | NBFM menu entries and a modem monitor with RX/TX controls, register displays and streaming instrumentation. |
-| FPGA TX and diagnostics | Work on TX sample sequencing, stop/reset behavior, sample-gap control and an interface-loopback diagnostic, with a tested loopback image promoted into the repository. |
-| Streaming reliability | Fixes for device ownership, partial writes, timeouts, cancellation and repeated RX/TX start/stop behavior. |
-| API and resource handling | Corrections to C/C++ and Soapy streaming paths, buffer handling and SPI resource cleanup. |
-| Kernel compatibility | Driver builds and recorded live checks on Raspberry Pi 4 with the 64-bit kernel `6.18.39+rpt-rpi-v8`; kernel API adaptations are included in `main`. |
-| Build and installation | Firmware dependency/failure handling, standalone builds without SoapySDR, and driver installation restricted to the kernel used for the build. |
-| Tests and documentation | Software regressions, FPGA simulations, recorded hardware observations, a documentation audit and a development roadmap. |
+## Current applications and modes
 
-These are additions and corrections made during this fork's development;
-they are not a claim that every listed feature was absent from upstream.
+The backend owns the radio, SMI/SPI, DSP and audio devices. The controller uses
+a Unix-domain command socket for separate RX/TX frequencies and rates,
+NBFM/mono-WBFM receive selection, squelch, microphone/tone TX and FPGA programming
+or reset commands. Transmission requires an interactive controller to remain
+connected; normal stop restores RX when RX was running before TX.
+The passive monitor is optional and cannot key the transmitter.
 
-## What works today?
-
-Jan has reported successful **NBFM TX and RX operation** on the development
-setup, including audio checks. The current diagnostic menu includes:
-
-- **11 — NBFM TX Tone**
-- **12 — NBFM RX**
-- **13 — NBFM modem Self-Test**
-- **14 — Monitor Modem Status**, with TX/RX and interface-loopback controls
-
-Menu 14 uses `radio_high`, the RF24/HiF mixer path, for TX and RX, with a default
-frequency of 430.100 MHz and ALSA loopback audio. Pressing T
-starts/toggles TX; it does not automatically select an internal test tone.
-RX supports stopped-only NBFM/mono-WBFM mode selection, 1/2/4 MS/s rate
-selection and separate RX/TX frequency controls. Mode, rate and frequency
-changes are blocked while streaming, and loopback guards remain in place.
-NBFM noise squelch and optional carrier squelch are available; WBFM supports
-carrier squelch only. Audio device defaults remain configured in code, so these are
-working development tools rather than a finished configurable transceiver UI.
-
-The separate L interface-loopback diagnostic still uses its RF24 receive path.
-FPGA interface loopback has simulation coverage and recorded hardware results.
-It checks part of the digital sample path; it does not demonstrate an RF QSO.
-Physical Soapy RX checks are recorded, while physical Soapy TX and complete
-GNU Radio TX/RX workflows still need validation.
-
-## Kernel compatibility
-
-As of **16 September 2026**, Jan's development system runs the 64-bit Raspberry
-Pi kernel **`6.18.39+rpt-rpi-v8`**. Driver builds, installation and live RX/TX
-checks on this kernel are recorded in the
-[review and validation log](https://github.com/Habraken/cariboulite/blob/main/docs/code-review-2026-09-12.md).
-The `main` branch includes the kernel API adaptations needed by this setup.
-
-This identifies the kernel actually used for development and testing. Other
-kernel versions still need their own validation, and the SMI module must be
-rebuilt against matching headers after a kernel update.
-
-## Where to start
-
-Use the [`main` source tree](https://github.com/Habraken/cariboulite/tree/main)
-and read the [additional installation and usage notes](https://github.com/Habraken/cariboulite/blob/main/ADDITIONAL-README.md).
-They explain the development menu and audio setup, and identify historical
-instructions that still need fresh installation testing.
-
-After building, launch the application from the repository root:
+The original diagnostic application remains available. Run it from the
+repository root so menu 3 can resolve `firmware/top.bin`:
 
 ```sh
 ./build/cariboulite_test_app 2>debug.log
 ```
 
-Menu option 3 programs `firmware/top.bin` relative to that directory. Keep the
-application, library, kernel driver and FPGA image consistent with the setup
-being tested; selecting a Git branch does not update already installed binaries
-or the image running on the FPGA.
+Its FM entries are 11 (NBFM TX tone), 12 (NBFM RX), 13 (NBFM modem self-test)
+and 14 (modem monitor with TX/RX and digital interface-loopback controls).
+Menu 14 selects RF24/HiF, defaults to 430.100 MHz and 4 MS/s, and uses ALSA
+Loopback devices. Pressing `T` starts/toggles the configured TX source; it does
+not automatically select a tone. Stopped-only controls select NBFM/mono-WBFM,
+1/2/4 MS/s and separate RX/TX frequencies.
 
-## What is next?
+NBFM supports noise and carrier squelch. WBFM supports carrier squelch; stereo
+and RDS decoding are not implemented. CW listening, AM, SSB, PSK and the
+planned menu-15 transceiver remain future work. The digital FPGA loopback
+checks part of the sample path rather than an RF contact.
 
-The [roadmap](https://github.com/Habraken/cariboulite/blob/main/ROADMAP.md) covers:
+## Tested hardware and current limits
 
-- Clearer hardware, streaming, DSP and application interfaces, with configurable settings and broader tests.
-- Squelch and menu 15: a VHF/UHF transceiver, starting with NBFM and later adding SSB, AM, CW and PSK modes.
-- FPGA antenna/PTT/external-PA sequencing, Pi Zero testing, Ethernet audio/PTT and GNU Radio integration.
-- Re-creating the schematics and PCB as an editable KiCad project.
-- Two practical milestones: a first on-air NBFM QSO and a QO-100 QSO using SSB, CW or PSK.
+A fresh Pi Zero 2 W / 64-bit Raspberry Pi OS Trixie installation was reported
+on 14 October. The subsequent hardware-paced TX build passed microphone/tone
+transport trials at **1, 2 and 4 MS/s on both Pi Zero 2 W and Pi 4**, with
+kernel **`6.18.50+rpt-rpi-v8`**, and same-backend RX restoration at 1/4 MS/s.
+The user also reported successful modulation listening checks. See the
+[Pi Zero record](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/pi-zero-tx-queue-test-2026-10-15.md),
+[Pi 4 record](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/pi4-tx-validation-2026-10-15.md)
+and [TX design](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/tx-hardware-paced-design.md).
 
-These are planned milestones, not completed capabilities.
+These records identify exact tested configurations. The trials used separately
+staged builds and temporary driver reloads; they do not establish that an
+existing installation has been upgraded. The current TX pipeline requires its
+matching driver ABI and write-timing profile. Rebuild the SMI module against
+matching headers after a kernel change, and keep the userspace library,
+applications, driver and FPGA image consistent. Git checkout alone does not
+update installed binaries or the loaded firmware.
 
-## Evidence and current limits
+Independent RF-clock accuracy and spectrum quality remain unqualified.
+Physical Soapy RX observations exist, while complete Soapy TX and GNU Radio
+workflows remain under validation. The native GNU Radio module supplies a
+receive source only. Raspberry Pi 5 is not supported by this SMI hardware path.
 
-This overview was updated on **4 October 2026**. The eight-step audio/DSP
-extraction and FM refactoring steps 1–4 are complete and physically accepted.
-DSP modes own separate state, share allocation-free audio primitives, and use
-a neutral `audio_demod` worker boundary with legacy API compatibility.
-Software comparisons preserve exact PCM, raw taps and processing progress at
-2/4 MS/s under strict and production compiler flags.
+## Further development
 
-Intermittent distortion on 96.2 MHz was also observed through SDR++; much
-stronger adjacent signals were reported at 95.9/96.5 MHz. A stronger station
-produced clean audio, including through the Jabra speaker. The RF cause remains
-unconfirmed; no refactoring regression was established.
-Successful operation on Jan's setup does not establish support for every Pi,
-OS, sample rate, RF path or external application. Fresh installation recipes,
-RF performance and several integration paths remain under validation.
+The [roadmap](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/ROADMAP.md)
+tracks shared-radio interfaces, configurable transceiver controls, additional
+modes, FPGA antenna/PTT/PA sequencing, Ethernet audio/PTT, GNU Radio integration
+and hardware design work. It distinguishes implemented work from milestones
+that still require acceptance.
 
-For the details behind the overview:
+For DSP interfaces, filtering and evidence behind the overview, see:
 
-- [FM architecture, completed steps and acceptance](https://github.com/Habraken/cariboulite/blob/main/docs/demodulator-architecture-research.md)
-- [Audio/DSP interfaces](https://github.com/Habraken/cariboulite/blob/main/docs/audio-dsp-interfaces.md)
-- [Step-4 physical evidence](https://github.com/Habraken/cariboulite/blob/main/docs/baselines/20261003-fm-step4/README.md)
+- [Audio/DSP interfaces](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/audio-dsp-interfaces.md)
+- [NBFM channel filter](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/nbfm-channel-filter.md)
+- [FM architecture and accepted extraction](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/demodulator-architecture-research.md)
+- [FPGA tests and coverage limits](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/firmware/tests/README.md)
+- [Documentation audit and open validation](https://github.com/Habraken/cariboulite/blob/dev-passive-monitor/docs/documentation-audit-2026-09-16.md)
 
-
-- [Code review and fix status](https://github.com/Habraken/cariboulite/blob/main/docs/code-review-2026-09-12.md)
-- [FPGA study, hardware observations and promotion record](https://github.com/Habraken/cariboulite/blob/main/docs/fpga-gap-study-2026-09-13.md)
-- [FPGA simulation checks and coverage limits](https://github.com/Habraken/cariboulite/blob/main/firmware/tests/README.md)
-- [Documentation audit](https://github.com/Habraken/cariboulite/blob/main/docs/documentation-audit-2026-09-16.md)
-
-Feedback is most useful when it includes the source revision, Pi model,
-OS/kernel, FPGA image, menu/API path and steps needed to reproduce the result.
+Useful issue reports include the source revision, Pi model, OS/kernel, FPGA
+image, application/API path and reproduction steps.

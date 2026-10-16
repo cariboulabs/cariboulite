@@ -16,8 +16,20 @@ typedef struct aud10_fifo_s {
     pthread_mutex_t m;
     pthread_cond_t  can_put, can_get;
     bool stop;
-    size_t drops;
+    /* Protected by m. A drop is a frame rejected by a full-queue timeout;
+     * stopping or cancelling a worker does not count as lost audio. */
+    size_t puts, gets, drops, timeouts_put, timeouts_get;
+    size_t max_depth, min_depth;
+    size_t shutdown_puts, shutdown_gets;
 } aud10_fifo_t;
+
+typedef struct {
+    size_t cap, count;
+    size_t puts, gets, drops;
+    size_t timeouts_put, timeouts_get;
+    size_t max_depth, min_depth;
+    size_t shutdown_puts, shutdown_gets;
+} aud10_stats_t;
 
 typedef struct rf10_fifo_s rf10_fifo_t;
 typedef struct rf10_frame_s rf10_frame_t;
@@ -62,6 +74,9 @@ void aud10_fifo_stop(aud10_fifo_t*);
 bool aud10_fifo_put(aud10_fifo_t*, const aud10_frame_t*, int timeout_ms);
 bool aud10_fifo_get(aud10_fifo_t*, aud10_frame_t*, int timeout_ms);
 void aud10_fifo_peek_depth(aud10_fifo_t*, size_t* count, size_t* cap);
+/* Reset counters/extrema only: queued frames and stop state are unchanged. */
+void aud10_fifo_reset_stats(aud10_fifo_t*);
+void aud10_fifo_get_stats(aud10_fifo_t*, aud10_stats_t*);
 void rf10_fifo_init(rf10_fifo_t*, size_t cap, bool drop_oldest);
 void rf10_fifo_reset_stats(rf10_fifo_t*);
 void rf10_fifo_get_stats(rf10_fifo_t*, rf10_stats_t*);

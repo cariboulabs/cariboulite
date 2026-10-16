@@ -9,17 +9,51 @@
 static bool real_threads, live[1024];
 static int creates, fail_create, joins, hardware_active;
 static bool fail_malloc, fail_calloc, fail_demod_create;
+static unsigned malloc_calls, calloc_calls, alsa_sink_opens, demod_create_calls;
+static unsigned deviation_sets, demod_thread_creates;
+static bool verify_deviation_wiring, deviation_configured, fail_deviation_set;
+static float last_deviation;
+static audio_demod_t* last_demod_created;
+static audio_demod_mode_t last_demod_mode;
 audio_demod_t* __real_audio_demod_create(audio_demod_mode_t, const audio_demod_config_t*);
 audio_demod_t* __wrap_audio_demod_create(audio_demod_mode_t mode, const audio_demod_config_t* c) {
-    return fail_demod_create ? NULL : __real_audio_demod_create(mode,c);
+    ++demod_create_calls;
+    last_demod_mode=mode;
+    deviation_configured=false;
+    last_demod_created=fail_demod_create ? NULL : __real_audio_demod_create(mode,c);
+    return last_demod_created;
+}
+int __real_audio_demod_set_nbfm_deviation(audio_demod_t*, float);
+int __wrap_audio_demod_set_nbfm_deviation(audio_demod_t* dsp, float deviation_hz) {
+    ++deviation_sets;
+    if (verify_deviation_wiring) {
+        assert(dsp && dsp==last_demod_created && last_demod_mode==AUDIO_DEMOD_NBFM);
+        assert(!deviation_configured);
+    }
+    last_deviation=deviation_hz;
+    int result=fail_deviation_set ? -EINVAL :
+        __real_audio_demod_set_nbfm_deviation(dsp,deviation_hz);
+    deviation_configured=result==0;
+    return result;
+}
+audio_sink_t* __real_alsa_sink_open(const char*, unsigned);
+audio_sink_t* __wrap_alsa_sink_open(const char* device, unsigned rate) {
+    ++alsa_sink_opens;
+    return __real_alsa_sink_open(device,rate);
 }
 static size_t fail_calloc_count;
 static void* metadata_allocation;
 static bool track_metadata;
+static const rx_pipeline_t* tracked_cleanup_rx;
+static unsigned cleanup_fifo_frees;
 static pthread_barrier_t reader_ready;
 void __real_free(void*);
 void __wrap_free(void* p) {
     if (p == metadata_allocation) metadata_allocation = NULL;
+    if (tracked_cleanup_rx && p) {
+        if (p==tracked_cleanup_rx->rxq.q) cleanup_fifo_frees|=1;
+        if (p==tracked_cleanup_rx->afifo.q) cleanup_fifo_frees|=2;
+    }
     __real_free(p);
 }
 void *__real_malloc(size_t);
@@ -28,12 +62,24 @@ int __real_pthread_create(pthread_t*, const pthread_attr_t*, void*(*)(void*), vo
 int __real_pthread_cancel(pthread_t);
 int __real_pthread_join(pthread_t, void**);
 void *__wrap_malloc(size_t n) {
+    if (verify_deviation_wiring) ++malloc_calls;
     void* p = fail_malloc ? NULL : __real_malloc(n);
     if (track_metadata) metadata_allocation = p;
     return p;
 }
-void *__wrap_calloc(size_t n, size_t s) { return (fail_calloc || (fail_calloc_count && n==fail_calloc_count)) ? NULL : __real_calloc(n,s); }
+void *__wrap_calloc(size_t n, size_t s) {
+    if (verify_deviation_wiring) ++calloc_calls;
+    return (fail_calloc || (fail_calloc_count && n==fail_calloc_count)) ? NULL : __real_calloc(n,s);
+}
 int __wrap_pthread_create(pthread_t* t, const pthread_attr_t* a, void*(*fn)(void*), void* v) {
+    if (fn==audio_demod_thread) {
+        ++demod_thread_creates;
+        if (verify_deviation_wiring) {
+            const audio_demod_ctrl_t* ctrl=v;
+            assert(ctrl->dsp==last_demod_created);
+            assert(deviation_configured==(ctrl->mode==AUDIO_DEMOD_NBFM));
+        }
+    }
     if (real_threads) return __real_pthread_create(t,a,fn,v);
     ++creates;
     if (creates == fail_create) return EAGAIN;
@@ -89,8 +135,8 @@ int __wrap_cariboulite_radio_activate_channel(cariboulite_radio_state_st* r, car
             assert((modem_regs[agc]&0x73)==1 && (modem_regs[agc+1]&0xe0)==0);
             assert(r->rx_agc_on);
         } else {
-            assert(r->rx_bw==cariboulite_radio_rx_bw_2000KHz);
-            assert(r->rx_fcut==cariboulite_radio_rx_f_cut_half_fs);
+            assert(r->rx_bw==cariboulite_radio_rx_bw_250KHz);
+            assert(r->rx_fcut==cariboulite_radio_rx_f_cut_0_25_half_fs);
         }
         ++rx_activations;
     }
@@ -131,6 +177,8 @@ int __wrap_ioctl(int fd, unsigned long request, ...) {
 }
 int __wrap_caribou_fpga_set_io_ctrl_mode(caribou_fpga_st* f, uint8_t d, caribou_fpga_io_ctrl_rfm_en m) { return 0; }
 static rx_reader_ctrl_st* capture_once;
+static rx_reader_ctrl_st* scripted_reader;
+static unsigned scripted_read;
 static unsigned rssi_reads;
 static uint16_t expected_rssi_register;
 static uint8_t measured_rssi;
@@ -145,7 +193,8 @@ int __wrap_at86rf215_read_buffer(at86rf215_st* dev, uint16_t reg, uint8_t* value
     bool state=reg==REG_RF09_STATE || reg==REG_RF24_STATE;
     bool filter=reg==REG_RF09_RXBWC || reg==REG_RF24_RXBWC;
     bool agc=reg==REG_RF09_AGCC || reg==REG_RF24_AGCC;
-    assert((state && length==1) || ((filter || agc) && length==2));
+    bool txfilter=reg==REG_RF09_TXCUTC || reg==REG_RF24_TXCUTC;
+    assert((state && length==1) || ((filter || agc || txfilter) && length==2));
     if ((state && modem_fault==MODEM_STATE_READ) ||
         (filter && modem_fault==MODEM_FILTER_READ) ||
         (agc && modem_fault==MODEM_AGC_READ)) return -1;
@@ -172,6 +221,16 @@ int __wrap_at86rf215_write_buffer(at86rf215_st* dev, uint16_t reg, uint8_t* valu
 }
 int __wrap_cariboulite_radio_read_samples(cariboulite_radio_state_st* r,
         cariboulite_sample_complex_int16* b, cariboulite_sample_meta* m, size_t n) {
+    if (scripted_reader) {
+        static const int results[]={4,0,-EIO,16};
+        static const size_t requests[]={20,16,16,16};
+        assert(scripted_read<4 && n==requests[scripted_read]);
+        int result=results[scripted_read++];
+        if (result>0) memset(b,0,(size_t)result*sizeof(*b));
+        if (scripted_read==4) scripted_reader->active=false;
+        assert(atomic_load(&scripted_reader->alive));
+        return result;
+    }
     if (capture_once) {
         memset(b, 0, n*sizeof(*b));
         capture_once->active = false;
@@ -220,10 +279,24 @@ static float test_tx_rate = 4000000;
 static cariboulite_radio_state_st* rate_tx_radio;
 static int forced_tx_gap = -1;
 static unsigned tx_gap_reads;
-int __wrap_cariboulite_radio_set_tx_samp_cutoff_flt(cariboulite_radio_state_st* r, float fs) {
-    test_tx_rate=fs; rate_tx_radio=r; return 0;
+int __wrap_cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* r,
+                                            cariboulite_radio_tx_cut_off_en bw) {
+    assert(!r->active && modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
+    assert(bw==cariboulite_radio_tx_cut_off_80khz);
+    r->tx_bw=bw;
+    modem_regs[modem_reg(r,REG_RF09_TXCUTC)]=0x80|(uint8_t)bw;
+    return 0;
 }
-int __wrap_cariboulite_radio_get_tx_samp_cutoff_flt(cariboulite_radio_state_st* r, float* fs) { *fs=test_tx_rate; return 0; }
+int __wrap_cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* r,
+        cariboulite_radio_sample_rate_en fs, cariboulite_radio_f_cut_en cutoff) {
+    assert(!r->active && modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
+    assert(cutoff==cariboulite_radio_rx_f_cut_0_25_half_fs);
+    test_tx_rate=fs==cariboulite_radio_rx_sample_rate_1000khz ? 1000000 :
+        fs==cariboulite_radio_rx_sample_rate_2000khz ? 2000000 : 4000000;
+    r->tx_fs=fs; r->tx_fcut=cutoff; rate_tx_radio=r;
+    modem_regs[modem_reg(r,REG_RF09_TXDFE)]=((uint8_t)cutoff<<5)|(uint8_t)fs;
+    return 0;
+}
 int __wrap_caribou_fpga_get_sys_ctrl_tx_sample_gap(caribou_fpga_st* f, uint8_t* gap) {
     ++tx_gap_reads;
     *gap=forced_tx_gap<0 ? 4000000/test_tx_rate-1 : forced_tx_gap;
@@ -267,6 +340,11 @@ static void test_rssi_capture(void) {
     atomic_init(&flags, RX_SQUELCH_CARRIER);
     rx_reader_ctrl_st ctrl = {.active=true,.radio=&sys.radio_high,
         .rx_buffer=buffer,.rx_buffer_size=20,.rx_fifo=&fifo,.squelch_flags=&flags};
+    atomic_init(&ctrl.alive,false);
+    pipeline_thread_diagnostics_init(&ctrl.scheduling);
+    atomic_init(&ctrl.read_calls,0); atomic_init(&ctrl.read_samples,0);
+    atomic_init(&ctrl.short_reads,0); atomic_init(&ctrl.zero_reads,0);
+    atomic_init(&ctrl.read_errors,0); atomic_init(&ctrl.last_error,0);
     capture_once=&ctrl;
     for (unsigned trial=0; trial<5; ++trial) {
         ctrl.active=true;
@@ -277,6 +355,8 @@ static void test_rssi_capture(void) {
         atomic_store(&flags, trial==4 ? 0 : RX_SQUELCH_CARRIER);
         unsigned before=rssi_reads;
         rx_reader_thread_func(&ctrl);
+        assert(!atomic_load(&ctrl.alive));
+        assert(atomic_load(&ctrl.read_calls)==trial+1);
         rf10_frame_t frame;
         assert(rf10_fifo_get(&fifo,&frame,0));
         assert(frame.rssi_valid == (trial<2));
@@ -287,6 +367,120 @@ static void test_rssi_capture(void) {
     }
     capture_once=NULL;
     rf10_fifo_destroy(&fifo);
+}
+
+static void test_shared_rx_stats(void)
+{
+    rx_pipeline_stats_t stats;
+    rx_pipeline_t p={0};
+    memset(&stats,0xa5,sizeof(stats));
+    rx_pipeline_get_stats(NULL,&stats);
+    assert(!stats.playback_valid && stats.rxq.cap==0 && stats.audioq.cap==0);
+    assert(!stats.reader.calls && !stats.audio_worker.created && !stats.audio_worker.alive);
+    memset(&stats,0xa5,sizeof(stats));
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.playback_valid && !stats.reader.errors && !stats.demod_worker.scheduling.valid);
+    rx_pipeline_get_stats(&p,NULL);
+    sys_st sys={0};
+    sys.radio_high.sys=&sys; sys.radio_high.type=cariboulite_channel_hif;
+    rx_params_t params={.freq_hz=430125000,.pcm_dev="null",.fs_rf=1000000,.fs_audio=48000};
+    assert(rx_pipeline_init(&p,&sys,&sys.radio_high,&params)==0);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.playback_valid && stats.playback.write_calls==0);
+    assert(stats.audioq.cap==24 && stats.rxq.cap==64 && !stats.reader.calls);
+    assert(stats.audio_worker.created && stats.demod_worker.created);
+    assert(!stats.audio_worker.alive && !stats.demod_worker.alive); // lifecycle mocks
+    const audio_sink_ops_t unsupported_ops={0};
+    audio_sink_t unsupported={48000,&unsupported_ops};
+    audio_sink_t* sink=p.demod.sink;
+    p.demod.sink=&unsupported;
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.playback_valid && stats.playback.write_calls==0);
+    p.demod.sink=sink;
+
+    p.rx_ctrl.rx_buffer=calloc(20,sizeof(*p.rx_ctrl.rx_buffer)); assert(p.rx_ctrl.rx_buffer);
+    p.rx_ctrl.rx_buffer_size=20; p.rx_ctrl.active=true;
+    p.rx_ctrl.squelch_flags=NULL;
+    scripted_reader=&p.rx_ctrl; scripted_read=0;
+    rx_reader_thread_func(&p.rx_ctrl);
+    scripted_reader=NULL;
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.reader.calls==4 && stats.reader.samples==20 && stats.reader.short_reads==1);
+    assert(stats.reader.zero_reads==1 && stats.reader.errors==1 && stats.reader.last_error==-EIO);
+    assert(!stats.reader_worker.alive && stats.reader_worker.scheduling.valid);
+    assert(stats.rxq.puts==1 && stats.rxq.count==1);
+    p.rx_ctrl.active=true;
+    fail_malloc=true;
+    rx_reader_thread_func(&p.rx_ctrl);
+    fail_malloc=false;
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.reader_worker.alive && stats.reader.calls==4);
+    assert(stats.reader.errors==1 && stats.reader.last_error==-ENOMEM);
+    assert(stats.reader_worker.last_error==-ENOMEM);
+
+    aud10_frame_t frame={0};
+    assert(aud10_fifo_put(&p.afifo,&frame,0));
+    assert(audio_sink_write(sink,frame.pcm,480).frames==480);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.audioq.puts==1 && stats.audioq.count==1);
+    assert(stats.playback.write_calls==1 && stats.playback.frames_written==480);
+    rx_pipeline_reset_stats(&p);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.rxq.count==1 && stats.audioq.count==1); // reset preserves queued data
+    assert(!stats.rxq.puts && !stats.audioq.puts && !stats.audioq.gets && !stats.audioq.drops);
+    assert(stats.audioq.min_depth==1 && stats.audioq.max_depth==1);
+    assert(stats.reader.calls==4 && stats.reader.errors==1 && stats.reader.last_error==-ENOMEM);
+    assert(stats.playback.write_calls==1 && stats.playback.frames_written==480);
+    p.demod.pcm_gain=NAN;
+    audio_demod_thread(&p.demod); // queued RF block, rejected audio configuration
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.demod_worker.alive && stats.demod_worker.last_error==-EINVAL);
+    assert(stats.demod_worker.scheduling.valid);
+    rx_pipeline_reset_stats(&p);
+    rx_pipeline_get_stats(&p,&stats);
+    assert(stats.demod_worker.last_error==-EINVAL && stats.playback.write_calls==1);
+    rx_pipeline_destroy(&p); check_clean(&p);
+    memset(&stats,0xa5,sizeof(stats));
+    rx_pipeline_get_stats(&p,&stats);
+    assert(!stats.playback_valid && !stats.rxq.cap && !stats.audioq.cap && !stats.reader.calls);
+}
+
+static audio_sink_result_t fail_audio_write(audio_sink_t* sink,const int16_t* samples,size_t frames)
+{
+    (void)sink; (void)samples; (void)frames;
+    return (audio_sink_result_t){0,AUDIO_SINK_ERROR,-EIO};
+}
+static void test_audio_worker_exits(void)
+{
+    const audio_sink_ops_t fail_ops={.write=fail_audio_write};
+    audio_sink_t sink={48000,&fail_ops};
+    aud10_fifo_t fifo;
+    aud10_fifo_init(&fifo,1);
+    audio_writer_ctrl_t ctrl={.active=true,.sink=&sink,.fifo=&fifo};
+    atomic_init(&ctrl.alive,false);
+    atomic_init(&ctrl.last_error,0);
+    pipeline_thread_diagnostics_init(&ctrl.scheduling);
+    aud10_frame_t frame={0};
+    assert(aud10_fifo_put(&fifo,&frame,0));
+    audio_writer_thread(&ctrl); // fatal sink error
+    assert(!atomic_load(&ctrl.alive) && atomic_load(&ctrl.scheduling.ready));
+    assert(atomic_load(&ctrl.last_error)==-EIO);
+    aud10_fifo_stop(&fifo);
+    audio_writer_thread(&ctrl); // normal stopped-queue return
+    assert(!atomic_load(&ctrl.alive));
+    assert(atomic_load(&ctrl.last_error)==-EIO); // retained on subsequent normal exit
+    aud10_fifo_destroy(&fifo);
+    aud10_fifo_init(&fifo,1);
+    pipeline_thread_diagnostics_reset(&ctrl.scheduling);
+    pthread_t thread; void* result;
+    assert(pthread_create(&thread,NULL,audio_writer_thread,&ctrl)==0);
+    for(unsigned retry=0; retry<1000 && !atomic_load(&ctrl.alive); ++retry) usleep(1000);
+    assert(atomic_load(&ctrl.alive));
+    assert(pthread_cancel(thread)==0);
+    assert(pthread_join(thread,&result)==0 && result==PTHREAD_CANCELED);
+    assert(!atomic_load(&ctrl.alive));
+    assert(pthread_mutex_trylock(&fifo.m)==0); pthread_mutex_unlock(&fifo.m);
+    aud10_fifo_destroy(&fifo);
 }
 // Lifecycle mocks do not run DSP threads; acknowledge cue consumption so a
 // successful TX start exercises real tuning/activation without generating RF.
@@ -323,8 +517,8 @@ static void stale_nbfm_profile(cariboulite_radio_state_st* radio) {
 static void assert_modem_profile(const rx_pipeline_t* p) {
     const cariboulite_radio_state_st* radio=p->radio;
     bool nbfm=p->demod.mode==AUDIO_DEMOD_NBFM;
-    cariboulite_radio_rx_bw_en bw=nbfm ? cariboulite_radio_rx_bw_160KHz : cariboulite_radio_rx_bw_2000KHz;
-    cariboulite_radio_f_cut_en cutoff=nbfm ? cariboulite_radio_rx_f_cut_0_25_half_fs : cariboulite_radio_rx_f_cut_half_fs;
+    cariboulite_radio_rx_bw_en bw=nbfm ? cariboulite_radio_rx_bw_160KHz : cariboulite_radio_rx_bw_250KHz;
+    cariboulite_radio_f_cut_en cutoff=cariboulite_radio_rx_f_cut_0_25_half_fs;
     cariboulite_radio_sample_rate_en rate=p->demod.fs_rf==1000000 ? cariboulite_radio_rx_sample_rate_1000khz :
         p->demod.fs_rf==2000000 ? cariboulite_radio_rx_sample_rate_2000khz : cariboulite_radio_rx_sample_rate_4000khz;
     uint16_t filter=modem_reg(radio,REG_RF09_RXBWC), agc=modem_reg(radio,REG_RF09_AGCC);
@@ -344,6 +538,11 @@ static void test_modem_policy(void) {
     sys.radio_high.type=cariboulite_channel_hif;
     for(unsigned channel=0;channel<2;++channel) {
         cariboulite_radio_state_st* radio=channel ? &sys.radio_high : &sys.radio_low;
+        const uint16_t other_filter=REG_RF09_RXBWC+0x100*!channel;
+        /* RXBWC, RXDFE, AGCC and AGCS are contiguous. Keep a distinct profile
+         * in the inactive bank so cross-channel configuration is observable. */
+        const uint8_t other_registers[]={0x26,0x61,0x62,0xf7};
+        memcpy(modem_regs+other_filter,other_registers,sizeof(other_registers));
         for(unsigned rate=0;rate<sizeof(monitor_rates)/sizeof(*monitor_rates);++rate) {
             rx_params_t par={.mode=AUDIO_DEMOD_NBFM,.freq_hz=430125000,.pcm_dev="null",
                 .fs_rf=monitor_rates[rate].fs,.fs_audio=48000};
@@ -355,59 +554,145 @@ static void test_modem_policy(void) {
                 unsigned before=agc_writes[channel];
                 assert(rx_pipeline_start(&rx)==0);
                 assert_modem_profile(&rx);
+                assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
                 assert(agc_writes[channel]==before+1 && agc_writes[!channel]==other_agc);
                 assert(last_stream==(channel ? smi_stream_rx_channel_1 : smi_stream_rx_channel_0));
                 rx_pipeline_stop(&rx);
             }
             assert(monitor_cycle_rx_mode(&tx,&rx,&loopback,&sys,&par)==0 && par.mode==AUDIO_DEMOD_WBFM);
-            /* WBFM restores its wide filters without changing gain policy. */
+            /* WBFM restores its 250 kHz profile without changing gain policy. */
             stale_nbfm_profile(radio);
             unsigned before=agc_writes[channel];
             uint16_t agc=modem_reg(radio,REG_RF09_AGCC);
             uint8_t saved_agc=modem_regs[agc], saved_gain=modem_regs[agc+1];
             assert(rx_pipeline_start(&rx)==0);
             assert_modem_profile(&rx);
+            assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
             assert(agc_writes[channel]==before && modem_regs[agc]==saved_agc &&
                    modem_regs[agc+1]==saved_gain && !radio->rx_agc_on);
             rx_pipeline_stop(&rx);
             assert(monitor_cycle_rx_mode(&tx,&rx,&loopback,&sys,&par)==0 && par.mode==AUDIO_DEMOD_NBFM);
             assert(rx_pipeline_start(&rx)==0);
             assert_modem_profile(&rx);
+            assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
             assert(agc_writes[channel]==before+1);
             rx_pipeline_destroy(&rx); check_clean(&rx);
         }
-        rx_params_t par={.mode=AUDIO_DEMOD_NBFM,.freq_hz=430125000,.pcm_dev="null",
-            .fs_rf=1000000,.fs_audio=48000};
-        rx_pipeline_t rx={0};
-        assert(rx_pipeline_init(&rx,&sys,radio,&par)==0);
-        for(enum modem_fault fault=MODEM_DEACTIVATE;fault<=MODEM_AGC_TARGET_MISMATCH;++fault) {
-            unsigned variants=fault==MODEM_FILTER_MISMATCH || fault==MODEM_AGC_CONTROL_MISMATCH ? 5 : 1;
-            for(unsigned variant=0;variant<variants;++variant) {
-                static const uint8_t filter_xors[]={1,0x10,0x20,0x20,1};
-                static const uint8_t agc_xors[]={1,2,0x10,0x20,0x40};
-                filter_readback_byte=variant>=3;
-                filter_readback_xor=filter_xors[variant];
-                agc_readback_xor=agc_xors[variant];
-                stale_nbfm_profile(radio);
-                unsigned before_activations=rx_activations, before_streams=stream_activations;
-                int before_creates=creates;
-                modem_fault=fault;
-                assert(rx_pipeline_start(&rx)==-4);
-                assert(!rx.running && !rx.rx_thread_created && !rx.rx_ctrl.active && !hardware_active);
-                assert(rx_activations==before_activations && stream_activations==before_streams && creates==before_creates);
-                assert(!radio->rx_agc_on); /* Only verified readback may update this cache. */
-                assert(pthread_mutex_trylock(&g_hw_lock)==0);
-                pthread_mutex_unlock(&g_hw_lock);
-                modem_fault=MODEM_OK;
-                assert(rx_pipeline_start(&rx)==0);
-                assert_modem_profile(&rx);
-                rx_pipeline_stop(&rx);
+        const audio_demod_mode_t modes[]={AUDIO_DEMOD_NBFM,AUDIO_DEMOD_WBFM};
+        for(unsigned mode=0;mode<sizeof(modes)/sizeof(*modes);++mode) {
+            const bool nbfm=modes[mode]==AUDIO_DEMOD_NBFM;
+            rx_params_t par={.mode=modes[mode],.freq_hz=430125000,.pcm_dev="null",
+                .fs_rf=1000000,.fs_audio=48000};
+            rx_pipeline_t rx={0};
+            assert(rx_pipeline_init(&rx,&sys,radio,&par)==0);
+            const enum modem_fault last_fault=nbfm ? MODEM_AGC_TARGET_MISMATCH : MODEM_FILTER_MISMATCH;
+            for(enum modem_fault fault=MODEM_DEACTIVATE;fault<=last_fault;++fault) {
+                unsigned variants=fault==MODEM_FILTER_MISMATCH || fault==MODEM_AGC_CONTROL_MISMATCH ? 5 : 1;
+                for(unsigned variant=0;variant<variants;++variant) {
+                    static const uint8_t filter_xors[]={1,0x10,0x20,0x20,1};
+                    static const uint8_t agc_xors[]={1,2,0x10,0x20,0x40};
+                    filter_readback_byte=variant>=3;
+                    filter_readback_xor=filter_xors[variant];
+                    agc_readback_xor=agc_xors[variant];
+                    stale_nbfm_profile(radio);
+                    uint16_t agc=modem_reg(radio,REG_RF09_AGCC);
+                    uint8_t saved_agc=modem_regs[agc], saved_gain=modem_regs[agc+1];
+                    unsigned before_activations=rx_activations, before_streams=stream_activations;
+                    int before_creates=creates;
+                    modem_fault=fault;
+                    assert(rx_pipeline_start(&rx)==-4);
+                    assert(!rx.running && !rx.rx_thread_created && !rx.rx_ctrl.active && !hardware_active);
+                    assert(rx_activations==before_activations && stream_activations==before_streams && creates==before_creates);
+                    assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
+                    assert(!radio->rx_agc_on); /* Only verified readback may update this cache. */
+                    assert(pthread_mutex_trylock(&g_hw_lock)==0);
+                    pthread_mutex_unlock(&g_hw_lock);
+                    modem_fault=MODEM_OK;
+                    assert(rx_pipeline_start(&rx)==0);
+                    assert_modem_profile(&rx);
+                    assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
+                    if(!nbfm) assert(modem_regs[agc]==saved_agc && modem_regs[agc+1]==saved_gain && !radio->rx_agc_on);
+                    rx_pipeline_stop(&rx);
+                }
             }
+            rx_pipeline_destroy(&rx); check_clean(&rx);
         }
-        rx_pipeline_destroy(&rx); check_clean(&rx);
     }
-    puts("PASS: RF09/RF24 NBFM AGC/filter restoration at 1/2/4 MS/s, WBFM transitions, failed configuration blocks RX and retries cleanly");
+    puts("PASS: RF09/RF24 NBFM/WBFM filter restoration at 1/2/4 MS/s, isolated registers, mode transitions, failed configuration blocks RX and retries cleanly");
 }
+static void test_rx_deviation_wiring(void) {
+    sys_st sys={0};
+    sys.radio_high.sys=&sys;
+    sys.radio_high.type=cariboulite_channel_hif;
+    rx_params_t par={.freq_hz=430125000,.pcm_dev="null",.fs_rf=1000000,.fs_audio=48000};
+    rx_pipeline_t rx={0};
+    verify_deviation_wiring=true;
+
+    const float references[]={0,1,2500,5000,24000};
+    for (unsigned rate=0; rate<sizeof(monitor_rates)/sizeof(*monitor_rates); ++rate) {
+        par.fs_rf=monitor_rates[rate].fs;
+        for (unsigned i=0; i<sizeof(references)/sizeof(*references); ++i) {
+            par.nbfm_deviation_hz=references[i];
+            unsigned before_sets=deviation_sets, before_threads=demod_thread_creates;
+            assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)==0);
+            assert(deviation_sets==before_sets+1 && demod_thread_creates==before_threads+1);
+            assert(last_deviation==(references[i] ? references[i] : 2500));
+            assert(rx.demod.dsp==last_demod_created && deviation_configured);
+            assert(par.nbfm_deviation_hz==references[i]); // legacy zero stays an omitted setting
+            rx_pipeline_destroy(&rx); check_clean(&rx);
+        }
+
+        // A saved NBFM reference must not be applied to the WBFM demodulator.
+        par.mode=AUDIO_DEMOD_WBFM;
+        par.nbfm_deviation_hz=5000;
+        unsigned before_sets=deviation_sets, before_threads=demod_thread_creates;
+        assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)==0);
+        assert(deviation_sets==before_sets && demod_thread_creates==before_threads+1);
+        assert(!deviation_configured && rx.demod.mode==AUDIO_DEMOD_WBFM);
+        rx_pipeline_destroy(&rx); check_clean(&rx);
+        par.mode=AUDIO_DEMOD_NBFM;
+    }
+
+    const float invalid[]={-1,.5f,24001,NAN,INFINITY,-INFINITY};
+    for (unsigned mode=0; mode<2; ++mode) {
+        par.mode=mode ? AUDIO_DEMOD_WBFM : AUDIO_DEMOD_NBFM;
+        for (unsigned i=0; i<sizeof(invalid)/sizeof(*invalid); ++i) {
+            par.nbfm_deviation_hz=invalid[i];
+            int before_creates=creates;
+            unsigned before_malloc=malloc_calls, before_calloc=calloc_calls;
+            unsigned before_alsa=alsa_sink_opens, before_demod=demod_create_calls;
+            unsigned before_sets=deviation_sets;
+            assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)<0);
+            assert(creates==before_creates && malloc_calls==before_malloc && calloc_calls==before_calloc);
+            assert(alsa_sink_opens==before_alsa && demod_create_calls==before_demod && deviation_sets==before_sets);
+            assert(!rx.rxq.q && !rx.afifo.q);
+            check_clean(&rx);
+        }
+    }
+
+    // Setter failure joins the already-created writer and releases all resources;
+    // it must never start the demodulator, and a later initialization can succeed.
+    par.mode=AUDIO_DEMOD_NBFM;
+    par.nbfm_deviation_hz=5000;
+    fail_deviation_set=true;
+    tracked_cleanup_rx=&rx;
+    cleanup_fifo_frees=0;
+    int before_creates=creates, before_joins=joins;
+    unsigned before_sets=deviation_sets, before_threads=demod_thread_creates;
+    assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)<0);
+    assert(creates==before_creates+1 && joins==before_joins+1);
+    assert(deviation_sets==before_sets+1 && demod_thread_creates==before_threads);
+    assert(cleanup_fifo_frees==3);
+    check_clean(&rx);
+    tracked_cleanup_rx=NULL;
+    fail_deviation_set=false;
+    assert(rx_pipeline_init(&rx,&sys,&sys.radio_high,&par)==0);
+    assert(last_deviation==5000 && deviation_configured);
+    rx_pipeline_destroy(&rx); check_clean(&rx);
+    verify_deviation_wiring=false;
+    puts("PASS: RX deviation defaults/ranges and NBFM-only configuration before demod startup; validation and setter failures clean up safely");
+}
+
 static void test_noise_level_controls(void) {
     float opening=0, closing=0;
     assert(monitor_parse_noise_levels("0.120 0.180",&opening,&closing));
@@ -482,7 +767,9 @@ static void test_noise_level_controls(void) {
 
 int main(void) {
     test_rssi_capture();
+    test_shared_rx_stats();
     test_modem_policy();
+    test_rx_deviation_wiring();
     test_noise_level_controls();
     sys_st sys = {0};
     sys.radio_low.sys = sys.radio_high.sys = &sys;
@@ -799,10 +1086,17 @@ int main(void) {
     }
 
     real_threads = true;
+    test_audio_worker_exits();
     // Actual waiting DSP/writer threads must join before DSP/sink destruction.
     assert(rx_pipeline_init(&p,&sys,&radio,&par)==0);
-    usleep(10000);
+    for (unsigned retry=0; retry<1000 && (!atomic_load(&p.demod.alive) || !atomic_load(&p.aw.alive)); ++retry)
+        usleep(1000);
+    rx_pipeline_stats_t active_stats;
+    rx_pipeline_get_stats(&p,&active_stats);
+    assert(active_stats.demod_worker.alive && active_stats.audio_worker.alive);
+    assert(active_stats.demod_worker.scheduling.valid && active_stats.audio_worker.scheduling.valid);
     rx_pipeline_destroy(&p); check_clean(&p);
+    assert(!atomic_load(&p.demod.alive) && !atomic_load(&p.aw.alive));
 
     for (int which=0; which<4; ++which) {
         aud10_fifo_init(&audio,1); rf10_fifo_init(&rf,1,false);
@@ -818,17 +1112,24 @@ int main(void) {
     }
     cariboulite_sample_complex_int16 samples[40000];
     radio.sys = &sys;
-    rx_reader_ctrl_st reader = {.active=true, .radio=&radio, .rx_buffer=samples};
+    rx_reader_ctrl_st reader = {.active=true, .radio=&radio, .rx_buffer=samples,.rx_buffer_size=40000};
+    atomic_init(&reader.alive,false);
+    pipeline_thread_diagnostics_init(&reader.scheduling);
+    atomic_init(&reader.read_calls,0); atomic_init(&reader.read_samples,0);
+    atomic_init(&reader.short_reads,0); atomic_init(&reader.zero_reads,0);
+    atomic_init(&reader.read_errors,0); atomic_init(&reader.last_error,0);
     pthread_t thread;
     assert(pthread_barrier_init(&reader_ready,NULL,2)==0);
     track_metadata = true;
     assert(pthread_create(&thread,NULL,rx_reader_thread_func,&reader)==0);
     pthread_barrier_wait(&reader_ready);
     assert(metadata_allocation != NULL);
+    assert(atomic_load(&reader.alive) && atomic_load(&reader.scheduling.ready));
     assert(pthread_cancel(thread)==0);
     assert(pthread_join(thread,NULL)==0);
     assert(metadata_allocation == NULL);
+    assert(!atomic_load(&reader.alive));
     track_metadata = false;
     pthread_barrier_destroy(&reader_ready);
-    puts("PASS: S1G/HiF frequency bands, HiF monitor routing/rates/modes, NBFM modem AGC/filter policy, TX tail padding plans, TX/RX lifecycle, startup failures, FIFO timing and cancellation");
+    puts("PASS: S1G/HiF routing/rates/modes, modem policy, TX/RX lifecycle, shared FIFO/playback/reader stats, worker errors and cancellation");
 }

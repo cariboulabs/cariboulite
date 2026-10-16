@@ -4,6 +4,9 @@
 #include "pipeline_transport.h"
 #include "audio_source.h"
 #include "nbfm_mod.h"
+#include "alsa_source.h"
+#include "pipeline_runtime.h"
+#include "tx_audio_buffer.h"
 #include <stdatomic.h>
 
 // Internal application handles. One control owner serializes lifecycle calls.
@@ -16,7 +19,24 @@ typedef struct {
 } tone_injector_t;
 
 typedef struct {
-    bool active;
+    atomic_bool active;
+    atomic_bool alive;
+    atomic_int last_error;
+    pipeline_thread_diagnostics_t scheduling;
+    atomic_uint_fast64_t write_calls, write_samples, partial_writes;
+    atomic_uint_fast64_t zero_writes, would_block, write_errors;
+    /* One condition-variable gate parks both workers while retained/stopped.
+     * Owner changes its state; busy flags acknowledge one-reader quiescence. */
+    pthread_mutex_t state_mutex;
+    pthread_cond_t state_changed;
+    bool gate_initialized, gate_enabled, writer_busy, producer_busy;
+    bool producer_resumed;
+    bool verify_start_profile; // Opt-in checked modem profile before any cue IQ
+    bool hardware_paced;
+    struct smi_stream_tx_status driver_config;
+    bool smi_write_timing_saved;
+    int saved_write_setup, saved_write_strobe, saved_write_hold;
+    atomic_bool abort_requested;
     cariboulite_radio_state_st *radio;
     cariboulite_sample_complex_int16 *tx_buffer;
     size_t tx_buffer_size;
@@ -24,6 +44,7 @@ typedef struct {
 	// (live path)
     bool    live_from_mic;     // set true to enable live generation
     audio_source_t* mic;     // ALSA handle
+    tx_audio_buffer_t* audio_buffer; // Independent capture and clock adaptation
     nbfm_mod_t*     fm;      // 48 kHz audio -> configured RF rate NBFM
     float*            a48k;    // 480-float scratch
     iq16_t*           iq_rf;    // One RF frame of IQ scratch
@@ -46,10 +67,19 @@ typedef struct {
 } tx_writer_ctrl_st;
 
 typedef struct {
-    bool                active;
+    atomic_bool         active;
+    atomic_bool alive;
+    atomic_int last_error;
+    pipeline_thread_diagnostics_t scheduling;
     tx_writer_ctrl_st*  tx;      // reuse your modulator/mic/tone fields
     rf10_fifo_t*        fifo;
 } dsp_producer_ctrl_t;
+
+typedef enum {
+    TX_PACING_AUTO = 0, // Use demand ABI when present; ENOTTY permits legacy
+    TX_PACING_HARDWARE_REQUIRED,
+    TX_PACING_LEGACY,
+} tx_pacing_mode_t;
 
 typedef struct {
     // Radio
@@ -66,6 +96,10 @@ typedef struct {
     // NBFM modulator config (kept same as your current)
     float  out_scale;           // e.g., 4000.0f
     float  f_dev_hz;            // nominal deviation at unit audio, in Hz
+    // Backend-only checked pre-cue profile; preserves owner cancellation until
+    // rebuild. Default false retains the legacy start/retry behavior.
+    bool verify_start_profile;
+    tx_pacing_mode_t pacing_mode;
 } tx_params_t;
 
 typedef struct {
@@ -82,7 +116,7 @@ typedef struct {
 
     // State
     bool inited;
-    bool running;
+    atomic_bool running;
 
     // Binding
     sys_st*                         sys;
@@ -90,7 +124,28 @@ typedef struct {
 } tx_pipeline_t;
 
 typedef struct {
+    uint64_t calls, samples, partial_writes, zero_writes, would_block, errors;
+    int last_error;
+    uint64_t written_sequence;
+} tx_writer_stats_t;
+
+typedef struct {
+    bool created, alive;
+    int last_error;
+    pipeline_thread_status_t scheduling;
+} tx_worker_status_t;
+
+typedef struct {
     rf10_stats_t txq;
+    tx_writer_stats_t writer;
+    tx_worker_status_t producer_worker, writer_worker;
+    bool capture_valid;
+    alsa_source_stats_t capture;
+    bool hardware_paced, driver_valid, audio_buffer_valid;
+    bool smi_timing_valid;
+    struct smi_settings smi_timing;
+    struct smi_stream_tx_status driver;
+    tx_audio_buffer_stats_t audio_buffer;
 } tx_pipeline_stats_t;
 
 extern cariboulite_sample_complex_int16 latest_tx_sample;
@@ -99,8 +154,21 @@ int tx_pipeline_start(tx_pipeline_t*);
 void tx_pipeline_stop(tx_pipeline_t*);
 void tx_pipeline_destroy(tx_pipeline_t*);
 bool tx_pipeline_running(const tx_pipeline_t*);
+bool tx_pipeline_healthy(const tx_pipeline_t*);
+/* Fault/shutdown path only: request is thread-safe and does not touch hardware;
+ * abort is serialized by the lifecycle owner and skips the normal Quindar tail. */
+void tx_pipeline_request_abort(tx_pipeline_t*);
+int tx_pipeline_abort(tx_pipeline_t*);
 int tx_pipeline_set_freq_power(tx_pipeline_t*, double freq_hz, int tx_power_dbm);
 void tx_pipeline_get_stats(tx_pipeline_t*, tx_pipeline_stats_t*);
 
 size_t tx_pipeline_frame_samples(const tx_pipeline_t*);
 void tx_pipeline_reset_stats(tx_pipeline_t*);
+/* Internal worker gate: each successful begin requires one end, including
+ * error paths. NULL/uninitialized gates support standalone worker fixtures. */
+bool tx_worker_begin(tx_writer_ctrl_st*, bool producer);
+void tx_worker_end(tx_writer_ctrl_st*, bool producer);
+void tx_worker_fail(tx_writer_ctrl_st*, int error);
+/* One parked lifecycle owner or the producer owns the modulator at a time.
+ * Uses a48k input, validates exact audio/RF counts and packs one sequenced frame. */
+int tx_generate_frame(tx_writer_ctrl_st*, rf10_frame_t*);

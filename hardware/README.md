@@ -11,6 +11,12 @@ The historical overview groups CaribouLite into two revision families:
 
 This documentation shall cover the production-grade board (rev2).
 
+For the Full Rev2.8 reproduction, the
+[quotation package](../manufacturing/rev2.8-full-eurocircuits/README.md) records
+the exact BOM, fitted/DNP decisions and fabrication holds. It is prepared for
+technical review and quotation, with no manufacturing release recorded here.
+The older reproduction handoff and sourcing reports are dated snapshots.
+
 ## System Diagram
 
 <table>

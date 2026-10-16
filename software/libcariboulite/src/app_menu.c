@@ -1503,7 +1503,7 @@ void monitor_modem_status(sys_st *sys)
         clock_gettime(CLOCK_MONOTONIC, &now);
         if (tx_last_ts.tv_sec != 0) {
         double dt = (now.tv_sec - tx_last_ts.tv_sec) + (now.tv_nsec - tx_last_ts.tv_nsec)/1e9;
-            if (dt > 0.0) {
+            if (dt > 0.0 && stx.puts >= tx_last_s.puts && stx.gets >= tx_last_s.gets) {
                 tx_rate_puts = (double)(stx.puts - tx_last_s.puts) / dt;
                 tx_rate_gets = (double)(stx.gets - tx_last_s.gets) / dt;
             }
@@ -1519,7 +1519,6 @@ void monitor_modem_status(sys_st *sys)
             tx_rate_puts, tx_rate_gets);
 
         // If you want to highlight trouble:
-        if (stx.min_depth == 0)          printw("    NOTE: Under-runs observed (producer late)\n");
         if (stx.drops > 0)               printw("    NOTE: Overwrites occurred (producer faster than writer)\n");
         if (stx.timeouts_put > 0)        printw("    NOTE: Producer timed out waiting to enqueue\n");
         if (stx.timeouts_get > 0)        printw("    NOTE: Writer timed out waiting for frames\n");
@@ -1536,7 +1535,7 @@ void monitor_modem_status(sys_st *sys)
 
         if (rx_last_ts.tv_sec != 0) {
         double dt = (now.tv_sec - rx_last_ts.tv_sec) + (now.tv_nsec - rx_last_ts.tv_nsec)/1e9;
-            if (dt > 0.0) {
+            if (dt > 0.0 && srx.puts >= rx_last_s.puts && srx.gets >= rx_last_s.gets) {
                 rx_rate_puts = (double)(srx.puts - rx_last_s.puts) / dt;
                 rx_rate_gets = (double)(srx.gets - rx_last_s.gets) / dt;
             }
@@ -1553,7 +1552,6 @@ void monitor_modem_status(sys_st *sys)
             rx_rate_puts, rx_rate_gets);
         
         // Same “trouble” hints, adapted to RX roles
-        if (srx.min_depth == 0)          printw("    NOTE: Under-runs observed (reader late)\n");
         if (srx.drops > 0)               printw("    NOTE: Overwrites occurred (demod slower than reader)\n");
         if (srx.timeouts_put > 0)        printw("    NOTE: Reader timed out waiting to enqueue\n");
         if (srx.timeouts_get > 0)        printw("    NOTE: Demod timed out waiting for frames\n");

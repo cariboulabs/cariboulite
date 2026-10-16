@@ -23,14 +23,17 @@ else:
 
 with tempfile.TemporaryDirectory(prefix='tx-tail-progress-') as directory:
     directory = Path(directory)
-    (directory / 'tx_writer_thread.inc').write_text(source[start:end + 1])
+    # The writer now shares the production stopped-worker gate and cleanup.
+    helpers = source.index('static void gate_unlock(')
+    (directory / 'tx_writer_thread.inc').write_text(source[helpers:end + 1])
     binary = directory / 'test'
     subprocess.run(['cc', '-std=gnu11', '-O2', '-Wall', '-Wextra', '-Werror',
                     *['-I' + str(path) for path in
                       (src, src / 'at86rf215', src / 'rffc507x', directory)],
                     str(here / 'test_tx_tail_progress.c'), str(src / 'mod_worker.c'),
                     str(src / 'nbfm_mod.c'), str(src / 'tone_source.c'),
+                    str(src / 'tx_audio_buffer.c'), str(src / 'alsa_source.c'),
                     '-Wl,--wrap=clock_nanosleep', '-Wl,--wrap=poll', '-Wl,--wrap=nanosleep',
-                    '-Wl,--wrap=tone_source_set', '-lm', '-pthread', '-o', str(binary)],
+                    '-Wl,--wrap=tone_source_set', '-lasound', '-lm', '-pthread', '-o', str(binary)],
                    check=True)
     subprocess.run([str(binary)], check=True, timeout=15)
