@@ -4,6 +4,7 @@
 These tests never launch a hardware backend or open a radio/audio device.
 """
 from pathlib import Path
+import re
 import socket
 import subprocess
 import tempfile
@@ -18,14 +19,16 @@ SOURCE = ROOT / "software/libcariboulite/tools/radio_backend"
 
 def reply(packet, *, result="OK", code="OK", state="RX", noise=1,
           carrier=0, opening=.2, closing=.3, identifier=None, actual=430125000,
-          version=1, tx_requested=0, transition=0, tx_actual_power=-11):
+          version=1, tx_requested=0, transition=0, tx_actual_power=-11,
+          simulated=True, mode="nbfm", tx_actual=430225000, tx_source=1):
     tokens = packet.decode().split()
     identifier = tokens[1] if identifier is None else identifier
-    base = (f"v{version} {identifier} {result} {code} 4 2 simulated {state} RF24 "
-            f"430125000 {actual} 1000000 nbfm {noise} {carrier} "
+    backend = "simulated" if simulated else "live"
+    base = (f"v{version} {identifier} {result} {code} 4 2 {backend} {state} RF24 "
+            f"430125000 {actual} 1000000 {mode} {noise} {carrier} "
             f"{opening} {closing}")
     if version == 2:
-        base += (f" 3 430225000 430225000 2000000 -12 {tx_actual_power} 1 1000 .5 2500 "
+        base += (f" 3 430225000 {tx_actual} 2000000 -12 {tx_actual_power} {tx_source} 1000 .5 2500 "
                  f"{tx_requested} 1 {transition}")
     return (base + "\n").encode()
 
@@ -134,15 +137,99 @@ class RadioControlTests(unittest.TestCase):
             time.sleep(.01)
         self.assertGreaterEqual(len(owner.packets), count, owner.errors)
 
+    def assert_field(self, output, label, value):
+        self.assertRegex(output,
+                         rf"(?m)^\s*{re.escape(label)}\s+{re.escape(value)}$")
+
+    def assert_status(self, output, state, *, simulated=True):
+        labels = {
+            "RX": "RX", "IDLE": "IDLE", "TX": "TX",
+            "TX_STARTING": "TX", "TX_STOPPING": "TX", "RX_STARTING": "RX",
+            "FPGA_PROGRAMMING": "IDLE", "FPGA_RESETTING": "IDLE",
+            "FPGA_NEEDS_PROGRAM": "ERROR: FPGA needs programming",
+            "FAULT": "ERROR: Backend fault; check backend log",
+        }
+        backend = "SIMULATED" if simulated else "LIVE"
+        self.assertRegex(output,
+                         rf"(?m)^\s*{backend} \| RF24 \| {re.escape(labels[state])}$")
+
+    def assert_compact_sections(self, output, *, transmit=True):
+        self.assertRegex(output, r"(?m)^\s*Receive$")
+        self.assertEqual(len(re.findall(r"(?m)^\s*Transmit$", output)), int(transmit))
+        fields = re.findall(r"(?m)^    (\S(?:.*?\S)?) {2,}\S", output)
+        expected = ["Frequency", "Mode", "Sample rate", "Noise squelch", "Carrier squelch"]
+        if transmit:
+            expected += ["Frequency", "Power", "Mode", "Sample rate", "Audio source"]
+        self.assertEqual(fields, expected)
+        for omitted in ("requested", "Last tuned", "Tuned to", "Noise thresholds",
+                        "estimate", "amplitude", "deviation", "After transmit",
+                        "config=", "pipeline=", "Simulation only", "Transmit -"):
+            self.assertNotIn(omitted, output)
+
     def test_status_only_queries_and_clearly_labels_simulation(self):
         owner = self.owner()
         result = self.once("status")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.wait_for_packets(owner, 1)
         self.assertEqual(owner.packets, [["v2", "1", "get"]])
-        self.assertIn("SIMULATED RF24 RX", result.stdout)
-        self.assertIn("requested 430.125000 MHz, actual 430.125000 MHz", result.stdout)
-        self.assertIn("noise on, carrier off, open 0.200, close 0.300", result.stdout)
+        self.assert_status(result.stdout, "RX")
+        self.assert_compact_sections(result.stdout, transmit=False)
+        self.assert_field(result.stdout, "Frequency", "430.125000 MHz")
+        self.assert_field(result.stdout, "Mode", "NBFM")
+        self.assert_field(result.stdout, "Sample rate", "1 MS/s")
+        self.assert_field(result.stdout, "Noise squelch", "On")
+        self.assert_field(result.stdout, "Carrier squelch", "Off")
+        self.assertNotIn("Transmit", result.stdout)  # v1 has no transmit snapshot.
+
+    def test_live_wbfm_hides_inapplicable_noise_and_microphone_tone_settings(self):
+        self.owner(lambda number, packet: reply(packet, version=2, simulated=False,
+                                                mode="wbfm", tx_source=0))
+        result = self.once("status")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_status(result.stdout, "RX", simulated=False)
+        self.assert_compact_sections(result.stdout)
+        self.assertNotIn("SIMULATED", result.stdout)
+        self.assert_field(result.stdout, "Mode", "WBFM (mono)")
+        self.assert_field(result.stdout, "Noise squelch", "Not Applicable")
+        self.assert_field(result.stdout, "Audio source", "Microphone")
+        self.assertNotRegex(result.stdout, r"(?m)^\s*Tone\s")
+
+    def test_stopped_snapshot_shows_only_saved_frequency_and_power_settings(self):
+        self.owner(lambda number, packet: reply(packet, version=2, state="IDLE", noise=0,
+                                                actual=430124998, tx_actual=430224999))
+        result = self.once("status")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_status(result.stdout, "IDLE")
+        self.assert_compact_sections(result.stdout)
+        receive, transmit = result.stdout.split("  Transmit\n", 1)
+        self.assert_field(receive, "Frequency", "430.125000 MHz")
+        self.assert_field(receive, "Noise squelch", "Off")
+        self.assert_field(transmit, "Frequency", "430.225000 MHz")
+        self.assert_field(transmit, "Power", "-12 dBm")
+        self.assert_field(transmit, "Audio source", "Tone")
+        self.assertNotIn("430.124998", result.stdout)
+        self.assertNotIn("430.224999", result.stdout)
+        self.assertNotIn("-11 dBm", result.stdout)
+        self.assertNotIn("1000.0 Hz", result.stdout)
+
+    def test_radio_states_stay_compact_and_only_flagged_transitions_show_refresh_hint(self):
+        for state, transition in (("TX", 0), ("TX_STARTING", 0), ("TX_STARTING", 1), ("TX_STOPPING", 1),
+                                  ("RX_STARTING", 1), ("FAULT", 0),
+                                  ("FPGA_PROGRAMMING", 1), ("FPGA_RESETTING", 1),
+                                  ("FPGA_NEEDS_PROGRAM", 0)):
+            with self.subTest(state=state, transition=transition):
+                owner = self.owner(lambda number, packet: reply(packet, version=2, state=state,
+                                                                transition=transition))
+                result = self.once("status")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assert_status(result.stdout, state)
+                self.assert_compact_sections(result.stdout)
+                if transition:
+                    self.assertIn("Change in progress; type status to refresh.", result.stdout)
+                else:
+                    self.assertNotIn("Change in progress", result.stdout)
+                owner.close()
+                self.path.unlink()
 
     def test_frequency_mode_rate_and_stop_send_exact_units(self):
         for command, expected in (
@@ -250,13 +337,15 @@ class RadioControlTests(unittest.TestCase):
         self.assertNotIn("SIMULATED", result.stdout)
         self.assertEqual([packet[2] for packet in owner.packets], ["get"])
 
-    def test_unavailable_actual_frequency_is_not_shown_as_zero_mhz(self):
+    def test_fault_is_reported_as_error_and_unavailable_actual_frequency_is_hidden(self):
         self.owner(lambda number, packet: reply(packet, state="FAULT", actual=0))
         result = self.once("status")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("SIMULATED RF24 FAULT", result.stdout)
-        self.assertIn("actual unavailable", result.stdout)
-        self.assertNotIn("actual 0.000000 MHz", result.stdout)
+        self.assert_status(result.stdout, "FAULT")
+        self.assert_compact_sections(result.stdout, transmit=False)
+        self.assert_field(result.stdout, "Frequency", "430.125000 MHz")
+        self.assertNotIn("unavailable", result.stdout)
+        self.assertNotIn("0.000000 MHz", result.stdout)
 
     def test_unsolicited_busy_before_request_is_reported(self):
         self.owner(admission=reply(b"v1 1 get", result="ERROR", code="BUSY", identifier="0"))
@@ -296,7 +385,8 @@ class RadioControlTests(unittest.TestCase):
         result = self.once("frequency 435")
         self.assertEqual(result.returncode, 1)
         self.assertIn("Command rejected: RX_RUNNING", result.stderr)
-        self.assertIn("actual 430.125000 MHz", result.stdout)
+        self.assert_field(result.stdout, "Frequency", "430.125000 MHz")
+        self.assertIn("ERROR: Stop receive before changing settings", result.stdout)
         self.assertNotIn("uncertain", result.stderr)
         self.assertEqual(len(owner.packets), 2)
 
@@ -384,13 +474,17 @@ class RadioControlTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(owner.packets, [["v2", "1", "get"], ["v2", "2", "fpga_program"]])
         self.assertIn("Transition accepted", result.stdout)
-        self.assertIn("SIMULATED RF24 FPGA_PROGRAMMING", result.stdout)
+        self.assert_status(result.stdout, "FPGA_PROGRAMMING")
         self.assertNotIn("uncertain", result.stderr)
 
     def test_fpga_program_rejection_displays_busy_radio_state(self):
-        for code, state in (("RX_RUNNING", "RX"), ("TX_RUNNING", "TX"),
-                            ("TRANSITION", "FPGA_PROGRAMMING"), ("HARDWARE", "IDLE"),
-                            ("FIRMWARE_FILE", "IDLE")):
+        for code, state, message in (
+            ("RX_RUNNING", "RX", "Stop receive before changing settings"),
+            ("TX_RUNNING", "TX", "Stop transmit before changing settings"),
+            ("TRANSITION", "FPGA_PROGRAMMING", "A change is already in progress"),
+            ("HARDWARE", "IDLE", "Hardware operation failed; check backend log"),
+            ("FIRMWARE_FILE", "IDLE", "FPGA firmware file unavailable"),
+        ):
             with self.subTest(code=code):
                 def handler(number, packet):
                     if packet.decode().split()[2] == "fpga_program":
@@ -401,7 +495,8 @@ class RadioControlTests(unittest.TestCase):
                 result = self.once("fpga program")
                 self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertIn(f"Command rejected: {code}", result.stderr)
-                self.assertIn(f"SIMULATED RF24 {state}", result.stdout)
+                self.assertIn(f"SIMULATED | RF24 | ERROR: {message}", result.stdout)
+                self.assert_compact_sections(result.stdout)
                 self.assertEqual([packet[2] for packet in owner.packets], ["get", "fpga_program"])
                 owner.close()
                 self.path.unlink()
@@ -434,8 +529,8 @@ class RadioControlTests(unittest.TestCase):
                                 text=True, timeout=3)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([packet[2] for packet in owner.packets], ["get", "fpga_program", "get"])
-        self.assertIn("SIMULATED RF24 FPGA_PROGRAMMING", result.stdout)
-        self.assertIn("SIMULATED RF24 IDLE", result.stdout)
+        self.assert_status(result.stdout, "FPGA_PROGRAMMING")
+        self.assert_status(result.stdout, "IDLE")
 
     def test_one_shot_fpga_resets_use_exact_packets_and_accept_transition(self):
         for command, wire in (("fpga soft reset", "fpga_soft_reset"),
@@ -452,7 +547,7 @@ class RadioControlTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(owner.packets, [["v2", "1", "get"], ["v2", "2", wire]])
                 self.assertIn("Transition accepted", result.stdout)
-                self.assertIn("SIMULATED RF24 FPGA_RESETTING", result.stdout)
+                self.assert_status(result.stdout, "FPGA_RESETTING")
                 owner.close()
                 self.path.unlink()
 
@@ -491,8 +586,8 @@ class RadioControlTests(unittest.TestCase):
                                         text=True, timeout=3)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual([packet[2] for packet in owner.packets], ["get", wire, "get"])
-                self.assertIn("SIMULATED RF24 FPGA_RESETTING", result.stdout)
-                self.assertIn(f"SIMULATED RF24 {completed}", result.stdout)
+                self.assert_status(result.stdout, "FPGA_RESETTING")
+                self.assert_status(result.stdout, completed)
                 owner.close()
                 self.path.unlink()
 
@@ -508,7 +603,7 @@ class RadioControlTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("Command rejected: FPGA_REQUIRED", result.stderr)
         self.assertIn("Run fpga program", result.stderr)
-        self.assertIn("SIMULATED RF24 FPGA_NEEDS_PROGRAM", result.stdout)
+        self.assert_status(result.stdout, "FPGA_NEEDS_PROGRAM")
         self.assertEqual([packet[2] for packet in owner.packets], ["get", "start"])
 
     def test_tx_configuration_commands_use_exact_v2_fields(self):
@@ -527,18 +622,28 @@ class RadioControlTests(unittest.TestCase):
                 result = self.once(command)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(owner.packets, [["v2", "1", "get"], ["v2", "2", *expected]])
-                self.assertIn("TX: requested 430.225000 MHz", result.stdout)
-                self.assertIn("power requested -12 dBm, estimate -11 dBm", result.stdout)
-                self.assertIn("deviation +/-2500 Hz", result.stdout)
+                self.assert_field(result.stdout, "Frequency", "430.225000 MHz")
+                self.assert_field(result.stdout, "Power", "-12 dBm")
+                self.assert_compact_sections(result.stdout)
                 owner.close()
                 self.path.unlink()
 
-    def test_unavailable_tx_power_is_not_shown_as_integer_sentinel(self):
-        self.owner(lambda number, packet: reply(packet, version=2, tx_actual_power=-2147483648))
-        result = self.once("status")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("power requested -12 dBm, estimate unavailable", result.stdout)
-        self.assertNotIn("-2147483648", result.stdout)
+    def test_unavailable_tx_power_and_frequency_do_not_add_diagnostic_fields(self):
+        for state in ("RX", "TX"):
+            with self.subTest(state=state):
+                owner = self.owner(lambda number, packet: reply(packet, version=2, state=state,
+                                                                  tx_actual=0,
+                                                                  tx_actual_power=-2147483648))
+                result = self.once("status")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assert_field(result.stdout, "Power", "-12 dBm")
+                self.assert_field(result.stdout, "Frequency", "430.225000 MHz")
+                self.assert_compact_sections(result.stdout)
+                self.assertNotIn("unavailable", result.stdout)
+                self.assertNotIn("-2147483648", result.stdout)
+                self.assertNotIn("0.000000 MHz", result.stdout)
+                owner.close()
+                self.path.unlink()
 
     def test_interactive_tx_acknowledges_transition_without_auto_poll(self):
         def handler(number, packet):
@@ -557,9 +662,10 @@ class RadioControlTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([packet[2] for packet in owner.packets], ["get", "tx_start", "get", "tx_stop"])
         self.assertEqual(result.stdout.count("Transition accepted"), 2)
-        self.assertIn("SIMULATED RF24 TX_STARTING", result.stdout)
-        self.assertIn("SIMULATED RF24 TX_STOPPING", result.stdout)
+        self.assert_status(result.stdout, "TX_STARTING")
+        self.assert_status(result.stdout, "TX_STOPPING")
         self.assertIn("q disconnects and unkeys", result.stdout)
+        self.assertIn("status", result.stdout)
 
     def test_uncertain_tx_start_is_not_retried(self):
         def handler(number, packet):

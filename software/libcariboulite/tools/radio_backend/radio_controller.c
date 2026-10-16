@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <getopt.h>
 #include <inttypes.h>
-#include <limits.h>
 #include <math.h>
 #include <poll.h>
 #include <signal.h>
@@ -386,43 +385,80 @@ failure:
     return -1;
 }
 
+static const char *radio_status(const char *state)
+{
+    if (!strcmp(state, "RX") || !strcmp(state, "RX_STARTING")) return "RX";
+    if (!strcmp(state, "TX") || !strcmp(state, "TX_STARTING") ||
+        !strcmp(state, "TX_STOPPING")) return "TX";
+    return "IDLE";
+}
+
+static const char *radio_error(const control_reply_t *state)
+{
+    if (!state->ok) {
+        static const struct { const char *code, *message; } errors[] = {
+            {"BUSY", "Another controller is connected"},
+            {"PROTOCOL", "Invalid control packet"},
+            {"RX_RUNNING", "Stop receive before changing settings"},
+            {"TX_RUNNING", "Stop transmit before changing settings"},
+            {"INVALID", "Invalid command values"},
+            {"FREQ_RANGE", "Frequency is outside the supported range"},
+            {"HARDWARE", "Hardware operation failed; check backend log"},
+            {"FAULT", "Backend fault; check backend log"},
+            {"WBFM_NOISE", "Noise squelch is not available in WBFM"},
+            {"TRANSITION", "A change is already in progress"},
+            {"LOOPBACK", "Disable digital loopback before transmitting"},
+            {"TX_FAILED", "Transmit failed; check backend log"},
+            {"FIRMWARE_FILE", "FPGA firmware file unavailable"},
+            {"FPGA_REQUIRED", "FPGA needs programming"},
+        };
+        for (size_t i = 0; i < sizeof(errors) / sizeof(errors[0]); ++i)
+            if (!strcmp(state->code, errors[i].code)) return errors[i].message;
+        return "Command rejected";
+    }
+    if (!strcmp(state->state, "FAULT")) return "Backend fault; check backend log";
+    if (!strcmp(state->state, "FPGA_NEEDS_PROGRAM")) return "FPGA needs programming";
+    return NULL;
+}
+
 static void print_state(const controller_t *controller)
 {
     if (!controller->state_valid) return;
     const control_reply_t *state = &controller->state;
-    char actual[64];
-    if (state->actual_frequency_hz > 0)
-        snprintf(actual, sizeof(actual), "%.6f MHz", state->actual_frequency_hz / 1e6);
-    else
-        strcpy(actual, "unavailable");
-    printf("%s %s %s | requested %.6f MHz, actual %s | %s %.0f MS/s\n"
-           "  squelch: noise %s, carrier %s, open %.3f, close %.3f | config=%" PRIu64
-           " pipeline=%" PRIu64 "\n",
-           state->simulated ? "SIMULATED" : "LIVE", state->channel, state->state,
-           state->requested_frequency_hz / 1e6, actual,
-           state->wbfm ? "WBFM mono" : "NBFM", state->sample_rate_hz / 1e6,
-           state->noise_enabled ? "on" : "off", state->carrier_enabled ? "on" : "off",
-           (double)state->noise_open_rms, (double)state->noise_close_rms,
-           state->config_generation, state->pipeline_generation);
+    const char *error = radio_error(state);
+
+    printf("\n  %s | %s | %s%s\n",
+           state->simulated ? "SIMULATED" : "LIVE", state->channel,
+           error ? "ERROR: " : "", error ? error : radio_status(state->state));
+    puts("  ------------------------------------------------------------\n"
+         "  Receive");
+    printf("    %-16s %.6f MHz\n"
+           "    %-16s %s\n"
+           "    %-16s %.0f MS/s\n"
+           "    %-16s %s\n"
+           "    %-16s %s\n",
+           "Frequency", state->requested_frequency_hz / 1e6,
+           "Mode", state->wbfm ? "WBFM (mono)" : "NBFM",
+           "Sample rate", state->sample_rate_hz / 1e6,
+           "Noise squelch", state->wbfm ? "Not Applicable" :
+                             state->noise_enabled ? "On" : "Off",
+           "Carrier squelch", state->carrier_enabled ? "On" : "Off");
+
     if (state->protocol_version == 2) {
-        char tx_actual[64];
-        char tx_power[40];
-        if (state->tx_actual_frequency_hz > 0)
-            snprintf(tx_actual, sizeof(tx_actual), "%.6f MHz", state->tx_actual_frequency_hz / 1e6);
-        else strcpy(tx_actual, "unavailable");
-        if (state->tx_actual_power_dbm != INT_MIN)
-            snprintf(tx_power, sizeof(tx_power), "%d dBm", state->tx_actual_power_dbm);
-        else strcpy(tx_power, "unavailable");
-        printf("  TX: requested %.6f MHz, actual %s | %.0f MS/s | power requested %d dBm, estimate %s\n"
-               "      source %s, tone %.1f Hz amplitude %.3f, deviation +/-%.0f Hz | pipeline=%" PRIu64 "\n"
-               "      requested=%s, resume RX=%s, transition=%s\n",
-               state->tx_requested_frequency_hz / 1e6, tx_actual, state->tx_sample_rate_hz / 1e6,
-               state->tx_requested_power_dbm, tx_power,
-               state->tx_tone_mode ? "tone" : "mic", (double)state->tx_tone_hz,
-               (double)state->tx_tone_amp, (double)state->tx_deviation_hz,
-               state->tx_pipeline_generation, state->tx_requested ? "yes" : "no",
-               state->rx_resume ? "yes" : "no", state->transition ? "yes" : "no");
+        puts("\n  Transmit");
+        printf("    %-16s %.6f MHz\n"
+               "    %-16s %d dBm\n"
+               "    %-16s NBFM\n"
+               "    %-16s %.0f MS/s\n"
+               "    %-16s %s\n",
+               "Frequency", state->tx_requested_frequency_hz / 1e6,
+               "Power", state->tx_requested_power_dbm,
+               "Mode", "Sample rate", state->tx_sample_rate_hz / 1e6,
+               "Audio source", state->tx_tone_mode ? "Tone" : "Microphone");
+        if (state->transition)
+            puts("\n  Change in progress; type status to refresh.");
     }
+    putchar('\n');
     fflush(stdout);
 }
 
@@ -524,7 +560,9 @@ int main(int argc, char **argv)
     setvbuf(stdin, NULL, _IONBF, 0);
     bool terminal = isatty(STDIN_FILENO);
     if (!once) {
-        puts("CaribouLite radio controller. Type help for commands; q disconnects and unkeys any owned TX.");
+        puts("CaribouLite radio controller\n"
+             "Type help for commands; status refreshes the display.\n"
+             "q disconnects and unkeys any owned TX.");
     }
     int startup = refresh_state(&controller);
     if (once) {

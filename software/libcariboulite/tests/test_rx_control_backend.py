@@ -183,8 +183,8 @@ class RxControlBackendTests(unittest.TestCase):
             capture_output=True, text=True, timeout=3, env=ENVIRONMENT)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
-        self.assertIn("SIMULATED RF24 RX |", result.stdout)
-        self.assertIn("SIMULATED RF24 IDLE |", result.stdout)
+        self.assertIn("SIMULATED | RF24 | RX", result.stdout)
+        self.assertIn("SIMULATED | RF24 | IDLE", result.stdout)
         latest = self.snapshot_matching(status, lambda snapshot:
             snapshot["control"]["state"] == "IDLE" and
             snapshot["control"]["pipeline_generation"] >

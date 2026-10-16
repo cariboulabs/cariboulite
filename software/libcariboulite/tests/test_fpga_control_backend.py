@@ -144,7 +144,7 @@ class FpgaControlBackendTests(unittest.TestCase):
             timeout=3, env=rx_helpers.ENVIRONMENT)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Transition accepted", result.stdout)
-        self.assertIn("SIMULATED RF24 FPGA_PROGRAMMING", result.stdout)
+        self.assertIn("SIMULATED | RF24 | IDLE", result.stdout)
         completed = self.snapshot_matching(status, lambda snapshot:
             snapshot["control"]["state"] == "IDLE" and
             snapshot["control"]["config_generation"] > before["control"]["config_generation"] + 1)
@@ -253,7 +253,7 @@ class FpgaControlBackendTests(unittest.TestCase):
                     timeout=3, env=rx_helpers.ENVIRONMENT)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("Transition accepted", result.stdout)
-                self.assertIn("SIMULATED RF24 FPGA_RESETTING", result.stdout)
+                self.assertIn("SIMULATED | RF24 | IDLE", result.stdout)
                 completed = self.snapshot_matching(status, lambda s:
                     s["control"]["state"] == completed_state and
                     s["control"]["config_generation"] > before["control"]["config_generation"] + 1)

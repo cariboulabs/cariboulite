@@ -180,8 +180,44 @@ the backend stops reception and releases its hardware and sockets.
 ## Use the controller
 
 Type a command and press Enter. The controller shows the backend's accepted
-settings after each command, including requested and actual frequency,
-effective squelch settings, and configuration and pipeline generations.
+settings after each command in separate Receive and Transmit sections. The
+header identifies live or simulated data, the radio channel, and the current
+activity. For example, a live WBFM receiver with stopped TX displays:
+
+```text
+  LIVE | RF24 | RX
+  ------------------------------------------------------------
+  Receive
+    Frequency        96.200000 MHz
+    Mode             WBFM (mono)
+    Sample rate      1 MS/s
+    Noise squelch    Not Applicable
+    Carrier squelch  Off
+
+  Transmit
+    Frequency        430.100000 MHz
+    Power            -12 dBm
+    Mode             NBFM
+    Sample rate      1 MS/s
+    Audio source     Microphone
+```
+
+Frequency and power show the accepted settings. The header groups receive and
+transmit activity as `RX` or `TX`, including their start/stop operations;
+`IDLE` covers an idle radio or FPGA operation. While an operation is unfinished,
+the footer reads `Change in progress; type status to refresh.` The display
+updates after commands; use `status` to refresh it.
+
+`ERROR: <message>` reports a rejected command or backend fault and does not imply
+that transmission has stopped. A successful `status` clears a command rejection;
+a persistent fault continues to show an error. Detailed fault information may
+require the backend log. WBFM has no noise detector, so its noise squelch reads
+`Not Applicable`.
+
+The compact display omits applied tuning, TX power estimates, squelch thresholds,
+tone parameters, deviation and generation counters. These remain available in
+the passive monitor's status data. Older protocol-v1 backends provide receive
+information only, so no Transmit section is shown.
 
 | Command | Meaning |
 | --- | --- |
