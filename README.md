@@ -32,11 +32,11 @@ with CW listening, then AM and SSB; these modes remain planned. See the
 [development overview](docs/wiki/Home.md), [FM plan](docs/demodulator-architecture-research.md)
 and [interface reference](docs/audio-dsp-interfaces.md).
 
-The standalone backend/controller/monitor and hardware-paced TX are on
-`dev-passive-monitor` (TX merged at `37d2414`; installer updated at `953c1f0`).
+The standalone backend/controller/monitor and hardware-paced TX were merged
+from `dev-passive-monitor` into `main` at `069fab3` on 16 October 2026.
 This TX implementation has been tested on the Pi Zero
 2 W and Pi 4; see the [Pi 4 validation record](docs/pi4-tx-validation-2026-10-15.md).
-The clone command below selects that branch and its pinned IIR submodule. These
+The clone command below selects `main` and its pinned IIR submodule. These
 recorded transport and listening checks do not establish calibrated RF performance
 or support for every Pi/OS combination. Start with the [documentation index](docs/README.md)
 for current controls, DSP interfaces and the [hardware-free checks](docs/testing.md).
@@ -54,7 +54,7 @@ Use the following steps to install the CaribouLite on your choice of RPI board
 ```
 mkdir -p ~/projects
 cd ~/projects
-git clone --branch dev-passive-monitor --recurse-submodules https://github.com/Habraken/cariboulite.git
+git clone --branch main --recurse-submodules https://github.com/Habraken/cariboulite.git
 cd cariboulite
 ```
 4. Use the following setup command (**note: don't `sudo` it**):

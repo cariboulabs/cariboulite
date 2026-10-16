@@ -14,9 +14,10 @@ mono WBFM RX are implemented. CW listening, AM and SSB are next in the
 implemented modes. The completed FM extraction preserves signal behavior,
 legacy APIs, streaming guards and mode-specific squelch capabilities.
 
-Current checkout: `dev-passive-monitor` at `953c1f0`. It includes the standalone
-radio backend, local controller and passive monitor, live RX controls, half-duplex
-NBFM TX, FPGA controls and hardware-paced TX merged at `37d2414`. The
+The `dev-passive-monitor` branch was merged into `main` at `069fab3` on
+2026-10-16. This includes the standalone radio backend, local controller and
+passive monitor, live RX controls, half-duplex NBFM TX, FPGA controls and
+hardware-paced TX. The
 [Pi Zero 2 W](docs/pi-zero-tx-queue-test-2026-10-15.md) and
 [Pi 4](docs/pi4-tx-validation-2026-10-15.md) reports record the completed transport
 and listening checks. Other receive modes, stereo/RDS, DAB+, configurable CTCSS,

@@ -1,7 +1,7 @@
 # Documentation
 
-Reviewed against `dev-passive-monitor` at `953c1f0` on 2026-10-16.
-Current guides describe this branch; dated investigations and measurements
+Current guides describe `main`, including the `dev-passive-monitor` merge at
+`069fab3` on 2026-10-16. Dated investigations and measurements
 retain their original revision and test conditions. See the
 [current audit](documentation-audit-2026-10-16.md) for coverage and limitations.
 
