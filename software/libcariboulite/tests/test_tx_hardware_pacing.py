@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='tx-hardware-pacing-') as directory:
         *['-I'+str(path) for path in (src, src/'at86rf215', src/'rffc507x')],
         str(Path(__file__).with_suffix('.c')),
         *[str(src/name) for name in (
-            'tx_pipeline.c', 'mod_worker.c', 'nbfm_mod.c', 'tone_source.c',
+            'radio_profile.c', 'tx_pipeline.c', 'mod_worker.c', 'nbfm_mod.c', 'tone_source.c',
             'pipeline_transport.c', 'pipeline_runtime.c', 'alsa_source.c', 'tx_audio_buffer.c')],
         *['-Wl,--wrap='+name for name in wraps],
         '-L'+str(root/'build'), '-Wl,-rpath,'+str(root/'build'),

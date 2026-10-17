@@ -306,6 +306,11 @@ unchanged. These readbacks confirm the programmed settings, not a measured RF
 spectrum or achieved deviation. RX retains its 160 kHz NBFM and 250 kHz WBFM
 analog profiles. See [TX filter setup and checks](radio-control.md#half-duplex-nbfm-transmission).
 
+The backend additionally publishes desired filter/rate profiles under
+`config.profile` and decoded register observations under `config.observed`.
+Unavailable observations stay `null`; existing monitor fields retain their
+meaning. See [shared application configuration and status](shared-radio-configuration.md).
+
 The compact RX view contains these 16 rows, in this order:
 
 | Block | Registers |

@@ -8,6 +8,7 @@
 #include "nbfm_mod.h"
 #include "pipeline_runtime.h"
 #include "noise_squelch.h"
+#include "radio_profile.h"
 #include "modem_snapshot.h"
 #include "status_publisher.h"
 #include "control_server.h"
@@ -44,6 +45,11 @@ typedef struct {
     int actual_tx_power;
     const char *tx_error;
 } options_t;
+
+static cariboulite_channel_en options_channel(const options_t *o)
+{
+    return !strcmp(o->channel, "RF09") ? cariboulite_channel_s1g : cariboulite_channel_hif;
+}
 
 static volatile sig_atomic_t stop_requested;
 
@@ -127,7 +133,7 @@ static int number(const char *text, double *result, double low, double high)
     char *end;
     errno = 0;
     double value = strtod(text, &end);
-    if (errno || end == text || *end || !isfinite(value) || value < low || value > high)
+    if (errno || end == text || *end || !radio_profile_finite(value) || value < low || value > high)
         return -1;
     *result = value;
     return 0;
@@ -200,6 +206,7 @@ static int parse_options(int argc, char **argv, options_t *o)
     };
     int key;
     double value;
+    radio_profile_t profile;
     while ((key = getopt_long(argc, argv, "h", long_options, NULL)) != -1) {
         switch (key) {
         case CHANNEL:
@@ -210,7 +217,8 @@ static int parse_options(int argc, char **argv, options_t *o)
             break;
         case RATE:
             if (number(optarg, &value, 1e6, 4e6)
-                || (value != 1e6 && value != 2e6 && value != 4e6)) return -1;
+                || value != (unsigned)value
+                || radio_profile_rx(o->rx.mode, (unsigned)value, &profile)) return -1;
             o->rx.fs_rf = (float)value; break;
         case MODE:
             if (!strcmp(optarg, "nbfm")) o->rx.mode = AUDIO_DEMOD_NBFM;
@@ -244,7 +252,8 @@ static int parse_options(int argc, char **argv, options_t *o)
             break;
         case TX_RATE:
             if (number(optarg, &value, 1e6, 4e6)
-                || (value != 1e6 && value != 2e6 && value != 4e6)) return -1;
+                || value != (unsigned)value
+                || radio_profile_tx((unsigned)value, &profile)) return -1;
             o->tx.rf_fs = (unsigned)value; break;
         case TX_SOURCE:
             if (strcmp(optarg, "mic") && strcmp(optarg, "tone")) return -1;
@@ -282,14 +291,17 @@ static int parse_options(int argc, char **argv, options_t *o)
         o->rx.noise_squelch_close_rms, &levels)) return -1;
     noise_squelch_unpack_levels(levels, &o->rx.noise_squelch_open_rms,
                                &o->rx.noise_squelch_close_rms);
-    if (!strcmp(o->channel, "RF09")
-        && !((o->frequency >= CARIBOULITE_S1G_MIN1 && o->frequency <= CARIBOULITE_S1G_MAX1)
-        || (o->frequency >= CARIBOULITE_S1G_MIN2 && o->frequency <= CARIBOULITE_S1G_MAX2)))
+    if (!radio_profile_frequency_valid(options_channel(o), system_type_cariboulite_full,
+                                       o->frequency) ||
+        !radio_profile_frequency_valid(options_channel(o), system_type_cariboulite_full,
+                                       o->tx.freq_hz) ||
+        radio_profile_rx(o->rx.mode, (unsigned)o->rx.fs_rf, &profile) ||
+        radio_profile_tx(o->tx.rf_fs, &profile))
         return -1;
     o->rx.freq_hz = o->frequency;
     o->rx.pcm_dev = o->playback;
     o->tx.mic_dev = o->tx.tone_mode ? NULL : o->microphone;
-    if (o->tx.tx_power_dbm < (!strcmp(o->channel, "RF09") ? -14 : -12)) return -1;
+    if (!radio_profile_tx_power_valid(options_channel(o), o->tx.tx_power_dbm)) return -1;
     if (o->dry_run) {
         o->actual_rx_frequency = o->frequency;
         o->actual_tx_frequency = o->tx.freq_hz;
@@ -347,15 +359,8 @@ static bool backend_lifecycle_fpga(unsigned action)
  * uses float and includes that endpoint, so cannot validate this command. */
 static bool control_frequency_valid(const options_t *o, const sys_st *sys, double hz)
 {
-    if (!isfinite(hz)) return false;
-    if (!strcmp(o->channel, "RF09"))
-        return (hz >= CARIBOULITE_S1G_MIN1 && hz <= CARIBOULITE_S1G_MAX1)
-            || (hz >= CARIBOULITE_S1G_MIN2 && hz <= CARIBOULITE_S1G_MAX2);
-    if (o->dry_run || sys->board_info.numeric_product_id == system_type_cariboulite_full)
-        return hz >= CARIBOULITE_6G_MIN && hz < CARIBOULITE_6G_MAX;
-    if (sys->board_info.numeric_product_id == system_type_cariboulite_ism)
-        return hz >= CARIBOULITE_2G4_MIN && hz <= CARIBOULITE_2G4_MAX;
-    return false;
+    return radio_profile_frequency_valid(options_channel(o),
+        o->dry_run ? system_type_cariboulite_full : sys->board_info.numeric_product_id, hz);
 }
 
 static int backend_read_modem_state(backend_control_t *c, uint8_t *state)
@@ -708,13 +713,8 @@ static int backend_tx_start(backend_control_t *c, bool recreate, atomic_bool *re
     if (failure_rc != 0) goto fail;
     /* The power API suppresses low-level SPI errors. Confirm PAC itself and
      * compare its code with the same board-specific mapping as the driver. */
-    float x = o->tx.tx_power_dbm;
-    float model = !strcmp(o->channel, "RF09")
-        ? .001502f*x*x*x + .020549f*x*x + .991045f*x + 13.727758f
-        : .000710f*x*x*x*x + .010521f*x*x*x + .015169f*x*x + .914333f*x + 12.254084f;
-    int expected = (int)roundf(model);
-    if (expected < 0) expected = 0;
-    if (expected > 31) expected = 31;
+    int expected = radio_profile_tx_power_code(options_channel(o), o->tx.tx_power_dbm);
+    if (expected < 0) { failure = "TX_POWER"; failure_rc = -1; goto fail; }
     HW_LOCK();
     int power_rc = at86rf215_read_buffer(&c->sys->modem,
         !strcmp(o->channel, "RF09") ? REG_RF09_PAC : REG_RF24_PAC, &pac, 1);
@@ -722,13 +722,13 @@ static int backend_tx_start(backend_control_t *c, bool recreate, atomic_bool *re
     failure = "TX_POWER";
     failure_rc = power_rc;
     if (power_rc || (pac & 31) != expected) goto fail;
-    x = pac & 31;
+    float x = pac & 31;
     o->actual_tx_power = (int)(!strcmp(o->channel, "RF09")
         ? -.000546f*x*x*x + .014352f*x*x + .902754f*x - 13.954753f
         : .000031f*x*x*x*x - .002344f*x*x*x + .040478f*x*x + .712209f*x - 11.168502f);
     o->actual_tx_frequency = c->radio->actual_rf_frequency;
     failure = "TX_FREQUENCY";
-    if (!isfinite(o->actual_tx_frequency) || o->actual_tx_frequency <= 0) goto fail;
+    if (!radio_profile_finite(o->actual_tx_frequency) || o->actual_tx_frequency <= 0) goto fail;
     failure = "TX_CANCELLED";
     if (atomic_load_explicit(&c->tx_pipeline->tx_ctrl.abort_requested, memory_order_acquire)) goto fail;
     failure = "TX_PIPELINE_START";
@@ -963,6 +963,7 @@ static void backend_control_command(void *opaque, const control_request_t *reque
     options_t *o = c->options;
     const char *code = "OK";
     bool changed = false;
+    radio_profile_t profile;
     const bool both = request->command == CONTROL_BOTH_FREQUENCY ||
         request->command == CONTROL_BOTH_MODE || request->command == CONTROL_BOTH_SAMPLE_RATE;
     if (request->command == CONTROL_INVALID) code = "PROTOCOL";
@@ -1060,14 +1061,15 @@ static void backend_control_command(void *opaque, const control_request_t *reque
     case CONTROL_BOTH_MODE: {
         /* TX supports NBFM only; WBFM changes just the saved RX mode. */
         audio_demod_mode_t mode = request->wbfm ? AUDIO_DEMOD_WBFM : AUDIO_DEMOD_NBFM;
-        if (o->rx_requested) code = "RX_RUNNING";
+        if (radio_profile_rx(mode, (unsigned)o->rx.fs_rf, &profile)) code = "INVALID";
+        else if (o->rx_requested) code = "RX_RUNNING";
         else if (mode != o->rx.mode) { o->rx.mode = mode; changed = true; }
         break;
     }
     case CONTROL_SAMPLE_RATE:
     case CONTROL_BOTH_SAMPLE_RATE:
-        if (request->sample_rate_hz != 1000000 && request->sample_rate_hz != 2000000
-            && request->sample_rate_hz != 4000000) code = "INVALID";
+        if (radio_profile_rx(o->rx.mode, request->sample_rate_hz, &profile) ||
+            (both && radio_profile_tx(request->sample_rate_hz, &profile))) code = "INVALID";
         else if (o->rx_requested) code = "RX_RUNNING";
         else {
             if (o->rx.fs_rf != request->sample_rate_hz) {
@@ -1146,16 +1148,14 @@ static void backend_control_command(void *opaque, const control_request_t *reque
         }
         break;
     case CONTROL_TX_POWER:
-        if (request->tx_power_dbm < (!strcmp(o->channel, "RF09") ? -14 : -12)
-            || request->tx_power_dbm > 14) code = "INVALID";
+        if (!radio_profile_tx_power_valid(options_channel(o), request->tx_power_dbm)) code = "INVALID";
         else if (o->tx.tx_power_dbm != request->tx_power_dbm) {
             o->tx.tx_power_dbm = request->tx_power_dbm;
             c->tx_configuration_dirty = true; changed = true;
         }
         break;
     case CONTROL_TX_SAMPLE_RATE:
-        if (request->tx_sample_rate_hz != 1000000 && request->tx_sample_rate_hz != 2000000
-            && request->tx_sample_rate_hz != 4000000) code = "INVALID";
+        if (radio_profile_tx(request->tx_sample_rate_hz, &profile)) code = "INVALID";
         else if (o->tx.rf_fs != request->tx_sample_rate_hz) {
             o->tx.rf_fs = request->tx_sample_rate_hz;
             c->tx_configuration_dirty = true; changed = true;
@@ -1169,8 +1169,8 @@ static void backend_control_command(void *opaque, const control_request_t *reque
         }
         break;
     case CONTROL_TX_TONE:
-        if (!isfinite(request->tx_tone_hz) || request->tx_tone_hz <= 0 || request->tx_tone_hz > 3000
-            || !isfinite(request->tx_tone_amp) || request->tx_tone_amp <= 0 || request->tx_tone_amp > 1)
+        if (!radio_profile_finite(request->tx_tone_hz) || request->tx_tone_hz <= 0 || request->tx_tone_hz > 3000
+            || !radio_profile_finite(request->tx_tone_amp) || request->tx_tone_amp <= 0 || request->tx_tone_amp > 1)
             code = "INVALID";
         else if (o->tx.tone_hz != request->tx_tone_hz || o->tx.tone_amp != request->tx_tone_amp) {
             o->tx.tone_hz = request->tx_tone_hz; o->tx.tone_amp = request->tx_tone_amp;
@@ -1353,6 +1353,52 @@ static int tx_smi_timing_json(const tx_pipeline_stats_t *stats, char *out, size_
     return result < 0 || (size_t)result >= capacity ? -1 : result;
 }
 
+static void profile_observation_number(char *out, size_t capacity, double value)
+{
+    if (radio_profile_finite(value) && value > 0) snprintf(out, capacity, "%.3f", value);
+    else snprintf(out, capacity, "null");
+}
+
+/* Desired profiles describe the next stream start. Observations describe only
+ * the cached register sample, including when another direction or idle setup
+ * left a different profile in the modem. Never fill missing bytes from intent. */
+static int profile_status_json(const options_t *o, const modem_snapshot *modem,
+    char *desired, size_t desired_capacity, char *observed, size_t observed_capacity)
+{
+    radio_profile_t rx, tx;
+    if (radio_profile_rx(o->rx.mode, (unsigned)o->rx.fs_rf, &rx) ||
+        radio_profile_tx(o->tx.rf_fs, &tx)) return -1;
+    int desired_size = snprintf(desired, desired_capacity,
+        "{\"rx\":{\"sample_rate_hz\":%u,\"analog_bandwidth_hz\":%u,\"digital_cutoff_hz\":%u},"
+        "\"tx\":{\"sample_rate_hz\":%u,\"analog_bandwidth_hz\":%u,\"digital_cutoff_hz\":%u,"
+        "\"sample_gap\":%u}}",
+        rx.sample_rate_hz, rx.analog_bandwidth_hz, rx.digital_cutoff_hz,
+        tx.sample_rate_hz, tx.analog_bandwidth_hz, tx.digital_cutoff_hz, tx.tx_sample_gap);
+    if (desired_size < 0 || (size_t)desired_size >= desired_capacity) return -1;
+
+    /* Indices match the shared modem_snapshot_radio_names register schema. */
+    const bool channel_valid = modem &&
+        (modem->channel == at86rf215_rf_channel_900mhz ||
+         modem->channel == at86rf215_rf_channel_2400mhz);
+    const int rxbwc = channel_valid ? modem->radio[10] : -1;
+    const int rxdfe = channel_valid ? modem->radio[11] : -1;
+    const int txcutc = channel_valid ? modem->radio[19] : -1;
+    const int txdfe = channel_valid ? modem->radio[20] : -1;
+    char rx_rate[32], rx_analog[32], rx_digital[32];
+    char tx_rate[32], tx_analog[32], tx_digital[32];
+    profile_observation_number(rx_rate, sizeof(rx_rate), radio_profile_sample_rate_hz(rxdfe));
+    profile_observation_number(rx_analog, sizeof(rx_analog), radio_profile_rx_bandwidth_hz(rxbwc));
+    profile_observation_number(rx_digital, sizeof(rx_digital), radio_profile_digital_cutoff_hz(rxdfe));
+    profile_observation_number(tx_rate, sizeof(tx_rate), radio_profile_sample_rate_hz(txdfe));
+    profile_observation_number(tx_analog, sizeof(tx_analog), radio_profile_tx_bandwidth_hz(txcutc));
+    profile_observation_number(tx_digital, sizeof(tx_digital), radio_profile_digital_cutoff_hz(txdfe));
+    int observed_size = snprintf(observed, observed_capacity,
+        "{\"rx\":{\"sample_rate_hz\":%s,\"analog_bandwidth_hz\":%s,\"digital_cutoff_hz\":%s},"
+        "\"tx\":{\"sample_rate_hz\":%s,\"analog_bandwidth_hz\":%s,\"digital_cutoff_hz\":%s}}",
+        rx_rate, rx_analog, rx_digital, tx_rate, tx_analog, tx_digital);
+    return observed_size < 0 || (size_t)observed_size >= observed_capacity ? -1 : 0;
+}
+
 static int make_snapshot(char *out, size_t capacity, const options_t *o,
     const char *session, uint64_t sequence, const char *state, rx_pipeline_t *pipeline,
     const rx_pipeline_stats_t *stats,
@@ -1365,6 +1411,9 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
     char tx_json[9000], tx_queue[600] = "null", tx_writer[700] = "null";
     char tx_capture[700] = "{\"valid\":false}", producer_worker[1200], writer_worker[1200];
     char tx_driver[1200], tx_audio_buffer[2000], capture_worker[1200], tx_smi_timing[180];
+    char desired_profile[400], observed_profile[400];
+    if (profile_status_json(o, modem, desired_profile, sizeof(desired_profile),
+                            observed_profile, sizeof(observed_profile)) != 0) return -1;
     rx_worker_status_t producer = {0}, writer = {0}, capture = {0};
     if (txstats) {
         producer = (rx_worker_status_t){.created = txstats->producer_worker.created,
@@ -1453,7 +1502,9 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
             r->calls, r->samples, r->short_reads, r->zero_reads, r->errors, r->last_error);
     }
     const bool noise_enabled = o->rx.mode == AUDIO_DEMOD_NBFM && !o->rx.noise_squelch_disabled;
-    const double bandwidth = o->rx.mode == AUDIO_DEMOD_NBFM ? 160000 : 250000;
+    radio_profile_t rx_profile;
+    if (radio_profile_rx(o->rx.mode, (unsigned)o->rx.fs_rf, &rx_profile)) return -1;
+    const double bandwidth = rx_profile.analog_bandwidth_hz;
     const double actual_freq = o->actual_rx_frequency ? o->actual_rx_frequency
         : radio ? radio->actual_rf_frequency : o->frequency;
     char tx_actual_freq[64] = "null", tx_actual_power[48] = "null";
@@ -1473,7 +1524,8 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         "\"playback\":%s,\"pcm_gain\":%.3f,\"deemphasis_us\":%.3f,\"rx_deviation_hz\":%.3f,"
         "\"tx_frequency_hz\":%.3f,\"tx_actual_frequency_hz\":%s,\"tx_power_dbm\":%d,"
         "\"tx_actual_power_dbm\":%s,\"tx_sample_rate_hz\":%u,\"tx_source\":\"%s\","
-        "\"tx_tone_hz\":%.3f,\"tx_tone_amp\":%.3f,\"tx_deviation_hz\":%.3f},"
+        "\"tx_tone_hz\":%.3f,\"tx_tone_amp\":%.3f,\"tx_deviation_hz\":%.3f,"
+        "\"profile\":%s,\"observed\":%s},"
         "\"rx\":{\"running\":%s,\"queue\":%s,\"noise_enabled\":%s,\"carrier_enabled\":%s,"
         "\"gate_open\":%s,\"noise\":{\"valid\":%s,\"detector_open\":%s,\"rms\":%s,"
         "\"open_rms\":%.3f,\"close_rms\":%.3f},"
@@ -1497,6 +1549,7 @@ static int make_snapshot(char *out, size_t capacity, const options_t *o,
         o->tx.freq_hz, tx_actual_freq, o->tx.tx_power_dbm, tx_actual_power,
         o->tx.rf_fs, o->tx.tone_mode ? "tone" : "mic", (double)o->tx.tone_hz,
         (double)o->tx.tone_amp, (double)o->tx.f_dev_hz,
+        desired_profile, observed_profile,
         live && rx_pipeline_running(pipeline) ? "true" : "false", queue,
         noise_enabled ? "true" : "false", o->rx.carrier_squelch_enabled ? "true" : "false",
         live ? (rx_pipeline_squelch_open(pipeline) ? "true" : "false") : "null",

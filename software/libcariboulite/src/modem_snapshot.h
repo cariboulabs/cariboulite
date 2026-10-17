@@ -1,5 +1,5 @@
-#ifndef CARIBOULITE_BACKEND_MODEM_SNAPSHOT_H
-#define CARIBOULITE_BACKEND_MODEM_SNAPSHOT_H
+#ifndef CARIBOULITE_MODEM_SNAPSHOT_H
+#define CARIBOULITE_MODEM_SNAPSHOT_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -18,7 +18,7 @@ enum {
 };
 
 /* A negative register value is unavailable, never a fabricated zero byte.
- * The cache is owned by the backend status thread, not the RX worker.
+ * The cache is owned by the application control/status thread, not RX workers.
  */
 typedef struct {
     int16_t common[MODEM_SNAPSHOT_COMMON_COUNT];
@@ -44,7 +44,7 @@ void modem_snapshot_init(modem_snapshot *snapshot,
  * clear events/latches when read, and the library owns interrupt servicing.
  *
  * The caller must serialize access to this cache. hardware_mutex is the
- * backend's mutex shared with radio controls, and is held for one block at
+ * application's mutex shared with radio controls, and is held for one block at
  * a time; the driver additionally serializes SPI with its own device lock.
  * NULL is allowed only when the caller has no concurrent radio operations.
  * The values of a failed block are unavailable for this sample.

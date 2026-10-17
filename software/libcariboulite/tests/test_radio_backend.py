@@ -91,6 +91,10 @@ class RadioBackendTests(unittest.TestCase):
         self.assertEqual(snapshot["state"], "DRY_RUN")
         self.assertEqual(snapshot["channel"], channel)
         self.assertIsNone(snapshot["config"]["tx_bandwidth_hz"])
+        unavailable_profile = {"sample_rate_hz": None, "analog_bandwidth_hz": None,
+                               "digital_cutoff_hz": None}
+        self.assertEqual(snapshot["config"]["observed"], {
+            "rx": unavailable_profile, "tx": unavailable_profile})
         self.assertIs(snapshot["rx"]["running"], False)
         self.assertIsNone(snapshot["rx"]["queue"])
         self.assertIsNone(snapshot["rx"]["audio_queue"])
@@ -137,6 +141,11 @@ class RadioBackendTests(unittest.TestCase):
         self.assertEqual(snapshot["control"]["pipeline_generation"], 0)
         self.assertEqual(snapshot["config"]["rx_deviation_hz"], 2500)
         self.assertEqual(snapshot["config"]["tx_deviation_hz"], 2500)
+        self.assertEqual(snapshot["config"]["profile"], {
+            "rx": {"sample_rate_hz": 1000000, "analog_bandwidth_hz": 160000,
+                   "digital_cutoff_hz": 125000},
+            "tx": {"sample_rate_hz": 1000000, "analog_bandwidth_hz": 80000,
+                   "digital_cutoff_hz": 125000, "sample_gap": 3}})
         self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(self.path.parent.stat().st_mode), 0o700)
         _, errors = process.communicate(timeout=3)
@@ -152,6 +161,27 @@ class RadioBackendTests(unittest.TestCase):
         self.assertEqual(snapshot["control"]["state"], "RX")
         self.assertIs(snapshot["control"]["rx_requested"], True)
         self.assertEqual(snapshot["control"]["pipeline_generation"], 1)
+
+    def test_desired_profiles_follow_independent_rates_and_receive_mode(self):
+        cases = (
+            ("nbfm", "4000000", "2000000", 160000, 500000, 250000, 1),
+            ("wbfm", "2000000", "4000000", 250000, 250000, 500000, 0),
+            ("wbfm", "1000000", "1000000", 250000, 125000, 125000, 3),
+        )
+        for mode, rx_rate, tx_rate, rx_analog, rx_digital, tx_digital, gap in cases:
+            with self.subTest(mode=mode, rx_rate=rx_rate, tx_rate=tx_rate):
+                process = self.start_backend("--rx-mode", mode,
+                                             "--rx-sample-rate", rx_rate,
+                                             "--tx-sample-rate", tx_rate)
+                snapshot = self.once()
+                self.assert_transport_only(snapshot)
+                self.assertEqual(snapshot["config"]["profile"], {
+                    "rx": {"sample_rate_hz": int(rx_rate), "analog_bandwidth_hz": rx_analog,
+                           "digital_cutoff_hz": rx_digital},
+                    "tx": {"sample_rate_hz": int(tx_rate), "analog_bandwidth_hz": 80000,
+                           "digital_cutoff_hz": tx_digital, "sample_gap": gap}})
+                self.assertEqual(snapshot["config"]["rx_bandwidth_hz"], rx_analog)
+                self.stop_backend(process)
 
     def test_named_monitor_launcher_reads_dry_run_snapshot(self):
         process = self.start_backend()
@@ -320,6 +350,7 @@ int main(int argc, char **argv) {
             "cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter",
             "-Wno-missing-braces", "-ffunction-sections", "-fdata-sections",
             "-I" + str(src), "-I" + str(backend), str(fixture), str(src / "noise_squelch.c"),
+            str(src / "radio_profile.c"),
             "-Wl,--gc-sections", "-pthread", "-lm", "-o", str(binary),
         ], capture_output=True)
         self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
@@ -485,22 +516,32 @@ int main(void) {
         "RX", &pipeline, &stats, &modem, &publisher, NULL, &txstats);
     assert(size > 0); puts(packet);
 
-    // The displayed cutoff comes from the captured active radio, including
-    // while idle. Ramp-time bits must not change LPFCUT decoding; missing
-    // samples and reserved LPFCUT values cannot become guessed defaults.
-    size_t txcut_index = MODEM_SNAPSHOT_RADIO_COUNT;
-    for (size_t i = 0; i < MODEM_SNAPSHOT_RADIO_COUNT; ++i)
-        if (!strcmp(modem_snapshot_radio_names[i], "TXCUTC")) txcut_index = i;
-    assert(txcut_index < MODEM_SNAPSHOT_RADIO_COUNT);
+    // Captured profiles can differ from the saved next-start configuration.
+    // Decode each field independently: unavailable/reserved bytes must not
+    // turn into requested defaults, and ramp bits do not change LPFCUT.
+    const char *const register_names[] = {"RXBWC", "RXDFE", "TXCUTC", "TXDFE"};
+    size_t indices[4];
+    for (size_t field = 0; field < 4; ++field) {
+        indices[field] = MODEM_SNAPSHOT_RADIO_COUNT;
+        for (size_t i = 0; i < MODEM_SNAPSHOT_RADIO_COUNT; ++i)
+            if (!strcmp(modem_snapshot_radio_names[i], register_names[field])) indices[field] = i;
+        assert(indices[field] < MODEM_SNAPSHOT_RADIO_COUNT);
+    }
     const at86rf215_rf_channel_en channels[] = {
         at86rf215_rf_channel_900mhz, at86rf215_rf_channel_2400mhz};
-    const int16_t txcut_values[] = {0x8b, 0xc3, 0x4c, -1};
+    const int16_t profile_values[][4] = {
+        {0x1b, 0x81, 0x8b, 0x82},  // Wide observed profiles, still narrow intent.
+        {0x12, 0x42, 0xc3, 0x03},  // Includes a valid fractional modem sample rate.
+        {0x1c, 0xe4, 0x4c, 0xe0},  // Reserved bandwidth/cutoff/rate encodings.
+        {-1, -1, -1, -1},          // Failed/missing register observations.
+    };
     options.playback = "fixture";
     for (size_t ch = 0; ch < sizeof(channels) / sizeof(channels[0]); ++ch) {
         options.channel = ch == 0 ? "RF09" : "RF24";
-        for (size_t value = 0; value < sizeof(txcut_values) / sizeof(txcut_values[0]); ++value) {
+        for (size_t value = 0; value < sizeof(profile_values) / sizeof(profile_values[0]); ++value) {
             modem_snapshot_init(&modem, channels[ch]);
-            modem.radio[txcut_index] = txcut_values[value];
+            for (size_t field = 0; field < 4; ++field)
+                modem.radio[indices[field]] = profile_values[value][field];
             size = make_snapshot(packet, sizeof(packet), &options, "fixture", 1,
                 "IDLE", NULL, NULL, &modem, &publisher, NULL, NULL);
             assert(size > 0); puts(packet);
@@ -514,8 +555,8 @@ int main(void) {
                         "-Wno-unused-parameter", "-Wno-missing-braces",
                         "-ffunction-sections", "-fdata-sections",
                         "-I" + str(src), "-I" + str(backend), str(fixture),
-                        str(backend / "modem_snapshot.c"), str(src / "pipeline_runtime.c"),
-                        str(src / "noise_squelch.c"),
+                        str(src / "modem_snapshot.c"), str(src / "pipeline_runtime.c"),
+                        str(src / "noise_squelch.c"), str(src / "radio_profile.c"),
                         "-Wl,--gc-sections", "-pthread", "-lm", "-o", str(binary)],
                        capture_output=True)
         self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
@@ -524,6 +565,16 @@ int main(void) {
         self.assertEqual(len(packets), 11)
         snapshot = client.parse_snapshot(packets[0])
         self.assertEqual(snapshot["source"]["kind"], "live")
+        desired_profile = {
+            "rx": {"sample_rate_hz": 1000000, "analog_bandwidth_hz": 160000,
+                   "digital_cutoff_hz": 125000},
+            "tx": {"sample_rate_hz": 1000000, "analog_bandwidth_hz": 80000,
+                   "digital_cutoff_hz": 125000, "sample_gap": 3}}
+        self.assertEqual(snapshot["config"]["profile"], desired_profile)
+        unavailable_profile = {"sample_rate_hz": None, "analog_bandwidth_hz": None,
+                               "digital_cutoff_hz": None}
+        self.assertEqual(snapshot["config"]["observed"], {
+            "rx": unavailable_profile, "tx": unavailable_profile})
         rx = snapshot["rx"]
         self.assertEqual(rx["queue"]["puts"], 101)
         self.assertEqual(rx["audio_queue"], {
@@ -568,6 +619,20 @@ int main(void) {
         for packet in packets[:3]:
             self.assertIsNone(client.parse_snapshot(packet)["config"]["tx_bandwidth_hz"])
         cutoff_cases = ((0x8b, 1000000), (0xc3, 160000), (0x4c, None), (None, None))
+        observed_cases = (
+            {"rx": {"sample_rate_hz": 4000000, "analog_bandwidth_hz": 2000000,
+                    "digital_cutoff_hz": 2000000},
+             "tx": {"sample_rate_hz": 2000000, "analog_bandwidth_hz": 1000000,
+                    "digital_cutoff_hz": 1000000}},
+            {"rx": {"sample_rate_hz": 2000000, "analog_bandwidth_hz": 250000,
+                    "digital_cutoff_hz": 500000},
+             "tx": {"sample_rate_hz": 1333333.333, "analog_bandwidth_hz": 160000,
+                    "digital_cutoff_hz": 166666.667}},
+            {"rx": {"sample_rate_hz": 1000000, "analog_bandwidth_hz": None,
+                    "digital_cutoff_hz": None},
+             "tx": unavailable_profile},
+            {"rx": unavailable_profile, "tx": unavailable_profile},
+        )
         for channel_index, channel in enumerate(("RF09", "RF24")):
             for case_index, (raw, cutoff_hz) in enumerate(cutoff_cases):
                 with self.subTest(channel=channel, txcut=raw):
@@ -575,6 +640,8 @@ int main(void) {
                     self.assertEqual(captured["channel"], channel)
                     self.assertEqual(captured["state"], "IDLE")
                     self.assertEqual(captured["config"]["tx_bandwidth_hz"], cutoff_hz)
+                    self.assertEqual(captured["config"]["profile"], desired_profile)
+                    self.assertEqual(captured["config"]["observed"], observed_cases[case_index])
                     self.assertEqual(captured["hardware"][channel.lower()]["registers"]["TXCUTC"], raw)
                     inactive = "rf24" if channel == "RF09" else "rf09"
                     self.assertIs(captured["hardware"][inactive]["valid"], False)
@@ -677,6 +744,15 @@ int main(void) {
             ("--rx-sample-rate", "nan"), ("--rx-sample-rate", "3000000"),
             ("--rx-sample-rate", "1000001"), ("--channel", "RF12"),
             ("--channel", "RF09", "--rx-frequency", "100100000"),
+            ("--channel", "RF09", "--tx-frequency", "100100000"),
+            ("--channel", "RF09", "--rx-frequency", "530000001"),
+            ("--channel", "RF09", "--tx-frequency", "778999999"),
+            ("--rx-frequency", "6000000000"), ("--tx-frequency", "6000000000"),
+            ("--tx-frequency", "nan"), ("--tx-frequency", "inf"),
+            ("--rx-sample-rate", "1000000.5"), ("--tx-sample-rate", "1000000.5"),
+            ("--tx-sample-rate", "3000000"), ("--tx-sample-rate", "nan"),
+            ("--tx-power", "-13"), ("--tx-power", "15"), ("--tx-power", "-12.5"),
+            ("--channel", "RF09", "--tx-power", "-15"),
             ("--rx-mode", "am"), ("--status-hz", "nan"),
             ("--status-hz", "0"), ("--status-hz", "21"),
             ("--seconds", "inf"), ("--seconds", "0"),

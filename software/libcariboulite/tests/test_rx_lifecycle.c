@@ -10,6 +10,7 @@ static bool real_threads, live[1024];
 static int creates, fail_create, joins, hardware_active;
 static bool fail_malloc, fail_calloc, fail_demod_create;
 static unsigned malloc_calls, calloc_calls, alsa_sink_opens, demod_create_calls;
+static unsigned hardware_calls;
 static unsigned deviation_sets, demod_thread_creates;
 static bool verify_deviation_wiring, deviation_configured, fail_deviation_set;
 static float last_deviation;
@@ -116,6 +117,7 @@ static uint16_t modem_reg(const cariboulite_radio_state_st* r, uint16_t low) {
     return low + 0x100*modem_channel(r);
 }
 int __wrap_cariboulite_radio_set_frequency(cariboulite_radio_state_st* r, bool b, double* f) {
+    ++hardware_calls;
     if (fail_tune) return -1;
     tuned_radio = r;
     tuned_frequency = *f;
@@ -123,6 +125,7 @@ int __wrap_cariboulite_radio_set_frequency(cariboulite_radio_state_st* r, bool b
     return 0;
 }
 int __wrap_cariboulite_radio_activate_channel(cariboulite_radio_state_st* r, cariboulite_channel_dir_en d, bool a) {
+    ++hardware_calls;
     if (!a && d == cariboulite_channel_dir_rx && modem_fault == MODEM_DEACTIVATE)
         return -1;
     if (a && d == cariboulite_channel_dir_rx) {
@@ -149,6 +152,7 @@ int __wrap_cariboulite_radio_activate_channel(cariboulite_radio_state_st* r, car
 }
 static smi_stream_state_en last_stream;
 int __wrap_caribou_smi_set_driver_streaming_state(caribou_smi_st* s, smi_stream_state_en e) {
+    ++hardware_calls;
     if(e!=smi_stream_idle) ++stream_activations;
     last_stream=e; return 0;
 }
@@ -157,12 +161,14 @@ static int fifo_multiplier = 16;
 static bool fail_fifo_query;
 static unsigned native_batch_reads, fifo_multiplier_reads;
 size_t __wrap_caribou_smi_get_native_batch_samples(caribou_smi_st* smi) {
+    ++hardware_calls;
     assert(smi);
     ++native_batch_reads;
     return native_batch_samples;
 }
 int __real_ioctl(int, unsigned long, ...);
 int __wrap_ioctl(int fd, unsigned long request, ...) {
+    ++hardware_calls;
     va_list args;
     va_start(args, request);
     void* argument = va_arg(args, void*);
@@ -175,7 +181,10 @@ int __wrap_ioctl(int fd, unsigned long request, ...) {
     *(int*)argument=fifo_multiplier;
     return 0;
 }
-int __wrap_caribou_fpga_set_io_ctrl_mode(caribou_fpga_st* f, uint8_t d, caribou_fpga_io_ctrl_rfm_en m) { return 0; }
+int __wrap_caribou_fpga_set_io_ctrl_mode(caribou_fpga_st* f, uint8_t d, caribou_fpga_io_ctrl_rfm_en m) {
+    ++hardware_calls;
+    return 0;
+}
 static rx_reader_ctrl_st* capture_once;
 static rx_reader_ctrl_st* scripted_reader;
 static unsigned scripted_read;
@@ -184,6 +193,7 @@ static uint16_t expected_rssi_register;
 static uint8_t measured_rssi;
 static int rssi_read_error;
 int __wrap_at86rf215_read_buffer(at86rf215_st* dev, uint16_t reg, uint8_t* value, uint8_t length) {
+    ++hardware_calls;
     (void)dev;
     if(reg==REG_RF09_RSSI || reg==REG_RF24_RSSI) {
         assert(capture_once && reg == expected_rssi_register && length == 1);
@@ -209,6 +219,7 @@ int __wrap_at86rf215_read_buffer(at86rf215_st* dev, uint16_t reg, uint8_t* value
     return 0;
 }
 int __wrap_at86rf215_write_buffer(at86rf215_st* dev, uint16_t reg, uint8_t* value, uint8_t length) {
+    ++hardware_calls;
     (void)dev;
     assert((reg==REG_RF09_AGCC || reg==REG_RF24_AGCC) && length==2);
     unsigned channel=reg==REG_RF09_AGCC ? 0 : 1;
@@ -243,10 +254,12 @@ int __wrap_cariboulite_radio_read_samples(cariboulite_radio_state_st* r,
 static float test_rx_rate;
 static cariboulite_radio_state_st* rate_rx_radio;
 int __wrap_cariboulite_radio_set_rx_sample_rate_flt(cariboulite_radio_state_st* r, float fs) {
+    ++hardware_calls;
     test_rx_rate=fs; rate_rx_radio=r; return 0;
 }
 int __wrap_cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* r,
                                              cariboulite_radio_rx_bw_en bw) {
+    ++hardware_calls;
     assert(modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
     if(modem_fault==MODEM_BANDWIDTH_SET) return -1;
     /* Real setter resets RCUT to full, so policy must explicitly narrow it. */
@@ -260,6 +273,7 @@ int __wrap_cariboulite_radio_set_rx_bandwidth(cariboulite_radio_state_st* r,
 int __wrap_cariboulite_radio_set_rx_samp_cutoff(cariboulite_radio_state_st* r,
                                               cariboulite_radio_sample_rate_en fs,
                                               cariboulite_radio_f_cut_en cutoff) {
+    ++hardware_calls;
     assert(modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
     if(modem_fault==MODEM_CUTOFF_SET) return -1;
     assert(fs==cariboulite_radio_rx_sample_rate_1000khz ||
@@ -281,6 +295,7 @@ static int forced_tx_gap = -1;
 static unsigned tx_gap_reads;
 int __wrap_cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* r,
                                             cariboulite_radio_tx_cut_off_en bw) {
+    ++hardware_calls;
     assert(!r->active && modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
     assert(bw==cariboulite_radio_tx_cut_off_80khz);
     r->tx_bw=bw;
@@ -289,6 +304,7 @@ int __wrap_cariboulite_radio_set_tx_bandwidth(cariboulite_radio_state_st* r,
 }
 int __wrap_cariboulite_radio_set_tx_samp_cutoff(cariboulite_radio_state_st* r,
         cariboulite_radio_sample_rate_en fs, cariboulite_radio_f_cut_en cutoff) {
+    ++hardware_calls;
     assert(!r->active && modem_regs[modem_reg(r,REG_RF09_STATE)]==at86rf215_radio_state_cmd_trx_off);
     assert(cutoff==cariboulite_radio_rx_f_cut_0_25_half_fs);
     test_tx_rate=fs==cariboulite_radio_rx_sample_rate_1000khz ? 1000000 :
@@ -302,7 +318,10 @@ int __wrap_caribou_fpga_get_sys_ctrl_tx_sample_gap(caribou_fpga_st* f, uint8_t* 
     *gap=forced_tx_gap<0 ? 4000000/test_tx_rate-1 : forced_tx_gap;
     return 0;
 }
-int __wrap_cariboulite_radio_set_tx_power(cariboulite_radio_state_st* r, int power) { return 0; }
+int __wrap_cariboulite_radio_set_tx_power(cariboulite_radio_state_st* r, int power) {
+    ++hardware_calls;
+    return 0;
+}
 static const struct {
     unsigned fs;
     size_t frame_samples;
@@ -330,6 +349,7 @@ static void* waiter(void* arg) {
 }
 static void test_rssi_capture(void) {
     sys_st sys = {0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.radio_low.sys = sys.radio_high.sys = &sys;
     sys.radio_low.type = cariboulite_channel_s1g;
     sys.radio_high.type = cariboulite_channel_hif;
@@ -382,6 +402,7 @@ static void test_shared_rx_stats(void)
     assert(!stats.playback_valid && !stats.reader.errors && !stats.demod_worker.scheduling.valid);
     rx_pipeline_get_stats(&p,NULL);
     sys_st sys={0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.radio_high.sys=&sys; sys.radio_high.type=cariboulite_channel_hif;
     rx_params_t params={.freq_hz=430125000,.pcm_dev="null",.fs_rf=1000000,.fs_audio=48000};
     assert(rx_pipeline_init(&p,&sys,&sys.radio_high,&params)==0);
@@ -533,6 +554,7 @@ static void assert_modem_profile(const rx_pipeline_t* p) {
 }
 static void test_modem_policy(void) {
     sys_st sys={0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.radio_low.sys=sys.radio_high.sys=&sys;
     sys.radio_low.type=cariboulite_channel_s1g;
     sys.radio_high.type=cariboulite_channel_hif;
@@ -548,6 +570,7 @@ static void test_modem_policy(void) {
                 .fs_rf=monitor_rates[rate].fs,.fs_audio=48000};
             rx_pipeline_t rx={0}; tx_pipeline_t tx={0}; monitor_loopback_t loopback={0};
             assert(rx_pipeline_init(&rx,&sys,radio,&par)==0);
+            assert_modem_profile(&rx); /* Idle initialization uses the shared profile too. */
             unsigned other_agc=agc_writes[!channel];
             for(unsigned restart=0;restart<2;++restart) {
                 stale_nbfm_profile(radio);
@@ -572,10 +595,12 @@ static void test_modem_policy(void) {
                    modem_regs[agc+1]==saved_gain && !radio->rx_agc_on);
             rx_pipeline_stop(&rx);
             assert(monitor_cycle_rx_mode(&tx,&rx,&loopback,&sys,&par)==0 && par.mode==AUDIO_DEMOD_NBFM);
+            assert(agc_writes[channel]==before+1);
+            assert_modem_profile(&rx);
             assert(rx_pipeline_start(&rx)==0);
             assert_modem_profile(&rx);
             assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
-            assert(agc_writes[channel]==before+1);
+            assert(agc_writes[channel]==before+2);
             rx_pipeline_destroy(&rx); check_clean(&rx);
         }
         const audio_demod_mode_t modes[]={AUDIO_DEMOD_NBFM,AUDIO_DEMOD_WBFM};
@@ -584,8 +609,22 @@ static void test_modem_policy(void) {
             rx_params_t par={.mode=modes[mode],.freq_hz=430125000,.pcm_dev="null",
                 .fs_rf=1000000,.fs_audio=48000};
             rx_pipeline_t rx={0};
-            assert(rx_pipeline_init(&rx,&sys,radio,&par)==0);
             const enum modem_fault last_fault=nbfm ? MODEM_AGC_TARGET_MISMATCH : MODEM_FILTER_MISMATCH;
+            for(enum modem_fault fault=MODEM_DEACTIVATE;fault<=last_fault;++fault) {
+                stale_nbfm_profile(radio);
+                unsigned before_activations=rx_activations, before_streams=stream_activations;
+                filter_readback_byte=0;
+                filter_readback_xor=agc_readback_xor=1;
+                modem_fault=fault;
+                assert(rx_pipeline_init(&rx,&sys,radio,&par)<0);
+                assert(rx_activations==before_activations && stream_activations==before_streams);
+                assert(!radio->rx_agc_on);
+                assert(!memcmp(modem_regs+other_filter,other_registers,sizeof(other_registers)));
+                check_clean(&rx);
+                modem_fault=MODEM_OK;
+            }
+            assert(rx_pipeline_init(&rx,&sys,radio,&par)==0);
+            assert_modem_profile(&rx);
             for(enum modem_fault fault=MODEM_DEACTIVATE;fault<=last_fault;++fault) {
                 unsigned variants=fault==MODEM_FILTER_MISMATCH || fault==MODEM_AGC_CONTROL_MISMATCH ? 5 : 1;
                 for(unsigned variant=0;variant<variants;++variant) {
@@ -622,6 +661,7 @@ static void test_modem_policy(void) {
 }
 static void test_rx_deviation_wiring(void) {
     sys_st sys={0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.radio_high.sys=&sys;
     sys.radio_high.type=cariboulite_channel_hif;
     rx_params_t par={.freq_hz=430125000,.pcm_dev="null",.fs_rf=1000000,.fs_audio=48000};
@@ -707,6 +747,7 @@ static void test_noise_level_controls(void) {
         assert(fabsf(opening-.140f)<1e-6f && fabsf(closing-.210f)<1e-6f);
     }
     sys_st sys={0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.radio_high.sys=&sys;
     sys.radio_high.type=cariboulite_channel_hif;
     rx_params_t par={.freq_hz=430125000,.pcm_dev="null",.fs_rf=1000000,.fs_audio=48000};
@@ -765,13 +806,159 @@ static void test_noise_level_controls(void) {
     puts("PASS: noise-level input validation, live atomic settings, bypass telemetry, and rate/mode persistence");
 }
 
+static void assert_invalid_rx_config(sys_st* sys, cariboulite_radio_state_st* radio,
+                                     const rx_params_t* params)
+{
+    rx_pipeline_t pipeline={0};
+    unsigned before_malloc=malloc_calls, before_calloc=calloc_calls;
+    unsigned before_hardware=hardware_calls, before_alsa=alsa_sink_opens;
+    unsigned before_demod=demod_create_calls;
+    int before_creates=creates;
+    assert(rx_pipeline_init(&pipeline,sys,radio,params)<0);
+    assert(malloc_calls==before_malloc && calloc_calls==before_calloc);
+    assert(hardware_calls==before_hardware && alsa_sink_opens==before_alsa);
+    assert(demod_create_calls==before_demod && creates==before_creates);
+    check_clean(&pipeline);
+}
+
+static void assert_invalid_tx_config(sys_st* sys, cariboulite_radio_state_st* radio,
+                                     const tx_params_t* params)
+{
+    tx_pipeline_t pipeline={0};
+    unsigned before_malloc=malloc_calls, before_calloc=calloc_calls;
+    unsigned before_hardware=hardware_calls;
+    int before_creates=creates;
+    assert(tx_pipeline_init(&pipeline,sys,radio,params)<0);
+    assert(malloc_calls==before_malloc && calloc_calls==before_calloc);
+    assert(hardware_calls==before_hardware && creates==before_creates);
+    assert(!pipeline.inited && !pipeline.running && !pipeline.tx_ctrl.gate_initialized);
+    assert(!pipeline.txq.q && !pipeline.tx_ctrl.mic && !pipeline.tx_ctrl.fm);
+}
+
+static void test_config_validation_before_side_effects(void)
+{
+    sys_st sys={0};
+    sys.board_info.numeric_product_id=system_type_cariboulite_full;
+    sys.radio_low=(cariboulite_radio_state_st){.sys=&sys,.type=cariboulite_channel_s1g};
+    sys.radio_high=(cariboulite_radio_state_st){.sys=&sys,.type=cariboulite_channel_hif};
+    const rx_params_t rx_defaults={.freq_hz=430125000,.pcm_dev="null",
+        .fs_rf=1000000,.fs_audio=48000,.pcm_gain=8000,.deemph_tau_s=50e-6f};
+    const tx_params_t tx_defaults={.freq_hz=430125000,.rf_fs=1000000,
+        .tx_power_dbm=-3,.tone_mode=true,.tone_hz=600,.tone_amp=.4f,
+        .f_dev_hz=2500,.out_scale=4000};
+    verify_deviation_wiring=true;
+    for (unsigned channel=0;channel<2;++channel) {
+        cariboulite_radio_state_st* radio=channel ? &sys.radio_high : &sys.radio_low;
+        rx_pipeline_t rx_control={.sys=&sys,.radio=radio,.running=true};
+        tx_pipeline_t tx_control={.sys=&sys,.radio=radio};
+        rx_control.demod.pcm_gain=rx_defaults.pcm_gain;
+        rx_control.demod.deemph_tau=rx_defaults.deemph_tau_s;
+        rx_control.demod.prime_blocks_10ms=19;
+        const double bad_frequency[]={0,-1,NAN,INFINITY,-INFINITY,6000000000.0};
+        for (unsigned i=0;i<sizeof(bad_frequency)/sizeof(*bad_frequency);++i) {
+            rx_params_t rx=rx_defaults; rx.freq_hz=bad_frequency[i];
+            tx_params_t tx=tx_defaults; tx.freq_hz=bad_frequency[i];
+            assert_invalid_rx_config(&sys,radio,&rx);
+            assert_invalid_tx_config(&sys,radio,&tx);
+            unsigned before_hardware=hardware_calls;
+            assert(rx_pipeline_set_freq(&rx_control,bad_frequency[i])<0);
+            assert(tx_pipeline_set_freq_power(&tx_control,bad_frequency[i],-3)<0);
+            assert(hardware_calls==before_hardware);
+            assert(!rx_control.demod.reset && rx_control.demod.prime_blocks_10ms==19);
+        }
+        const float bad_live_values[]={-1,NAN,INFINITY,-INFINITY};
+        unsigned before_hardware=hardware_calls;
+        for (unsigned i=0;i<sizeof(bad_live_values)/sizeof(*bad_live_values);++i) {
+            assert(rx_pipeline_set_pcm_gain(&rx_control,bad_live_values[i])<0);
+            assert(rx_control.demod.pcm_gain==rx_defaults.pcm_gain);
+            assert(rx_pipeline_set_deemph(&rx_control,bad_live_values[i])<0);
+            assert(rx_control.demod.deemph_tau==rx_defaults.deemph_tau_s);
+        }
+        assert(rx_pipeline_set_pcm_gain(&rx_control,0)==0 && rx_control.demod.pcm_gain==0);
+        assert(rx_pipeline_set_deemph(&rx_control,0)==0 && rx_control.demod.deemph_tau==0);
+        assert(hardware_calls==before_hardware);
+        const int bad_power[]={channel ? -13 : -15,15};
+        for (unsigned i=0;i<sizeof(bad_power)/sizeof(*bad_power);++i) {
+            assert(tx_pipeline_set_freq_power(&tx_control,430125000,bad_power[i])<0);
+            assert(hardware_calls==before_hardware);
+        }
+        sys.board_info.numeric_product_id=-1;
+        assert_invalid_rx_config(&sys,radio,&rx_defaults);
+        assert_invalid_tx_config(&sys,radio,&tx_defaults);
+        assert(rx_pipeline_set_freq(&rx_control,430125000)<0);
+        assert(tx_pipeline_set_freq_power(&tx_control,430125000,-3)<0);
+        assert(hardware_calls==before_hardware);
+        sys.board_info.numeric_product_id=system_type_cariboulite_full;
+        for (unsigned field=0;field<3;++field) {
+            const float invalid[]={-1,NAN,INFINITY,-INFINITY};
+            for (unsigned i=0;i<sizeof(invalid)/sizeof(*invalid);++i) {
+                rx_params_t rx=rx_defaults;
+                if (field==0) rx.fs_rf=invalid[i];
+                if (field==1) rx.pcm_gain=invalid[i];
+                if (field==2) rx.deemph_tau_s=invalid[i];
+                assert_invalid_rx_config(&sys,radio,&rx);
+            }
+        }
+        rx_params_t rx=rx_defaults; rx.mode=(audio_demod_mode_t)99;
+        assert_invalid_rx_config(&sys,radio,&rx);
+        rx=rx_defaults; rx.fs_rf=3000000;
+        assert_invalid_rx_config(&sys,radio,&rx);
+        rx=rx_defaults; rx.fs_audio=44100;
+        assert_invalid_rx_config(&sys,radio,&rx);
+        for (unsigned field=0;field<4;++field) {
+            const float invalid[]={-1,NAN,INFINITY,-INFINITY};
+            for (unsigned i=0;i<sizeof(invalid)/sizeof(*invalid);++i) {
+                tx_params_t tx=tx_defaults;
+                if (field==0) tx.tone_hz=invalid[i];
+                if (field==1) tx.tone_amp=invalid[i];
+                if (field==2) tx.f_dev_hz=invalid[i];
+                if (field==3) tx.out_scale=invalid[i];
+                assert_invalid_tx_config(&sys,radio,&tx);
+            }
+        }
+        tx_params_t tx=tx_defaults; tx.rf_fs=3000000;
+        assert_invalid_tx_config(&sys,radio,&tx);
+        tx=tx_defaults; tx.tx_power_dbm=channel ? -13 : -15;
+        assert_invalid_tx_config(&sys,radio,&tx);
+        tx=tx_defaults; tx.tx_power_dbm=15;
+        assert_invalid_tx_config(&sys,radio,&tx);
+        tx=tx_defaults; tx.tone_hz=24000;
+        assert_invalid_tx_config(&sys,radio,&tx);
+        tx=tx_defaults; tx.tone_amp=1.01f;
+        assert_invalid_tx_config(&sys,radio,&tx);
+        tx=tx_defaults; tx.f_dev_hz=24001;
+        assert_invalid_tx_config(&sys,radio,&tx);
+        tx=tx_defaults; tx.out_scale=32768;
+        assert_invalid_tx_config(&sys,radio,&tx);
+        tx=tx_defaults; tx.pacing_mode=(tx_pacing_mode_t)99;
+        assert_invalid_tx_config(&sys,radio,&tx);
+    }
+    verify_deviation_wiring=false;
+
+    /* Failed tuning must unwind initialized resources and never enable RX;
+     * it used to be ignored by RX initialization. A later retry succeeds. */
+    rx_pipeline_t pipeline={0};
+    unsigned before_activations=rx_activations;
+    fail_tune=true;
+    assert(rx_pipeline_init(&pipeline,&sys,&sys.radio_high,&rx_defaults)<0);
+    assert(rx_activations==before_activations && !hardware_active);
+    check_clean(&pipeline);
+    fail_tune=false;
+    assert(rx_pipeline_init(&pipeline,&sys,&sys.radio_high,&rx_defaults)==0);
+    rx_pipeline_destroy(&pipeline);
+    check_clean(&pipeline);
+    puts("PASS: invalid RX/TX settings and retunes rejected before side effects; live setters preserve valid settings; tuning failures unwind and retry");
+}
+
 int main(void) {
+    test_config_validation_before_side_effects();
     test_rssi_capture();
     test_shared_rx_stats();
     test_modem_policy();
     test_rx_deviation_wiring();
     test_noise_level_controls();
     sys_st sys = {0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.radio_low.sys = sys.radio_high.sys = &sys;
     sys.radio_low.type = cariboulite_channel_s1g;
     sys.radio_high.type = cariboulite_channel_hif;

@@ -511,6 +511,9 @@ setting after filter/rate configuration. The backend also verifies the
 filters after modem activation, before releasing opening-cue IQ. RX continues
 to use its separate 160 kHz NBFM or 250 kHz WBFM analog profile.
 This shared pipeline profile also applies to `test_app` NBFM TX.
+The [shared configuration/status contract](shared-radio-configuration.md)
+documents the common profile rules, initialization checks, and the additional
+`config.profile` (desired) and `config.observed` (cached register readback) fields.
 These are programmed filter settings; RF spectrum and achieved deviation
 have not been measured for this profile.
 

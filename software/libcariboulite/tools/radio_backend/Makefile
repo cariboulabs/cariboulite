@@ -8,9 +8,10 @@ CC ?= cc
 CPPFLAGS += -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -I$(SRC) -I$(HERE)
 CFLAGS := -std=c11 -O3 -g -Wall -Wextra -Wno-unused-parameter -Wno-missing-braces
 DSPFLAGS := -ffast-math -fno-math-errno -funroll-loops
-BASE_NAMES := rx_pipeline pipeline_transport pipeline_runtime nbfm_demod nbfm_demod_dsp demod_worker wbfm_demod noise_squelch carrier_squelch alsa_sink tx_pipeline tx_audio_buffer mod_worker nbfm_mod alsa_source tone_source
-OWN_NAMES := main modem_snapshot status_publisher command_protocol control_server
-OBJECTS := $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES) $(OWN_NAMES)))
+BASE_NAMES := radio_profile rx_pipeline pipeline_transport pipeline_runtime nbfm_demod nbfm_demod_dsp demod_worker wbfm_demod noise_squelch carrier_squelch alsa_sink tx_pipeline tx_audio_buffer mod_worker nbfm_mod alsa_source tone_source
+OWN_NAMES := main status_publisher command_protocol control_server
+# A new object name avoids stale dependencies on the former backend-local source.
+OBJECTS := $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES) $(OWN_NAMES))) $(OUT)/modem_snapshot_shared.o
 
 .PHONY: all clean test
 all: $(OUT)/cariboulite_radio_backend $(OUT)/cariboulite_radio_controller $(OUT)/cariboulite_radio_monitor
@@ -37,6 +38,9 @@ $(addprefix $(OUT)/,$(addsuffix .o,$(OWN_NAMES))): $(OUT)/%.o: $(HERE)/%.c | $(O
 $(addprefix $(OUT)/,$(addsuffix .o,$(BASE_NAMES))): $(OUT)/%.o: $(SRC)/%.c | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DSPFLAGS) -MMD -MP -c "$<" -o "$@"
 
+$(OUT)/modem_snapshot_shared.o: $(SRC)/modem_snapshot.c | $(OUT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c "$<" -o "$@"
+
 clean:
 	rm -f $(OBJECTS) $(OBJECTS:.o=.d) "$(OUT)/cariboulite_radio_backend" "$(OUT)/cariboulite_radio_backend.tmp" "$(OUT)/demod_worker_backend.c" "$(OUT)/test_status_publisher" "$(OUT)/test_modem_snapshot"
 	rm -f "$(OUT)/cariboulite_radio_controller" "$(OUT)/cariboulite_radio_controller.tmp" "$(OUT)/cariboulite_radio_monitor" "$(OUT)/cariboulite_radio_monitor.tmp" "$(OUT)/test_command_protocol" "$(OUT)/test_control_server"
@@ -45,8 +49,8 @@ clean:
 $(OUT)/test_status_publisher: $(HERE)/status_publisher.c $(HERE)/status_publisher.h $(HERE)/test_status_publisher.c | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -Werror $(HERE)/status_publisher.c $(HERE)/test_status_publisher.c -o "$@"
 
-$(OUT)/test_modem_snapshot: $(HERE)/modem_snapshot.c $(HERE)/modem_snapshot.h $(HERE)/test_modem_snapshot.c | $(OUT)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -Werror $(HERE)/modem_snapshot.c $(HERE)/test_modem_snapshot.c -lpthread -o "$@"
+$(OUT)/test_modem_snapshot: $(SRC)/modem_snapshot.c $(SRC)/modem_snapshot.h $(SRC)/radio_profile.c $(SRC)/radio_profile.h $(HERE)/test_modem_snapshot.c | $(OUT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Werror $(SRC)/modem_snapshot.c $(SRC)/radio_profile.c $(HERE)/test_modem_snapshot.c -lpthread -lm -o "$@"
 
 $(OUT)/test_command_protocol: $(HERE)/command_protocol.c $(HERE)/command_protocol.h $(HERE)/test_command_protocol.c | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -Werror $(HERE)/command_protocol.c $(HERE)/test_command_protocol.c -lm -o "$@"

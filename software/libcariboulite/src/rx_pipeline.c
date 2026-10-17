@@ -5,6 +5,7 @@
 #include "pipeline_runtime.h"
 #include "alsa_sink.h"
 #include "noise_squelch.h"
+#include "radio_profile.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -147,6 +148,8 @@ done:
     return NULL;
 }
 
+static int configure_rx_modem(rx_pipeline_t* p);
+
 int rx_pipeline_init(rx_pipeline_t* p, sys_st* sys,
                      cariboulite_radio_state_st* radio,
                      const rx_params_t* par)
@@ -170,9 +173,15 @@ int rx_pipeline_init(rx_pipeline_t* p, sys_st* sys,
     p->sys   = sys;
     p->radio = radio;
 
-    if ((par->fs_rf != 1000000 && par->fs_rf != 2000000 && par->fs_rf != 4000000) ||
-        par->fs_audio != 48000 ||
-        (par->mode != AUDIO_DEMOD_NBFM && par->mode != AUDIO_DEMOD_WBFM)) return -1;
+    radio_profile_t profile;
+    if (!radio_profile_finite(par->fs_rf) ||
+        (par->fs_rf != 1000000 && par->fs_rf != 2000000 && par->fs_rf != 4000000) ||
+        radio_profile_rx(par->mode, (unsigned)par->fs_rf, &profile) != 0 ||
+        !radio_profile_finite(par->fs_audio) || par->fs_audio != 48000 ||
+        !radio_profile_frequency_valid(radio->type, sys->board_info.numeric_product_id,
+                                       par->freq_hz) ||
+        !radio_profile_finite(par->pcm_gain) || par->pcm_gain < 0 ||
+        !radio_profile_finite(par->deemph_tau_s) || par->deemph_tau_s < 0) return -1;
 
     /* Bit validation remains effective with the production -ffast-math flags. */
     uint32_t deviation_bits;
@@ -267,8 +276,10 @@ int rx_pipeline_init(rx_pipeline_t* p, sys_st* sys,
     // Set radio frequency
     HW_LOCK();
     double init_frequency = par->freq_hz;
-    cariboulite_radio_set_frequency(radio, true, &init_frequency);
+    int tune_error = cariboulite_radio_set_frequency(radio, true, &init_frequency);
+    int profile_error = tune_error ? -1 : configure_rx_modem(p);
     HW_UNLOCK();
+    if (tune_error || profile_error) goto fail;
 
     p->inited = true;
     p->running = false;
@@ -287,19 +298,14 @@ static int configure_rx_modem(rx_pipeline_t* p)
     at86rf215_st* modem = &p->sys->modem;
     const bool nbfm = p->demod.mode == AUDIO_DEMOD_NBFM;
     const bool s1g = radio->type == cariboulite_channel_s1g;
-    cariboulite_radio_sample_rate_en rate;
-    switch ((unsigned)p->demod.fs_rf) {
-        case 1000000: rate = cariboulite_radio_rx_sample_rate_1000khz; break;
-        case 2000000: rate = cariboulite_radio_rx_sample_rate_2000khz; break;
-        case 4000000: rate = cariboulite_radio_rx_sample_rate_4000khz; break;
-        default: return -1;
-    }
-    const cariboulite_radio_rx_bw_en bw = nbfm ?
-        cariboulite_radio_rx_bw_160KHz : cariboulite_radio_rx_bw_250KHz;
+    radio_profile_t profile;
+    if (radio_profile_rx(p->demod.mode, (unsigned)p->demod.fs_rf, &profile)) return -1;
+    const cariboulite_radio_sample_rate_en rate = profile.rate;
+    const cariboulite_radio_rx_bw_en bw = profile.rx_bandwidth;
     // WBFM's software channel filter cuts at +/-100 kHz. The 250 kHz analog
     // bandwidth and minimum digital cutoff (Fs/8: +/-125 kHz at 1 MS/s)
     // leave margin around it without changing IQ rate or DSP processing.
-    const cariboulite_radio_f_cut_en cutoff = cariboulite_radio_rx_f_cut_0_25_half_fs;
+    const cariboulite_radio_f_cut_en cutoff = profile.cutoff;
 
     // Frontend configuration requires TRXOFF. Tuning can leave TXPREP active,
     // and the modem's TRXOFF command has an erratum, so confirm actual state.
@@ -458,7 +464,9 @@ bool rx_pipeline_running(const rx_pipeline_t* p) { return p && p->running; }
 
 int rx_pipeline_set_freq(rx_pipeline_t* p, double freq_hz)
 {
-    if (!p || !p->sys || !p->radio) return -1;
+    if (!p || !p->sys || !p->radio ||
+        !radio_profile_frequency_valid(p->radio->type,
+            p->sys->board_info.numeric_product_id, freq_hz)) return -1;
     HW_LOCK();
     int rc = cariboulite_radio_set_frequency(p->radio, true, &freq_hz);
     HW_UNLOCK();
@@ -474,14 +482,14 @@ int rx_pipeline_set_freq(rx_pipeline_t* p, double freq_hz)
 
 int rx_pipeline_set_pcm_gain(rx_pipeline_t* p, float gain)
 {
-    if (!p) return -1;
+    if (!p || !radio_profile_finite(gain) || gain < 0) return -1;
     p->demod.pcm_gain = gain;
     return 0;
 }
 
 int rx_pipeline_set_deemph(rx_pipeline_t* p, float tau_s)
 {
-    if (!p) return -1;
+    if (!p || !radio_profile_finite(tau_s) || tau_s < 0) return -1;
     p->demod.deemph_tau = tau_s;
     return 0;
 }

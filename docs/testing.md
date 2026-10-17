@@ -53,6 +53,9 @@ missing build/dependency should be resolved before calling the full suite comple
 Coverage includes audio contracts, FM discrimination/interpolation, channel
 filtering, squelch, partial SMI I/O, worker lifecycle, TX demand pacing, independent
 capture/clock adaptation, tail draining, command validation and monitor parsing.
+The [shared radio configuration checks](shared-radio-configuration.md) cover
+application profiles and hardware readback, including invalid inputs under
+normal and fast-math build flags and failure cleanup before stream activation.
 The frozen [NBFM modulator](../software/libcariboulite/tests/fixtures/legacy_nbfm_mod/README.md)
 and [demodulator fixtures](../software/libcariboulite/tests/fixtures/legacy_nbfm_demod/README.md)
 have specific comparison limits; current NBFM output is not claimed to be

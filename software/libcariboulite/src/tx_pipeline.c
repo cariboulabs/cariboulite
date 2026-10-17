@@ -5,6 +5,7 @@
 #include "pipeline_runtime.h"
 #include "mod_worker.h"
 #include "tone_source.h"
+#include "radio_profile.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -367,12 +368,8 @@ static int tx_restore_write_timing(tx_pipeline_t* p)
 
 static cariboulite_radio_sample_rate_en tx_rate_code(unsigned rate)
 {
-    switch (rate) {
-        case 1000000: return cariboulite_radio_rx_sample_rate_1000khz;
-        case 2000000: return cariboulite_radio_rx_sample_rate_2000khz;
-        case 4000000: return cariboulite_radio_rx_sample_rate_4000khz;
-        default: return 0;
-    }
+    radio_profile_t profile;
+    return radio_profile_tx(rate, &profile) == 0 ? profile.rate : 0;
 }
 
 /* NBFM uses the narrowest modem TX filters: analog 80 kHz and digital Fs/8.
@@ -383,8 +380,9 @@ static int tx_configure_nbfm_profile(tx_pipeline_t* p, int requested_power)
     cariboulite_radio_state_st* radio = p->radio;
     const bool low = radio->type == cariboulite_channel_s1g;
     const unsigned rate = (unsigned)p->tx_ctrl.frame_samples * 100;
-    const cariboulite_radio_sample_rate_en rate_code = tx_rate_code(rate);
-    if (!rate_code) return -1;
+    radio_profile_t profile;
+    if (radio_profile_tx(rate, &profile)) return -1;
+    const cariboulite_radio_sample_rate_en rate_code = profile.rate;
     uint8_t state = 0;
     if (cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, false) != 0 ||
         at86rf215_read_buffer(&p->sys->modem, low ? REG_RF09_STATE : REG_RF24_STATE,
@@ -394,9 +392,9 @@ static int tx_configure_nbfm_profile(tx_pipeline_t* p, int requested_power)
         return -1;
     }
     int bandwidth_error = cariboulite_radio_set_tx_bandwidth(radio,
-        cariboulite_radio_tx_cut_off_80khz);
+        profile.tx_bandwidth);
     int rate_error = cariboulite_radio_set_tx_samp_cutoff(radio, rate_code,
-        cariboulite_radio_rx_f_cut_0_25_half_fs);
+        profile.cutoff);
     /* Both filter setters rewrite PAC using an uncalibrated power mapping.
      * Restore requested calibrated power, including after a setter failure.
      * These APIs retain the existing 16 us PA ramp and disable direct mode. */
@@ -410,7 +408,7 @@ static int tx_configure_nbfm_profile(tx_pipeline_t* p, int requested_power)
         low ? REG_RF09_TXCUTC : REG_RF24_TXCUTC, filters, sizeof(filters));
     int gap_error = caribou_fpga_get_sys_ctrl_tx_sample_gap(&p->sys->fpga, &gap);
     if (filter_error || gap_error || (filters[0] & 0xcf) != 0x80 ||
-        filters[1] != (unsigned)rate_code || gap != 4000000 / rate - 1) {
+        filters[1] != (unsigned)rate_code || gap != profile.tx_sample_gap) {
         fprintf(stderr, "[tx_pipeline] NBFM TX filter/rate/gap verification failed: "
             "TXCUTC=0x%02X TXDFE=0x%02X expected=0x%02X rc=%d gap=%u rc=%d\n",
             filters[0], filters[1], (unsigned)rate_code, filter_error, gap, gap_error);
@@ -429,7 +427,16 @@ int tx_pipeline_init(tx_pipeline_t* p, sys_st* sys,
     p->radio = radio;
 
     unsigned rf_fs = par->rf_fs ? par->rf_fs : 4000000;
-    if (rf_fs != 4000000 && rf_fs != 2000000 && rf_fs != 1000000) return -1;
+    radio_profile_t profile;
+    if (radio_profile_tx(rf_fs, &profile) != 0 ||
+        !radio_profile_frequency_valid(radio->type, sys->board_info.numeric_product_id,
+                                       par->freq_hz) ||
+        !radio_profile_tx_power_valid(radio->type, par->tx_power_dbm) ||
+        !radio_profile_finite(par->f_dev_hz) || par->f_dev_hz < 0 || par->f_dev_hz > 24000 ||
+        !radio_profile_finite(par->out_scale) || par->out_scale < 0 || par->out_scale > 32767 ||
+        !radio_profile_finite(par->tone_hz) || par->tone_hz < 0 || par->tone_hz >= 24000 ||
+        !radio_profile_finite(par->tone_amp) || par->tone_amp < 0 || par->tone_amp > 1 ||
+        par->pacing_mode < TX_PACING_AUTO || par->pacing_mode > TX_PACING_LEGACY) return -1;
     atomic_init(&p->running, false);
     atomic_init(&p->tx_ctrl.active, false);
     atomic_init(&p->tx_ctrl.alive, false);
@@ -584,15 +591,8 @@ fail:
 static int tx_verify_start_profile(tx_pipeline_t* p, int requested_power)
 {
     bool low = p->radio->type == cariboulite_channel_s1g;
-    float x = requested_power;
-    if (x < (low ? -14 : -12)) x = low ? -14 : -12;
-    if (x > 14) x = 14;
-    float model = low
-        ? .001502f*x*x*x + .020549f*x*x + .991045f*x + 13.727758f
-        : .000710f*x*x*x*x + .010521f*x*x*x + .015169f*x*x + .914333f*x + 12.254084f;
-    int power_code = (int)roundf(model);
-    if (power_code < 0) power_code = 0;
-    if (power_code > 31) power_code = 31;
+    int power_code = radio_profile_tx_power_code(p->radio->type, requested_power);
+    if (power_code < 0) return -1;
     unsigned rate = (unsigned)p->tx_ctrl.frame_samples * 100;
     unsigned rate_code = tx_rate_code(rate);
     uint8_t pac = 0, txcutc = 0, txdfe = 0, state = 0, gap = 255;
@@ -1016,7 +1016,10 @@ bool tx_pipeline_healthy(const tx_pipeline_t* p)
 
 int tx_pipeline_set_freq_power(tx_pipeline_t* p, double freq_hz, int tx_power_dbm)
 {
-    if (!p || !p->sys || !p->radio) return -1;
+    if (!p || !p->sys || !p->radio ||
+        !radio_profile_frequency_valid(p->radio->type,
+            p->sys->board_info.numeric_product_id, freq_hz) ||
+        !radio_profile_tx_power_valid(p->radio->type, tx_power_dbm)) return -1;
     HW_LOCK();
     int rc = cariboulite_radio_set_frequency(p->radio, true, &freq_hz);
     if (rc == 0) rc = cariboulite_radio_set_tx_power(p->radio, tx_power_dbm);

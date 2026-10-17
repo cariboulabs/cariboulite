@@ -121,6 +121,18 @@ commands and publishes cached status. Broader directory/build reorganization and
 configuration across all public adapters remain open; see
 [interfaces](docs/audio-dsp-interfaces.md) and [radio controls](docs/radio-control.md).
 
+2026-10-17 application update: the focused shared configuration/status work in
+near-term step 1 is implemented and functionally accepted. Both applications use
+common validated radio profiles and checked modem snapshots; the pipelines own
+filter/rate application and verification, including idle RX initialization.
+Requested settings and observed register values are distinct, and menu polling no longer changes TX
+settings or clears interrupt/status latches. See the
+[shared contract and verification commands](docs/shared-radio-configuration.md).
+Jan confirmed on-air NBFM TX/RX operation in both applications and working WBFM
+reception after the update. Quantitative RF measurements remain separate.
+Broader public adapter configuration and directory/build reorganization below
+remain open.
+
 - [ ] Extract menu-owned streaming, radio control and audio handling behind the
   interfaces above, preserving current NBFM behavior and public entry points.
 - [ ] Centralize runtime configuration and capability validation. Replace

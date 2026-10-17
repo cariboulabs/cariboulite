@@ -30,6 +30,7 @@ retain their original revision and test conditions. See the
 - [NBFM complex channel filter](nbfm-channel-filter.md)
 - [NBFM discriminator angle correction and CPU measurements](nbfm-discriminator-angle.md)
 - [Audio/DSP interfaces](audio-dsp-interfaces.md)
+- [Shared application radio configuration and status](shared-radio-configuration.md)
 - [Audio/DSP extension guide](audio-dsp-extension-guide.md)
 - [Hardware-paced TX implementation](tx-hardware-paced-design.md)
 - [TX tail timing and drain contract](tx-tail-timing.md)

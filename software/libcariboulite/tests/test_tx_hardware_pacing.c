@@ -507,6 +507,7 @@ int main(void)
 {
     int pipes[2]; assert(!pipe(pipes));
     sys_st sys = {0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.smi.filedesc = pipes[1];
     sys.radio_high.sys = &sys;
     sys.radio_high.type = cariboulite_channel_hif;

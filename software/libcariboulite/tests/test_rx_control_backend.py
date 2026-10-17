@@ -436,7 +436,8 @@ class RxControlBackendTests(unittest.TestCase):
             ["cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
              "-Wno-unused-parameter", "-Wno-missing-braces", "-ffunction-sections",
              "-fdata-sections", "-I" + str(src), "-I" + str(backend), str(fixture),
-             str(src / "noise_squelch.c"), "-Wl,--gc-sections", "-pthread", "-lm",
+             str(src / "noise_squelch.c"), str(src / "radio_profile.c"),
+             "-Wl,--gc-sections", "-pthread", "-lm",
              "-o", str(binary)], capture_output=True, timeout=15)
         self.assertEqual(compilation.returncode, 0, compilation.stderr.decode())
         result = subprocess.run([str(binary)], capture_output=True, timeout=10)

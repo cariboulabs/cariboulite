@@ -309,6 +309,7 @@ int main(void)
     alarm(45);
     int pipe_fds[2]; assert(pipe(pipe_fds) == 0);
     sys_st sys = {0};
+    sys.board_info.numeric_product_id = system_type_cariboulite_full;
     sys.smi.filedesc = pipe_fds[1];
     sys.radio_high.sys = &sys;
     sys.radio_high.type = cariboulite_channel_hif;
