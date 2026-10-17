@@ -4,6 +4,9 @@
 # macOS Finder metadata
 .DS_Store
 
+# Python bytecode caches
+__pycache__/
+
 # Object files
 *.o
 *.ko
