@@ -25,6 +25,31 @@ network audio/PTT and the external-PA sequencer remain open. The
 [2026-10-16 documentation audit](docs/documentation-audit-2026-10-16.md) records
 this source review; it is not a new hardware qualification.
 
+## Agreed near-term development order — 2026-10-17
+
+1. Finish shared radio configuration and status for the test app and standalone
+   backend. The same explicit configuration must produce matching hardware
+   settings, with requested values distinct from fresh, valid readbacks.
+2. Establish FPGA build headroom, then add external-PA control. First complete
+   the existing [synthesis/routing and LVDS timing experiments](docs/lvds-fmax-next-test-2026-10-08.md),
+   recording resource use, repeatability and timing margin before selecting build
+   settings. The last recorded CE2 build failed LVDS timing; no replacement build
+   settings are accepted. RAM is already fully used, so account for the additional
+   logic without adding RAM or relaxing the clock constraints. After accepting the
+   baseline, integrate and measure one or two FPGA logic outputs for the selected
+   PA interface. Output roles, pins, polarity, electrical interface and timing
+   remain to be specified. Coordinate PA control with shared TX start/stop/abort
+   and RX handoff, and verify output behavior with the PA disconnected before
+   testing the complete chain. See [milestone D](#d-fpga-antennapttpa-sequencer-item-6).
+3. Complete reproducible end-to-end NBFM transceiver acceptance, including RF/audio
+   measurements, extended operation and repeated PTT/recovery checks, followed by
+   the first two-way NBFM contact.
+4. Extend reception with CW listening, then AM and USB/LSB through the existing
+   audio/DSP interfaces.
+
+FPGA build headroom and external-PA control are prerequisites for the complete
+transceiver demonstration in step 3; shared configuration/status remains first.
+
 ## Existing foundation
 
 - Hardware modules already live under `software/libcariboulite/src/`:
