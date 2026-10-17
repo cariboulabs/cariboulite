@@ -77,7 +77,7 @@ def setup_freq_power(sdr, stream, freq_KHz, power=10.0):
 	sdr.setGain(SOAPY_SDR_TX, 0, power+10)
 
 def setup_transmitter(sdr, freq_KHz=2304100):
-	stream = sdr.setupStream(SOAPY_SDR_TX, SOAPY_SDR_CS16, [0], dict(CW="1"))
+	stream = sdr.setupStream(SOAPY_SDR_TX, SOAPY_SDR_CS16, [0])
 	setup_freq_power(sdr, stream, freq_KHz)
 	return stream
 
@@ -115,7 +115,7 @@ def main():
 
 		#---------------------------------------------
 		if (event == "Exit" or event == WIN_CLOSED):
-			break;
+			break
 
 		#---------------------------------------------
 		elif event == "Set Power":

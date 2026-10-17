@@ -1,0 +1,37 @@
+{
+  "automation_completed": true,
+  "returncode": 0,
+  "rssi": {
+    "12_rx_2000000": {
+      "count": 10,
+      "min_dbm": -108.0,
+      "mean_dbm": -105.5,
+      "max_dbm": -102.0
+    },
+    "12_rx_4000000": {
+      "count": 10,
+      "min_dbm": -106.0,
+      "mean_dbm": -102.6,
+      "max_dbm": -101.0
+    },
+    "14_rx_2000000": {
+      "count": 10,
+      "min_dbm": -111.0,
+      "mean_dbm": -106.3,
+      "max_dbm": -103.0
+    },
+    "14_rx_4000000": {
+      "count": 10,
+      "min_dbm": -109.0,
+      "mean_dbm": -103.5,
+      "max_dbm": -101.0
+    }
+  },
+  "audible_result": "Jan confirmed all automated runner TX levels were approximately -90 dBm on the SDRPlay RSP2pro, audio quality was good and tone pitch was correct.",
+  "listener_confirmation_date": "2026-09-19",
+  "remaining_checks": "None for H3. Interactive retuning deferred until a tuning control is implemented; not required for the ALSA extraction.",
+  "manual_selftest": "Option 13 tested correctly; confirmed by Jan on 2026-09-19.",
+  "manual_known_signal_rx": "Known-signal RX passed at both 2 and 4 MS/s; confirmed by Jan on 2026-09-19.",
+  "manual_restart": "Jan confirmed numerous RX start/stop actions without odd behaviour.",
+  "h3_result": "Passed: automated baseline, option 13, known-signal RX at 2 and 4 MS/s, and repeated RX start/stop confirmed by Jan."
+}

@@ -1,0 +1,8 @@
+{
+    "cmake.ignoreCMakeListsMissing": true,
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.default.defines": [
+        "_GNU_SOURCE",
+        "_POSIX_C_SOURCE=200809L"
+    ]
+}

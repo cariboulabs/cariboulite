@@ -5,12 +5,20 @@
 #define ZF_LOG_TAG "CARIBOULITE Setup"
 #include "zf_log/zf_log.h"
 
+// Enable POSIX/GNU extensions so siginfo_t and SA_SIGINFO are visible
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
 
 #include <signal.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #include "cariboulite_setup.h"
 #include "cariboulite_events.h"
@@ -19,6 +27,28 @@
 
 // Global system object for signals
 static sys_st* sigsys = NULL;
+
+/* Claim before any GPIO/SPI access; keep it until all hardware cleanup ends. */
+static int cariboulite_claim_device(sys_st *sys)
+{
+    if (sys->ownership_claimed) return 0;
+    int fd = open("/dev/smi", O_RDWR | O_CLOEXEC);
+    if (fd < 0) {
+        ZF_LOGE("Cannot claim /dev/smi (%s); hardware setup skipped", strerror(errno));
+        return -1;
+    }
+    sys->ownership_fd = fd;
+    sys->ownership_claimed = true;
+    return 0;
+}
+
+static void cariboulite_unclaim_device(sys_st *sys)
+{
+    if (!sys->ownership_claimed) return;
+    close(sys->ownership_fd);
+    sys->ownership_fd = -1;
+    sys->ownership_claimed = false;
+}
 
 //=================================================================
 static void print_siginfo(siginfo_t *si)
@@ -241,16 +271,19 @@ int cariboulite_setup_io (sys_st* sys)
 //=======================================================================================
 int cariboulite_release_io (sys_st* sys)
 {
+    if (sys->smi.initialized) caribou_smi_close(&sys->smi);
     ZF_LOGD("Releasing board I/Os - closing SPI");
     io_utils_spi_close(&sys->spi_dev);
 
     ZF_LOGD("Releasing board I/Os - io_utils_cleanup");
     io_utils_cleanup();
+    cariboulite_unclaim_device(sys);
+    sys->system_status = sys_status_unintialized;
     return 0;
 }
 
 //=======================================================================================
-int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, char* fpga_bin_path)
+int cariboulite_configure_fpga (sys_st* sys, cariboulite_firmware_source_en src, const char* fpga_bin_path)
 {
     int ret = 0;
  	switch (src)
@@ -282,7 +315,7 @@ int cariboulite_init_submodules (sys_st* sys)
     // SMI Init
     //------------------------------------------------------
     ZF_LOGD("INIT FPGA SMI communication");
-    res = caribou_smi_init(&sys->smi, &sys);
+    res = caribou_smi_init_with_fd(&sys->smi, sys, sys->ownership_fd);
     if (res < 0)
     {
         ZF_LOGE("Error setting up smi submodule");
@@ -495,7 +528,7 @@ int cariboulite_self_test(sys_st* sys, cariboulite_self_test_result_st* res)
 		ZF_LOGD("Testing mixer communication and versions");
 		rffc507x_device_id_st dev_id;
 		rffc507x_readback_status(&sys->mixer, &dev_id, NULL);
-		if (dev_id.device_id != 0x1140 && dev_id.device_id != 0x11C0)
+		if (dev_id.fields.device_id != 0x1140 && dev_id.fields.device_id != 0x11C0)
 		{
 			ZF_LOGE("The assembled mixer is not RFFC5071/2[A]");
 			res->mixer_fail = 1;
@@ -526,17 +559,22 @@ int cariboulite_init_system_production(sys_st *sys)
 		return 0;
 	}
 
+    if (cariboulite_claim_device(sys) < 0)
+        return -cariboulite_submodules_init_failed;
+
     // signals
 	ZF_LOGI("Initializing signals");
     if(cariboulite_setup_signals(sys) != 0)
     {
         ZF_LOGE("error signal list registration");
+        cariboulite_unclaim_device(sys);
         return -cariboulite_signal_registration_failed;
     }
 
     // IO
 	if (cariboulite_setup_io(sys) != 0)
     {
+        cariboulite_unclaim_device(sys);
         return -cariboulite_io_setup_failed;
     }
 	
@@ -572,6 +610,7 @@ int cariboulite_deinit_system_production(sys_st *sys)
 
     ZF_LOGI("Releasing board I/Os - io_utils_cleanup");
     io_utils_cleanup();
+    cariboulite_unclaim_device(sys);
     return 0;
 }
 
@@ -586,12 +625,16 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool p
 		return 0;
 	}
 
+    if (cariboulite_claim_device(sys) < 0)
+        return -cariboulite_submodules_init_failed;
+
     // LINUX SIGNALS
     // --------------------------------------------------------------------
 	ZF_LOGD("Initializing signals");
     if(cariboulite_setup_signals(sys) != 0)
     {
         ZF_LOGE("error signal list registration");
+        cariboulite_unclaim_device(sys);
         return -cariboulite_signal_registration_failed;
     }
 	
@@ -608,6 +651,7 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool p
         {
             ZF_LOGE("Failed to detect the board in /proc/device-tree/hat, though EEPROM is configured. Please reboot system...");
         }
+        cariboulite_unclaim_device(sys);
         return -cariboulite_board_detection_failed;
 	}
 	sys->sys_type = (system_type_en)sys->board_info.numeric_product_id;
@@ -616,6 +660,7 @@ int cariboulite_init_driver_minimal(sys_st *sys, hat_board_info_st *info, bool p
     // --------------------------------------------------------------------
 	if (cariboulite_setup_io(sys) != 0)
     {
+        cariboulite_unclaim_device(sys);
         return -cariboulite_io_setup_failed;
     }
 

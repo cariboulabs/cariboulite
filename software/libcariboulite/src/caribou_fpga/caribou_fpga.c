@@ -98,11 +98,9 @@ static int caribou_fpga_spi_transfer (caribou_fpga_st* dev, uint8_t *opcode, uin
         ZF_LOGE("spi transfer failed (%d)", ret);
         return -1;
     }
-    // on success return 0 (the number of transmitted bytes are same as needed),
-    // otherwise '1' (warning / error)
-
+    // io_utils_spi_transmit returns zero on success, not a byte count.
     *data = rx_buf[1];
-    return !(ret == sizeof(rx_buf));
+    return 0;
 }
 
 //--------------------------------------------------------------
@@ -213,7 +211,7 @@ int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, si
 }
 
 //--------------------------------------------------------------
-int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, char *filename, bool force_prog)
+int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, const char *filename, bool force_prog)
 {
 	caribou_fpga_get_status(dev, NULL);
 	if (dev->status == caribou_fpga_status_not_programmed || force_prog)
@@ -346,7 +344,7 @@ static char caribou_fpga_mode_names[][64] =
 	"RX lowpass (up-conversion) (2)",
 	"RX hipass (down-conversion) (3)",
 	"TX lowpass (down-conversion) (4)",
-	"RX hipass (up-conversion) (5)",
+	"TX hipass (up-conversion) (5)",
 };
 
 char* caribou_fpga_get_mode_name (caribou_fpga_io_ctrl_rfm_en mode)
@@ -370,6 +368,18 @@ int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &mode);
 }
 //--------------------------------------------------------------
+int caribou_fpga_set_debug_loopback(caribou_fpga_st* dev, bool enabled)
+{
+    CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_set_debug_loopback");
+    caribou_fpga_opcode_st oc = {
+        .rw = caribou_fpga_rw_write,
+        .mid = caribou_fpga_mid_sys_ctrl,
+        .ioc = IOC_SYS_CTRL_DEBUG_MODES
+    };
+    uint8_t mode = enabled ? 0x08 : 0;
+    return caribou_fpga_spi_transfer(dev, (uint8_t*)&oc, &mode);
+}
+
 int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map)
 {
     CARIBOU_FPGA_CHECK_DEV(dev,"caribou_fpga_get_errors");
@@ -457,7 +467,11 @@ int caribou_fpga_set_sys_ctrl_sync_source (caribou_fpga_st* dev, caribou_fpga_sy
         .ioc = IOC_SYS_CTRL_TX_SAMPLE_GAP,
     };
     int ret = caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &actual_val);
-    if (ret != 0) return -1;
+    if (ret != 0) 
+    { 
+        ZF_LOGE("Failed to read IOC_SYS_CTRL_TX_SAMPLE_GAP");      
+        return -1;
+    }
     
     temp = actual_val & 0xF;
     uint8_t cur_rx_09 = (actual_val >> 4) & 0x1;
@@ -476,6 +490,7 @@ int caribou_fpga_set_sys_ctrl_sync_source (caribou_fpga_st* dev, caribou_fpga_sy
     temp |= cur_tx_24 << 7;
     
     oc.rw = caribou_fpga_rw_write;
+    ZF_LOGI("Writing IOC_SYS_CTRL_TX_SAMPLE_GAP: 0x%02X\n", temp);
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &temp);
 }
 
@@ -538,7 +553,7 @@ int caribou_fpga_set_io_ctrl_mode (caribou_fpga_st* dev, uint8_t debug_mode, car
         .ioc = IOC_IO_CTRL_MODE
     };
 
-    uint8_t mode = (debug_mode << 0) | (rfm&0x7)<<2;
+    uint8_t mode = ((debug_mode&0x3) << 0) | (rfm&0x7)<<2;
     return caribou_fpga_spi_transfer (dev, (uint8_t*)(&oc), &mode);
 }
 

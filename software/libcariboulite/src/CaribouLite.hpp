@@ -185,6 +185,8 @@ public:
     bool GetIsTransmittingCw(void);
     
     // Synchronous Reading and Writing
+    // Reads return at most one native MTU per call; use the returned count
+    // to advance output buffers and request any remaining samples.
     int ReadSamples(std::complex<float>* samples, size_t num_to_read, uint8_t* meta = NULL);
     int ReadSamples(std::complex<short>* samples, size_t num_to_read, uint8_t* meta = NULL);
     int WriteSamples(std::complex<float>* samples, size_t num_to_write);
@@ -219,6 +221,7 @@ private:
     cariboulite_sample_complex_int16 *_read_samples;
     std::complex<short> *_write_samples;
     cariboulite_sample_meta* _read_metadata;
+    size_t _read_capacity = 0;
     
 private:
     static void CaribouLiteRxThread(CaribouLiteRadio* radio);

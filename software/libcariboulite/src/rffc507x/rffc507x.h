@@ -39,23 +39,26 @@ extern "C" {
 #define RFFC507X_REG_SET_CLEAN(d,r) (d)->rffc507x_regs_dirty &= ~(1UL<<r)
 #define RFFC507X_REG_SET_DIRTY(d,r) (d)->rffc507x_regs_dirty |= (1UL<<r)
 
-
-#pragma pack(1)
-typedef struct  // readsel = 0000
-{
-    uint8_t device_rev  : 3;    // LSB
-    uint16_t device_id  : 13;   // MSB
+typedef union {
+    uint16_t raw;
+    struct  // readsel = 0000
+    {
+        uint16_t device_rev  : 3;    // LSB
+        uint16_t device_id  : 13;   // MSB
+    } fields;
 } rffc507x_device_id_st;
 
-typedef struct  // readsel = 0001
-{
-    uint8_t dummy : 1;                  // LSB
-    uint8_t coarse_tune_cal_fail : 1;
-    uint8_t kv_cal_value : 6;
-    uint8_t coarse_tune_cal_value : 7;
-    uint8_t pll_lock :1;                // MSB
+typedef union {
+    uint16_t raw; 
+    struct  // readsel = 0001
+    {
+        uint16_t dummy : 1;                  // LSB
+        uint16_t coarse_tune_cal_fail : 1;
+        uint16_t kv_cal_value : 6;
+        uint16_t coarse_tune_cal_value : 7;
+        uint16_t pll_lock :1;                // MSB
+    } fields;
 } rffc507x_device_status_st;
-#pragma pack()
 
 typedef struct
 {

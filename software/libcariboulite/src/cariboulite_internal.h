@@ -105,6 +105,8 @@ typedef struct sys_st_t
 	int fpga_config_res_state;
 	// Initialization
 	sys_status_en system_status;
+    bool ownership_claimed;
+    int ownership_fd;
 } sys_st;
 
 #ifdef __cplusplus

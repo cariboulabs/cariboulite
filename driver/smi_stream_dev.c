@@ -62,8 +62,15 @@
 #include <linux/wait.h>
 #include <linux/poll.h>
 #include <linux/init.h>
+#include <linux/vmalloc.h>
+#include <linux/atomic.h>
 
 #include "smi_stream_dev.h"
+
+#include <linux/compiler.h>   // for READ_ONCE
+#include <linux/printk.h>     // dev_info_ratelimited
+#include <linux/hrtimer.h>    // hrtimer
+#include <linux/ktime.h>      // ktime_get
 
 
 // MODULE SPECIFIC PARAMETERS
@@ -73,6 +80,9 @@ static int              addr_dir_offset = 2;    // GPIO_SA[4:0] offset of the ch
 static int              addr_ch_offset = 3;     // GPIO_SA[4:0] offset of the channel select
 
 #define SMI_TRANSFER_MULTIPLIER 64
+/* Bump this if you want an even longer run between refreshes */
+#define SMI_REFRESH_CHUNKS   1024   /* quarters per SMIL window */
+#define SMI_TOPUP_MARGIN     4    /* refresh before it fully drains */
 
 module_param(fifo_mtu_multiplier, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 module_param(addr_dir_offset, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -104,7 +114,14 @@ struct bcm2835_smi_dev_instance
     smi_stream_state_en state;
     struct mutex read_lock;
     struct mutex write_lock;
-    spinlock_t state_lock;
+    struct mutex transition_lock;
+    /* A zero limit preserves the legacy allocated FIFO admission threshold. */
+    u32 tx_fifo_limit_bytes;
+    atomic64_t tx_session_generation;
+    atomic64_t tx_completed_periods;
+    atomic64_t tx_underrun_periods;
+    atomic64_t tx_accepted_bytes;
+    atomic64_t tx_fifo_dequeued_bytes;
     wait_queue_head_t poll_event;
     uint32_t current_read_chunk;
     uint32_t counter_missed;
@@ -113,6 +130,16 @@ struct bcm2835_smi_dev_instance
     bool transfer_thread_running;
     bool reader_waiting_sema;
     bool writer_waiting_sema;
+
+    /* ---- TX watchdog (read-only) ---- */
+    struct delayed_work tx_watch_work;
+    unsigned int        tx_watch_period_us;
+    u32                 tx_watch_last_smil;
+    bool                tx_watch_last_active;
+    u32                 tx_watch_min_smil;
+    /* ---- TX SMIL keepalive ---- */
+    struct hrtimer      tx_hr;
+    ktime_t             tx_hr_period;
 };
 
 
@@ -128,9 +155,111 @@ static void stream_smi_read_dma_callback(void *param);
 static void stream_smi_write_dma_callback(void *param);
 void transfer_thread_stop(struct bcm2835_smi_dev_instance *inst);
 void print_smil_registers(void);
-
+void print_smil_registers_ext(const char* b);
+static void smi_refresh_dma_command(struct bcm2835_smi_instance *smi_inst, int num_transfers);
+static inline void smi_rearm_if_idle(struct bcm2835_smi_dev_instance *i);
+static enum hrtimer_restart tx_hr_keepalive(struct hrtimer *t);
 
 static struct bcm2835_smi_dev_instance *inst = NULL;
+
+/* The global FIFOs belong to one open file description at a time.
+ * Serialize allocation and final release as well as the ownership flag.
+ */
+static DEFINE_MUTEX(open_lock);
+static bool device_open;
+
+static unsigned int smi_tx_fifo_available(struct bcm2835_smi_dev_instance *i)
+{
+    unsigned int limit = READ_ONCE(i->tx_fifo_limit_bytes);
+    unsigned int queued;
+
+    if (!limit)
+        return kfifo_avail(&i->tx_fifo);
+    queued = kfifo_len(&i->tx_fifo);
+    return queued < limit ? limit - queued : 0;
+}
+
+/* The SMI's packed 8-bit format sends this native word in protocol order,
+ * matching caribou_smi_generate_data: SOF=1, control=0, signed I=Q=0.
+ * Firmware currently holds its LVDS TX_EN high even for control=0: zero IQ
+ * padding is valid framing, not a substitute for radio unkeying.
+ */
+static void smi_tx_fill_quiet(void *buffer, unsigned int bytes)
+{
+    u32 *words = buffer;
+    unsigned int n;
+
+    for (n = 0; n < bytes / sizeof(*words); n++)
+        words[n] = 0x80000000U;
+}
+
+static long smi_tx_set_buffer_limit(unsigned long arg)
+{
+    struct smi_stream_tx_buffer_limit request;
+    long ret = 0;
+
+    if (copy_from_user(&request, (void __user *)arg, sizeof(request)))
+        return -EFAULT;
+    if (request.abi_version != SMI_STREAM_TX_ABI_VERSION ||
+        request.struct_size != sizeof(request) || request.reserved)
+        return -EINVAL;
+    if (request.fifo_limit_bytes &&
+        (request.fifo_limit_bytes < DMA_BOUNCE_BUFFER_SIZE / 4 ||
+         request.fifo_limit_bytes > kfifo_size(&inst->tx_fifo) ||
+         (request.fifo_limit_bytes & 3)))
+        return -EINVAL;
+
+    mutex_lock(&inst->transition_lock);
+    mutex_lock(&inst->write_lock);
+    if (READ_ONCE(inst->state) != smi_stream_idle ||
+        (request.fifo_limit_bytes &&
+         (kfifo_len(&inst->tx_fifo) > request.fifo_limit_bytes ||
+          (kfifo_len(&inst->tx_fifo) & 3)))) {
+        ret = -EBUSY;
+    } else {
+        WRITE_ONCE(inst->tx_fifo_limit_bytes, request.fifo_limit_bytes);
+    }
+    mutex_unlock(&inst->write_lock);
+    mutex_unlock(&inst->transition_lock);
+    if (!ret)
+        wake_up_interruptible(&inst->poll_event);
+    return ret;
+}
+
+static long smi_tx_get_status(unsigned long arg)
+{
+    struct smi_stream_tx_status status = {
+        .abi_version = SMI_STREAM_TX_ABI_VERSION,
+        .struct_size = sizeof(status),
+        .period_bytes = DMA_BOUNCE_BUFFER_SIZE / 4,
+        .ring_bytes = DMA_BOUNCE_BUFFER_SIZE,
+    };
+
+    /* Pin the session/state against transition/reset. The callback can retire
+     * periods during this snapshot; the counters remain individually atomic.
+     */
+    mutex_lock(&inst->transition_lock);
+    mutex_lock(&inst->write_lock);
+    status.state = READ_ONCE(inst->state);
+    status.fifo_queued_bytes = kfifo_len(&inst->tx_fifo);
+    status.fifo_capacity_bytes = kfifo_size(&inst->tx_fifo);
+    status.fifo_limit_bytes = READ_ONCE(inst->tx_fifo_limit_bytes);
+    if (status.fifo_limit_bytes)
+        status.flags |= SMI_STREAM_TX_STATUS_BOUNDED_FIFO;
+    else
+        status.fifo_limit_bytes = status.fifo_capacity_bytes;
+    if (status.state == smi_stream_tx_channel &&
+        READ_ONCE(inst->transfer_thread_running))
+        status.flags |= SMI_STREAM_TX_STATUS_DMA_RUNNING;
+    status.session_generation = atomic64_read(&inst->tx_session_generation);
+    status.completed_periods = atomic64_read(&inst->tx_completed_periods);
+    status.underrun_periods = atomic64_read(&inst->tx_underrun_periods);
+    status.accepted_bytes = atomic64_read(&inst->tx_accepted_bytes);
+    status.fifo_dequeued_bytes = atomic64_read(&inst->tx_fifo_dequeued_bytes);
+    mutex_unlock(&inst->write_lock);
+    mutex_unlock(&inst->transition_lock);
+    return copy_to_user((void __user *)arg, &status, sizeof(status)) ? -EFAULT : 0;
+}
 
 static const char *const ioctl_names[] = 
 {
@@ -216,91 +345,186 @@ static inline int smi_is_active(struct bcm2835_smi_instance *inst)
 }
 
 /***************************************************************************/
+// static int set_state(smi_stream_state_en new_state)
+// {
+//     int ret = -1;
+//     unsigned int new_address = calc_address_from_state(new_state);
+    
+//     if (inst == NULL) return 0;
+//     dev_info(inst->dev, "Set STREAMING_STATUS = %d, cur_addr = %d", new_state, new_address);
+    
+//     spin_lock(&inst->state_lock);
+    
+//     // in any case if we want to change the state
+//     // then stop the current transfer and update the new state.
+//     if(new_state != inst->state)
+//     {
+//         // Log once per transition to see *who* is causing it
+//         dev_info(inst->dev, "set_state transition %d -> %d\n", inst->state, new_state);
+//         dump_stack();  // temporary: shows the callers in dmesg
+        
+//         // stop the transter
+//         spin_unlock(&inst->state_lock);
+//         transfer_thread_stop(inst);
+//         spin_lock(&inst->state_lock);
+
+//         if(smi_is_active(inst->smi_inst))
+//         {
+//             spin_unlock(&inst->state_lock);
+//             return -EAGAIN;
+//         }
+        
+//         // update the state from current state
+//         inst->state = smi_stream_idle;
+//         bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
+        
+//         ret = 0;
+//         //now state is idle 
+//     }
+//     // else if the state is the same, do nothing
+//     else
+//     {
+//         spin_unlock(&inst->state_lock);
+//         dev_info(inst->dev, "State is the same as before");
+//         return 0;
+//     }
+    
+//     // Only if the new state is not idle (rx0, rx1 ot tx) setup a new transfer
+//     if(new_state != smi_stream_idle)
+//     {
+//         bcm2835_smi_set_address(inst->smi_inst, new_address);
+
+//         if (new_state == smi_stream_tx_channel)
+//         {
+//             // remove all data inside the tx_fifo
+//             if (mutex_lock_interruptible(&inst->write_lock))
+//             {
+//                 return -EINTR;
+//             }
+//             kfifo_reset(&inst->tx_fifo);
+//             mutex_unlock(&inst->write_lock);
+            
+//             inst->writeable = true;
+//             wake_up_interruptible(&inst->poll_event);
+            
+//             ret = transfer_thread_init(inst, DMA_MEM_TO_DEV, stream_smi_write_dma_callback);
+//             //mb();
+//             spin_unlock(&inst->state_lock);
+            
+//             // return the success
+//             return ret;
+//         }
+//         else
+//         {
+//             ret = transfer_thread_init(inst, DMA_DEV_TO_MEM, stream_smi_read_dma_callback);
+//         }
+        
+//         // if starting the transfer succeeded update the state
+//         if (!ret)
+//         {
+//             inst->state = new_state;
+//         }
+//         // if failed, go back to idle
+//         else
+//         {
+//             bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
+//             inst->state = smi_stream_idle;
+//         }
+//     }
+//     mb(); // memory barrier to ensure that the state is updated before we return
+    
+//     spin_unlock(&inst->state_lock);
+    
+//     // return the success
+//     return ret;
+// }
+
 static int set_state(smi_stream_state_en new_state)
 {
-    int ret = -1;
-    unsigned int new_address = calc_address_from_state(new_state);
-    
-    if (inst == NULL) return 0;
-    dev_info(inst->dev, "Set STREAMING_STATUS = %d, cur_addr = %d", new_state, new_address);
-    
-    spin_lock(&inst->state_lock);
-    
-    // in any case if we want to change the state
-    // then stop the current transfer and update the new state.
-    if(new_state != inst->state)
-    {
-        // stop the transter
+    int ret = 0;
+    unsigned int new_address;
+
+    if (!inst) return 0;
+
+    /* Process-context callers only. Serialize the entire hardware transition.
+     * Lock order: open_lock -> transition_lock -> write_lock.
+     * DMA/timer/work callbacks must not acquire transition_lock.
+     */
+    mutex_lock(&inst->transition_lock);
+
+    /* Check only after any preceding transition has completed. */
+    if (new_state == inst->state) {
+        dev_info(inst->dev, "IOCTL SET_STREAM_STATUS old=%d new=%d (noop)", inst->state, new_state);
+        goto out_unlock;
+    }
+
+    dev_info(inst->dev, "set_state transition %d -> %d", inst->state, new_state);
+
+    /* Quiesce TX helpers before DMA shutdown so they cannot rearm SMI. */
+    hrtimer_cancel(&inst->tx_hr);
+    cancel_delayed_work_sync(&inst->tx_watch_work);
+    if (inst->transfer_thread_running)
         transfer_thread_stop(inst);
 
-        if(smi_is_active(inst->smi_inst))
-        {
-            spin_unlock(&inst->state_lock);
-            return -EAGAIN;
-        }
-        
-        // update the state from current state
-        inst->state = smi_stream_idle;
-        bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
-        
-        ret = 0;
-        //now state is idle 
-    }
-    // else if the state is the same, do nothing
-    else
-    {
-        spin_unlock(&inst->state_lock);
-        dev_info(inst->dev, "State is the same as before");
-        return 0;
-    }
-    
-    // Only if the new state is not idle (rx0, rx1 ot tx) setup a new transfer
-    if(new_state != smi_stream_idle)
-    {
-        bcm2835_smi_set_address(inst->smi_inst, new_address);
+    /* Put HW into a known idle/address before starting a new direction */
+    bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
+    WRITE_ONCE(inst->state, smi_stream_idle);
 
-        if (new_state == smi_stream_tx_channel)
-        {
-            // remove all data inside the tx_fifo
-            if (mutex_lock_interruptible(&inst->write_lock))
-            {
-                return -EINTR;
-            }
-            kfifo_reset(&inst->tx_fifo);
-            mutex_unlock(&inst->write_lock);
-            
-            inst->writeable = true;
-            wake_up_interruptible(&inst->poll_event);
-            
-            //ret = transfer_thread_init(inst, DMA_MEM_TO_DEV, stream_smi_write_dma_callback);
-            mb();
-            spin_unlock(&inst->state_lock);
-            
-            // return the success
-            return ret;
-        }
-        else
-        {
-            ret = transfer_thread_init(inst, DMA_DEV_TO_MEM, stream_smi_read_dma_callback);
-        }
-        
-        // if starting the transfer succeeded update the state
-        if (!ret)
-        {
-            inst->state = new_state;
-        }
-        // if failed, go back to idle
-        else
-        {
+    new_address = calc_address_from_state(new_state);
+    bcm2835_smi_set_address(inst->smi_inst, new_address);
+
+    if (new_state == smi_stream_tx_channel) {
+        /* Reset TX FIFO so we start clean */
+        if (mutex_lock_interruptible(&inst->write_lock)) {
             bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
-            inst->state = smi_stream_idle;
+            ret = -EINTR;
+            goto out_unlock;
         }
+        kfifo_reset(&inst->tx_fifo);
+        atomic64_inc(&inst->tx_session_generation);
+        atomic64_set(&inst->tx_completed_periods, 0);
+        atomic64_set(&inst->tx_underrun_periods, 0);
+        atomic64_set(&inst->tx_accepted_bytes, 0);
+        atomic64_set(&inst->tx_fifo_dequeued_bytes, 0);
+        mutex_unlock(&inst->write_lock);
+
+        inst->writeable = true;
+        wake_up_interruptible(&inst->poll_event);
+
+        /* Start cyclic DMA (TX) */
+        ret = transfer_thread_init(inst, DMA_MEM_TO_DEV, stream_smi_write_dma_callback);
+        if (!ret) {
+            /* Arm a long window right away */
+            WRITE_ONCE(inst->state, new_state);
+        } else {
+            /* Failed → stay idle */
+            bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
+            WRITE_ONCE(inst->state, smi_stream_idle);
+        }
+    } else if (new_state == smi_stream_rx_channel_0 || new_state == smi_stream_rx_channel_1) {
+        /* Start cyclic DMA (RX) */
+        ret = transfer_thread_init(inst, DMA_DEV_TO_MEM, stream_smi_read_dma_callback);
+        if (!ret) {
+            /* Same idea for RX: keep it armed long */
+            //smi_refresh_dma_command(inst->smi_inst, DMA_BOUNCE_BUFFER_SIZE/4);
+            WRITE_ONCE(inst->state, new_state);
+        } else {
+            bcm2835_smi_set_address(inst->smi_inst, calc_address_from_state(smi_stream_idle));
+            WRITE_ONCE(inst->state, smi_stream_idle);
+        }
+    } else {
+        /* Explicit idle */
+        WRITE_ONCE(inst->state, smi_stream_idle);
     }
+
     mb();
-    
-    spin_unlock(&inst->state_lock);
-    
-    // return the success
+    /* Keep serialization until successful TX startup includes its helpers. */
+    if (!ret && new_state == smi_stream_tx_channel) {
+        schedule_delayed_work(&inst->tx_watch_work, usecs_to_jiffies(inst->tx_watch_period_us));
+        hrtimer_start(&inst->tx_hr, inst->tx_hr_period, HRTIMER_MODE_REL_PINNED);
+    }
+out_unlock:
+    mutex_unlock(&inst->transition_lock);
     return ret;
 }
 
@@ -345,20 +569,124 @@ static int smi_disable_sync(struct bcm2835_smi_instance *smi_inst)
 }
 
 /***************************************************************************/
-static void smi_refresh_dma_command(struct bcm2835_smi_instance *smi_inst, int num_transfers)
-{
-    int smics_temp = 0;
-    //print_smil_registers_ext("refresh 1");
-    write_smi_reg(smi_inst, SMI_TRANSFER_MULTIPLIER*num_transfers, SMIL); //to avoid stopping and restarting
-    //print_smil_registers_ext("refresh 2");
+// static void smi_refresh_dma_command(struct bcm2835_smi_instance *smi_inst, int num_transfers)
+// {
+//     int smics_temp = 0;
+//     print_smil_registers_ext("refresh 1");
+//     smics_temp = read_smi_reg(smi_inst, SMICS);
+//     //write_smi_reg(smi_inst, SMI_TRANSFER_MULTIPLIER*num_transfers, SMIL); //to avoid stopping and restarting
+//     //print_smil_registers_ext("refresh 2");
     
-    // Start the transaction
-    smics_temp = read_smi_reg(smi_inst, SMICS);
-    smics_temp |= SMICS_START;
-    //smics_temp &= ~(SMICS_PVMODE);
-    write_smi_reg(smi_inst, smics_temp & 0xffff, SMICS);
-    inst->count_since_refresh = 0;
-    //print_smil_registers_ext("refresh 3");
+//     // Start the transaction
+//     //smics_temp = read_smi_reg(smi_inst, SMICS);
+//     smics_temp |= SMICS_START;
+//     //smics_temp &= ~(SMICS_PVMODE);
+//     write_smi_reg(smi_inst, smics_temp, SMICS);
+//     inst->count_since_refresh = 0;
+//     print_smil_registers_ext("refresh 3");
+// }
+
+/* Nudge-only refresh: DO NOT modify SMIL here */
+static inline void smi_refresh_dma_command(struct bcm2835_smi_instance *smi_inst,
+                                           int num_transfers)
+{
+    /* Give a long window (N quarters) so DREQ keeps flowing. */
+    write_smi_reg(smi_inst, SMI_REFRESH_CHUNKS * num_transfers, SMIL);
+
+    /* START (safe to set repeatedly). */
+    u32 smics = read_smi_reg(smi_inst, SMICS);
+    smics |= SMICS_START;
+    write_smi_reg(smi_inst, smics, SMICS);
+    mb();
+}
+
+/* Read-only watchdog: sample ACTIVE and SMIL, log only on edges/low watermark */
+static void tx_watch_workfn(struct work_struct *ws)
+{
+    struct delayed_work *dw = container_of(ws, struct delayed_work, work);
+    struct bcm2835_smi_dev_instance *i =
+        container_of(dw, struct bcm2835_smi_dev_instance, tx_watch_work);
+    struct bcm2835_smi_instance *smi = i->smi_inst;
+
+    /* Only watch while we're actually in TX */
+    if (READ_ONCE(i->state) == smi_stream_tx_channel) {
+        
+        u32 smics = read_smi_reg(smi, SMICS);
+        bool active = !!(smics & SMICS_ACTIVE);
+        bool enabled = !!(smics & SMICS_ENABLE);
+        
+        if (i->tx_watch_last_active && !active) {
+            dev_info(i->dev, "ACTIVE→0 (EN=%d) last_smil=%u min_smil=%u\n",
+                    enabled, i->tx_watch_last_smil, i->tx_watch_min_smil);
+        }
+
+        u32 smil    = read_smi_reg(smi, SMIL);
+
+        /* Track minimum SMIL seen while active (before any refresh) */
+        if (active) {
+            if (i->tx_watch_min_smil == 0 || smil < i->tx_watch_min_smil)
+                i->tx_watch_min_smil = smil;
+
+            /* Log when SMIL gets very small (imminent idle) */
+            if (smil <= 512) {
+                dev_info_ratelimited(i->dev,
+                    "tx_watch: ACTIVE=1, SMIL=%u (near zero)\n", smil);
+            }
+        }
+
+        /* Edge: ACTIVE 1 -> 0 (this is the “burst ended” moment) */
+        // if (i->tx_watch_last_active && !active) {
+        //     dev_info(i->dev,
+        //         "tx_watch: ACTIVE dropped to 0. Last SMIL=%u, min_smil=%u\n",
+        //         i->tx_watch_last_smil, i->tx_watch_min_smil);
+        // }
+        if (i->tx_watch_last_active && !active) {
+            dev_info(i->dev,
+                "tx_watch: ACTIVE dropped to 0. Last SMIL=%u, min_smil=%u\n",
+                i->tx_watch_last_smil, i->tx_watch_min_smil);
+            /* Immediately re-arm for the next window */
+            smi_rearm_if_idle(i);
+            i->tx_watch_min_smil = 0;
+        }
+
+        /* Edge: ACTIVE 0 -> 1 (restart happened elsewhere) */
+        if (!i->tx_watch_last_active && active) {
+            dev_info(i->dev,
+                "tx_watch: ACTIVE rose to 1. SMIL=%u\n", smil);
+            i->tx_watch_min_smil = 0; /* reset for this active stretch */
+        }
+
+        /* Occasionally log state if nothing interesting is happening */
+        if ((jiffies & 0x3F) == 0) { /* ~once per 64 jiffies */
+            dev_dbg(i->dev, "tx_watch: A=%u SMIL=%u\n", active, smil);
+        }
+
+        i->tx_watch_last_smil   = smil;
+        i->tx_watch_last_active = active;
+    }
+
+    /* Re-arm */
+    schedule_delayed_work(&i->tx_watch_work, usecs_to_jiffies(i->tx_watch_period_us));
+}
+
+/* High-resolution periodic keepalive that tops up SMIL while TX is active. */
+static enum hrtimer_restart tx_hr_keepalive(struct hrtimer *t)
+{
+    struct bcm2835_smi_dev_instance *i = container_of(t, struct bcm2835_smi_dev_instance, tx_hr);
+    
+    /* Only run while TX is actually live */
+    if (READ_ONCE(i->state) != smi_stream_tx_channel ||
+        !READ_ONCE(i->transfer_thread_running))
+        return HRTIMER_NORESTART;
+
+    /* Only do work at the idle boundary */
+    if (!smi_is_active(i->smi_inst))
+        smi_rearm_if_idle(i);
+
+
+    /* Re-arm for the next tick */
+    hrtimer_forward_now(t, i->tx_hr_period);
+    return HRTIMER_RESTART;
 }
 
 /***************************************************************************/
@@ -407,6 +735,7 @@ static int smi_init_programmed_transfer(struct bcm2835_smi_instance *smi_inst, e
     // Clear the FIFO (reset it to zero contents)
     write_smi_reg(smi_inst, smics_temp, SMICS);
     print_smil_registers_ext("init 5");
+    mb();
     
     return 0;
 }
@@ -426,6 +755,10 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
     
     switch (cmd) 
     {
+    case SMI_STREAM_IOC_GET_TX_STATUS:
+        return smi_tx_get_status(arg);
+    case SMI_STREAM_IOC_SET_TX_BUFFER_LIMIT:
+        return smi_tx_set_buffer_limit(arg);
     //-------------------------------
     case BCM2835_SMI_IOC_GET_SETTINGS:
     {
@@ -482,13 +815,22 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
         break;
     }
     //-------------------------------
-    case SMI_STREAM_IOC_SET_STREAM_STATUS:
-    {
-        ret = set_state((smi_stream_state_en)arg);
+    // case SMI_STREAM_IOC_SET_STREAM_STATUS:
+    // {
+    //     ret = set_state((smi_stream_state_en)arg);
         
+    //     break;
+    // }
+    
+    //-------------------------------
+    case SMI_STREAM_IOC_SET_STREAM_STATUS: 
+    {
+        smi_stream_state_en req = (smi_stream_state_en)arg;
+        ret = set_state(req);
         break;
     }
-        //-------------------------------
+    
+    //-------------------------------
     case SMI_STREAM_IOC_SET_FIFO_MULT:
     {
         int temp = (int)arg;
@@ -583,103 +925,230 @@ static long smi_stream_ioctl(struct file *file, unsigned int cmd, unsigned long 
 
 static void stream_smi_read_dma_callback(void *param)
 {
-    /* Notify the bottom half that a chunk is ready for user copy */
-    struct bcm2835_smi_dev_instance *inst = (struct bcm2835_smi_dev_instance *)param;
+    struct bcm2835_smi_dev_instance *inst = param;
     struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
-    uint8_t* buffer_pos;
-    
-    
+    uint8_t *buffer_pos;
+
+    /* Top-up only every ~SMI_REFRESH_CHUNKS quarters */
+    // if (++inst->count_since_refresh >= (SMI_REFRESH_CHUNKS - SMI_TOPUP_MARGIN)) {
+    //     smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE/4);
+    //     inst->count_since_refresh = 0;
+    // }
+
+    /* Always ensure SMIL stays well above zero */
     smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE/4);
-    
-    buffer_pos = (uint8_t*) smi_inst->bounce.buffer[0];
-    buffer_pos = &buffer_pos[ (DMA_BOUNCE_BUFFER_SIZE/4) * (inst->current_read_chunk % 4)];
-    if(kfifo_avail(&inst->rx_fifo) >=DMA_BOUNCE_BUFFER_SIZE/4)
-    {
+
+    buffer_pos = (uint8_t *)smi_inst->bounce.buffer[0];
+    buffer_pos += (DMA_BOUNCE_BUFFER_SIZE/4) * (inst->current_read_chunk % 4);
+
+    if (kfifo_avail(&inst->rx_fifo) >= DMA_BOUNCE_BUFFER_SIZE/4) {
         kfifo_in(&inst->rx_fifo, buffer_pos, DMA_BOUNCE_BUFFER_SIZE/4);
-    }
-    else
-    {
+    } else {
         inst->counter_missed++;
     }
-    
-    if(!(inst->current_read_chunk % 100 ))
-    {
-        dev_info(inst->dev,"init programmed read. missed: %u, sema %u",inst->counter_missed,smi_inst->bounce.callback_sem.count);
+
+    if (!(inst->current_read_chunk % 100)) {
+        dev_info(inst->dev, "init programmed read. missed:%u, sema %u",
+                 inst->counter_missed, smi_inst->bounce.callback_sem.count);
     }
-    
+
     up(&smi_inst->bounce.callback_sem);
-    
     inst->readable = true;
     wake_up_interruptible(&inst->poll_event);
     inst->current_read_chunk++;
 }
-
-/***************************************************************************/
-static void stream_smi_check_and_restart(struct bcm2835_smi_dev_instance *inst)
+static inline void smi_kick_if_idle(struct bcm2835_smi_instance *smi_inst)
 {
-    struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
-    inst->count_since_refresh++;
-    if( (inst->count_since_refresh )>= SMI_TRANSFER_MULTIPLIER)
-    {
-        int i;
-        for(i = 0; i < 1000; i++)
-        {
-            if(!smi_is_active(smi_inst))
-            {
-                break;
-            }
-            udelay(1);
-        }
-        if(i == 1000)
-        {
-            print_smil_registers_ext("write dma callback error 1000");
-        }
-        
-        smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE/4);
+    /* If the SMI just finished a programmed chunk (ACTIVE==0), start the next one. */
+    if (!smi_is_active(smi_inst)) {
+        /* Program a long window for the next run */
+        u32 len = (u32)SMI_REFRESH_CHUNKS * (DMA_BOUNCE_BUFFER_SIZE/4);
+        if (len > 0x00FFFFFF) len = 0x00FFFFFF;   /* SMIL is effectively 24-bit */
+        write_smi_reg(smi_inst, len, SMIL);
+
+        /* START latches SMIL only when ACTIVE==0 */
+        u32 smics = read_smi_reg(smi_inst, SMICS);
+        smics |= SMICS_START;
+        write_smi_reg(smi_inst, smics, SMICS);
+        mb();
     }
 }
 
-/***************************************************************************/
+/* Re-arm from a context that continues running even when DMA is paused */
+static inline void smi_rearm_if_idle(struct bcm2835_smi_dev_instance *i)
+{
+    struct bcm2835_smi_instance *smi = i->smi_inst;
+    
+    if (READ_ONCE(i->state) != smi_stream_tx_channel ||
+        !READ_ONCE(i->transfer_thread_running))
+        return;
+
+    if (!smi_is_active(smi)) {
+        u32 len = (u32)SMI_REFRESH_CHUNKS * (DMA_BOUNCE_BUFFER_SIZE/4);
+        if (len > 0x00FFFFFF) len = 0x00FFFFFF;
+        write_smi_reg(smi, len, SMIL);
+        
+        u32 smics = read_smi_reg(smi, SMICS);
+        smics |= SMICS_CLEAR | SMICS_ENABLE | SMICS_WRITE;
+        
+        smics |= SMICS_START;
+        write_smi_reg(smi, smics, SMICS);
+        mb();
+        dev_dbg(i->dev, "rearm: EN=1 WRITE=1 START=1 SMIL=%u\n", len);
+    }
+}
+
+// static inline void smi_kick_if_idle(struct bcm2835_smi_instance *smi_inst)
+// {
+//     /* If the SMI just finished a programmed chunk (ACTIVE==0), start the next one. */
+//     if (!smi_is_active(smi_inst)) {
+//         u32 smics = read_smi_reg(smi_inst, SMICS);
+//         smics |= SMICS_START;               // pulse START; SMIL already holds “one quarter”
+//         write_smi_reg(smi_inst, smics, SMICS);
+//         mb();
+//     }
+// }
+
+/* Reload SMIL with a long window at the idle boundary and pulse START. */
+// static inline void smi_refresh_at_idle(struct bcm2835_smi_instance *smi_inst,
+//                                        int quarters /* e.g. SMI_REFRESH_CHUNKS * (DMA_BOUNCE_BUFFER_SIZE/4) */)
+// {
+//     int i;
+//     /* Wait briefly for ACTIVE=0 (bounded ~2ms max) */
+//     for (i = 0; i < 2000; i++) {
+//         if (!smi_is_active(smi_inst)) break;
+//         udelay(1);
+//     }
+//     /* Program next window */
+//     write_smi_reg(smi_inst, quarters, SMIL);
+//     /* START is idempotent; safe to set repeatedly */
+//     {
+//         u32 smics = read_smi_reg(smi_inst, SMICS);
+//         smics |= SMICS_START;
+//         write_smi_reg(smi_inst, smics, SMICS);
+//         mb();
+//     }
+// }
+
 static void stream_smi_write_dma_callback(void *param)
 {
-    /* Notify the bottom half that a chunk is ready for user copy */
-    struct bcm2835_smi_dev_instance *inst = (struct bcm2835_smi_dev_instance *)param;
+    struct bcm2835_smi_dev_instance *inst = param;
     struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
-    uint8_t* buffer_pos;
-    stream_smi_check_and_restart(inst);
-    
-    inst->current_read_chunk++;
-    
-    buffer_pos = (uint8_t*) smi_inst->bounce.buffer[0];
-    buffer_pos = &buffer_pos[ (DMA_BOUNCE_BUFFER_SIZE/4) * (inst->current_read_chunk % 4)];
-    
-    if(kfifo_len (&inst->tx_fifo) >= DMA_BOUNCE_BUFFER_SIZE/4)
-    {
-        int num_copied = kfifo_out(&inst->tx_fifo, buffer_pos, DMA_BOUNCE_BUFFER_SIZE/4);
-        (void)num_copied;
+    const size_t q = DMA_BOUNCE_BUFFER_SIZE / 4;
+    uint8_t *base = (uint8_t *)smi_inst->bounce.buffer[0];
+    uint8_t *cur, *prev;
+    unsigned int copied = 0;
+
+    /* Refill the period that just finished */
+    cur  = base + q * (inst->current_read_chunk & 3);
+    prev = base + q * ((inst->current_read_chunk + 3) & 3);
+
+    if (READ_ONCE(inst->tx_fifo_limit_bytes)) {
+        /* Opt-in callers use bounded latency: retire available whole IQ words
+         * and quiet-pad shortages instead of retaining/replaying stale audio.
+         */
+        unsigned int available = min_t(unsigned int, kfifo_len(&inst->tx_fifo), q) & ~3U;
+        copied = kfifo_out(&inst->tx_fifo, cur, available);
+        if (copied < q)
+            smi_tx_fill_quiet(cur + copied, q - copied);
+    } else if (kfifo_len(&inst->tx_fifo) >= q) {
+        copied = kfifo_out(&inst->tx_fifo, cur, q);
+        if (copied < q)
+            memcpy(cur + copied, prev + copied, q - copied);
+    } else {
+        /* Preserve legacy callers' underrun repeat policy. */
+        memcpy(cur, prev, q);
     }
-    else
-    {
+    if (copied < q) {
         inst->counter_missed++;
+        atomic64_inc(&inst->tx_underrun_periods);
     }
-    
-    if(!(inst->current_read_chunk % 111 ))
-    {
-        dev_info(inst->dev,"init programmed write. missed: %u, sema %u, val %08X",inst->counter_missed,smi_inst->bounce.callback_sem.count,*(uint32_t*) &buffer_pos[0]);
+    atomic64_add(copied, &inst->tx_fifo_dequeued_bytes);
+    atomic64_inc(&inst->tx_completed_periods);
+    /* Refilled coherent DMA memory must be visible before the ring returns. */
+    dma_wmb();
+    inst->current_read_chunk++;
+
+    if (!(inst->current_read_chunk % 111)) {
+        dev_info(inst->dev, "init programmed write. missed:%u, sema %u, val %08X",
+                 inst->counter_missed, smi_inst->bounce.callback_sem.count,
+                 *(u32 *)cur);
     }
-    
+
     up(&smi_inst->bounce.callback_sem);
-    
     inst->writeable = true;
     wake_up_interruptible(&inst->poll_event);
-    
 }
+
+/***************************************************************************/
+// static void stream_smi_check_and_restart(struct bcm2835_smi_dev_instance *inst)
+// {
+//     struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
+//     inst->count_since_refresh++;
+//     if( (inst->count_since_refresh )>= SMI_TRANSFER_MULTIPLIER)
+//     {
+//         int i;
+//         for(i = 0; i < 1000; i++)
+//         {
+//             if(!smi_is_active(smi_inst))
+//             {
+//                 break;
+//             }
+//             udelay(1);
+//         }
+//         if(i == 1000)
+//         {
+//             print_smil_registers_ext("write dma callback error 1000");
+//         }
+        
+//         smi_refresh_dma_command(smi_inst, DMA_BOUNCE_BUFFER_SIZE/4);
+//     }
+// }
+
+/***************************************************************************/
+// static void stream_smi_write_dma_callback(void *param)
+// {
+//     /* Notify the bottom half that a chunk is ready for user copy */
+//     struct bcm2835_smi_dev_instance *inst = (struct bcm2835_smi_dev_instance *)param;
+//     struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
+//     uint8_t* buffer_pos;
+//     //stream_smi_check_and_restart(inst); // removed to avoid restarts
+    
+//     inst->current_read_chunk++;
+    
+//     buffer_pos = (uint8_t*) smi_inst->bounce.buffer[0];
+//     buffer_pos = &buffer_pos[ (DMA_BOUNCE_BUFFER_SIZE/4) * (inst->current_read_chunk % 4)];
+    
+//     if(kfifo_len (&inst->tx_fifo) >= DMA_BOUNCE_BUFFER_SIZE/4)
+//     {
+//         int num_copied = kfifo_out(&inst->tx_fifo, buffer_pos, DMA_BOUNCE_BUFFER_SIZE/4);
+//         (void)num_copied;
+//     }
+//     else
+//     {
+//         inst->counter_missed++;
+//     }
+    
+//     if(!(inst->current_read_chunk % 111 ))
+//     {
+//         dev_info(inst->dev,"init programmed write. missed: %u, sema %u, val %08X",inst->counter_missed,smi_inst->bounce.callback_sem.count,*(uint32_t*) &buffer_pos[0]);
+//     }
+    
+//     up(&smi_inst->bounce.callback_sem);
+    
+//     inst->writeable = true;
+//     wake_up_interruptible(&inst->poll_event);
+    
+// }
 
 /***************************************************************************/
 static struct dma_async_tx_descriptor *stream_smi_dma_init_cyclic(  struct bcm2835_smi_instance *inst,
                                                                     enum dma_transfer_direction dir,
                                                                     dma_async_tx_callback callback, void*param)
 {
+    
+    dev_info(inst->dev, "stream_smi_dma_init_cyclic() called for direction %s",
+         (dir == DMA_DEV_TO_MEM) ? "RX" : "TX");
     struct dma_async_tx_descriptor *desc = NULL;
 
     //printk(KERN_ERR DRIVER_NAME": SUBMIT_PREP %lu\n", (long unsigned int)(inst->dma_chan));
@@ -687,7 +1156,7 @@ static struct dma_async_tx_descriptor *stream_smi_dma_init_cyclic(  struct bcm28
                     inst->bounce.phys[0],
                     DMA_BOUNCE_BUFFER_SIZE,
                     DMA_BOUNCE_BUFFER_SIZE/4,
-                    dir,DMA_PREP_INTERRUPT | DMA_CTRL_ACK | DMA_PREP_FENCE);
+                    dir,DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
     if (!desc) 
     {
         dev_err(inst->dev, "read_sgl: dma slave preparation failed!");
@@ -710,61 +1179,160 @@ static struct dma_async_tx_descriptor *stream_smi_dma_init_cyclic(  struct bcm28
 *
 ***************************************************************************/
 
-int transfer_thread_init(struct bcm2835_smi_dev_instance *inst, enum dma_transfer_direction dir, dma_async_tx_callback callback)
+static void smi_enable_streaming(struct bcm2835_smi_instance *smi_inst,
+                                 enum dma_transfer_direction dir)
 {
-    unsigned int errors = 0;
-    int ret;
-    int success;
-    
-    dev_info(inst->dev, "Starting cyclic transfer, dma dir: %d", dir);
-    inst->transfer_thread_running = true;
+    u32 smics = read_smi_reg(smi_inst, SMICS);
+    smics |= SMICS_CLEAR | SMICS_ENABLE;
+    if (dir == DMA_MEM_TO_DEV) smics |= SMICS_WRITE;
+    write_smi_reg(smi_inst, smics, SMICS);
+    mb();
+}
 
-    /* Disable the peripheral: */
-    if(smi_disable_sync(inst->smi_inst))
-    {
+// int transfer_thread_init(struct bcm2835_smi_dev_instance *inst, enum dma_transfer_direction dir, dma_async_tx_callback callback)
+// {
+//     unsigned int errors = 0;
+//     int ret;
+//     int success;
+    
+//     dev_info(inst->dev, "Starting cyclic transfer, dma dir: %d", dir);
+//     inst->transfer_thread_running = true;
+    
+//     /* Disable the peripheral: */
+//     if(smi_disable_sync(inst->smi_inst))
+//     {
+//         dev_err(inst->smi_inst->dev, "smi_disable_sync failed");
+//         return -1;
+//     }
+//     //write_smi_reg(inst->smi_inst, 0, SMIL);
+//     sema_init(&inst->smi_inst->bounce.callback_sem, 0);
+    
+//     spin_lock(&inst->smi_inst->transaction_lock);
+//     ret = smi_init_programmed_transfer(inst->smi_inst, dir, DMA_BOUNCE_BUFFER_SIZE/4);
+//     if (ret != 0)
+//     {
+//         spin_unlock(&inst->smi_inst->transaction_lock);
+//         dev_err(inst->smi_inst->dev, "smi_init_programmed_transfer returned %d", ret);
+//         smi_disable_sync(inst->smi_inst);
+//         return -2;
+//     }
+//     else
+//     {
+//         spin_unlock(&inst->smi_inst->transaction_lock);
+//     }
+    
+//     inst->current_read_chunk = 0;
+//     inst->counter_missed = 0;
+//     if(!errors)
+//     {
+//         struct dma_async_tx_descriptor *desc = NULL;
+//         struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
+//         spin_lock(&smi_inst->transaction_lock);
+//         desc = stream_smi_dma_init_cyclic(smi_inst, dir, callback, inst);
+    
+//         if(desc)
+//         {
+//             dma_async_issue_pending(smi_inst->dma_chan);
+//         }
+//         else
+//         {
+//             errors = 1;
+//         }
+//         spin_unlock(&smi_inst->transaction_lock);
+//     }
+//     smi_refresh_dma_command(inst->smi_inst, DMA_BOUNCE_BUFFER_SIZE/4);
+//     BUSY_WAIT_WHILE_TIMEOUT(!smi_is_active(inst->smi_inst), 1000000U, success);
+//     print_smil_registers_ext("post init 0");
+//     return errors;
+// }
+
+
+int transfer_thread_init(struct bcm2835_smi_dev_instance *inst,
+                         enum dma_transfer_direction dir,
+                         dma_async_tx_callback callback)
+{
+    int errors = 0;
+
+    dev_info(inst->dev, "Starting cyclic transfer, dma dir: %d", dir);
+
+    /* Ensure clean peripheral */
+    if (smi_disable_sync(inst->smi_inst)) {
         dev_err(inst->smi_inst->dev, "smi_disable_sync failed");
         return -1;
     }
-    write_smi_reg(inst->smi_inst, 0, SMIL);
+
+    int ret = smi_init_programmed_transfer(inst->smi_inst, dir, DMA_BOUNCE_BUFFER_SIZE/4);
+    if (ret) dev_warn(inst->dev, "smi_init_programmed_transfer ret=%d (continuing)", ret);
+
     sema_init(&inst->smi_inst->bounce.callback_sem, 0);
-    
+    inst->current_read_chunk   = 0;
+    inst->counter_missed       = 0;
+    inst->count_since_refresh  = 0;
+
+    /* Prime coherent memory before submitting/issuing DMA. Raw zero bytes
+     * are invalid protocol frames and expanded fourfold in the SMI collector.
+     * A fresh ring also prevents stale IQ from a previous TX session replaying.
+     */
+    if (dir == DMA_MEM_TO_DEV) {
+        uint8_t *base = (uint8_t *)inst->smi_inst->bounce.buffer[0];
+        const unsigned int q = DMA_BOUNCE_BUFFER_SIZE / 4;
+        unsigned int n;
+
+        for (n = 0; n < 4; n++) {
+            unsigned int copied = kfifo_out(&inst->tx_fifo, base + n * q, q);
+            if (copied < q) {
+                if (READ_ONCE(inst->tx_fifo_limit_bytes))
+                    smi_tx_fill_quiet(base + n * q + copied, q - copied);
+                else
+                    memset(base + n * q + copied, 0, q - copied);
+            }
+            atomic64_add(copied, &inst->tx_fifo_dequeued_bytes);
+        }
+        dma_wmb();
+    }
+
+    /* Submit DMA only after initial periods are initialized (and framed for
+     * bounded callers). Legacy callers retain their historical raw padding.
+     */
     spin_lock(&inst->smi_inst->transaction_lock);
-    ret = smi_init_programmed_transfer(inst->smi_inst, dir, DMA_BOUNCE_BUFFER_SIZE/4);
-    if (ret != 0)
     {
-        spin_unlock(&inst->smi_inst->transaction_lock);
-        dev_err(inst->smi_inst->dev, "smi_init_programmed_transfer returned %d", ret);
-        smi_disable_sync(inst->smi_inst);
-        return -2;
-    }
-    else
-    {
-        spin_unlock(&inst->smi_inst->transaction_lock);
-    }
-    
-    inst->current_read_chunk = 0;
-    inst->counter_missed = 0;
-    if(!errors)
-    {
-        struct dma_async_tx_descriptor *desc = NULL;
-        struct bcm2835_smi_instance *smi_inst = inst->smi_inst;
-        spin_lock(&smi_inst->transaction_lock);
-        desc = stream_smi_dma_init_cyclic(smi_inst, dir, callback, inst);
-    
-        if(desc)
-        {
-            dma_async_issue_pending(smi_inst->dma_chan);
-        }
-        else
-        {
+        struct dma_async_tx_descriptor *desc =
+            stream_smi_dma_init_cyclic(inst->smi_inst, dir, callback, inst);
+        if (!desc) {
+            dev_err(inst->dev, "DMA init failed: prep_cyclic returned NULL");
             errors = 1;
+        } else {
+            dma_async_issue_pending(inst->smi_inst->dma_chan);
         }
-        spin_unlock(&smi_inst->transaction_lock);
     }
-    smi_refresh_dma_command(inst->smi_inst, DMA_BOUNCE_BUFFER_SIZE/4);
-    BUSY_WAIT_WHILE_TIMEOUT(!smi_is_active(inst->smi_inst), 1000000U, success);
-    print_smil_registers_ext("post init 0");
-    return errors;
+    spin_unlock(&inst->smi_inst->transaction_lock);
+    if (errors) return -2;
+
+    /* Enable SMI and arm a long window */
+    smi_enable_streaming(inst->smi_inst, dir);
+    //#define SMIL_INIT_QUARTERS  (SMI_REFRESH_CHUNKS * (DMA_BOUNCE_BUFFER_SIZE/4))
+    //const size_t q = DMA_BOUNCE_BUFFER_SIZE / 4;
+    //write_smi_reg(inst->smi_inst, q, SMIL);
+    //write_smi_reg(inst->smi_inst, SMI_REFRESH_CHUNKS * q, SMIL);
+    
+    const u32 q   = (u32)(DMA_BOUNCE_BUFFER_SIZE / 4);
+    u32 len       = (u32)SMI_REFRESH_CHUNKS * q;    /* long window */
+    if (len > 0x00FFFFFF) len = 0x00FFFFFF;         /* SMIL is ~24-bit */
+    write_smi_reg(inst->smi_inst, len, SMIL);
+    
+
+    /* One-time START pulse */
+    u32 smics = read_smi_reg(inst->smi_inst, SMICS);
+    smics |= SMICS_START;
+    write_smi_reg(inst->smi_inst, smics, SMICS);
+    mb();
+    
+
+    inst->transfer_thread_running = 1;
+
+    dev_info(inst->dev, "smi_init_cyclic_transfer active...");
+    print_smil_registers_ext("post init (cyclic)");
+    return 0;
 }
 
 /***************************************************************************/
@@ -773,9 +1341,8 @@ void transfer_thread_stop(struct bcm2835_smi_dev_instance *inst)
     //int errors = 0;
     //dev_info(inst->dev, "Reader state became idle, terminating dma %u %u", (inst->address_changed) ,errors);
     print_smil_registers_ext("thread stop 0");
-    spin_lock(&inst->smi_inst->transaction_lock);
+    /* terminate_sync may sleep; do NOT hold a spinlock here */
     dmaengine_terminate_sync(inst->smi_inst->dma_chan);
-    spin_unlock(&inst->smi_inst->transaction_lock);
     
     //dev_info(inst->dev, "Reader state became idle, terminating smi transaction");
     smi_disable_sync(inst->smi_inst);
@@ -797,6 +1364,7 @@ void transfer_thread_stop(struct bcm2835_smi_dev_instance *inst)
 static int smi_stream_open(struct inode *inode, struct file *file)
 {
     int dev = iminor(inode);
+    int ret = -ENOMEM;
 
     dev_dbg(inst->dev, "SMI device opened.");
 
@@ -804,6 +1372,14 @@ static int smi_stream_open(struct inode *inode, struct file *file)
     {
         dev_err(inst->dev, "smi_stream_open: Unknown minor device: %d", dev);		// error here
         return -ENXIO;
+    }
+
+    /* Do not wait for another open/close to finish or touch its buffers. */
+    if (!mutex_trylock(&open_lock))
+        return -EBUSY;
+    if (device_open) {
+        mutex_unlock(&open_lock);
+        return -EBUSY;
     }
     
     // create the data fifo ( N x dma_bounce size )
@@ -813,24 +1389,33 @@ static int smi_stream_open(struct inode *inode, struct file *file)
     if (!inst->rx_fifo_buffer)
     {
         printk(KERN_ERR DRIVER_NAME": error rx_fifo_buffer vmallok failed\n");
-        return -ENOMEM;
+        goto out_unlock;
     }
     
     inst->tx_fifo_buffer = vmalloc(fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
     if (!inst->tx_fifo_buffer)
     {
         printk(KERN_ERR DRIVER_NAME": error tx_fifo_buffer vmallok failed\n");
-        vfree(inst->rx_fifo_buffer);
-        return -ENOMEM;
+        goto out_free_rx;
     }
 
     kfifo_init(&inst->rx_fifo, inst->rx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
     kfifo_init(&inst->tx_fifo, inst->tx_fifo_buffer, fifo_mtu_multiplier * DMA_BOUNCE_BUFFER_SIZE);
+    WRITE_ONCE(inst->tx_fifo_limit_bytes, 0);
     // when file is being openned, stream state is still idle
     set_state(smi_stream_idle);
     
     inst->address_changed = 0;
+    device_open = true;
+    mutex_unlock(&open_lock);
     return 0;
+
+out_free_rx:
+    vfree(inst->rx_fifo_buffer);
+    inst->rx_fifo_buffer = NULL;
+out_unlock:
+    mutex_unlock(&open_lock);
+    return ret;
 }
 
 /***************************************************************************/
@@ -846,6 +1431,8 @@ static int smi_stream_release(struct inode *inode, struct file *file)
         return -ENXIO;
     }
 
+    mutex_lock(&open_lock);
+
     // make sure stream is idle
     set_state(smi_stream_idle);
     
@@ -855,6 +1442,8 @@ static int smi_stream_release(struct inode *inode, struct file *file)
     inst->rx_fifo_buffer = NULL;
     inst->tx_fifo_buffer = NULL;
     inst->address_changed = 0;
+    device_open = false;
+    mutex_unlock(&open_lock);
 
 	return 0;
 }
@@ -895,6 +1484,7 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
     unsigned int num_bytes_available = 0;
     unsigned int num_to_push = 0;
     unsigned int actual_copied = 0;
+    bool bounded;
     
     if (mutex_lock_interruptible(&inst->write_lock))
     {
@@ -902,13 +1492,32 @@ static ssize_t smi_stream_write_file(struct file *f, const char __user *user_ptr
     }
     
     // check how many bytes are available in the tx fifo
-    num_bytes_available = kfifo_avail(&inst->tx_fifo);
+    bounded = READ_ONCE(inst->tx_fifo_limit_bytes) != 0;
+    if (bounded && (count & 3)) {
+        mutex_unlock(&inst->write_lock);
+        return -EINVAL;
+    }
+    num_bytes_available = smi_tx_fifo_available(inst);
     num_to_push = num_bytes_available > count ? count : num_bytes_available;
     ret = kfifo_from_user(&inst->tx_fifo, user_ptr, num_to_push, &actual_copied);
+    if (bounded && (actual_copied & 3)) {
+        /* A user fault can publish a partial IQ word. There is one producer
+         * under write_lock; the bounded consumer only removes whole words,
+         * so this trailing fragment cannot have been consumed. Roll it back.
+         */
+        unsigned int fragment = actual_copied & 3;
+        WRITE_ONCE(inst->tx_fifo.kfifo.in, inst->tx_fifo.kfifo.in - fragment);
+        actual_copied -= fragment;
+    }
+    atomic64_add(actual_copied, &inst->tx_accepted_bytes);
 
     //dev_info(inst->dev, "smi_stream_write_file: pushed %ld bytes of %ld, available was %ld", actual_copied, count, num_bytes_available);
     mutex_unlock(&inst->write_lock);
 
+    if (!ret && count && !actual_copied && bounded)
+        return -EAGAIN;
+    if (actual_copied && bounded)
+        return (ssize_t)actual_copied;
     return ret ? ret : (ssize_t)actual_copied;
 }
 
@@ -926,7 +1535,7 @@ static unsigned int smi_stream_poll(struct file *filp, struct poll_table_struct 
         mask |= ( POLLIN | POLLRDNORM );
     }
     
-    if (!kfifo_is_full(&inst->rx_fifo))
+    if (smi_tx_fifo_available(inst))
     {
         //dev_info(inst->dev, "poll_wait result => writeable=%d", inst->writeable);
         inst->writeable = false;
@@ -1050,7 +1659,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
     }
 
     // Create sysfs entries with "smi-stream-dev"
-    smi_stream_class = class_create(THIS_MODULE, DEVICE_NAME);
+    smi_stream_class = class_create(DEVICE_NAME);
     ptr_err = smi_stream_class;
     if (IS_ERR(ptr_err))
     {
@@ -1090,9 +1699,22 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
     inst->writer_waiting_sema = false;
     mutex_init(&inst->read_lock);
     mutex_init(&inst->write_lock);
-    spin_lock_init(&inst->state_lock);
-        
-    dev_info(inst->dev, "initialised");
+    mutex_init(&inst->transition_lock);
+
+    /* TX watch (read-only): default 1000 us period */
+    INIT_DELAYED_WORK(&inst->tx_watch_work, tx_watch_workfn);
+    inst->tx_watch_period_us = 1000;
+    inst->tx_watch_last_smil = 0;
+    inst->tx_watch_last_active = false;
+    inst->tx_watch_min_smil = 0;
+    /* TX SMIL keepalive: check ACTIVE frequently so idle gaps are ~eliminated.
+       Start with 5 µs; you can relax later if stable. */
+    //hrtimer_init(&inst->tx_hr, CLOCK_MONOTONIC, HRTIMER_MODE_REL_PINNED);
+    //inst->tx_hr.function = tx_hr_keepalive;
+    //inst->tx_hr_period   = ktime_set(0, 5 * 1000);  /* 5 µs */
+    hrtimer_setup(&inst->tx_hr,tx_hr_keepalive, CLOCK_MONOTONIC, HRTIMER_MODE_REL_PINNED);
+    inst->tx_hr_period = ktime_set(0, 5 * 1000);  /* 5 µs */
+
     return 0;
 }
 
@@ -1102,7 +1724,7 @@ static int smi_stream_dev_probe(struct platform_device *pdev)
 *
 ***************************************************************************/
 
-static int smi_stream_dev_remove(struct platform_device *pdev)
+static void smi_stream_dev_remove(struct platform_device *pdev)
 {
     //if (inst->reader_thread != NULL) kthread_stop(inst->reader_thread);
     //inst->reader_thread = NULL;	
@@ -1113,7 +1735,6 @@ static int smi_stream_dev_remove(struct platform_device *pdev)
     unregister_chrdev_region(smi_stream_devid, 1);
 
     dev_info(inst->dev, DRIVER_NAME": smi-stream dev removed");
-    return 0;
 }
 
 /****************************************************************************

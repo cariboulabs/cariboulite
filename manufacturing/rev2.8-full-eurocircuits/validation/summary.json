@@ -1,0 +1,31 @@
+{
+  "source_commit": "d641a30b7f84c747008c77319ed4fb5d5dcd5397",
+  "bom_lines": 50,
+  "components_per_board": 205,
+  "components_for_five_excluding_spares": 1025,
+  "source_pnp_rows": 210,
+  "upload_cpl_rows": 205,
+  "cpl_top": 108,
+  "cpl_bottom": 97,
+  "excluded_pnp": {
+    "R10": "DNP: Full schematic page 2, crossed out and marked DNP",
+    "R12": "DNP: Full schematic page 2, crossed out and marked DNP",
+    "L19": "DNP: Full schematic page 6, crossed out in DO NOT PLACE block",
+    "U29": "DNP: Full schematic page 6, crossed out in DO NOT PLACE block",
+    "TP13": "Bare PCB test point: Full schematic page 3; PnP footprint TP_40; not a purchased component"
+  },
+  "pad_matches": 210,
+  "alignment_translation_mil": [
+    12697.26,
+    7261.81
+  ],
+  "max_alignment_residual_mil": 0.009,
+  "j1_center_gerber_mil": [
+    11625.76,
+    7132.81
+  ],
+  "drill_hits": 2253,
+  "blind_drill_hits": 1397,
+  "original_copies_verified": 31,
+  "status": "LOCAL CHECKS PASSED; TECHNICAL QUOTATION ONLY; MANUFACTURER PREFLIGHT NOT RUN"
+}

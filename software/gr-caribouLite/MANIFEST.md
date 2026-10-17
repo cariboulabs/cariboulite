@@ -1,17 +1,11 @@
-title: The CARIBOULITE OOT Module
-brief: Short description of gr-caribouLite
-tags: # Tags are arbitrary, but look at CGRAN what other authors are using
+title: The CaribouLite OOT Module
+brief: Native GNU Radio receive source for CaribouLite
+tags:
   - sdr
-author:
-  - Author Name <authors@email.address>
-copyright_owner:
-  - Copyright Owner 1
-license:
-gr_supported_version: # Put a comma separated list of supported GR versions here
-#repo: # Put the URL of the repository here, or leave blank for default
-#website: <module_website> # If you have a separate project website, put it here
-#icon: <icon_url> # Put a URL to a square image here that will be used as an icon on CGRAN
+license: GPL-3.0-or-later
 ---
-A longer, multi-line description of gr-caribouLite.
-You may use some *basic* Markdown here.
-If left empty, it will try to find a README file instead.
+The module provides a native CaribouLite receive source with complex float IQ
+and optional byte metadata. Python and GNU Radio Companion support are
+conditional build components. There is no transmit sink. The CMake project
+requires GNU Radio 3.10 or newer and an installed native CaribouLite library;
+see [the module guide](README.md) for build instructions and validation limits.

@@ -1,15 +1,17 @@
 #! /bin/bash
 
-ROOT_DIR=`pwd`
+set -euo pipefail
+
+ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+KERNEL_RELEASE=$(uname -r)
 RED='\033[0;31m'
 GREEN='\033[1;32m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
-ERROR="0"
 
-BUILD_DIR="build"
-BLOB_CREATOR_DIR="../software/utils/"
-USERSPACE_SMI_DIR="../software/libcariboulite/src/caribou_smi/kernel"
+BUILD_DIR="${ROOT_DIR}/build"
+BLOB_CREATOR_DIR="${ROOT_DIR}/../software/utils"
+USERSPACE_SMI_DIR="${ROOT_DIR}/../software/libcariboulite/src/caribou_smi/kernel"
 
 [ $(id -u) = 0 ] && printf "${RED}Please do not run this script as root${NC}\n" && exit 100
 
@@ -21,8 +23,21 @@ install() {
 
     printf "${GREEN}Installation started...${NC}\n"
     printf "\n[  1  ] ${GREEN}Updating kernel headers and needed software${NC}\n"
-    sudo apt-get update
-    sudo apt-get -y install raspberrypi-kernel-headers module-assistant pkg-config libncurses5-dev cmake git
+    # Raspberry Pi OS now ships versioned Debian-style header packages.
+    # Reuse installed headers so a kernel rebuild does not depend on apt/network.
+    local packages=() package
+    if [[ ! -f "/lib/modules/${KERNEL_RELEASE}/build/Makefile" ]]; then
+        packages+=("linux-headers-${KERNEL_RELEASE}")
+    fi
+    for package in build-essential pkg-config cmake git kmod xz-utils; do
+        if [[ $(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true) != 'install ok installed' ]]; then
+            packages+=("$package")
+        fi
+    done
+    if (( ${#packages[@]} )); then
+        sudo apt-get update
+        sudo apt-get -y install "${packages[@]}"
+    fi
 
     printf "\n[  2  ] ${GREEN}Compiling module${NC}\n"
     if [ -d "$BUILD_DIR" ]; then
@@ -33,41 +48,42 @@ install() {
         mkdir "$BUILD_DIR"
     fi
 
-    # enter build dir and build the ko file
-    cd "${ROOT_DIR}/$BUILD_DIR"
-    cmake ../
-    make
-    cd ${ROOT_DIR}
+    # Pin both compilation and installation to the same kernel release.
+    cmake -S "${ROOT_DIR}" -B "$BUILD_DIR" \
+        -DKERNEL_RELEASE="$KERNEL_RELEASE" \
+        -DKERNELHEADERS_DIR="/lib/modules/${KERNEL_RELEASE}/build"
+    cmake --build "$BUILD_DIR"
 
-    # copy the outputs to internal software
-    ${BLOB_CREATOR_DIR}generate_bin_blob ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko smi_stream_dev ${USERSPACE_SMI_DIR}/smi_stream_dev_gen.h
-    cp ${ROOT_DIR}/bcm2835_smi.h ${USERSPACE_SMI_DIR}
-    cp ${ROOT_DIR}/smi_stream_dev.h ${USERSPACE_SMI_DIR}
-
-    # find the location to install
-    output_dir=$(find "/lib/modules" -type f -name "bcm2835_smi_dev*" -exec dirname {} \;)
-
-    # Check if the output is empty
-    if [ -z "$output_dir" ]; then
-        printf "${RED}Error: module 'bcm2835_smi_dev' couldn't be found.${NC}\n"
-
-        # suspicious - why doen't it exist? check of the base module bcm2835_smi exists
+    local module="$BUILD_DIR/smi_stream_dev.ko"
+    local vermagic
+    vermagic=$(modinfo -F vermagic "$module")
+    if [[ "${vermagic%% *}" != "$KERNEL_RELEASE" ]]; then
+        printf '%s\n' "Error: built module kernel does not match $KERNEL_RELEASE" >&2
         exit 100
     fi
 
-    if [[ ! $output_dir == *`uname -r`* ]]; then
-        printf "${CYAN}Warning: Not installing to currently operating kernel version.${NC}\n"
+    # Search only this kernel, and reject ambiguous destinations.
+    local destinations output_dir
+    destinations=$(find "/lib/modules/$KERNEL_RELEASE" -type f \
+        -name 'bcm2835_smi_dev.ko*' -printf '%h\n' | sort -u)
+    if [[ -z "$destinations" || "$destinations" == *$'\n'* ]]; then
+        printf '%s\n' "Error: expected one bcm2835_smi_dev directory for $KERNEL_RELEASE" >&2
+        exit 100
     fi
+    output_dir="$destinations"
+
+    # Finish packaging before changing installed modules or boot configuration.
+    xz -z "$module" -c > "$module.xz.tmp"
+    mv "$module.xz.tmp" "$module.xz"
+    "${BLOB_CREATOR_DIR}/generate_bin_blob" "$module" smi_stream_dev "${USERSPACE_SMI_DIR}/smi_stream_dev_gen.h"
+    cp "${ROOT_DIR}/bcm2835_smi.h" "$USERSPACE_SMI_DIR/"
+    cp "${ROOT_DIR}/smi_stream_dev.h" "$USERSPACE_SMI_DIR/"
 
     printf "\n[  3  ] ${GREEN}Installing into '${output_dir}'${NC}\n"
-    xz -z ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko -c > ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz
-
-    for dir in $output_dir; do
-        sudo cp ${ROOT_DIR}/$BUILD_DIR/smi_stream_dev.ko.xz $dir/
-    done
+    sudo cp "$module.xz" "$output_dir/"
 
     printf "\n[  4  ] ${GREEN}Updating 'depmod'${NC}\n"
-    sudo depmod -a
+    sudo depmod -a "$KERNEL_RELEASE"
 
     printf "\n[  5  ] ${GREEN}Blacklisting original bcm2835_smi_dev module${NC}\n"
     echo "# blacklist the broadcom default smi module to replace with smi_stream_dev" | sudo tee "/etc/modprobe.d/blacklist-bcm_smi.conf" > /dev/null
@@ -82,9 +98,9 @@ install() {
     echo "options smi_stream_dev fifo_mtu_multiplier=${mtu_mult} addr_dir_offset=${dir_offs} addr_ch_offset=${ch_offs}" | sudo tee -a "/etc/modprobe.d/smi_stream_mod_cariboulite.conf" > /dev/null
 
     printf "\n[  8  ] ${GREEN}Adding UDEV rules${NC}\n"
-    cd ${ROOT_DIR}/udev
+    cd "${ROOT_DIR}/udev"
     sudo ./install.sh install
-    cd ${ROOT_DIR}
+    cd "${ROOT_DIR}"
 
     printf "${GREEN}Installation completed.${NC}\n"
 }
@@ -123,7 +139,7 @@ uninstall() {
     fi
 
     printf "\n[  6  ] ${GREEN}Removing UDEV rules${NC}\n"
-    sudo udev/install.sh uninstall
+    sudo "${ROOT_DIR}/udev/install.sh" uninstall
 
     printf "${GREEN}Uninstallation completed.${NC}\n"
 }
@@ -132,11 +148,11 @@ uninstall() {
 printf "${GREEN}CaribouLite Device Driver Install / Uninstall${NC}\n"
 printf "${GREEN}=============================================${NC}\n\n"
 
-if [ "$1" == "install" ]; then
-    install "$2" "$3" "$4"
+if [ "${1:-}" == "install" ]; then
+    install "${2:-16}" "${3:-2}" "${4:-3}"
 
     exit 0
-elif [ "$1" == "uninstall" ]; then
+elif [ "${1:-}" == "uninstall" ]; then
     uninstall
 
     exit 0

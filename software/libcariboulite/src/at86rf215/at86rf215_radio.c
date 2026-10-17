@@ -398,9 +398,9 @@ void at86rf215_radio_get_agc(at86rf215_st* dev, at86rf215_rf_channel_en ch,
 
     at86rf215_read_buffer(dev, reg_address_agc, buf, 2);
 
-    agc_ctrl->agc_measure_source_not_filtered = (buf[0] >> 6);
-    agc_ctrl->avg = (buf[0] >> 4) & 0x1;
-    agc_ctrl->reset_cmd = (buf[0] >> 3)  & 0x3;
+    agc_ctrl->agc_measure_source_not_filtered = (buf[0] >> 6) & 0x1;
+    agc_ctrl->avg = (buf[0] >> 4) & 0x3;
+    agc_ctrl->reset_cmd = (buf[0] >> 3) & 0x1;
     agc_ctrl->freeze_status = (buf[0] >> 2)  & 0x1;
     agc_ctrl->freeze_cmd = (buf[0] >> 1) & 0x1;
     agc_ctrl->enable_cmd = (buf[0] >> 0) & 0x1;

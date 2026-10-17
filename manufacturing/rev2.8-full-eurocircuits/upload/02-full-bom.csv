@@ -1,0 +1,51 @@
+Reference Designators,MPN,Quantity,Value,Description,Package,Notes
+"C1, C26, C33, C66, C79, C121, C127",GRJ155R61A475ME11J,7,4.7u,Multilayer Ceramic Capacitors MLCC - SMD/SMT 0402 MLCC X5R 4.7 uF +/ -20% 10V,MURATA 0402,Exact MPN; no automatic substitution.
+"C3, C14, C21, C23, C27, C28, C30",LMK105BJ105MVHF,7,1u,Multilayer Ceramic Capacitors MLCC - SMD/SMT 0402 10VDC 1uF 20% X5R,MURATA 0402,Exact MPN; no automatic substitution.
+"C5, C7, C9, C10, C17, C34, C36, C65, C68, C69, C71, C72, C73, C74, C81, C86, C89, C119, C120",0402YD104KAT2A,19,100n,Multilayer Ceramic Capacitors MLCC - SMD/SMT 16V .1uF X5R 0402 10%,MURATA 0402,Exact MPN; no automatic substitution.
+C11,0402N2R2B500CT,1,2.2p,"Multilayer Ceramic Capacitors MLCC - SMD/SMT, 0402 2.2pF +-0.1% 50V",MURATA 0402,Exact MPN; no automatic substitution.
+"C12, C20",0402N1R8B500CT,2,1.8p,"Multilayer Ceramic Capacitors MLCC - SMD/SMT, 0402 1.8pF +-0.1% 50V",MURATA 0402,Exact MPN; no automatic substitution.
+"C13, C15, C35, C37, C38, C41, C42, C43, C47, C48, C49, C50, C51, C54, C55, C56, C57, C60, C61, C62, C64, C70, C75, C77, C78, C82, C83, C84, C85, C90, C93, C95, C96, C99, C129, C130, C131, C132",GRM1555C2A102JE01D,38,1n,Multilayer Ceramic Capacitors MLCC 1000pF ±5% 100V C0G 0402,MURATA 0402,Exact MPN; no automatic substitution.
+"C16, C24, C25, C39, C63, C87, C103, C105, C106, C107, C112, C116, C118, C125, C126",C0402C330J5GAC,15,33p,Multilayer Ceramic Capacitors MLCC - SMD/SMT 0402 50V 33pF C0G 0402 5%,MURATA 0402,Exact MPN; no automatic substitution.
+C19,GCM1555C1HR80WA16D,1,0.8p,"Multilayer Ceramic Capacitors MLCC - SMD/SMT 0402 0pF 50volts C0G, 0.8pF",MURATA 0402,Exact MPN; no automatic substitution.
+C22,0402N150J500CT,1,15p,"Multilayer Ceramic Capacitors MLCC - SMD/SMT 0402 15pF 50volts, C0G",MURATA 0402,Exact MPN; no automatic substitution.
+"C31, C32, C67, C102, C111, C115, C117",GRM1555C1E103JE01J,7,10n,"Multilayer Ceramic Capacitors MLCC - SMD/SMT 0402, 0.01UF 25V C0G",MURATA 0402,Exact MPN; no automatic substitution.
+"C45, C46, C58, C59, L8, L17, R32",CRCW04020000Z0EDC,7,0 Ohms,0 Ohms jumper resistor 0402,"MURATA 0402, MURATA 0402, MURATA 0402, MURATA 0402, CoilCraft 0402, CoilCraft 0402, PANASONIC 0402",Exact MPN; no automatic substitution.
+"C76, C88, C91, C94, C100, C101",C0402C101J5GACTU,6,100p,Multilayer Ceramic Capacitors MLCC - SMD/SMT 50V 100pF +/-0.05,MURATA 0402,Exact MPN; no automatic substitution.
+"C109, C110",GRM1555C1H331JA01D,2,330p,Multilayer Ceramic Capacitors MLCC - SMD/SMT 0402 330pF 50volts C0G 5%,MURATA 0402,Exact MPN; no automatic substitution.
+C113,0402N181F500CT,1,180p,Multilayer Ceramic Capacitors MLCC - SMD/SMT 180pF 50V 1% 0402 NPO,MURATA 0402,Exact MPN; no automatic substitution.
+C114,04025A8R2BAT2A,1,8.2p,Multilayer Ceramic Capacitors MLCC - SMD/SMT 50V 8.2pF C0G 0402 .1pF Tol,MURATA 0402,Exact MPN; no automatic substitution.
+"D1, D2, D7, D8, D9, D10, D11, D12",LTST-C190KRKT,8,,Red 631nm LED Indication - Discrete 2V 0603,LEDC1608X35N,Exact MPN; no automatic substitution.
+"D3, D4",0402ESDB-MLP1,2,,"ESD Suppressors / TVS Diodes ESD Protection Device, 0402, Bidirectional, 4V working, 15V breakdown, 0.05pF Cd",DIONC1105X44N,Exact MPN; no automatic substitution.
+J1,M20-7832046,1,,"RPI 40-pin 2.54mm header, 2-rows, socket",rpi_zero,Exact MPN; no automatic substitution. First original BOM alternative selected for quotation; verify mounting side and mating height.
+"J2, J3",CON-SMA-EDGE-S,2,,RF SMA Connectors / Coaxial Connectors SMA Female PCB Edge Mount,MOLEX_0732511150,Exact MPN; no automatic substitution.
+J6,10129383-912001ALF,1,,Headers & Wire Housings ECONOSTIK HEADER DR VT SMT 2X6,10129383912001ALF,Exact MPN; no automatic substitution.
+J7,CONUFL001-SMD-T,1,,RF Connectors / Coaxial Connectors U.FL Straight Surface Mount Jack,LINX_CONUFL001-SMD-T,"Exact MPN; no automatic substitution. RESOLVED: populate J7 with exact MPN CONUFL001-SMD-T. The BOM, PnP, assembly drawing and physical reference board agree; J7 is outside the schematic DO NOT PLACE boundary. Leave R25, C108 and C122 DNP so J7 remains electrically isolated."
+"L1, L2, L4, L5, L13, L14, L15, L18, L20, L21",BLM15HD182SN1D,10,,Ferrite Beads 1800ohms GHz HiSpd,0402 FERRITE BEAD,Exact MPN; no automatic substitution.
+L3,0402CS-5N6XGLW,1,5.6n,Fixed Inductors 1005 5.6nH Unshld 2% 760mA 83mOhms,CoilCraft 0402,Exact MPN; no automatic substitution.
+"R1, R6, R7, R33, R34, R47, R48, R49, R50, R51, R52",CRCW0402470RFKED,11,470,Thick Film Resistors - SMD 1/16watt 470ohms 1%,PANASONIC 0402,Exact MPN; no automatic substitution.
+"R2, R8, R9, R11, R16, R30",RC0402FR-07102KL,6,102k,Thick Film Resistors - SMD 102 kOhms 62.5mW 0402 1%,PANASONIC 0402,Exact MPN; no automatic substitution.
+"R3, R5, R14, R15, R27, R28, R35, R43, R44",CRCW040210K0FKEDC,9,10k,Thick Film Resistors - SMD 0402 1/16watt 10Kohms 1%,PANASONIC 0402,Exact MPN; no automatic substitution.
+"R13, R17, R18, R19, R20, R22, R24",CRCW0402100RFKEDC,7,100,Thick Film Resistors - SMD 1/16watt 100ohms 1%,PANASONIC 0402,Exact MPN; no automatic substitution.
+"R21, R23",CRCW0402162RFKED,2,162,Thick Film Resistors - SMD 1/16watt 162ohms 1%,PANASONIC 0402,Exact MPN; no automatic substitution.
+R36,CRCW040222K0FKEDC,1,22k,Thick Film Resistors - SMD 1/16watt 22kohms 1%,PANASONIC 0402,Exact MPN; no automatic substitution.
+"R42, R45, R46",CRCW04021K00FKEDC,3,1k,Thick Film Resistors - SMD 0402 1/16watt 1Kohms 1%,PANASONIC 0402,Exact MPN; no automatic substitution.
+S1,EVQ9P701P,1,,Tactile Switches SMD 3.5X2.9MM SID-OP L SHAPED TERM 1.6N,EVQ9P701P,Exact MPN; no automatic substitution.
+U1,AT86RF215-ZU,1,,"RF Transceiver Dual Band IEEE 802.15.4 TRX, 48QFN",QFN50P700X700X90-49N-D,Exact MPN; no automatic substitution.
+U2,2450FB15A050E,1,,2.45 GHz EIA 0805 Balun / Filter Combination 50 / 50Ohm 0805 (2012 Metric),FIL_0896BM15E0025E,Exact MPN; no automatic substitution.
+U3,ATX-12-F-26.000MHz-F05-T,1,26 MHz,"TCXO Oscillators XTAL OSC TCXO 26 MHz Clipped Sinewave 0.5ppm -40C +85C 2.5x2mm, 1.6-3.6V",TCXO_4_25x20,Exact MPN; no automatic substitution.
+U4,0896BM15E0025E,1,,RF Balun 863MHz ~ 928MHz 50 / 50Ohm 0805 (2012 Metric),FIL_0896BM15E0025E,Exact MPN; no automatic substitution.
+U5,NCV8187AMT330TAG,1,,LDO Voltage Regulators 1.2A 3.3V Active discharge,SON65P200X200X80-7N,Exact MPN; no automatic substitution.
+U6,TLV7111225DSER,1,,LDO Voltage Regulators Dual 200mA Output Lo Noise Hi PSRR LDO Rg,SON50P150X150X80-6N,Exact MPN; no automatic substitution.
+"U9, U15",MAAM-011229,2,,RF Amplifier .05-4GHz NF 2.2dBmax -40C +85C,PDFN_2MM_8LEAD,Exact MPN; no automatic substitution.
+U10,LFCN-2250+,1,,"LTCC Low Pass Filter, DC - 2200 MHz, 50O",FV1206,Exact MPN; no automatic substitution.
+"U11, U18",SKY13373-460LF,2,,RF Switch ICs .1-6.0GHz SP3T IL .45dB @ 2.5GHz,QFN50P200X200X60-13N-D,Exact MPN; no automatic substitution.
+U12,HFCN-2275+,1,,Signal Conditioning HI PASS FLTR / SURF MT / RoHS,FV1206,Exact MPN; no automatic substitution.
+"U13, U14",CG2164X3-C2,2,,RF Switch ICs 2.5 and 6GHz DPDT 802.11a/b/g/n/ac,SON50P150X150X40-7N,Exact MPN; no automatic substitution.
+U16,ICE40LP1K-QN84,1,,FPGA - Field Programmable Gate Array iCE40LP 1280 LUTs 1.2V Ultra Low-Power,LATTICE_ICE40LP1K-QN84,Exact MPN; no automatic substitution.
+"U19, U20",CG2409X3-C2,2,,RF Switch ICs 50-6000MHz SPDT 802.11a/b/g/n/ac,SON50P150X150X40-7N,Exact MPN; no automatic substitution.
+U21,TC4-19G2+,1,,"Audio Transformers / Signal Transformers TC XFMR / SURF MOUNT / RoHS, Alternatives - TC4-19+",TC4-19,Exact MPN; no automatic substitution. Description mentions TC4-19+; that alternative is NOT selected.
+U22,RFFC5072TR13,1,,RF Mixer LO Freq. 85-4200MHz WB Synthesizer/VCO,QFN50P500X500X85_HS-33N,Exact MPN; no automatic substitution.
+U23,TC1-1-13M+,1,,Transformers / Signal Transformers TC XFMR / SURF MOUNT,TC1-1-13M,Exact MPN; no automatic substitution.
+U25,SG-8018CG 125.0000M-TJHSA3,1,,Standard Clock Oscillators SG-8018CG 125.0000M-TJHPA3: MHZ OSC 1.8V 3.3V +/-50PPM -40 105C O/E 250TR,SG-8018CG,"Exact MPN; no automatic substitution. RESOLVED: use primary MPN SG-8018CG 125.0000M-TJHSA3. The schematic and primary BOM MPN agree on the standby (S) variant; TJHPA3 in the source description/comment/PnP is treated as stale metadata. Pin 1 is tied high, but the P variant is not an approved substitution."
+U26,CAT24C32HU4I-GT3,1,,EEPROM Serial-I2C 32K 4Kx8 1.8V/5V UDFN8 CAT24C32HU4I-GT3,SON50P300X200X55-9N,Exact MPN; no automatic substitution.
+"U27, U28","MMBT3904,215",2,,Bipolar Transistors - BJT TRANS BIPOLAR,SOT95P240X111-3N,Exact MPN; no automatic substitution.

@@ -1,0 +1,16 @@
+/* Compile the frozen oracle separately to isolate its private state. */
+#define nbfm_demod legacy_nbfm_demod
+#define nbfm_demod_t legacy_nbfm_demod_t
+#define nbfm_demod_config_t legacy_nbfm_demod_config_t
+#define nbfm_demod_result_t legacy_nbfm_demod_result_t
+#define fm_demod_mode_t legacy_fm_demod_mode_t
+#define FM_MODE_NBFM legacy_FM_MODE_NBFM
+#define FM_MODE_WBFM legacy_FM_MODE_WBFM
+#define nbfm_demod_create legacy_nbfm_demod_create
+#define wbfm_demod_create legacy_wbfm_demod_create
+#define nbfm_demod_reset legacy_nbfm_demod_reset
+#define nbfm_demod_set_audio legacy_nbfm_demod_set_audio
+#define nbfm_demod_process legacy_nbfm_demod_process
+#define nbfm_demod_process_with_raw legacy_nbfm_demod_process_with_raw
+#define nbfm_demod_destroy legacy_nbfm_demod_destroy
+#include "nbfm_demod.c"

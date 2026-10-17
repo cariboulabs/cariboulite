@@ -289,7 +289,7 @@ static int io_utils_modem_bitbang_transfer_spi(io_utils_spi_st* dev, io_utils_sp
 }
 
 //=====================================================================================
-int io_utils_spi_init(io_utils_spi_st* dev)
+static int spi_init_impl(io_utils_spi_st* dev)
 {
     if (dev == NULL)
     {
@@ -299,6 +299,7 @@ int io_utils_spi_init(io_utils_spi_st* dev)
     if (dev->initialized == 1)
     {
         ZF_LOGW("spi_dev already initialized");
+        return 0;
     }
 
     // init the chip list
@@ -313,7 +314,7 @@ int io_utils_spi_init(io_utils_spi_st* dev)
         dev->chips[i].initialized = 0;
     }
 
-    // Init mutex and unlock
+    // Initialize an unlocked mutex.
     if (pthread_mutex_init(&dev->mtx, NULL) != 0)
     {
         ZF_LOGE("mutex init failed");
@@ -326,14 +327,12 @@ int io_utils_spi_init(io_utils_spi_st* dev)
     io_utils_set_gpio_mode(dev->mosi, io_utils_alt_4);
     io_utils_set_gpio_mode(dev->sck, io_utils_alt_4);
 
-    pthread_mutex_unlock(&dev->mtx);
-
 	dev->initialized = 1;
     return 0;
 }
 
 //=====================================================================================
-int io_utils_spi_close(io_utils_spi_st* dev)
+static int spi_close_impl(io_utils_spi_st* dev)
 {
     if (dev == NULL || !dev->initialized)
     {
@@ -341,29 +340,15 @@ int io_utils_spi_close(io_utils_spi_st* dev)
         return -1;
     }
 
-    // first make sure nobody is using the resource - try to lock it with a timeout value
-    // So we try to lock it for 1 second which should be more than enough for spi transaction
-    // to finish. otherwise we trreminate it.
-    struct timespec timeout = {.tv_sec = 1, .tv_nsec = 0};
-    int ret = pthread_mutex_timedlock(&dev->mtx, &timeout);
-    if (ret == -ETIMEDOUT)
-    {
-        // timeout locking - some thread is holding spi as a hostage
-        ZF_LOGW("timed out trying locking mutex");
-    }
-    else if (ret<0)
-    {
-        ZF_LOGE("mutex locking failed");
-        return -1;
-    }
-
+    // The lifecycle writer lock excludes API users and new entrants.
+    int ret = pthread_mutex_lock(&dev->mtx);
+    if (ret != 0) return -1;
     dev->initialized = 0;
-    pthread_mutex_destroy(&dev->mtx);
 
     // now terminate all used spi channels
-    for (int i = 0; i < dev->num_of_chips; i++)
+    for (int i = 0; i < IO_UTILS_MAX_CHIPS; i++)
     {
-        if (dev->chips[i].is_hard_spi)
+        if (dev->chips[i].initialized && dev->chips[i].is_hard_spi)
         {
             spi_free(&dev->chips[i].hard_dev.spidev);
         }
@@ -374,11 +359,12 @@ int io_utils_spi_close(io_utils_spi_st* dev)
 	dev->num_of_chips = 0;
 	dev->current_chip = NULL;
 
-    return 0;
+    pthread_mutex_unlock(&dev->mtx);
+    return pthread_mutex_destroy(&dev->mtx) == 0 ? 0 : -1;
 }
 
 //=====================================================================================
-int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_mi_mo, int mode,
+static int spi_add_chip_impl(io_utils_spi_st* dev, int cs_pin, int speed, int swap_mi_mo, int mode,
                             io_utils_spi_chip_type_en chip_type, io_utils_hard_spi_st *hard_dev)
 {
     int res = -1;
@@ -450,7 +436,7 @@ int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_
 }
 
 //=====================================================================================
-int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
+static int spi_suspend_impl(io_utils_spi_st* dev, bool suspend)
 {
 	ZF_LOGD("changing an spi device suspension = '%d' state", suspend);
 	if (dev == NULL)
@@ -477,7 +463,7 @@ int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
 }
 
 //=====================================================================================
-int io_utils_spi_remove_chip(io_utils_spi_st* dev, int chip_handle)
+static int spi_remove_chip_impl(io_utils_spi_st* dev, int chip_handle)
 {
     ZF_LOGD("removing an spi device with handle %d", chip_handle);
 
@@ -508,7 +494,7 @@ int io_utils_spi_remove_chip(io_utils_spi_st* dev, int chip_handle)
 }
 
 //=====================================================================================
-int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
+static int spi_transmit_impl(io_utils_spi_st* dev, int chip_handle,
 							const unsigned char* tx_buf,
 							unsigned char* rx_buf,
 							size_t length,
@@ -520,13 +506,7 @@ int io_utils_spi_transmit(io_utils_spi_st* dev, int chip_handle,
         ZF_LOGE("uninitialized device");
         return -1;
     }
-    if (dev->chips[chip_handle].initialized == 0)
-    {
-        ZF_LOGE("uninitialized spi chip handle %d", chip_handle);
-        return -1;
-    }
-
-    // lock the resource
+    // Chip validation and transaction share the device lock with removal.
     pthread_mutex_lock(&dev->mtx);
 
     int set_up_hard = io_utils_spi_setup_chip(dev, chip_handle);
@@ -617,7 +597,7 @@ io_utils_spi_transmit_error:
 }
 
 //=====================================================================================
-void io_utils_spi_print_setup(io_utils_spi_st* dev)
+static void spi_print_setup_impl(io_utils_spi_st* dev)
 {
     if (dev == NULL || !dev->initialized)
     {
@@ -653,3 +633,63 @@ void io_utils_spi_print_setup(io_utils_spi_st* dev)
     }
     pthread_mutex_unlock(&dev->mtx);
 }
+
+/* Protect mutex lifetime without changing the public device layout. Calls on
+ * different devices may run concurrently; init/close briefly exclude all SPI
+ * calls. Lock order: lifecycle -> device mtx. No implementation calls wrappers.
+ * Cancellation is deferred until both locks have been released.
+ */
+static pthread_rwlock_t spi_lifecycle = PTHREAD_RWLOCK_INITIALIZER;
+
+static int spi_enter(bool exclusive, bool timed)
+{
+    if (!exclusive) return pthread_rwlock_rdlock(&spi_lifecycle);
+    if (!timed) return pthread_rwlock_wrlock(&spi_lifecycle);
+    struct timespec deadline;
+    if (clock_gettime(CLOCK_REALTIME, &deadline) != 0) return errno;
+    deadline.tv_sec += 1;
+    return pthread_rwlock_timedwrlock(&spi_lifecycle, &deadline);
+}
+
+#define SPI_CALL(exclusive, timed, expression) do { \
+    int previous_cancel; \
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &previous_cancel); \
+    int lock_result = spi_enter(exclusive, timed); \
+    int result = -1; \
+    if (lock_result == 0) { \
+        result = (expression); \
+        pthread_rwlock_unlock(&spi_lifecycle); \
+    } else { ZF_LOGE("SPI lifecycle lock failed (%d)", lock_result); } \
+    pthread_setcancelstate(previous_cancel, NULL); \
+    return result; \
+} while (0)
+
+int io_utils_spi_init(io_utils_spi_st* dev)
+{ SPI_CALL(true, false, spi_init_impl(dev)); }
+int io_utils_spi_close(io_utils_spi_st* dev)
+{ SPI_CALL(true, true, spi_close_impl(dev)); }
+int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed,
+                         int swap, int mode, io_utils_spi_chip_type_en type,
+                         io_utils_hard_spi_st* hard)
+{ SPI_CALL(false, false, spi_add_chip_impl(dev, cs_pin, speed, swap, mode, type, hard)); }
+int io_utils_spi_remove_chip(io_utils_spi_st* dev, int handle)
+{ SPI_CALL(false, false, dev && dev->initialized && handle >= 0 &&
+           handle < IO_UTILS_MAX_CHIPS ? spi_remove_chip_impl(dev, handle) : -1); }
+int io_utils_spi_suspend(io_utils_spi_st* dev, bool suspend)
+{ SPI_CALL(true, false, dev && dev->initialized ? spi_suspend_impl(dev, suspend) : -1); }
+int io_utils_spi_transmit(io_utils_spi_st* dev, int handle,
+                        const unsigned char* tx, unsigned char* rx,
+                        size_t length, io_utils_spi_dir_en dir)
+{ SPI_CALL(false, false, handle >= 0 && handle < IO_UTILS_MAX_CHIPS ?
+           spi_transmit_impl(dev, handle, tx, rx, length, dir) : -1); }
+void io_utils_spi_print_setup(io_utils_spi_st* dev)
+{
+    int previous_cancel;
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &previous_cancel);
+    if (spi_enter(false, false) == 0) {
+        spi_print_setup_impl(dev);
+        pthread_rwlock_unlock(&spi_lifecycle);
+    }
+    pthread_setcancelstate(previous_cancel, NULL);
+}
+#undef SPI_CALL

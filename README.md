@@ -18,60 +18,90 @@ CaribouLite is an affordable, educational, open-source SDR evaluation platform a
 </table>
 
 ## NOTE: No Support for RPI-5
-Due to the architectural changes in RPI5 - the new I/O controller called "RP1" chip, CaribouLite is not supported on RPI5. We assume that the reason is the removal of the SMI interface altogether from the external interfaces by Broadcomm's team.
-So, if you intend to use CaribouLite on RPI5 please don't - it won't work. Why was the SMI interface deprecated by Broadcomm (either from its hardware or kernel SW support)? Most probably due to the same reason this interface was not documented in the first place - no interest in supporting a high-speed external interface within the 40-pin connector.
+This checkout supports the existing BCM2835-family SMI transport and does not
+provide a Raspberry Pi 5 / RP1 transport. A 40-pin header alone does not establish
+compatibility. Pi 5 support would require a separate implementation and validation.
 
-Edit: The workaround we are working to support RPI5 anyway - trying to utilize the Display and Camera I/O pins from the 40-pin connector to stream information - FPGA + Kernel module adaptation.
+A Pi 5 transport redesign was proposed historically, but no working implementation is established here. Display/camera connectors are separate from the 40-pin GPIO header. Feasibility and scope are tracked as [DOC-10](ROADMAP.md#documentation-validation-backlog).
+
+## Development fork status — 16 October 2026
+
+The accepted NBFM TX/RX, mono WBFM RX and FM refactoring work is now on
+`main`. Further receive modes are developed on `dev-additional-modes`, starting
+with CW listening, then AM and SSB; these modes remain planned. See the
+[development overview](docs/wiki/Home.md), [FM plan](docs/demodulator-architecture-research.md)
+and [interface reference](docs/audio-dsp-interfaces.md).
+
+The standalone backend/controller/monitor and hardware-paced TX were merged
+from `dev-passive-monitor` into `main` at `069fab3` on 16 October 2026.
+This TX implementation has been tested on the Pi Zero
+2 W and Pi 4; see the [Pi 4 validation record](docs/pi4-tx-validation-2026-10-15.md).
+The clone command below selects `main` and its pinned IIR submodule. These
+recorded transport and listening checks do not establish calibrated RF performance
+or support for every Pi/OS combination. Start with the [documentation index](docs/README.md)
+for current controls, DSP interfaces and the [hardware-free checks](docs/testing.md).
 
 # Getting Started & Installation
+
+For this development checkout, also read [additional notes](ADDITIONAL-README.md),
+the [documentation audit](docs/documentation-audit-2026-10-16.md), and the
+[roadmap](ROADMAP.md). The historical installation recipe has not been freshly
+validated on every listed Pi/OS combination.
 Use the following steps to install the CaribouLite on your choice of RPI board
 1. Mount the CaribouLite on a **un-powered** RPI device using the 40-pin header.
 2. Power the RPI device, wait for it to finish boot sequence.
-3. Clone this repository into a local directory of your choise (in this case `~/projects`)
+3. Clone this repository into a local directory of your choice (in this case `~/projects`)
 ```
-mkdir ~/projects
+mkdir -p ~/projects
 cd ~/projects
-git clone https://github.com/cariboulabs/cariboulite
+git clone --branch main --recurse-submodules https://github.com/Habraken/cariboulite.git
 cd cariboulite
 ```
 4. Use the following setup command (**note: don't `sudo` it**):
     ```
-    install.sh
+    ./install.sh
     ```
 
-The setup script **requires internet connection** and it follows the following automatic steps:
+The setup script **requires an internet connection**. Run it as your normal user;
+it invokes `sudo` for system changes. It first runs `git pull` and initializes
+submodules in the selected checkout, then performs these steps:
 1. **Dependencies** installation (apt)
-2. **Soapy API tools installation** (SoapySDR and SoapyRemote) - only if they are not currently present in the system. Installation from code.
-3. **Internal dependencies installation**
+2. **Soapy tools:** when `SoapySDRUtil` is absent from `PATH`, offers to build
+   SoapySDR and SoapyRemote from source. It does not separately detect SoapyRemote.
+3. **Internal dependencies installation** (using headers for the running kernel;
+   install `linux-headers-$(uname -r)` if its build tree is absent)
    1. Utilities and tools
    2. IIR DSP library
    3. SMI stream device module (kernel object) blob generation
 4. **Main software** and SoapyAPI compilation and installation
-5. **Raspberry PI configuration** verification. Note - the installer doesn't not actively change the RPI's configuration to fit to CaribouLite. It just checks the `/boot/config.txt` configuration file and raises warning when problem is detected. Then the user shall need to adjust the parameters accordingly.
+   The standalone backend, controller and monitor are also built under
+   `build/radio-backend/`; see [radio controls](docs/radio-control.md) for launching them.
+5. **Raspberry PI configuration** verification. The installer checks boot settings in `/boot/firmware/config.txt` when present, otherwise `/boot/config.txt`; it does not edit these boot settings. It does write module-loading, blacklist, module-option and udev files through the driver installer.
 
 Note: the user will be requested to enter their password during the installation process.
 
 ## Installation Troubleshooting
-1. **Modules**: Both the `spi` and `arm-i2c` dtoverlays should be disabled to run CaribouLite properly. The `libcariboulite` doen't use them. It uses direct access to `/dev/mem` to expose these peripherals (through the `pigpio` library).
-The interfaces can be disabled (or enabled back whenever needed) by either directly editing the `/dev/config.txt` file or by using the `sudo raspi-config` command. The latter is the preferred choice as it is straight forward, less error prone and it works on all RaspberryPi's OS distributions (including DragonOS).
-If the direct editing path has been chosen (`/boot/config.txt`), the following lines
-should be commented out:
-`#dtparam=spi=on`
-`#dtparam=i2c_arm=on`
+1. **Boot interfaces:** disable the primary SPI and ARM I2C settings used by
+   conflicting overlays; enable `i2c_vc` and `spi1-3cs` as described in the
+   [additional notes](ADDITIONAL-README.md). The installer checks for text
+   presence and can warn even about explicit `off` values (DOC-01).
+2. **Kernel headers:** the current module sources are in [driver](driver/README.md).
+   Rebuild for the running kernel after kernel or driver changes. Kernel
+   mainline inclusion is not an implemented installation mechanism (DOC-02).
+3. **Access permissions:** the current `io_utils` build uses `rpi/rpi.c` and
+   `spidev/spi.c`, not the commented-out PIGPIO sources. GPIO initialization
+   selects `/dev/gpiomem`; SPI uses `/dev/spidev*`, and SMI uses `/dev/smi`.
+   Check the applicable device permissions and process limits; blanket claims
+   that every application must run with sudo are outdated. The current broad
+   udev rules and unprivileged behavior need validation (DOC-01).
 
-2. **Kernel headers** - `libcariboulite` loads a custom kernel module (`smi_stream_dev`) during startup. The kernel module sources are location in : **`/software/libcariboulite/caribou_smi/kernel`**. Recompilation of these .ko obejcts is needed whenever software is pulled. This requires currently to have the local host system to have the kernel headers installed. In addition, upgrading the kernel will require recompilation with the updated kernel headers. Once the `smi_stream_dev` is listed inside the main kernel tree, this process will become redundant.
-
-3. **sudo**ing - Currently hardware is accessed through the PIGPIO library. It should be given a root access to control the low level interfaces through the `/dev/mem` device. The relevant part of the software that is concerned in this matter is the "io_utils" sub-module. Once this module is re-designed to access the hardware through the "gpiomem" and "spidev" modules, this restrictions shall be mitigated (by the definitions of `udev` rules).
-So currently, sudo'ing is needed whenever CaribouLite is accessed (including sudo'ing python...).
-
-
-To compile the API library and SoapySDR API from code please click [here](/software/libcariboulite/README.md)
+For a manual API/SoapySDR build, see the [library build instructions](software/libcariboulite/README.md).
 
 # SMI Interface
 
-Unlike many other HAT projects, CaribouLite utilizes the **SMI** (Secondary Memory Interface) present on all the 40-pin RPI versions. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 [Secondary_Memory_Interface.pdf](docs/smi/Secondary%20Memory%20Interface.pdf). The SMI interface allows exchanging up to ~500 Mbit/s (depending on the FPGA, data-bus width, etc.) between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
+Unlike many other HAT projects, CaribouLite utilizes the **SMI** (Secondary Memory Interface) used on the supported pre-Pi-5 Raspberry Pi models. This interface is not thoroughly documented by both Raspberry-Pi documentation and Broadcomm's reference manuals. An amazing work done by [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/) (code in [git repo](https://github.com/jbentham/rpi)) in hacking this interface has contributed to CaribouLite's technical feasibility. A deeper overview of the interface is provided by G.J. Van Loo, 2017 `Secondary_Memory_Interface.pdf` (the referenced local PDF is missing; recovery is tracked as DOC-09). The SMI interface allows exchanging up to ~500 Mbit/s (depending on the FPGA, data-bus width, etc.) between the RPI and the HAT, and yet, the results vary between the different versions of RPI. The results further depend on the specific RPI version's DMA speeds.
 
-The SMI interface can be accessed from the user space Linux applications as shown in [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/), but Broadcomm also provided a neat minimal charachter device interface in the `/dev` directory using the `open`, `close`, `write`, `read`, and `ioctl` system calls. More on this interesting interface in the [designated readme file](software/libcariboulite/src/caribou_smi/index.md). This device driver needs to be loaded using `modprobe`.
+The SMI interface can be accessed from the user space Linux applications as shown in [Lean2](https://iosoft.blog/2020/07/16/raspberry-pi-smi/), but Broadcomm also provided a neat minimal charachter device interface in the `/dev` directory using the `open`, `close`, `write`, `read`, and `ioctl` system calls. More on this interesting interface in the [designated readme file](software/libcariboulite/src/caribou_smi/README.md). This device driver needs to be loaded using `modprobe`.
 
 More information on this interface can be found [here (HW side)](docs/smi/README.md) and [here (SW side)](software/libcariboulite/src/caribou_smi/README.md).
 
@@ -86,7 +116,7 @@ More information on this interface can be found [here (HW side)](docs/smi/README
 </table>
 
 # Hardware Revisions
-The board first prototyping (**Red**) revision ([REV1](hardware/rev1)) has been produced and tested to meet our vision on the board's capabilities. This revision was used to test its RF parts, the digital parts, and to develop its firmware and software support over the RPI.
+The board first prototyping (**Red**) revision (REV1; source assets are missing from this checkout, see DOC-09) has been produced and tested to meet our vision on the board's capabilities. This revision was used to test its RF parts, the digital parts, and to develop its firmware and software support over the RPI.
 
 
 <table>
@@ -105,8 +135,8 @@ The second revision ([REV2](hardware/rev2)) - **White** - was then designed to f
 2. Removing FPGA flash - redundant given the fact that the the RPI configures the FPGA in <1sec over SPI. Even if we have a whole library of custom made FPGA firmware files, switching between them is as simple and fast as a single linux command.
 3. Board layout improvements and overlays (silkscreen) beautification (including logo).
 4. A single system level 3.3V power (while the FPGA still receives 2.5V and 1.2V for its core). A linear regulator (rather than a switching DC-DC) was used to reduce conducted (power and ground) noise levels.
-5. Top and bottom EMI sheilding option - the EMI/RFI shield design models are provided in the [3d directory](hardware/rev2/3d/)
-6. More detailed changes in the [schematics](hardware/rev2/schematics/cariboulite_r2_sch.PDF).
+5. Top and bottom EMI sheilding option - the EMI/RFI shield design models are provided in the historical 3D directory (missing from this checkout; see DOC-09)
+6. More detailed changes in the [schematics](hardware/rev2/schematics/CaribouLite.PDF).
 
 In summary, in CaribouLite-Rev2.5 PCB design has been thoroughly re-thought to meet its educational needs with performance in mind. The RF path has been annotated with icons to ease the orientation in the schematics sheets, friendly silk writing was added describing system's components by their functionality rather than logical descriptors, and more.
 
@@ -161,7 +191,11 @@ The gaps are defined by the design constraints of the system and may not exist i
 - 65536 Total RAM bits
 - 67 I/Os, Temp: -40-100 degC
 
-<B>Applicable RPI models</B>: RPI_1(B+/A+), RPI_2B, RPI_Zero(Zero/W/WH), RPI_3(B/A+/B+), RPI_4B
+<B>Historical target RPI models</B>: RPI_1(B+/A+), RPI_2B,
+RPI_Zero(Zero/W/WH), RPI_3(B/A+/B+), RPI_4B, plus Zero 2 W.
+Recent branch validation covers **Zero 2 W and Pi 4**; the 64-bit installation
+recipe does not establish support for the original Zero/Zero W. See the
+[installation notes](ADDITIONAL-README.md) for recorded OS and test conditions.
 
 Parameter                  |  Sub-1GHz                    | Wide Tuning Channel
 ---------------------------|------------------------------|------------------------------------------------------------------
@@ -172,7 +206,7 @@ Max Transmit power         | 14 dBm                       | >10 dBm @ 30-2400 MH
 Receive noise figure       | <5 dB                      | <6 dB @ 30-3500 MHz, <8 dB @ 3500-6000 MHz
 
 <B>Note</B>:
-(1) Feature comparison table with other SDR devices will be published shortly
+(1) A dated, evidence-based comparison with other SDR devices remains [DOC-09](ROADMAP.md#documentation-validation-backlog).
 (2) Some of the above specifications are simulated rather than tested
 (3) Analog bandwidth controlled by the modem
 (4) The ISM version of the board doesn't contain the wide-range of frequencies (30-6000 MHz) and contains the native capabilities of the Modem IC.

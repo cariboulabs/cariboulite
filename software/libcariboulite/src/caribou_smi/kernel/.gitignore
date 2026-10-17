@@ -1,2 +1,3 @@
 # build directories
 build
+smi_stream_dev_gen.h

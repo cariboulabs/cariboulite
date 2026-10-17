@@ -2,6 +2,14 @@
     #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 #endif
 
+// Enable POSIX/GNU extensions so siginfo_t and SA_SIGINFO are visible
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+
 #define ZF_LOG_DEF_SRCLOC ZF_LOG_SRCLOC_LONG
 #define ZF_LOG_TAG "CARIBOULITE Test"
 #include "zf_log/zf_log.h"
@@ -15,12 +23,14 @@
 #include "hat/hat.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include "baseline_test.h"
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
 
 struct sigaction act;
-int program_running = 1;
+volatile sig_atomic_t program_running = 1;
 int signal_shown = 0;
 CARIBOULITE_CONFIG_DEFAULT(cariboulite_sys);
 
@@ -61,6 +71,17 @@ void sighandler( struct sys_st_t *sys,
 //=================================================
 int main(int argc, char *argv[])
 {
+    bool baseline = argc > 1 && strcmp(argv[1], "--baseline-test") == 0;
+    unsigned seconds = 0;
+    if (argc > 1) {
+        char* end = NULL;
+        long value = argc == 6 ? strtol(argv[2], &end, 10) : 0;
+        if (!baseline || argc != 6 || !end || *end || value < 2 || value > 300) {
+            fprintf(stderr, "Usage: %s [--baseline-test SECONDS CAPTURE PLAYBACK FIRMWARE]\n", argv[0]);
+            return 2;
+        }
+        seconds = (unsigned)value;
+    }
     // init the program
 	cariboulite_sys.force_fpga_reprogramming = 0;
     if (cariboulite_init_driver(&cariboulite_sys, NULL)!=0)
@@ -72,6 +93,12 @@ int main(int argc, char *argv[])
     // setup the signal handler
     cariboulite_setup_signal_handler (&cariboulite_sys, sighandler, signal_handler_op_last, &cariboulite_sys);
 
+    if (baseline) {
+        int rc = app_baseline_test(&cariboulite_sys, argv[5], argv[3], argv[4],
+                                   seconds, &program_running);
+        cariboulite_release_driver(&cariboulite_sys);
+        return rc == 0 ? 0 : 1;
+    }
     sleep(1);
 	while (program_running)
 	{

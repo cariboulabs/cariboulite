@@ -1,0 +1,32 @@
+{
+  "automation_completed": true,
+  "returncode": 0,
+  "rssi": {
+    "12_rx_2000000": {
+      "count": 10,
+      "min_dbm": -107.0,
+      "mean_dbm": -104.6,
+      "max_dbm": -103.0
+    },
+    "12_rx_4000000": {
+      "count": 10,
+      "min_dbm": -107.0,
+      "mean_dbm": -103.7,
+      "max_dbm": -102.0
+    },
+    "14_rx_2000000": {
+      "count": 10,
+      "min_dbm": -110.0,
+      "mean_dbm": -107.0,
+      "max_dbm": -105.0
+    },
+    "14_rx_4000000": {
+      "count": 10,
+      "min_dbm": -108.0,
+      "mean_dbm": -105.0,
+      "max_dbm": -102.0
+    }
+  },
+  "audible_result": "Jan confirmed: tones at the correct pitch and receiver noise",
+  "listener_confirmation_date": "2026-09-19"
+}

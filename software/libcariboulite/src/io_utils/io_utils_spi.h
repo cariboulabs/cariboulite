@@ -66,6 +66,12 @@ typedef struct
 } io_utils_spi_st;
 
 int io_utils_spi_init(io_utils_spi_st* dev);
+/* Close excludes other SPI API calls and waits up to one second for existing
+ * calls to finish. On timeout it returns -1 without changing the device;
+ * the owner must stop its users and retry before freeing the device storage.
+ * Init/close require exclusive lifecycle access across SPI devices. Device
+ * storage must remain alive for every caller; do not manipulate mtx directly.
+ */
 int io_utils_spi_close(io_utils_spi_st* dev);
 int io_utils_spi_add_chip(io_utils_spi_st* dev, int cs_pin, int speed, int swap_mi_mo, int mode,
                             io_utils_spi_chip_type_en chip_type, io_utils_hard_spi_st *hard_dev);

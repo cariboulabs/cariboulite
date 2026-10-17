@@ -1,0 +1,1125 @@
+# Additional CaribouLite notes
+
+Development priorities and acceptance criteria are tracked in the
+[development roadmap](ROADMAP.md). The [documentation audit](docs/documentation-audit-2026-10-16.md) records what
+was checked and what remains open. These notes include a successful fresh
+Pi Zero 2 W / Trixie installation reported on October 14, 2026, alongside
+historical recipes and work in progress. Before applying manual source patches,
+check whether the current checkout already contains them. For recorded development state, see the
+[software baseline](docs/software-baseline-2026-09-13.md) and
+[FPGA study](docs/fpga-gap-study-2026-09-13.md); neither certifies the current setup.
+
+Reviewed against `dev-passive-monitor` at `953c1f0` on 2026-10-16. Hardware-paced
+TX is included in this branch; the 64-frame FIFO growth described below belongs
+to the earlier implementation. With the updated driver, current automatic pacing
+uses a four-frame IQ queue and independent microphone capture. See the
+[implemented TX design](docs/tx-hardware-paced-design.md) and
+[documentation index](docs/README.md).
+
+The standalone radio applications are `cariboulite_radio_backend`,
+`cariboulite_radio_controller` and `cariboulite_radio_monitor`, built under
+`build/radio-backend/`. See [radio controls](docs/radio-control.md) for building
+and launching them, including symmetric `rx frequency` / `tx frequency`
+commands and grouped squelch controls. The [passive monitor](docs/passive-monitor.md)
+remains optional and runs in its own terminal.
+
+# Install CaribouLite with Raspberry Pi OS Trixie (64-bit)
+
+On October 14, 2026, a successful fresh build and installation was reported on
+a **Raspberry Pi Zero 2 W running 64-bit Raspberry Pi OS Trixie**, following
+this README. In that initial test, NBFM TX worked without distortion when the RF sample rate was
+reduced to **1 MS/s**. WBFM RX was also tested at **4 MS/s**.
+NBFM was also successfully tested against a known repeater. During NBFM TX
+testing at **1 MS/s**, the Linux/application TX FIFO was observed slowly filling to
+**100% (64/64) in about 90 seconds**, with modulation audio apparently
+unaffected. The same queue growth was not observed at **4 MS/s**.
+See [TX FIFO occupancy](#tx-fifo-occupancy) for its interpretation.
+The [backend/controller/passive-monitor follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md)
+also reproduced gradual queue growth at 1 MS/s. At 4 MS/s it showed lower
+production rates and capture overruns. The subsequent
+[automated baseline](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14)
+reproduced both behaviors with the existing build.
+
+Follow the installation steps in the next section after the Trixie settings
+below, and [create the ALSA Loopback device](#creating-the-alsa-loopback-device)
+before using the test application's audio modes. In menu option 14, stop TX
+and RX, then press `1`, `2` or `4` to select the RF sample rate. The later
+hardware-paced TX trials cover all three rates; the original installation
+report used 1 MS/s NBFM TX and 4 MS/s WBFM RX. ALSA audio remains at 48 kHz.
+
+The settings below were part of the installation recipe; their necessity for
+each launch method and login/session still needs checking. A Debian-wide policy
+change has not been established here. These settings change system-wide
+locked-memory limits; they do not by themselves establish device access or
+real-time scheduling permissions.
+
+## Step 1
+```bash
+sudo mkdir -p /etc/systemd/system.conf.d
+```
+```bash
+sudo tee /etc/systemd/system.conf.d/99-memlock.conf >/dev/null <<'EOF'
+[Manager]
+DefaultLimitMEMLOCK=infinity
+EOF
+```
+## Step 2
+```bash
+sudo mkdir -p /etc/systemd/user.conf.d
+```
+```bash
+sudo tee /etc/systemd/user.conf.d/99-memlock.conf >/dev/null <<'EOF'
+[Manager]
+DefaultLimitMEMLOCK=infinity
+EOF
+```
+## Step 3
+```bash
+sudo reboot
+```
+## Step 4
+```bash
+ulimit -l
+cat /proc/self/limits | grep -i "Max locked memory"
+```
+
+# Install CaribouLite with Raspberry Pi OS Bookworm (Lite) (64bit)
+
+This section retains the May 2025 recipe and subsequent development notes.
+Use the [installation guide](installation.md) for the current installer flow;
+the Trixie report above records a newer tested setup.
+
+My goal is to install the cariboulite on a Raspberry Pi0_2W and/or a Pi4. Requirements:
+- Connected to the Pi over ethernet and ultimately provide power to the Pi with POE
+- Use SDR++ server and SDR++
+- Use gnu-radio
+
+The recorded setup fit on a 16 GB SD card; current disk requirements need
+remeasuring. SoapySDR is required for Soapy-based applications, while the core
+library can build without it. The installer can build SoapySDR when missing.
+
+This recipe was recorded as tested on a 'Pi0' and Pi4 on May 1st 2025.
+The exact Zero model needs clarification: a 64-bit recipe does not establish
+compatibility with the original Zero/Zero W. Platform validation is DOC-01.
+
+### Initial steps
+Download & install the latest version of PiOS using the Raspberry Pi Imager. Ensure that you have enabled ssh under services and that you have provided basic information to the general settings of the OS Customisation.
+
+I make the assumption that all of this is familiar to you and you know how to ssh over the local network to your Pi and know how to work with nano the text editor.
+
+After you have logged on, update the Pi OS:
+
+```
+sudo apt update
+sudo apt upgrade
+```
+### Modifying the boot config.txt file
+Modify the `/boot/firmware/config.txt` file to ensure the parameters are set so that the cariboulite can communicate with the CPU. The last two lines disable Bluetooth and WiFi, to minimise RF interference. So the Pi needs to be connected to the local network through an ethernet cable, else you can no longer communicate with the Pi after the next reboot.
+
+`sudo nano /boot/firmware/config.txt`
+
+Add the lines below just above the line that reads:
+`# Enable audio (loads snd_bcm2835)`
+
+```
+dtparam=i2c_arm=off
+dtparam=spi=off
+
+# CaribouLite
+dtparam=i2c_vc=on
+dtoverlay=spi1-3cs
+
+# Disable WiFi and Bluetooth
+dtoverlay=disable-wifi
+dtoverlay=disable-bt
+```
+
+Save the file and reboot
+
+### Install linux kernel header files:
+
+The SMI kernel driver needs headers matching the running kernel. Check:
+
+```sh
+uname -r
+ls -ld "/lib/modules/$(uname -r)/build"
+```
+
+Use the package for your installed kernel and architecture; `linux-headers-rpi-v8`
+was the package used for the recorded 64-bit Pi setup. This is a driver-build
+requirement, not an SDR++ requirement. See the
+[Raspberry Pi kernel documentation](https://www.raspberrypi.com/documentation/computers/linux_kernel.html).
+
+### Monitoring the Pi's activity
+The next steps will often take a while, during which you might want to periodically check that everything is still moving along.
+In separate terminals watch what is going on during any of the following steps with `htop` and/or `dmesg`. This is how I discovered that `make` ran out of memory.
+
+```
+htop
+sudo dmesg -wH
+```
+### Install `git` & `cmake`
+
+```
+sudo apt install git cmake
+```
+
+# SoapySDR (optional)
+For a manual SoapySDR/SoapyRemote installation, use the recorded recipe below.
+If `SoapySDRUtil` is already on `PATH`, the CaribouLite installer skips its
+Soapy build section; it does not separately check whether SoapyRemote is installed.
+
+Create a directory where you want to keep your source code. I call mine: `src`.
+
+```
+mkdir -p ~/src
+cd ~/src
+```
+
+Get the source code:
+
+```
+git clone https://github.com/pothosware/SoapySDR.git
+git clone https://github.com/pothosware/SoapyRemote.git
+
+```
+Or:
+
+```
+git clone https://github.com/Habraken/SoapySDR.git
+git clone https://github.com/Habraken/SoapyRemote.git
+```
+The following library not available by default and SoapyRemote will complain but not fail:
+
+```
+sudo apt install libavahi-client-dev
+```
+
+In both repositories run the below commands to build and install SoapySDR and SoapyRemote starting with SoapySDR as SoapyRemote depends on it.
+
+```
+mkdir build && cd build
+cmake .. -DENABLE_PYTHON3=ON
+make -j`nproc`
+sudo make install -j`nproc`
+sudo ldconfig #needed on debian systems
+SoapySDRUtil --info
+```
+
+# CaribouLite
+Create a directory where you want to keep your source code. I call mine: `src`.
+
+```
+mkdir -p ~/src
+cd ~/src
+```
+
+For this fork's hardware-paced TX and standalone radio applications, clone
+the development branch and its submodule:
+
+```
+git clone --branch dev-passive-monitor --recurse-submodules https://github.com/Habraken/cariboulite.git
+```
+
+The installer includes the ALSA development dependencies. For a manual build,
+install them first:
+
+```
+sudo apt install -y libasound2-dev pkg-config
+```
+
+### Current checkout versus historical patches
+
+The current `driver/smi_stream_dev.c` already includes `<linux/vmalloc.h>`,
+uses `class_create(DEVICE_NAME)`, and declares `smi_stream_dev_remove` as `void`.
+Do not apply the old three-step kernel patch again. NBFM and modem-monitor code
+are already in this checkout; switching to `feature/nbfm_rx` is not an
+installation prerequisite.
+
+The top-level installer builds the blob generator before the driver and invokes
+the driver installer itself; a driver-first installation is unnecessary. It builds
+the main library, standard test application and the standalone backend,
+controller and monitor. It also
+runs `git pull`, installs packages and writes system configuration. The fresh
+Pi Zero 2 W / Trixie installation reported above succeeded with this recipe;
+broader package, permissions and platform validation remains tracked in
+[DOC-01](ROADMAP.md#documentation-validation-backlog).
+
+On October 15, a separate recursive GitHub clone of `dev-passive-monitor` at
+`37d2414` built the native blob generator, kernel driver, embedded driver header,
+main library, standard test application and all three standalone radio apps.
+This check used the Pi 4's existing OS dependencies and matching kernel headers;
+it did not run the system installer or validate installation on a fresh OS image.
+
+Then in the cariboulite directory:
+
+```
+./install.sh
+```
+This takes ‘a while’ on a Pi0. At a certain point the script will ask if you want to `install SoapySDR`, if you did not install it before. Say `Yes`.
+
+After the script has completed, reboot the Pi.
+```
+sudo reboot
+```
+
+Now we need to check whether the SMI driver is working correctly.
+
+```
+lsmod | grep smi
+```
+The ouput should look like this:
+
+```
+pi@pi0b-bookworm:~ $ lsmod | grep smi
+smi_stream_dev         16384  0
+bcm2835_smi            20480  1 smi_stream_dev
+pi@pi0b-bookworm:~ $
+```
+Also check if the permissions are set correclty:
+
+```
+ls -l /dev/smi
+```
+the ouput shoudl look like this:
+
+```
+pi@pi0b-bookworm:~ $ ls -l /dev/smi
+crw-rw-rw- 1 root root 239, 0 May  1 13:40 /dev/smi
+pi@pi0b-bookworm:~ $
+```
+
+### Testing SoapySDR
+
+As SoapySDR was install by the install script of cariboulite it should be possible to communicate with the CaribouLite.
+
+```
+SoapySDRUtil --find
+```
+The ouput should look like this:
+
+```
+######################################################
+##     Soapy SDR -- the SDR abstraction library     ##
+######################################################
+
+[INFO] SoapyCaribouliteSession, sessionCount: 0
+05-01 13:51:14.339   627   627 I CARIBOU_PROG caribou_prog_configure_from_buffer@caribou_prog.c:260 Sending bitstream of size 32220
+05-01 13:51:16.644   627   627 I CARIBOU_PROG caribou_prog_configure_from_buffer@caribou_prog.c:292 FPGA programming - Success!
+
+Printing 'findCariboulite' Request:
+Found device 0
+  channel = S1G
+  device_id = 0
+  driver = Cariboulite
+  label = CaribouLite S1G[1e3bc7c2]
+  name = CaribouLite RPI Hat
+  serial = 1e3bc7c2
+  uuid = 11884996-87f4-4b07-9961-a38c1b78fa08
+  vendor = CaribouLabs LTD
+  version = 0x0001
+
+Found device 1
+  channel = HiF
+  device_id = 1
+  driver = Cariboulite
+  label = CaribouLite HiF[1e3bc7c3]
+  name = CaribouLite RPI Hat
+  serial = 1e3bc7c3
+  uuid = 11884996-87f4-4b07-9961-a38c1b78fa08
+  vendor = CaribouLabs LTD
+  version = 0x0001
+```
+
+Before using the audio modes in `cariboulite_test_app`,
+[create the ALSA Loopback device](#creating-the-alsa-loopback-device).
+Then interact with the CaribouLite board with the provided `cariboulite_test_app`
+in the `~/src/cariboulite/build` directory.
+
+```
+cd ~/src/cariboulite
+./build/cariboulite_test_app
+```
+The following May 2025 capture predates the NBFM and monitor entries. The current
+menu is shown in [NBFM and modem monitor](#nbfm-and-modem-monitor):
+
+```
+
+	   ____           _ _                 _     _ _
+	  / ___|__ _ _ __(_) |__   ___  _   _| |   (_) |_ ___
+	 | |   / _` | '__| | '_ \ / _ \| | | | |   | | __/ _ \
+	 | |__| (_| | |  | | |_) | (_) | |_| | |___| | ||  __/
+	  \____\__,_|_|  |_|_.__/ \___/ \__,_|_____|_|\__\___|
+
+
+ Select a function:
+ [0]  Hard reset FPGA
+ [1]  Soft reset FPGA
+ [2]  Print board info and versions
+ [3]  Program FPGA
+ [4]  Perform a Self-Test
+ [5]  FPGA Digital I/O
+ [6]  FPGA RFFE control
+ [7]  FPGA SMI fifo status
+ [8]  Modem transmit CW signal
+ [9]  Modem receive I/Q stream
+ [10]  Synthesizer 85-4200 MHz
+ [99]  Quit
+    Choice:
+```
+The same historical test recorded synchronization errors after option `9`,
+sub-option `2`:
+>
+```
+FF D0 FF F4 FF 02 C0 D8  FF C0 FF FC FF C2 FF E6  |  ................
+05-01 14:00:45.038   644   648 E CARIBOULITE Radio cariboulite_radio_read_samples@cariboulite_radio.c:1276 SMI data synchronization failed
+FF E0 FF D2 C0 12 C0 1A  C0 DA FF 02 C0 00 C0 EE  |  ................
+05-01 14:00:45.046   644   648 E CARIBOULITE Radio cariboulite_radio_read_samples@cariboulite_radio.c:1276 SMI data synchronization failed
+C0 C0 C0 C4 C0 FA C0 E6  C0 30 C0 22 C0 C0 C0 CC  |  .........0."....
+05-01 14:00:45.055   644   648 E CARIBOULITE Radio cariboulite_radio_read_samples@cariboulite_radio.c:1276 SMI data synchronization failed
+```
+> Historical observation (May 1, 2025): a defective board was suspected. SMI synchronization errors alone do not establish that diagnosis. Board/modem identity, active firmware, driver and stream settings need checking; the hardware investigation remains DOC-08 in the roadmap.
+
+# NBFM and modem monitor
+The current menu is defined in `software/libcariboulite/src/app_menu.c`.
+Run from the repository root with `./build/cariboulite_test_app 2>debug.log`.
+The menu below includes the NBFM and monitor entries; diagnostic screen output
+later in this section is a historical capture, not an exact current UI snapshot.
+
+```
+	   ____           _ _                 _     _ _
+	  / ___|__ _ _ __(_) |__   ___  _   _| |   (_) |_ ___
+	 | |   / _` | '__| | '_ \ / _ \| | | | |   | | __/ _ \
+	 | |__| (_| | |  | | |_) | (_) | |_| | |___| | ||  __/
+	  \____\__,_|_|  |_|_.__/ \___/ \__,_|_____|_|\__\___|
+
+
+ Select a function:
+ [ 0]  Hard reset FPGA
+ [ 1]  Soft reset FPGA
+ [ 2]  Print board info and versions
+ [ 3]  Program FPGA
+ [ 4]  Perform a Self-Test
+ [ 5]  FPGA Digital I/O
+ [ 6]  FPGA RFFE control
+ [ 7]  FPGA SMI fifo status
+ [ 8]  Modem transmit CW signal
+ [ 9]  Modem receive I/Q stream
+ [10]  Synthesizer 85-4200 MHz
+ [11]  NBFM TX Tone
+ [12]  NBFM RX
+ [13]  NBFM modem Self-Test
+ [14]  Monitor Modem Status
+ [99]  Quit
+    Choice:
+
+```
+Menu option 3 programs `firmware/top.bin` relative to the working directory.
+Run the app from the repository root, and distinguish this file from firmware
+embedded in a built library. Startup behavior and the image actually running
+must be checked rather than inferred from the branch name. The historical
+[baseline](docs/software-baseline-2026-09-13.md) records Jan's startup and
+programming procedure, with its validation limits.
+
+Options 12, 13 and 14 need the [ALSA Loopback device](#creating-the-alsa-loopback-device).
+In the current option 14
+configuration, both TX and RX use HiF/RF24 (`sys->radio_high`). TX captures `plughw:Loopback,1,1`, RX plays to
+`plughw:Loopback,0,0`, and both default to 430.100 MHz. `tone_mode` defaults to
+false; the internal tone parameter is 600 Hz. Therefore pressing T does not
+by itself select the historical 650 Hz tone. Audio endpoints, channel selection
+and default power (-13 dBm in menu 14) remain set in source (roadmap items 2 and 5). TX/RX frequencies
+are editable while stopped using `F`/`G`; see
+[frequency controls](docs/monitor-frequency.md). The separate L interface-loopback
+diagnostic also uses RF24 reception. Earlier RF09 captures below retain their
+original channel identity; they do not describe the current menu default.
+
+In option 14, stop TX and RX, then press `1`, `2` or `4` to select a shared
+1, 2 or 4 MS/s RF sample rate. The rate applies to both TX and RX, including
+NBFM and mono WBFM reception; audio remains at 48 kHz. Rate changes are blocked
+while the separate `L` interface-loopback diagnostic is enabled.
+
+Stopping TX sends a 250 ms trailing Quindar tone, followed by silence long
+enough to clear the kernel and DMA buffers before switching the radio off.
+The tone duration stays at 250 ms. The old buffering path required more padding
+at 1 MS/s; current hardware-paced TX uses bounded driver buffering and fast
+final padding. Actual release time still depends on transport/backpressure;
+see [TX tail timing](docs/tx-tail-timing.md).
+
+### TX FIFO occupancy
+
+The 64-frame measurements and clock-paced production discussion in this section
+describe the **pre-hardware-paced baseline**. Current source uses driver demand
+and a four-frame bound when the new TX ABI is available. `TX_PACING_AUTO` falls
+back to the legacy 64-frame path only when the driver returns `ENOTTY` for the
+status ioctl; explicit legacy selection also retains that path. Inspect the
+active pacing mode and driver counters before interpreting queue occupancy.
+
+The repeated Pi Zero 2 W / Trixie NBFM TX test reported above confirmed that
+at **1 MS/s** the application TX FIFO slowly fills to **64/64**, with **max:64**,
+during active transmission. It takes approximately **90 seconds** to reach full
+occupancy, while the modulation audio appears unaffected. This established
+accumulating backlog in the old implementation; the later demand-paced transport
+and compute changes address it in the recorded trials below.
+
+The user clarified that this filling does **not** occur at **4 MS/s**:
+
+| TX RF rate | IQ samples per 10 ms frame | Reported application TX queue behavior |
+| --- | --- | --- |
+| 1 MS/s | 10,000 | Gradually fills to 64/64 in approximately 90 seconds |
+| 4 MS/s | 40,000 | Does not show the same filling |
+
+Both settings retain a 64-frame queue representing 640 ms of signal. The
+4 MS/s modulator processes four times as many IQ samples per frame, while
+driver/DMA buffers have fixed byte capacities and therefore different durations
+at the two rates. Lower production under the heavier 4 MS/s workload could
+also keep its queue from filling. Compare long-term producer rates, accepted
+writer sample rates and capture/driver diagnostics at both settings to
+distinguish that possibility from slower draining at 1 MS/s. The reported
+distortion-free TX audio remains the result recorded for 1 MS/s.
+
+The subsequent backend/controller test on the same Pi Zero 2 W installation
+also showed gradual growth at 1 MS/s: depth 29/64, max 30, puts/gets 4582/4553
+and displayed rates 99.8/99.8 frames/s. This represents 290 ms of application
+backlog. At 4 MS/s, the supplied snapshot showed depth 0/64, max 3 and
+79.7/79.7 frames/s, with a reported range around 80–90. Each frame still
+represents 10 ms, so those lower rates point toward insufficient production
+under the heavier workload. Capture recorded 48 overruns and 48 successful
+recoveries at 4 MS/s, versus zero in the 1 MS/s excerpt. Successful recovery
+does not restore lost audio. Both workers reported actual `SCHED_OTHER/0`;
+requested FIFO priorities 40/48 were not active. Full counters, interpretation
+and the timed comparisons are in the
+[backend follow-up](docs/pi-zero-tx-queue-test-2026-10-15.md#backendcontroller-observations-2026-10-14).
+
+The automated Pi Zero baseline at 430.100 MHz then measured both sources for
+three minutes at each rate. At 1 MS/s, microphone and internal-tone queues
+both filled after about 129 seconds, with production near 100 frames/s before
+saturation and dequeue near 99.59 frames/s. At 4 MS/s, microphone/tone averaged
+82.81/88.84 frames/s and CPU 0 was approximately 98–100% busy; both TX workers
+were pinned there. Kernel TX missed counters increased at 4 MS/s for both
+sources. The measured microphone capture overrun deltas were 2 at 1 MS/s and
+383 at 4 MS/s. This confirms capture-independent backlog at 1 MS/s and a
+separate processing/scheduling limit at 4 MS/s. That baseline used the unchanged
+TX implementation. Full rates, window definitions, recorder overhead and limitations
+are in the [physical baseline report](docs/pi-zero-tx-queue-test-2026-10-15.md#physical-baseline-results-2026-10-14).
+
+The subsequent [hardware-paced TX implementation](docs/tx-hardware-paced-design.md)
+passed six three-minute microphone/tone trials at 1/2/4 MS/s and 430.100 MHz.
+It sustains approximately 100 frames/s within a four-frame application bound,
+with zero driver underruns or microphone/audio-buffer losses. At 4 MS/s the
+producer uses approximately 55% of one core. Verified SMI write timing is
+restored on stop, and same-backend automatic RX restoration passed at 1/4 MS/s.
+Those physical trials used a separately staged build and runtime driver reload
+on the Zero. The implementation was subsequently merged at `37d2414`; a new
+installation builds it from source. The historical staging arrangement is not an
+installation prerequisite. RF waveform accuracy remains separately unmeasured.
+
+On October 15, the user also confirmed successful quick tests of this staged
+version at 1 and 4 MS/s, with substantially better modulation audio at 4 MS/s.
+This [listening observation](docs/pi-zero-tx-queue-test-2026-10-15.md#user-listening-checks-2026-10-15)
+supplements the automated transport measurements.
+
+The unchanged staged candidate subsequently passed the
+[Pi 4 transport and RX restoration checks](docs/pi4-tx-validation-2026-10-15.md).
+The user then confirmed **perfect modulation audio at 4 MS/s**, with no
+noticeable hiss while the microphone was quiet, using an RSP2pro connected
+through 30 dB / 2 W and 20 dB / 2 W attenuators. SDRconnect with AGC enabled
+indicated **−61.2 dBm**. The
+[manual listening record](docs/pi4-tx-validation-2026-10-15.md#user-rsp2pro-listening-check--4-mss-2026-10-15)
+keeps this qualitative result and nominal 50 dB path separate from calibrated
+RF measurements.
+
+If the queue starts near empty, the observed growth corresponds to
+`64 / 90 ≈ 0.71` excess frames per second, about **0.7%** of the nominal
+100 frames/s. More generally, use `(64 - starting_depth) / elapsed_seconds`.
+This estimates the application's enqueue/dequeue imbalance; the initial depth
+and individual long-term producer/writer rates still need recording.
+
+An earlier screenshot showed the following counters at 1 MS/s:
+
+```text
+Linux TX FIFO: 10000 samples/frame (10 ms)
+    depth: 48/64 (75%), min:0 max:51
+    puts:8318 gets:8270 drops:0 tO_put:0 tO_get:0
+    rate: puts 98.8/s, gets 98.8/s  (expect ~100 fps @ 10ms)
+    NOTE: Under-runs observed (producer late)
+```
+
+This snapshot contains 480 ms of queued signal, with a recorded maximum of
+510 ms (51/64, approximately 80%). The matching enqueue/dequeue rates indicate
+no net queue growth during that display interval, to the displayed precision.
+The writer was draining the queue, and `8318 - 8270 = 48` agrees with its depth.
+One short rate interval cannot establish a sustained sample-rate mismatch or
+explain the accumulated backlog.
+
+The user subsequently clarified that both TX rates fluctuate between **98 and
+103 frames/s**. Menu 14 calculates each rate from counter changes since the
+previous refresh, over approximately 200 ms plus register reads and screen
+work. One frame crossing a 200 ms interval boundary changes the displayed rate
+by about 5 frames/s, so this range is consistent with short-interval counting
+and scheduling variation. For a longer-term check, divide cumulative counter
+changes by elapsed time over 30–60 seconds of continuous TX, excluding startup,
+shutdown and counter resets. The repeated 90-second fill establishes a sustained
+imbalance despite this short-interval rate variation.
+
+The screenshot's underrun warning comes from an older display condition:
+`min_depth == 0`. TX startup flushes the queue and sets that minimum to zero,
+so the warning can appear without producer lateness or an RF underrun.
+Commit `bcc7efe` (October 11, 2026) removed this misleading check; the current
+source does not print that warning. The exact revision of the binary used
+for the screenshot has not been identified.
+
+The `Linux TX FIFO` panel measures the application's IQ queue between the
+modulator and SMI writer. It holds **64 frames of 10 ms each**, so a full queue
+contains **640 ms of queued signal**, before kernel/DMA and audio-device
+buffering. Selecting 1 MS/s reduces the number of IQ samples per frame, while
+each frame still represents 10 ms.
+
+The producer waits when this queue is full instead of overwriting frames.
+Full occupancy alone therefore does not establish lost IQ or distorted RF.
+However, normal TX is paced at one frame every 10 ms; sustained saturation
+needs investigation of writer throughput, transport timing and queued latency.
+Clean-sounding audio can coexist with the accumulating delay because the
+application queue preserves its frames and blocks further production at full
+capacity. The [profiling follow-up](ROADMAP.md#i-runtime-profiling-broadcast-decoding-and-adjustable-ctcss)
+tracks timed producer/writer measurements and capture/driver diagnostics.
+Final silence during TX shutdown is deliberately generated without that pacing
+and can temporarily fill the queue.
+
+During steady TX, compare the displayed `puts` and `gets` rates over several
+updates: both should average approximately **100 frames/s**. A full queue with
+`gets` no longer advancing indicates that the writer is not draining it.
+Both TX queue operations wait without a timeout, and overwriting is disabled,
+so zero `drops`, `tO_put` and `tO_get` counters do not prove healthy transmission.
+Microphone capture overruns and driver errors need checking separately.
+
+These queue and pacing details are defined in
+[`tx_pipeline.c`](software/libcariboulite/src/tx_pipeline.c),
+[`mod_worker.c`](software/libcariboulite/src/mod_worker.c) and
+[`pipeline_transport.c`](software/libcariboulite/src/pipeline_transport.c).
+
+### RX FIFO snapshot
+
+A further screenshot taken during RX at 1 MS/s showed:
+
+| Queue | Current depth | Recorded maximum | Puts / gets | Displayed puts / gets rate |
+| --- | --- | --- | --- | --- |
+| TX (inactive during RX) | 63/64 (98%) | 64 | 20219 / 20156 | 0.0 / 0.0 frames/s |
+| RX | 0/64 (0%) | 4 | 3339 / 3339 | 95.4 / 95.4 frames/s |
+
+Both queues reported zero drops and put/get timeouts. The TX queue remains
+allocated after stopping TX, and starting RX does not flush it; its displayed
+depth and historical maximum can therefore persist with no TX queue activity.
+Final stop padding can fill the queue, but this snapshot does not establish
+when its maximum was reached or which frames remained. A near-full inactive
+TX queue does not indicate that the RX path is overloaded.
+
+The RX demodulator had consumed all 3339 enqueued frames, with a maximum
+observed backlog of four frames (40 ms of signal). Its matching reader and
+demodulator rates show no net application IQ queue growth during the displayed
+interval. A single 95.4 frames/s reading does not establish sustained throughput
+below the nominal 100 frames/s or upstream sample loss.
+
+The older `Under-runs observed (reader late)` message was also triggered merely
+by `min_depth == 0`. Normal consumption of the last available frame sets this
+minimum to zero; it does not establish an underrun. RX queue counters do not
+measure kernel/FPGA sample continuity or ALSA playback underruns.
+
+### Historical monitor display
+
+This historical capture illustrates an earlier monitor layout and queue model:
+```
+CaribouLite Radio    [T]=TX ON/OFF  [R]=RX ON/OFF  [Q]=QUIT  [X]=RES  1766328674
+    TX Loopback: off    TX Frequency: 430100000 Hz    TX Power: -3 d     0.00361
+Modem Status Registers:
+    RF_CFG:0x08  RF_CLKO:0x1A
+    IQIFC0:0x33  IQIFC1:0x11  IQIFC2:0x0B
+    RF09-RXFDE :0x81  RF24-RXDFE :0x81
+    RF09-TXFDE :0x81  RF24-TXDFE :0x81
+    RF09-PADFE :0x40  RF24-PADFE :0x40
+    RF09-PAC   :0x6B  RF24-PAC   :0x72
+    RF09-IRQM  :0x3F  RF24-IRQM  :0x3F
+    RF09-IQRS  :0x00  RF24-IRQS  :0x00
+    RF09-STATE :0x02  RF24-STATE :0x02
+    RF09-TXDACI:0x7E  RF24-TXDACI:0x00
+    RF09-TXDACQ:0x3F  RF24-TXDACQ:0x00
+FPGA SMI info (0x05):
+    RX FIFO EMPTY: 1
+    TX FIFO FULL : 0
+    SMI CHANNEL  : 1    // 0=RX09 1=RX24
+    SMI DIRECTION: 0    // 0=TX   1=RX
+    DEBUG = 0, MODE: 'Low Power (0)'
+IQ Data Stream:
+    TX_I:0x00000FA1  TX_Q:0x00000013
+    RX_I:0x00000000  RX_Q:0x00000000
+Linux TX FIFO:
+    depth: 64/64 (100%), min:64 max:64
+    puts:64 gets:0 drops:0 tO_put:0 tO_get:0
+    rate: puts 0.0/s, gets 0.0/s  (expect ~100 fps @ 10ms)
+Linux RX FIFO:
+    depth: 0/128 (0%), min:128 max:0
+    puts:0 gets:0 drops:0 tO_put:0 tO_get:0
+    rate: puts 0.0/s, gets 0.0/s  (expect ~100 fps @ 10ms)
+```
+With `T` you toggle TX and with `R` you toggle RX. Supply audio to the TX loopback endpoint as described in the ALSA section.
+
+Current NBFM reception has noise squelch, with optional RSSI squelch; mono WBFM
+supports RSSI squelch. Menu 14 uses `N` and `C` for the applicable toggles and
+`S` for NBFM noise thresholds. See [RX squelch](docs/rx-squelch.md) for defaults
+and behavior.
+
+# Modifying the firmware (FPGA)
+
+The current build uses Yosys, nextpnr-ice40 and IceStorm's `icepack`;
+Arachne-PNR is not used by `firmware/Makefile`. Follow the
+[firmware build instructions](firmware/README.md#building-firmware-reliably)
+for tool requirements, generated headers, timing checks and failure handling.
+The older Ubuntu 14.04/Fedora 24 dependency lists have been retired because they
+do not establish a reproducible Bookworm/Trixie toolchain.
+
+For building nextpnr itself, follow its
+[upstream instructions](https://github.com/YosysHQ/nextpnr/blob/main/README.md).
+Keep the configure and build directories consistent (`cmake -S . -B build ...`
+followed by `cmake --build build`). Record tool versions with hardware results.
+
+From the repository root, after the required tools and blob generator exist:
+
+```sh
+make -C firmware build
+```
+
+This builds the bitstream and generated headers, without programming the board.
+Rebuild the userspace library if you need it to embed the new image. To program
+the file through menu option 3, run `./build/cariboulite_test_app` from the
+repository root. Avoid `make clean` as a routine prerequisite: it removes local
+artifacts, including a potentially useful previously validated image.
+
+# SDR++
+
+This is a recorded integration recipe; a current SDR++ build, package and
+end-to-end server check remain [DOC-07](ROADMAP.md#documentation-validation-backlog).
+
+### Increase the swapfile size (Pi Zero only?)
+During the SDR++ build `make` ran out of memory (on the Pi Zero?). Hence I increased the swap file from 512 to 1024.
+
+```
+sudo dphys-swapfile swapoff
+sudo nano /etc/dphys-swapfile
+```
+Change the line `CONF_SWAPSIZE=512` to `CONF_SWAPSIZE=1024`. Save the file.
+
+```
+sudo dphys-swapfile setup
+sudo dphys-swapfile swapon
+```
+
+Or:
+
+```
+sudo reboot
+```
+
+Install dependencies for SDR++:
+
+```
+sudo apt install libglfw3 # runtime library
+sudo apt install libglfw3-dev
+sudo apt install libfftw3-dev
+sudo apt install libvolk-dev # confirm package name for your OS
+sudo apt install libvolk-bin
+sudo apt install libzstd-dev
+sudo apt install librtaudio-dev
+```
+
+or in one go:
+
+```
+sudo apt install libglfw3-dev libfftw3-dev libvolk-dev libvolk-bin libzstd-dev librtaudio-dev
+
+```
+### Install via the nightly build package
+
+Use the [upstream SDR++ installation instructions](https://github.com/AlexandreRouma/SDRPlusPlus#installing)
+to select an artifact matching the OS and CPU architecture. The previous
+hardcoded nightly URL has not been revalidated. Install the downloaded `.deb`
+with `sudo apt install ./actual-package-name.deb` from its download directory.
+The old recipe used `.db` by mistake and did not save the `curl` output to a file.
+
+### Build from source
+
+Install the development dependencies for the modules you enable. SoapySDR device
+discovery (`SoapySDRUtil --find`) is a runtime check, not a prerequisite for
+CMake to discover its development libraries. Confirm module availability in the
+configure output. The commands below are the recorded source-build recipe;
+a fresh build and server configuration check remain DOC-07.
+
+Get the source code:
+
+```
+git clone https://github.com/AlexandreRouma/SDRPlusPlus.git
+```
+
+```
+git clone https://github.com/Habraken/SDRPlusPlus.git
+```
+In the `~/src/SDRPlusPlus` directory:
+
+```
+mkdir build && cd build
+```
+
+```
+cmake .. -DOPT_BUILD_SOAPY_SOURCE=ON -DOPT_BUILD_HERMES_SOURCE=ON -DOPT_BUILD_SDRPLAY_SOURCE=OFF -DOPT_BUILD_PLUTOSDR_SOURCE=OFF -DOPT_BUILD_AIRSPY_SOURCE=OFF -DOPT_BUILD_AIRSPYHF_SOURCE=OFF -DOPT_BUILD_HACKRF_SOURCE=OFF -DOPT_BUILD_RTL_SDR_SOURCE=OFF
+```
+
+```
+make -j2
+```
+
+```
+cd ..
+```
+```
+sh ./create_root.sh
+```
+```
+cd build
+```
+```
+sudo make install
+```
+```
+sudo ldconfig
+```
+
+
+> SDR++ Server and SoapyRemote are separate network interfaces. Local GNU Radio access through the native source or local SoapySDR does not require a SoapyRemote server. A remote Soapy connection requires the corresponding server on the radio host.
+
+### Desktop version SDR++
+Before the `soapy_source` is available it needs to be added, in the ‘Module Manager’ of SDR++ if you are running the desktop app on the Pi4. In the 'module manager' select ‘soapy_source’, add a name to the left e.g. ‘Soapy Source’ and click on the tiny plus sign on the right…
+
+Or...
+
+### Headless version SDR++
+If you are working from the cli you need to first run SDR++ so that the default config files are created.
+
+```
+sdrpp --server
+```
+Hit ^c to stop the server again.
+
+Edit the `~/.config/sdrpp/config.json` and add the soapy_source module:
+
+```
+        ,
+        "Soapy Source": {
+            "enabled": true,
+            "module": "soapy_source"
+        }
+```
+
+>Note: mind the comma above the double quote!
+
+Save the file and start the SDR++ server.
+
+```
+sdrpp --server
+```
+When the server starts watch the cli output and confirm that the 'Soapy Source' is loaded.
+
+On your remote computer you should now start SDR++ and select SDR++ Server as Source. Provide the correct IP address of the Pi running the SDR++ server. Press `Connect`. At the `Source [REMOTE]` use the drop down menu to select `SoapySDR`. You ay have to press the `Refresh` button first. In the dropdown menu below that make sure you select the device appropriate for your selected frequency.
+
+>Observations: The Pi4 can easily handle 4 MSPS but somehow when the `bandwidth` setting is set to `auto` there is no data coming from the radio. When the bandwidth setting is changed to 2 MHz data is streaming again. However the display bandwidth is 4 MHz!
+>The analog bandwidth is only 2.5 MHz according to the datasheet. With `SoapySDRUtil --probe` you'll find a max. sample rate = 4 MSPS and the max. filter bandwidth = 2 MHz.
+
+
+# Trouble shooting faulty board
+
+This section preserves the May 2025 board investigation. These logs are not
+expected output for a current installation; the unresolved evidence is tracked
+under [DOC-08](ROADMAP.md#documentation-validation-backlog).
+
+### System
+
+```
+uname -a
+```
+```
+Linux pi0c-bookworm 6.12.20+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.12.20-1+rpt1~bpo12+1 (2025-03-19) aarch64 GNU/Linux
+```
+
+### SoapySDRUtil
+
+```
+SoapySDRUtil --find
+```
+
+```
+######################################################
+##     Soapy SDR -- the SDR abstraction library     ##
+######################################################
+
+[INFO] SoapyCaribouliteSession, sessionCount: 0
+05-02 07:55:11.142   644   644 I FPGA caribou_fpga_program_to_fpga@caribou_fpga.c:210 FPGA already operational - not programming (use 'force_prog=true' to force update)
+Printing 'findCariboulite' Request:
+Found device 0
+  channel = S1G
+  device_id = 0
+  driver = Cariboulite
+  label = CaribouLite S1G[1e3bc7c2]
+  name = CaribouLite RPI Hat
+  serial = 1e3bc7c2
+  uuid = 11884996-87f4-4b07-9961-a38c1b78fa08
+  vendor = CaribouLabs LTD
+  version = 0x0001
+
+Found device 1
+  channel = HiF
+  device_id = 1
+  driver = Cariboulite
+  label = CaribouLite HiF[1e3bc7c3]
+  name = CaribouLite RPI Hat
+  serial = 1e3bc7c3
+  uuid = 11884996-87f4-4b07-9961-a38c1b78fa08
+  vendor = CaribouLabs LTD
+  version = 0x0001
+```
+
+```
+SoapySDRUtil --probe
+```
+
+```
+######################################################
+##     Soapy SDR -- the SDR abstraction library     ##
+######################################################
+
+Probe device
+[INFO] SoapyCaribouliteSession, sessionCount: 0
+05-02 08:03:21.048   712   712 I FPGA caribou_fpga_program_to_fpga@caribou_fpga.c:210 FPGA already operational - not programming (use 'force_prog=true' to force update)
+Printing 'findCariboulite' Request:
+[INFO] Initializing DeviceID: 0, Label: CaribouLite S1G[1e3bc7c2], ChannelType: S1G
+[INFO] Creating SampleQueue MTU: 131072 I/Q samples (524288 bytes)
+
+----------------------------------------------------
+-- Device identification
+----------------------------------------------------
+  driver=Cariboulite
+  hardware=Cariboulite Rev2.8
+  device_id=0
+  fpga_revision=1
+  hardware_revision=0x0001
+  product_name=CaribouLite RPI Hat
+  serial_number=253617121
+  vendor_name=CaribouLabs LTD
+
+----------------------------------------------------
+-- Peripheral summary
+----------------------------------------------------
+  Channels: 1 Rx, 1 Tx
+  Timestamps: NO
+
+----------------------------------------------------
+-- RX Channel 0
+----------------------------------------------------
+  Full-duplex: NO
+  Supports AGC: YES
+  Stream formats: CS16, CS8, CF32, CF64
+  Native format: CS16 [full-scale=4095]
+  Antennas: TX/RX Sub1GHz
+  Full gain range: [0, 69] dB
+    Modem AGC gain range: [0, 69] dB
+  Full freq range: [389.5, 510], [779, 1020] MHz
+    RF freq range: [389.5, 510], [779, 1020] MHz
+  Sample rates: 4, 2, 1.33333, 1, 0.8, 0.666667, 0.5, 0.4 MSps
+  Filter bandwidths: 0.02, 0.05, 0.1, 0.16, 0.2, 0.8, 1, 1.25, 1.6, 2 MHz
+  Sensors: RSSI, ENERGY, PLL_LOCK_MODEM
+     * RSSI (RX RSSI):[-127, 4] 0.000000
+        Modem level RSSI measurment
+     * ENERGY (RX ENERGY):[-127, 4] 0.000000
+        Modem level ENERGY (EDC) measurment
+     * PLL_LOCK_MODEM (PLL Lock Modem): 1.000000
+        Modem PLL locking indication
+
+----------------------------------------------------
+-- TX Channel 0
+----------------------------------------------------
+  Full-duplex: NO
+  Supports AGC: NO
+  Stream formats: CS16, CS8, CF32, CF64
+  Native format: CS16 [full-scale=4095]
+  Antennas: TX/RX Sub1GHz
+  Full gain range: [0, 31] dB
+    Modem PA gain range: [0, 31] dB
+  Full freq range: [389.5, 510], [779, 1020] MHz
+    RF freq range: [389.5, 510], [779, 1020] MHz
+  Sample rates: 4, 2, 1.33333, 1, 0.8, 0.666667, 0.5, 0.4 MSps
+  Filter bandwidths: 0.08, 0.1, 0.125, 0.16, 0.2, 0.4, 0.5, 0.625, 0.8, 1 MHz
+  Sensors: PLL_LOCK_MODEM
+     * PLL_LOCK_MODEM (PLL Lock Modem): 1.000000
+        Modem PLL locking indication
+```
+
+### Self test
+
+Error messages during the selftest using the `cariboulite_test_app`:
+
+```
+05-02 07:38:08.605   622   622 D CARIBOULITE Setup
+cariboulite_self_test@cariboulite_setup.c:480 Testing modem communication and versions
+05-02 07:38:08.606   622   622 W AT86RF215_Main
+at86rf215_print_version@at86rf215.c:294 MODEM Version: not AT86RF215 IQ capable modem (product number: 0x0d, versions 03)
+05-02 07:38:08.606   622   622 E CARIBOULITE Setup
+cariboulite_self_test@cariboulite_setup.c:486 The assembled modem is not AT86RF215 / IQ variant (product number: 0x0d)
+05-02 07:38:08.606   622   622 D CARIBOULITE Setup
+cariboulite_self_test@cariboulite_setup.c:495 Testing mixer communication and versions
+05-02 07:38:08.608   622   622 E CARIBOULITE Setup
+cariboulite_self_test@cariboulite_setup.c:513 Self-test process finished with errors
+```
+
+I have also tried all the other options such as hard reset of the fpga, soft reset of the fpga, reprogramming of the fpga. During the receive test there are always smi sync errors.
+
+# ALSA
+
+### Creating the ALSA Loopback device
+
+The current `cariboulite_test_app` uses the ALSA `Loopback` card for NBFM RX
+(option 12), the modem self-test (option 13), and the modem monitor's TX/RX
+audio (option 14). Create it before entering these modes. The
+[`snd-aloop` kernel module](https://github.com/torvalds/linux/blob/master/sound/drivers/aloop.c)
+provides this virtual sound card; installing the ALSA development libraries
+alone does not load it.
+
+Install the command-line utilities used below and load the module immediately:
+
+```bash
+sudo apt install -y alsa-utils
+sudo modprobe snd-aloop
+```
+
+Also configure it to load at every boot, using
+[systemd's modules-load.d configuration](https://github.com/systemd/systemd/blob/main/man/modules-load.d.xml):
+
+```bash
+sudo mkdir -p /etc/modules-load.d
+sudo tee /etc/modules-load.d/alsa-loopback.conf >/dev/null <<'EOF'
+snd-aloop
+EOF
+```
+
+Verify the device now, and repeat these checks after the next reboot to confirm
+boot-time loading:
+
+```bash
+lsmod | grep snd_aloop
+cat /proc/asound/cards
+aplay -l
+arecord -l
+```
+
+The card lists should include `Loopback`, with PCM devices 0 and 1 available
+for both playback and capture. The default module settings provide enough
+substreams; the application needs substreams 0 and 1. Use the card name `Loopback` in
+commands, since its numeric card index can change.
+
+| Audio route | External audio endpoint | Application endpoint |
+| --- | --- | --- |
+| Microphone or test tone to TX | Play to `plughw:Loopback,0,1` | Captures `plughw:Loopback,1,1` |
+| RX audio to speaker or recorder | Capture from `plughw:Loopback,1,0` | Plays to `plughw:Loopback,0,0` |
+
+These routes use 48 kHz mono S16_LE audio. Loading the module creates the virtual
+card; use the bridges below to connect it to a physical microphone or speaker.
+
+### Long-running audio bridges
+
+Use `-t raw` on **both** `arecord` and `aplay` when piping audio between
+ALSA devices. Without it, `arecord` defaults to WAV and limits its piped
+output to 2 GiB. At 48 kHz, mono, 16-bit audio, that is about **6 hours
+13 minutes**; the bridge can then exit and return to the shell prompt.
+Raw PCM avoids this WAV size limit. See the
+[ALSA capture implementation](https://github.com/alsa-project/alsa-utils/blob/master/aplay/aplay.c).
+
+The commands below use `plughw:CARD=USB,DEV=0`, the Jabra's card ID on this
+setup. Check `arecord -l` and `aplay -l` and substitute your device's ID if
+needed. Card IDs avoid relying on the numeric card index `4` staying the same.
+Run each bridge in its own terminal; stop it with Ctrl+C. Only the RX bridge
+is needed for listening to NBFM or mono WBFM. The TX bridge supplies microphone
+audio when transmitting.
+
+With these commands, startup should report `Recording raw data` and
+`Playing raw data`. Raw mode removes the container size limit; it does not
+prevent buffer underruns or overruns. The September 19, 2026 bridge exits
+were consistent with the WAV limit; extended testing with raw mode is ongoing.
+
+### Testing TX
+
+To test if the ALSA Loopback device works you can start the cariboulite_test_app, enable tx and in a separate terminal run the following command: ```speaker-test -D plughw:Loopback,0,1 -c 1 -t sine -f 440 -r 48000```. You should now here a 440 Hz tone on a narrow band fm receiver tuned to the correct frequency.
+
+To route the USB microphone to the application's TX capture endpoint:
+
+```bash
+arecord -D plughw:CARD=USB,DEV=0 -t raw -f S16_LE -c 1 -r 48000 |
+  aplay -D plughw:Loopback,0,1 -t raw -f S16_LE -c 1 -r 48000
+```
+
+For some obscure reason the alsaloop command doesn't work for this route.
+
+### Testing RX
+
+To route the application's received audio from Loopback to the USB speaker:
+
+```bash
+arecord -D plughw:Loopback,1,0 -t raw -f S16_LE -c 1 -r 48000 |
+  aplay -D plughw:CARD=USB,DEV=0 -t raw -f S16_LE -c 1 -r 48000
+```
+
+If faced with ```overruns!!!``` one could also use:
+
+```sh
+alsaloop -C plughw:Loopback,1,0 -P plughw:CARD=USB,DEV=0 -r 48000 -c 1 -f S16_LE -t 50000
+```
+
+or
+
+```bash
+arecord -D plughw:Loopback,1,0 -t raw -f S16_LE -c 1 -r 48000 --buffer-time=100000 --period-time=25000 |
+  aplay -D plughw:CARD=USB,DEV=0 -t raw -f S16_LE -c 1 -r 48000 --buffer-time=100000 --period-time=25000
+```
+
+To route RX audio to the PI4's headphone jack:
+
+```bash
+arecord -D plughw:Loopback,1,0 -t raw -f S16_LE -c 1 -r 48000 |
+  aplay -D plughw:CARD=Headphones,DEV=0 -t raw -f S16_LE -c 1 -r 48000
+```
+
+# Standalone radio applications
+
+The top-level installer builds these applications under `build/radio-backend/`:
+
+- `cariboulite_radio_backend` owns the radio, audio and streaming workers.
+- `cariboulite_radio_controller` sends commands through the local control socket.
+- `cariboulite_radio_monitor` displays cached status in another terminal.
+
+For a manual build, first build the main library, then run from the repository root:
+
+```sh
+make -C software/libcariboulite/tools/radio_backend
+```
+
+Launch from the repository root using the paths in
+[radio controls](docs/radio-control.md); that guide documents defaults, RX/TX
+commands, FPGA controls and the hardware-free `--dry-run` mode. The passive
+monitor is optional. These applications have no system installation target.
+
+# GNU-RADIO (WIP)
+```
+sudo apt install gnuradio
+```
+
+
+Installing GNU Radio alone does not install this repository's native block.
+`software/gr-caribouLite/CMakeLists.txt` requests GNU Radio 3.10 and its `lib/`
+subdirectory looks up installed `cariboulite` through pkg-config. The tree has
+`caribouLiteSource_impl.cc` and a source GRC definition, but no native TX sink.
+SoapySDR has a separate TX/RX adapter. Working flowgraphs, current dependency
+validation and TX/RX hardware checks remain under roadmap item 9 and DOC-07.

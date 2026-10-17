@@ -1,0 +1,126 @@
+{
+  "clock": "CLOCK_THREAD_CPUTIME_ID",
+  "pinned_cpu": 3,
+  "rounds": 7,
+  "blocks_per_timed_policy": 10000,
+  "warmup_blocks": 200,
+  "audio_samples_per_block": 480,
+  "flags": [
+    "-O3",
+    "-ffast-math",
+    "-fno-math-errno",
+    "-funroll-loops",
+    "-DNDEBUG"
+  ],
+  "baseline": "git HEAD noise_squelch.c/.h; old process only",
+  "new": "current detector + packed control load/unpack/set + three atomic telemetry stores and RMS sqrt once per block",
+  "machine": "aarch64",
+  "kernel": "6.18.50+rpt-rpi-v8",
+  "results": {
+    "clean": {
+      "old_us_per_block": 8.0483759,
+      "new_us_per_block": 8.5089592,
+      "paired_delta_us_per_block": 0.4597426,
+      "old_one_core_percent": 0.080483759,
+      "new_one_core_percent": 0.08508959199999999,
+      "delta_percentage_points": 0.004597426,
+      "rounds": [
+        {
+          "round": 0,
+          "old_ns": 80483759,
+          "new_ns": 85253148
+        },
+        {
+          "round": 1,
+          "old_ns": 80544295,
+          "new_ns": 85265500
+        },
+        {
+          "round": 2,
+          "old_ns": 80602333,
+          "new_ns": 85110129
+        },
+        {
+          "round": 3,
+          "old_ns": 80492166,
+          "new_ns": 85089592
+        },
+        {
+          "round": 4,
+          "old_ns": 80426703,
+          "new_ns": 85034018
+        },
+        {
+          "round": 5,
+          "old_ns": 80456982,
+          "new_ns": 85019611
+        },
+        {
+          "round": 6,
+          "old_ns": 80428907,
+          "new_ns": 85007981
+        }
+      ]
+    },
+    "noise": {
+      "old_us_per_block": 8.076727700000001,
+      "new_us_per_block": 8.626672200000002,
+      "paired_delta_us_per_block": 0.5499445,
+      "old_one_core_percent": 0.080767277,
+      "new_one_core_percent": 0.086266722,
+      "delta_percentage_points": 0.0054994449999999995,
+      "rounds": [
+        {
+          "round": 0,
+          "old_ns": 80781629,
+          "new_ns": 86277612
+        },
+        {
+          "round": 1,
+          "old_ns": 80799537,
+          "new_ns": 86262667
+        },
+        {
+          "round": 2,
+          "old_ns": 80751240,
+          "new_ns": 86252166
+        },
+        {
+          "round": 3,
+          "old_ns": 80769129,
+          "new_ns": 86264129
+        },
+        {
+          "round": 4,
+          "old_ns": 80763758,
+          "new_ns": 86272074
+        },
+        {
+          "round": 5,
+          "old_ns": 80767277,
+          "new_ns": 86266722
+        },
+        {
+          "round": 6,
+          "old_ns": 80760907,
+          "new_ns": 86283056
+        }
+      ]
+    }
+  },
+  "cpu_khz": "1800000",
+  "governor": "ondemand",
+  "ordering": "Alternating old/new then new/old by round",
+  "compiler_version": "cc (Debian 14.2.0-19) 14.2.0",
+  "baseline_revision": "6cd320be63ffe6b02cfb68e48f4514c000c5cb68",
+  "source_sha256": {
+    "software/libcariboulite/src/noise_squelch.c": "598ae552c999517636919531f44136b5f65871f8c686e1e7fe56318af7574d24",
+    "software/libcariboulite/src/noise_squelch.h": "65f77849b10d466e6e520492e770eb3f74aa2142a3c151e0304db953a79762c4",
+    "software/libcariboulite/src/nbfm_defaults.h": "ec714a98b5bac70cad2b341c275c1b511805081763368ce3b153041e7ae39822"
+  },
+  "measured_thresholds_rms": {
+    "open": 0.12,
+    "close": 0.18
+  },
+  "subsequent_change": "Default thresholds were later tuned to 0.20/0.30 using fresh capture replay; detector/control/telemetry algorithms are unchanged."
+}

@@ -1,0 +1,738 @@
+# Standalone passive monitor
+
+The repository provides a separate terminal monitor and an independent
+C radio backend using local Unix-domain sockets. The accepted radio behavior
+and performance remain the baseline. Following the user's request for a fair
+comparison, both the backend and `test_app` now use shared RX instrumentation.
+Menu 14 keeps the `main` UI layout; the additional instrumentation rows are
+shown only by the separate monitor. The RX DSP and modem profile remain the
+accepted baseline. Shared TX workers
+now park efficiently while stopped and report writer/capture diagnostics.
+Hardware-paced TX and independent microphone capture are implemented in the
+current source; the backend requires the matching driver ABI for TX, while
+menu 14 uses AUTO pacing with an `ENOTTY` fallback for older drivers. See
+[TX behavior and launch commands](radio-control.md#half-duplex-nbfm-transmission).
+
+The monitor is a Python 3 client with no radio-library dependency. It receives
+status snapshots and displays them; it sends no commands and never opens SPI,
+SMI, ALSA or radio devices. Closing it only closes its socket connection.
+
+The radio-owning backend uses C and the existing radio library and RX DSP.
+Python remains suitable for this prototype and can also serve as the final
+passive monitor if measured CPU/memory cost is acceptable.
+The status protocol is independent of language, so a native C/C++ monitor can
+replace this client later. A [physical comparison with menu 14](rx-application-comparison.md)
+records both instrumented applications, including the Python monitor, before
+the menu-14 layout was restored.
+
+The backend runs **instead of `test_app`** and owns the hardware and radio
+pipeline. It starts with RX stopped; use `--rx-start` to receive immediately
+using the launch settings. While receiving, it demodulates NBFM or mono WBFM,
+plays audio, and publishes status. A separate C
+[radio controller](radio-control.md) provides RX start/stop, frequency,
+mode, sample rate and squelch, plus half-duplex NBFM TX with separate frequency,
+power, rate and microphone/test-tone source, through a second Unix socket.
+Omit `--rx-start` to wait for the controller before starting reception. The
+`test_app` retains its original menu-14 display and does not publish socket
+telemetry. Shared audio/playback/reader/worker counters remain collected, but
+their added display rows have been removed from menu 14. The included Python
+demo publisher remains available for explicitly simulated data.
+
+## Build the radio applications
+
+Run from the repository root:
+
+```sh
+make -C software/libcariboulite/tools/radio_backend
+```
+
+This creates `build/radio-backend/cariboulite_radio_backend`,
+`build/radio-backend/cariboulite_radio_controller` and
+`build/radio-backend/cariboulite_radio_monitor`. The separate build
+reuses the existing `build/libcariboulite.so` and compiles the shared RX
+pipeline, workers, DSP and ALSA adapter into the new executable. It does not
+modify the existing CMake configuration or rebuild or replace `test_app`.
+The shared worker now spells its diagnostic label `audio_fifo` in both apps
+and labels its PCM count `produced_frames`, distinct from accepted playback.
+Rebuilding replaces the backend executable atomically and does not restart
+a running instance. New instrumentation appears after restarting each app.
+The existing radio library build and C/ALSA development dependencies must be
+available before building the backend.
+
+The backend was originally named `cariboulite_rx_backend` because its first
+version only received. It now owns both RX and TX. The monitor remains Python 3;
+its build executable uses the same application naming scheme and runs the
+source client in `software/libcariboulite/tools/cariboulite_radio_monitor.py`.
+
+## Receive with a monitor in another terminal
+
+Close `test_app` and any other radio-owning application first. Use the same
+user for backend and monitor, or pass the same accessible `--socket PATH` to
+both. The backend requires the same hardware permissions as `test_app`.
+
+In terminal 1:
+
+```sh
+build/radio-backend/cariboulite_radio_backend \
+  --channel RF24 --rx-frequency 430125000 --rx-sample-rate 1000000 \
+  --rx-mode nbfm --rx-playback plughw:Loopback,0,0 --rx-start
+```
+
+In terminal 2:
+
+```sh
+build/radio-backend/cariboulite_radio_monitor
+```
+
+These launch settings select HiF/RF24 at 430.125 MHz and 1 MS/s. The playback
+device matches menu 14's ALSA loopback output; select another playback device
+with `--rx-playback DEVICE` if needed. The existing NBFM channel filter,
+discriminator, AGC profile and squelch remain in use. WBFM is selected with
+`--rx-mode wbfm`; choose the station frequency with `--rx-frequency HZ`.
+For NBFM, `--rx-deviation 2500` is the default audio normalization reference;
+use `--rx-deviation 5000` for a ±5 kHz reference. For the same discriminator
+input, `5000` gives half the normalized audio level before audio processing
+compared with `2500`. This changes neither noise-squelch decisions nor the
+existing ±6 kHz passband/±9 kHz stopband complex filter. The accepted reference
+range is not a statement of usable RF deviation or channel bandwidth.
+WBFM retains its fixed 75 kHz normalization. TX deviation is set separately
+with `--tx-deviation`.
+
+Press Ctrl+C in the backend terminal to stop RX, join workers and release the
+radio. Pressing `q` in the monitor closes only that monitor; reception and
+audio continue. Monitor connections do not trigger additional hardware reads
+and cannot control the radio.
+
+The displayed session ID is generated by the backend as
+`radio-<PID>-<monotonic-start-nanoseconds>` and stays the same across RX/TX
+transitions. Restarting the backend creates a new session ID.
+
+For radio controls, open another terminal and run
+`build/radio-backend/cariboulite_radio_controller`. Use `rx frequency`,
+`rx mode` and `rx rate` for receiver settings, with `squelch noise`,
+`squelch carrier` and `squelch levels` for its squelch controls. The monitor stays
+optional. Closing the monitor leaves radio operation unchanged. Closing the
+controller leaves RX in its current state, but releases its TX and restores
+previously running RX. RX frequency, mode and sample-rate edits require stopped
+RX. Unprefixed `frequency`, `mode` and `rate` update RX and TX together where
+supported and require both stopped; WBFM changes RX only because TX remains
+NBFM. Squelch edits work during reception.
+See [controller commands, validation and restart behavior](radio-control.md).
+
+Launch options:
+
+| Option | Meaning/default |
+| --- | --- |
+| `--channel RF24\|RF09` | Active radio shared by RX and TX; default `RF24`. |
+| `--rx-frequency HZ` | Receive frequency; default `430125000`. |
+| `--rx-sample-rate HZ` | `1000000`, `2000000` or `4000000`; default `1000000`. |
+| `--rx-mode nbfm\|wbfm` | Demodulation; default `nbfm`. WBFM audio is mono. |
+| `--rx-deviation HZ` | NBFM demodulator normalization reference: `1` through `24000`; default `2500`. Independent of TX; does not change filter bandwidth or squelch. |
+| `--rx-playback DEVICE` | RX ALSA playback device; default `plughw:Loopback,0,0`. |
+| `--tx-microphone DEVICE` | TX capture device; default `plughw:Loopback,1,1`. |
+| `--tx-frequency HZ` | Saved TX frequency; default `430125000`. |
+| `--tx-mode nbfm` | TX modulation; default and only supported mode `nbfm`, independent of RX mode. |
+| `--tx-power DBM` | Requested TX power; default `-12`. |
+| `--tx-sample-rate HZ` | TX rate: `1000000`, `2000000` or `4000000`; default `1000000`. |
+| `--tx-source mic\|tone` | TX source; default `mic`. |
+| `--tx-deviation HZ` | Nominal NBFM deviation at unit audio amplitude: `0` through `24000`; default `2500` (±2.5 kHz). |
+| `--socket PATH` | Status socket; default path described below. |
+| `--control-socket PATH` | Command socket; default `control.sock` beside the status socket. |
+| `--rx-start` | Start RX automatically after initialization; RX otherwise remains stopped until a controller command. |
+| `--seconds N` | Exit after this wall time after initial setup, including time with RX stopped. |
+| `--status-hz HZ` | Hardware/status update frequency; default `5`. |
+| `--rx-no-noise-squelch` | Bypass NBFM noise squelch, enabled by default. |
+| `--rx-carrier-squelch` | Enable carrier squelch, disabled by default. |
+| `--rx-noise-open RMS` | NBFM opening threshold; default `0.20`. |
+| `--rx-noise-close RMS` | NBFM closing threshold; default `0.30`. |
+| `--rx-gain VALUE` | PCM gain; default `8000`. |
+| `--rx-deemphasis-us VALUE` | Audio deemphasis time; default `50` microseconds. |
+| `--dry-run` | Simulated status/IPC exercise; no hardware or audio access. |
+| `--help` | Show launch options and exit. |
+
+The previous unprefixed RX options remain accepted as compatibility aliases
+for the corresponding `--rx-` options. `--microphone` aliases
+`--tx-microphone`. The TX deviation value scales unit-amplitude audio and
+does not impose an RF deviation limit.
+Launch settings never start TX; use the controller's `tx start` command.
+The older `--start-stopped` option still explicitly selects stopped RX.
+Older builds started RX automatically unless that option was present;
+current builds require `--rx-start` for automatic reception.
+
+For a hardware-free check of the compiled backend, start it with
+`--dry-run --seconds 30`, then connect the monitor in another terminal. The
+source is explicitly labelled **SIMULATED DATA**. This verifies the compiled
+publisher and monitor connection, not physical reception or DSP performance.
+
+## Modem status collection
+
+The live backend collects 37 defined modem register bytes in six SPI reads,
+using the existing block-read driver. Only the active radio is polled:
+
+| Read | Contiguous range | Bytes |
+| --- | --- | ---: |
+| Shared RF | `RST` through `IQIFC1` (`0x0005`–`0x000B`) | 7 |
+| Shared RF | `PN`, `VN` (`0x000D`–`0x000E`) | 2 |
+| Active radio | `IRQM` through `PAC` (offsets `0x00`–`0x14`) | 21 |
+| Active radio | `PADFE` (offset `0x16`) | 1 |
+| Active radio | `PLL`, `PLLCF` (offsets `0x21`–`0x22`) | 2 |
+| Active radio | `TXCI` through `TXDACQ` (offsets `0x25`–`0x28`) | 4 |
+
+The active-radio base is `0x0100` for RF09 or `0x0200` for RF24. Reserved gaps
+are excluded. Reading the TX configuration bytes here does not enable TX.
+Each register value is cached for publication; all monitors share the same
+snapshot. Values can change during the reads, so the snapshot is not a
+globally atomic hardware sample.
+
+`IRQS` and `IQIFC2` are left unavailable. The existing modem interrupt handler
+owns read-to-clear interrupt status and supplies no monitor cache, and reading
+`IQIFC2.SYNC` also clears it. The backend avoids consuming these fields for
+display. The [physical comparison](rx-application-comparison.md) confirms a
+lighter backend process; the Python monitor makes combined CPU use slightly
+higher than menu 14. RF sensitivity still requires calibrated comparison.
+
+## Try the two-terminal demo
+
+Run these commands from the repository root, using the same user in both
+terminals. Python's standard library is sufficient; there is no build or
+installation step.
+
+In terminal 1, start the simulated source:
+
+```sh
+python3 software/libcariboulite/tools/monitor_demo_source.py
+```
+
+In terminal 2, start the monitor:
+
+```sh
+python3 software/libcariboulite/tools/cariboulite_radio_monitor.py
+```
+
+The display labels these readings **SIMULATED DATA**. Press `q` to close the
+monitor, use Up/Down or Page Up/Page Down to scroll vertically, Left/Right to
+scroll wide rows horizontally, and press Ctrl+C in the demo-source terminal
+to stop the source. The monitor can start before its
+source, and reconnects when a source becomes available again.
+
+The source defaults to a simulated RF24 radio. Use `--channel RF09` on the
+demo-source command to try the RF09 layout; this changes simulated data only.
+
+The default monitor view, `--registers auto`, is compact for testing in a
+57-row terminal. It shows six common registers followed by the selected
+radio's RX/status registers during reception or idle, and its TX/status
+registers during `TX_STARTING`, `TX` and `TX_STOPPING`. To keep the TX
+registers visible while idle or diagnosing `FAULT`, use:
+
+```sh
+build/radio-backend/cariboulite_radio_monitor --registers tx
+```
+
+To display the complete register inventory, use:
+
+```sh
+python3 software/libcariboulite/tools/cariboulite_radio_monitor.py --registers all
+```
+
+`--registers rx` selects the compact RX view explicitly; `--registers tx`
+selects the compact TX view. These overrides change only the register rows;
+pipeline instrumentation continues to follow the effective radio state.
+The option changes the display only; socket snapshots still carry the full
+register inventory and no additional hardware reads are needed.
+
+The default socket is `/tmp/cariboulite-monitor-<effective UID>/status.sock`.
+All publishers and the monitor accept `--socket PATH` for an alternative.
+The demo requires a private directory owned by its user, creates its directory with mode `0700`
+and its socket with mode `0600`, and refuses to replace any existing path.
+After an interrupted demo leaves a socket behind, choose another path or
+remove the old socket after confirming its publisher has exited.
+
+For a terminal-independent check:
+
+```sh
+python3 software/libcariboulite/tools/cariboulite_radio_monitor.py --once --timeout 5
+```
+
+`--once` prints one valid JSON snapshot and exits, returning a failure if none
+arrives before the timeout. `--json` streams JSON; `--plain` streams readable
+status. Neither mode sends requests to the publisher.
+
+## Display and protocol
+
+The client displays the source identity, RX/TX state, frequencies, sample
+rate, RX/TX bandwidths, application RF queue counters, squelch/noise status, RSSI,
+selected RF registers, FPGA status and loopback
+status when supplied. Shared RF registers appear once, followed by only the
+selected RF09 or RF24 radio. Each register has one row containing its name,
+raw hexadecimal byte and decoded fields on that same row. Register order in
+the compact view follows its RX/status or TX/status layout; fields within each
+register follow datasheet order from the highest bit to the lowest. For example:
+
+```text
+RF24 AGCC=0x01 AGCI=0(FILT) AVGS=0(8) RST=0 FRZS=0 FRZC=0 EN=1
+RF24 AGCS=0x15 TGT=0(-21dBFS) GCW=21/21(MAX)
+RF24 TXDFE=0x04 RCUT=0(0.25*Fs/2) DM=0 SR=4(1000kHz)
+RF24 TXCUTC=0x80 PARAMP=2(16us) LPFCUT=0(80kHz)
+RF24 PAC=0x60 PACUR=3(FULL) TXPWR=0(MIN)
+```
+
+The raw byte is retained even when some bits are reserved. Reserved selections
+are labelled, and fields are not decoded from missing or invalid bytes.
+Snapshot and cached hardware ages are
+separate; readings older than one second are marked stale.
+
+Direction-specific summary fields and diagnostics use explicit `RX` and `TX`
+labels, including frequency, sample rate, bandwidth, pipeline generations,
+and workers.
+
+The **TX bandwidth** summary reports the analog filter cutoff using
+`config.tx_bandwidth_hz`, keeping the existing JSON field name for compatibility.
+The backend decodes it from
+the active RF09 or RF24 radio's cached `TXCUTC.LPFCUT` readback, without adding
+hardware reads. A 1 MHz cutoff appears as `1000 kHz`. This is the analog
+filter setting; NBFM's occupied signal bandwidth depends on deviation and
+audio content and is not measured by this field. Missing or unavailable
+readbacks, reserved cutoff selections, and older snapshots without the field
+display `unknown`. The hardware age applies to this cached reading too.
+
+The NBFM TX pipeline selects the 80 kHz analog cutoff when initialized or
+started, so the summary reports `TX bandwidth=80 kHz` after that profile is
+applied and sampled. The live backend initializes TX on the first `tx start`;
+before then, an idle radio may still report the initial `1000 kHz` cutoff.
+The display always follows the cached hardware readback, not the saved TX
+settings. The separate digital cutoff, shown by `TXDFE.RCUT=0`,
+is `fS / 8`: 125, 250 or 500 kHz at 1, 2 or 4 MS/s. The 16 µs PA ramp remains
+unchanged. These readbacks confirm the programmed settings, not a measured RF
+spectrum or achieved deviation. RX retains its 160 kHz NBFM and 250 kHz WBFM
+analog profiles. See [TX filter setup and checks](radio-control.md#half-duplex-nbfm-transmission).
+
+The backend additionally publishes desired filter/rate profiles under
+`config.profile` and decoded register observations under `config.observed`.
+Unavailable observations stay `null`; existing monitor fields retain their
+meaning. See [shared application configuration and status](shared-radio-configuration.md).
+
+The compact RX view contains these 16 rows, in this order:
+
+| Block | Registers |
+| --- | --- |
+| Common (6) | `CFG`, `CLKO`, `RST`, `IQIFC0`, `IQIFC1`, `IQIFC2` |
+| Active RF09 or RF24 (10) | `RSSI`, `RXDFE`, `RXBWC`, `AGCC`, `AGCS`, `PLL`, `PLLCF`, `IRQM`, `IRQS`, `STATE` |
+
+The compact TX view contains these 20 rows, in this order:
+
+| Block | Registers |
+| --- | --- |
+| Common (6) | `CFG`, `CLKO`, `RST`, `IQIFC0`, `IQIFC1`, `IQIFC2` |
+| Active RF09 or RF24 (14) | `TXDFE`, `TXCUTC`, `PAC`, `PADFE`, `AUXS`, `TXCI`, `TXCQ`, `TXDACI`, `TXDACQ`, `PLL`, `PLLCF`, `IRQM`, `IRQS`, `STATE` |
+
+Automatic selection uses the effective state in the control snapshot when
+available, then the top-level radio state. TX transition states retain the
+TX view; other states select RX. An explicit register-view override does
+not change RX/TX operation or its pipeline counters. Both compact views fit
+the 57-row terminal used for testing, with horizontal scrolling for long rows.
+
+The full view's 39 register rows cover the defined shared and active-radio register map
+in the [AT86RF215 datasheet](<datasheet/Atmel-42415-WIRELESS-AT86RF215_Datasheet 2.pdf>),
+sections 4–6 and 8:
+
+| Block | Registers |
+| --- | --- |
+| Shared RF (10) | `RST`, `CFG`, `CLKO`, `BMDVC`, `XOC`, `IQIFC0`, `IQIFC1`, `IQIFC2`, `PN`, `VN` |
+| Active RF09 or RF24 (29) | `IRQS`, `IRQM`, `AUXS`, `STATE`, `CMD`, `CS`, `CCF0L`, `CCF0H`, `CNL`, `CNM`, `RXBWC`, `RXDFE`, `AGCC`, `AGCS`, `RSSI`, `EDC`, `EDD`, `EDV`, `RNDV`, `TXCUTC`, `TXDFE`, `PAC`, `PADFE`, `PLL`, `PLLCF`, `TXCI`, `TXCQ`, `TXDACI`, `TXDACQ` |
+
+Reserved addresses and the baseband packet-modem (`BBCn_*`) registers are
+excluded. Section 5.1.1 states that accesses to the respective baseband
+registers have no effect in I/Q radio mode, including its phase-measurement
+unit and counters.
+
+**Reading `IRQS` or `IQIFC2.SYNC` clears those hardware values.** A publisher
+must reuse the radio owner's cached observations of these fields, or leave
+them unavailable, rather than add observer polling. The live backend leaves
+them unavailable; simulated examples may supply explicitly simulated cached
+observations. `STATE` reports transceiver state;
+`CMD` and `RST` are command readbacks. `RNDV` is an ancillary raw value whose
+RNG validity is not established by merely reading the byte. Displaying it
+does not require changing the receiver's bandwidth.
+
+Queue drops refer to the application's queue counters. Queue timeouts are
+wait events, and an empty queue alone does not establish a dropped frame.
+The client does not infer kernel/DMA loss or ALSA underruns from these values.
+The backend supplies separate measured playback counters and worker status.
+
+### Shared RX instrumentation (2026-10-11)
+
+The backend and menu 14 obtain the same `rx_pipeline_get_stats()` snapshot.
+The backend publishes all the measurements below to the passive monitor.
+Menu 14 displays its original IQ FIFO statistics; its restored layout does
+not expose the additional audio FIFO, playback, reader or worker rows:
+
+| Measurement | Meaning |
+| --- | --- |
+| `audio_fifo` puts/gets | Successfully enqueued/dequeued 480-frame, 10 ms PCM blocks. |
+| Audio drops / put timeouts | Blocks rejected when the full FIFO's enqueue wait expires; one event increments both counters. |
+| Audio get timeouts | Empty-FIFO waits that expire; not proof of lost samples. |
+| Audio shutdown puts/gets | Operations interrupted by FIFO shutdown; kept separate from drops. |
+| Audio min/max/depth | Queue occupancy; extrema start at zero and reset to current depth. |
+| ALSA calls/submitted/written | Device submissions and accepted PCM frames; submissions include retries and can exceed written frames. Stereo duplication still counts PCM frames, not individual channel samples. |
+| ALSA partial/again/zero | Short accepted writes, `-EAGAIN`, and zero-progress returns. |
+| ALSA underruns/recovery | `-EPIPE` events and existing `snd_pcm_prepare()` attempts, successes and failures. |
+| ALSA write errors/last error | Fatal write or recovery failures; last error persists after later successful writes. |
+| RX calls/samples/short/zero/errors | Completed radio API calls, returned IQ samples, positive partial returns, zero returns and negative returns. A short or zero return does not establish upstream sample loss. |
+| Worker created/alive/last error | Thread handle ownership, worker lifetime including cancellation, and retained worker errors. A created thread can have exited. |
+| Worker scheduling | Actual startup policy, priority and affinity, separate from requested FIFO priority/CPU; RT/fallback/affinity/memory-lock/query error codes. |
+
+`last_error` starts at zero. Playback/DSP errors use negative errno-style
+codes; RX errors retain the negative radio API result, and metadata allocation
+failure records `-ENOMEM` in reader status. Scheduling operation errors use
+positive errno values. `mlock_attempted=false` means affinity failure skipped
+the existing memory-lock call. Query failures are reported explicitly; unknown
+scheduler values are not evidence of successful realtime scheduling. These are
+cached startup observations, not continuous detection of external scheduling changes.
+
+RF/audio FIFO counters can be reset by menu 14's **X** key without clearing
+queued samples. Reader, playback and worker errors remain cumulative until
+pipeline destruction/reinitialization. Menu 14 recreates pipelines for some
+mode/rate and TX/RX transitions, so a new pipeline starts a new counter lifetime.
+For comparisons, use fresh pipelines or deltas within one lifetime; do not
+compare raw totals across restarts or resets.
+
+FIFO counters update under existing transfer locks. Playback and reader
+counters use relaxed atomics per API call, not per sample. Scheduling is
+queried once by each worker and published as an immutable snapshot. The
+control owner serializes snapshot reads with lifecycle/reset operations.
+Counters from different stages may describe adjacent instants; a snapshot is
+not a globally atomic transaction.
+
+The monitor adds eight compact rows when the new sections are supplied. The
+RX view uses 16 register rows, and the TX view uses 20; long rows can scroll
+horizontally. Older publishers keep their previous layout and unsupported
+measurements display as unavailable.
+
+This closes the application audio-loss, playback-error and requested-versus-
+actual scheduling gaps. Kernel DMA overflow remains available only through
+kernel diagnostics, and FPGA/upstream sample continuity remains unknown.
+Stage latency distributions, hardware sequence metadata and automatic worker
+fault recovery are further roadmap work; this instrumentation does not add
+new recovery or scheduling policies.
+
+The transport is `AF_UNIX` / `SOCK_SEQPACKET`, with one UTF-8 JSON object per
+packet and a 16384-byte maximum. The packet ceiling was increased from 8192
+bytes for TX hardware pacing instrumentation; update the backend, monitor and
+recording tools together. The protocol remains version 1, and older version 1
+snapshots remain supported. Version 1 requires:
+
+| Field | Meaning |
+| --- | --- |
+| `version` | Integer `1`. |
+| `session` | Nonempty identifier, changed when the publisher starts a new session. |
+| `sequence` | Nonnegative integer, increasing within a session. Gaps are allowed. |
+| `monotonic_s` | Snapshot time from the local host's monotonic clock, in seconds. |
+
+Optional sections are `config`, `rx`, `tx`, `hardware`, `loopback` and
+`publisher`. Optional `source` identifies the origin of the readings, as a
+string or an object with `kind` and `label`. Without it the display reports
+an unknown source, rather than assuming live radio data. Optional
+`hardware_monotonic_s` dates the cached hardware sample; `realtime_s` dates
+the snapshot in wall-clock seconds. The demo source illustrates the basic
+display fields; the C backend also supplies the shared RX instrumentation.
+The C backend's `config.rx_deviation_hz` reports the saved NBFM normalization
+reference in Hz, including while WBFM is selected. It is a launch setting;
+the compact controller display and command protocol remain unchanged.
+
+Within `rx.queue` and `tx.queue`, the fields are `capacity`, `depth`, `puts`,
+`gets`, `drops`, `timeouts_put`, `timeouts_get`, `min_depth` and `max_depth`.
+Counter rates reset when the session changes or counters decrease.
+
+New optional RX fields are `audio_queue` (the same queue fields plus
+`shutdown_puts` and `shutdown_gets`), `playback` (`valid` and the playback
+counters above), `reader` (`calls`, `samples`, `short_reads`, `zero_reads`,
+`errors`, `last_error`) and `workers` (`reader`, `demod`, `audio`). Each worker
+has `created`, `alive`, `last_error` and `scheduling`; scheduling carries
+`valid`, requested/applied CPU, requested/actual priority, numeric policy and
+`policy_name`, affinity text/truncation, operation errors and `mlock_attempted`.
+Dry-run queues/readers are `null`, playback is `valid:false`, and workers
+are uncreated with unavailable scheduling.
+
+Optional TX fields are `hardware_paced`, `driver`, `audio_buffer`, `smi_timing`
+and `workers.capture`. `driver` reports validity, the versioned driver ABI fields,
+FIFO queued/capacity/limit bytes, DMA period/ring bytes, accepted/dequeued bytes,
+session generation, completed periods and underrun periods. DMA completion
+describes entry into the SMI transport; it does not measure RF emission.
+`audio_buffer` reports queue depth/target/capacity in audio frames, correction
+in ppm, input/output ratio, clock validity, capture/consumption/output counts,
+starvation/overflow/cue-discard counts and clock-limit errors. The capture
+worker uses the same scheduling schema as the other workers. `smi_timing`
+reports the actual queried write setup, strobe, hold and pace register values
+as `write_setup`, `write_strobe`, `write_hold` and `write_pace`, with a `valid`
+flag. These values identify the bus configuration; they do not measure its
+clock or the RF sample rate. The monitor shows them on its existing driver
+row. These fields
+remain optional; invalid or absent observations display as unavailable rather
+than zero. Dry-run uses `hardware_paced:null`, `driver.valid:false` and
+`audio_buffer.valid:false` and `smi_timing.valid:false`, with an uncreated
+capture worker.
+
+Registers are supplied in `hardware.common.registers` and the active
+`hardware.rf09.registers` or `hardware.rf24.registers` map. Keys are short
+names such as `AGCC`, or full names such as `RF24_AGCC`; values are integer
+bytes from 0 through 255, or `null` for unavailable readings. For example:
+
+```json
+{"hardware":{"common":{"registers":{"IQIFC1":18}},"rf24":{"registers":{"AGCC":1,"AGCS":21,"RXBWC":16}}}}
+```
+
+This is an optional fragment of a version 1 snapshot; the mandatory metadata
+still applies. If a register group contains a `valid` field, it must be
+boolean `true` for its bytes to be displayed. Without that field, new maps
+are validated byte by byte. Missing/invalid entries never become zero and
+cannot suppress other valid entries. Legacy flat register fields remain
+supported with group-wide `valid: true`. AGC target is decoded as
+`-21 - 3 * TGT` dBFS, distinct from RSSI in dBm; the maximum gain code is
+derived from the active radio's `RXBWC` only.
+
+The client rejects malformed, oversized, incompatible and out-of-order
+packets. It drains a bounded number of queued packets per display update to
+catch up to the newest status, and retains the last snapshot with its age
+when disconnected. No IQ or PCM data travels through this protocol.
+
+## Baseline and validation
+
+The original standalone-monitor milestone retained the existing radio app
+unchanged. Shared instrumentation was subsequently authorized for both apps;
+the backend retains its own lifecycle and status publisher. The menu-14 layout
+has since been restored to `main`, retaining the rate-counter reset guards
+and removal of misleading empty-FIFO underrun warnings. Shared counters and
+radio behavior remain in place. The user has confirmed good audio and
+normal squelch with both applications running. CPU and pipeline counters have
+now been [compared with menu 14](rx-application-comparison.md); calibrated RF
+sensitivity remains unmeasured.
+
+The backend is the sole hardware owner, identifies live versus simulated
+measurements and publishes bounded snapshots. A separate RX controller now
+operates through a command socket while the status socket stays passive.
+No socket publisher or other integration has
+been added to `test_app`.
+
+Hardware-free client checks:
+
+```sh
+python3 software/libcariboulite/tests/test_passive_monitor.py
+```
+
+Hardware-free backend checks (mock SPI, Unix sockets and the actual monitor):
+
+```sh
+make -C software/libcariboulite/tools/radio_backend test
+```
+
+The tests cover both radio register maps, partial SPI failures, exclusion of
+read-to-clear addresses, bounded clients, slow readers, permissions, cleanup,
+CLI validation, monitor quit/reconnect independence and transport-only mode.
+
+Build menu 14 with the original layout and the same shared instrumentation:
+
+```sh
+cmake --build build --target cariboulite_test_app -j3
+```
+
+Counter and lifecycle checks:
+
+```sh
+python3 software/libcariboulite/tests/test_audio_fifo_stats.py
+python3 software/libcariboulite/tests/test_audio_sink.py
+python3 software/libcariboulite/tests/test_pipeline_runtime.py
+python3 software/libcariboulite/tests/test_rx_lifecycle.py
+```
+
+The instrumentation changes passed both application builds, 44 monitor tests,
+10 backend integration tests, mock register/publisher checks, FIFO concurrency
+and timeout/stop races, ALSA fault injection, scheduling failure injection and
+RX worker lifecycle/cancellation checks. NBFM framing, squelch, WBFM DSP,
+memory audio and TX-tail regressions also passed. These are hardware-free
+checks. After the instrumentation update, the user confirmed on 2026-10-11
+that everything was working as expected. This records functional acceptance;
+the report supplied no new CPU measurements or counter totals. The subsequent
+[physical A/B comparison](rx-application-comparison.md) supplies that baseline.
+
+For a physical comparison, run the applications sequentially with RF24,
+430.125 MHz, 1 MS/s, NBFM and matching audio/squelch settings. In menu 14,
+select **1**, save the RX frequency with **G**, then start RX with **R**.
+Compare steady-state counter deltas over equal intervals, separating startup
+from reception; measure backend plus monitor CPU together. Never run both
+radio owners concurrently. The comparison runner accepts both the original
+and expanded menu-14 layouts. With the restored layout, menu-14 audio FIFO,
+ALSA playback, reader and worker measurements are reported as unavailable;
+they cannot support a like-for-like health verdict. IQ queue counters, CPU,
+memory, configuration and register observations remain comparable. The backend
+continues to supply its complete instrumentation. A successful listening test
+and zero measured audio errors complement CPU measurements; they do not prove
+source continuity. See the [comparison report and reproduction limits](rx-application-comparison.md#artifacts-and-reproduction).
+
+On 2026-10-11, a 12-second live RF24/NBFM run at 430.125 MHz and 1 MS/s
+produced 60 live snapshots and confirmed the RX modem profile: `STATE=5`,
+`RXBWC=0x10`, `RXDFE=0x04`, AGC enabled. The application RF queue recorded
+1202 puts and gets by shutdown, zero drops and zero wait timeouts; the audio queue
+reported a zero `drops` field. At the time, that audio-queue field was not maintained by
+the shared queue implementation and cannot establish that no audio enqueue
+loss or ALSA underrun occurred. SPI reported zero failures. The six-block register scan
+averaged 0.323 ms and peaked at 1.200 ms, including lock time. Shutdown
+published `STOPPED`, removed the owned socket and released the radio.
+This was a short transport/lifecycle check; it does not establish long-term
+sample continuity, audio quality or a CPU improvement. Artifacts are in
+`build/radio-backend/live-check/`.
+
+Later on 2026-10-11, the user started the backend and passive monitor in
+separate terminals and reported good-quality received audio with squelch
+operating normally. This validates the combined live setup in a listening
+test. The report did not include measured CPU load or RF sensitivity results.
+
+The user also observed the audio FIFO slowly filling and then holding at
+42–50%. The existing worker deliberately targets 50% fill to balance the
+radio sample clock and audio playback clock, with gradual resampling-rate
+correction. Its 24 slots each contain 10 ms of audio, so 10–12 occupied slots
+correspond to about 100–120 ms queued before ALSA buffering. Each slot changes
+the displayed fill by roughly four percentage points. This steady range is
+consistent with the controller's intended operation. Squelch continues to
+produce timed silence while closed, so the queue remains active.
+
+### Live CPU and FIFO sample (2026-10-11)
+
+A later read-only, 20.03-second measurement of the user's running RF24/NBFM
+session at 1 MS/s collected 100 status snapshots. On the four-core Raspberry
+Pi 4, the backend used 7.64% of one CPU core and the monitor 2.40%. Together
+that is about 2.51% of total four-core CPU capacity. Resident memory was
+41.7 MiB and 14.0 MiB respectively. Whole-host CPU busy time was 7.76%,
+including other processes and kernel work; it is a different measurement
+from the two process totals. One extra passive status client was connected
+for this measurement, without increasing hardware polling.
+
+The demodulator used about 4.99% of one core, the RX reader 2.00%, the audio
+writer 0.35%, and the control/status thread 0.20%. Worker affinity was applied
+to CPUs 1, 2 and 0 respectively. However, actual scheduling policy was
+`SCHED_OTHER` with priority zero for all three workers: the requested
+`SCHED_FIFO` priorities were not active. This was verified with Linux's
+`sched_getscheduler`, `sched_getparam` and `sched_getaffinity` APIs. The
+then-existing startup log printed requested priorities, so it could not establish
+the actual scheduler policy.
+
+The application RF queue sustained 99.93 puts and gets per second, with
+sampled depth 0–2 of 64, a lifetime high-water mark of 4, and zero overwrite
+drops. Its final sampled totals were 146971 puts and gets, with zero wait
+timeouts. An empty RF queue is consistent with the demodulator keeping up;
+it does not by itself indicate an underrun. Audio FIFO occupancy ranged
+from 9–14 of 24 and was 12 at both the beginning and end of the sample,
+remaining near its 50% target rather than continually accumulating audio.
+
+The six-block modem scan averaged 0.217 ms and peaked at 0.419 ms, with
+zero failures in 43962 accumulated SPI transactions. The publisher reported
+zero skipped status packets. Nearby SMI kernel messages reported `missed:0`;
+this counter detects DMA quarters discarded when the kernel RX FIFO cannot
+accept them, and resets when a stream starts. These observations support
+healthy operation for the measured session. They do not establish FPGA
+sample continuity or count audio enqueue failures and ALSA underruns.
+Those application counters were added after this baseline measurement.
+
+This is a measured baseline for the standalone receiver, not an A/B CPU
+comparison with `test_app` or a load test for stereo, RDS or DAB+. The raw
+report and snapshots are in `build/radio-backend/runtime-profile/`.
+
+### Instrumented application comparison (2026-10-11)
+
+After the user stopped both applications, four sequential trials compared
+menu 14 and backend plus monitor at RF24, 430.125 MHz, 1 MS/s NBFM. Each had
+30 seconds warmup and 90 seconds measured reception, with a controlled
+1.8 GHz CPU frequency. The original `ondemand` governor was restored afterward.
+
+Mean CPU was **7.90% of one core for menu 14**, **6.14% for the backend** and
+**3.53% for the monitor**. Backend plus monitor totaled **9.66% of one core**,
+or **2.42% of the four-core Pi's capacity**, compared with **1.97%** for menu
+14. The backend itself saves 22.3%; the combined setup costs 22.4% more CPU,
+an absolute increase of 0.44 percentage points of whole-machine capacity.
+Combined PSS memory was 48.33 MiB versus 64.01 MiB for menu 14.
+
+All four windows recorded zero IQ/audio queue drops or timeouts, zero ALSA
+underruns/recoveries/write errors, and zero RX errors or worker exits. The
+kernel supplied 28 `missed:0` observations per window. Short/zero radio reads
+were present but do not establish sample loss. RX workers used `SCHED_OTHER`
+priority 0 in both apps, with the requested CPU affinity applied.
+
+The audio FIFO was still filling gradually at 0–5 of 24 sampled slots; these
+two-minute sessions did not reach the earlier long-running 50% equilibrium.
+This fixed-frequency comparison is separate from the historical 20-second
+sample above. It does not measure instrumentation overhead in isolation,
+RF sensitivity or the CPU budget for future decoders. See the
+[full report, artifacts and reusable runner](rx-application-comparison.md).
+
+### Receiver control milestone (2026-10-11)
+
+The [C receiver controller](radio-control.md) adds interactive RX start/stop,
+frequency, NBFM/mono WBFM, 1/2/4 MS/s and squelch controls. The backend
+serializes commands and snapshots on its owner thread; it verifies hardware
+before acknowledging start/stop and attempts rollback after failed tuning.
+The existing shared DSP and `test_app` are unchanged by this addition.
+
+Stopping now releases the backend's entire pipeline. A subsequent start
+creates fresh queues, workers and audio playback; telemetry includes
+`control.config_generation` and `control.pipeline_generation`. The monitor
+shows these generations on its existing session row and avoids calculating
+RX queue rates across different pipeline lifetimes.
+
+A physical check exercised 28 controller commands across five RX sessions:
+NBFM at 1/2/4 MS/s on RF24 near 430.125 MHz and WBFM mono at 2 MS/s at
+100.1 MHz. The actual passive monitor remained connected. The 170 snapshots
+recorded zero application IQ/audio queue drops, ALSA underruns/write errors
+and reader errors. Controller disconnection left RX running, and final
+shutdown removed both owned sockets. This was a short control/lifecycle
+check; the earlier CPU comparison describes the preceding instrumented build.
+See [artifacts and limitations](radio-control.md#physical-control-check-2026-10-11).
+
+### Half-duplex TX controls
+
+The [radio controller](radio-control.md) now adds `tx start`/`tx stop`, saved
+TX frequency/power/rate, microphone or test-tone source and tone settings.
+Starting TX fully releases RX; normal stop preserves the opening/closing
+Quindar sequence and existing fast tail drain, then restores previously
+running RX. Controller disconnect requests that same normal stop. Lifecycle
+jobs keep ordinary command replies and monitoring available during transitions.
+
+TX buffers and workers may remain allocated after stop. Both workers block on
+a condition variable, and microphone capture is reset only after its reader
+is parked. Before each subsequent TX start, the backend joins both pipelines,
+soft-resets shared FPGA state and creates a fresh TX pipeline, preserving
+menu 14's validated startup recovery. TX counters restart with a new pipeline
+generation. Shared worker diagnostics include completed/partial/zero writes,
+backpressure, persistent write errors, complete-frame sequence, microphone
+overruns/recovery/read errors, and actual worker scheduling/health.
+
+The monitor replaces its RX detail rows with eight compact TX rows while TX
+is starting, running or stopping, then restores the RX detail view. Both
+layouts fit the 57-row terminal limit. TX queue rates are calculated only
+within the same allocation generation. Hardware/dry-run transitions expose
+unavailable pipeline measurements explicitly. Power estimates come from
+checked register codes and the existing driver model; they are not calibrated
+connector-power measurements.
+
+Software validation covers RX/menu-14 lifecycle, Quindar sample/drain,
+audio-adapter and worker behavior. The user's initial TX attempts remained
+in TXPREP without a carrier. After restoring the missing FPGA reset, the user
+confirmed on 2026-10-11 that both Quindar tones and modulation from the
+test-tone and microphone sources are audible. The user also confirmed
+RX → TX → RX transitions and that disconnecting the controller during TX
+stops transmission and restores RX. Failed startup logs now capture
+IQ-interface synchronization and FPGA readbacks before cleanup. No new
+whole-application CPU measurement was performed.
+
+### FPGA programming
+
+The controller's [`fpga program`](radio-control.md#fpga-programming-after-reboot)
+command loads the same `firmware/top.bin` as test-app menu option 3. Start
+the backend from the repository root with RX stopped (the default) after reboot,
+program, and wait for `IDLE` before starting RX. The monitor displays
+`FPGA_PROGRAMMING` while the lifecycle worker performs the reset/load sequence.
+During that job the backend suspends hardware register polling and reports
+pipeline measurements as unavailable. Programming leaves both RX and TX stopped.
+
+Standalone `fpga soft reset` and `fpga hard reset` expose `FPGA_RESETTING`
+through the same lifecycle worker. Soft reset preserves the firmware and
+returns to `IDLE`; hard reset reports `FPGA_NEEDS_PROGRAM` and requires
+`fpga program` before RX/TX can resume. Both leave the radio stopped.

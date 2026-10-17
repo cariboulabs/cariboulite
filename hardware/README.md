@@ -2,13 +2,20 @@
 
 ## CaribouLite Hardware Revisions
 
-CaribouLite board has two revisions:
+The historical overview groups CaribouLite into two revision families:
 
 1. Rev1: A prototyping revision (the red board).
-2. Rev2: Production revision (currently R2.5 is the production-grade version).
+2. Rev2: Production family; the original text described R2.5. This checkout also
+   contains [Rev2.8 reproduction notes](../cariboulite_rev2_8_reproduction_context.md).
    1. Rev2_r2.4: pre-production revision
 
 This documentation shall cover the production-grade board (rev2).
+
+For the Full Rev2.8 reproduction, the
+[quotation package](../manufacturing/rev2.8-full-eurocircuits/README.md) records
+the exact BOM, fitted/DNP decisions and fabrication holds. It is prepared for
+technical review and quotation, with no manufacturing release recorded here.
+The older reproduction handoff and sourcing reports are dated snapshots.
 
 ## System Diagram
 
@@ -40,7 +47,12 @@ The power distribution provides high frequency isolation of the RF components fr
 ### RPI HAT EEPROM
 
 An I2C EEPROM device is assembled on CaribouLite to support for the requirements of RPI HATs as described in [RPI HAT Requirements](https://github.com/raspberrypi/hats).
-Production application helps to perform the EEPROM configuration process (coming soon)
+EEPROM and production-test code exists under `software/libcariboulite/src/hat/`
+and `cariboulite_production.c`. The main CMake file defines the production source
+variable but does not create a production executable target. A supported backup,
+programming and verification procedure remains
+[DOC-05](../ROADMAP.md#documentation-validation-backlog); see also
+[EEPROM notes](../docs/flashing/README.md).
 
 ### Clocking
 
@@ -62,20 +74,26 @@ To enable the above clocking schemes, the MODEM clock input jumper should be cut
 
 ### PMOD Connector
 
-Coming soon:
+The current top-level RTL declares four PMOD inputs and four outputs; the
+IO controller's generic PMOD output is disconnected. TX sync selection uses
+`io_pmod_in[1]` for RF09 and `[0]` for RF24. This does not establish GPS PPS
+capture, a general peripheral API or a TX/RX/PA sequencer.
 
-* Synchronization
-* GPS PPS Signaling
-* Peripherals
-* Maximal current
+Pin numbering, voltage/current limits, PPS behavior and peripheral examples
+remain [DOC-04](../ROADMAP.md#documentation-validation-backlog). Do not infer
+physical connector numbering from these RTL array indices.
 
 ### FPGA and LVDS
 
-Coming soon - LVDS calculations
+Existing [simulation checks](../firmware/tests/README.md) and the
+[FPGA study](../docs/fpga-gap-study-2026-09-13.md) describe tested behavior and
+limitations. Board-level LVDS timing/electrical calculations remain DOC-04.
 
 ### Calibrations & Testing
 
-Coming soon
+Calibration procedures and measured RF acceptance limits remain
+[DOC-06](../ROADMAP.md#documentation-validation-backlog). Production-test source
+exists, but is not evidence that calibration procedures are complete.
 
 ## License
 

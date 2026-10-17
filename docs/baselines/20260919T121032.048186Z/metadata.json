@@ -1,0 +1,40 @@
+{
+  "utc": "2026-09-19T12:10:32.048519+00:00",
+  "command": [
+    "/home/pi/src/cariboulite/build/cariboulite_test_app",
+    "--baseline-test",
+    "10",
+    "plughw:Loopback,1,1",
+    "plughw:Loopback,0,0",
+    "/home/pi/src/cariboulite/firmware/top.bin"
+  ],
+  "revision": "76e6b9bc32b5eb6e17c4dcee2e28f39b8572f8e4",
+  "git_status": "M docs/audio-dsp-interfaces.md\n M docs/audio-dsp-refactor-plan.md\n M software/libcariboulite/CMakeLists.txt\n M software/libcariboulite/src/app_menu.c\n M software/libcariboulite/src/nbfm_demod.c\n M software/libcariboulite/src/nbfm_demod.h\n M software/libcariboulite/tests/test_rx_lifecycle.py\n?? software/libcariboulite/src/alsa_sink.c\n?? software/libcariboulite/src/alsa_sink.h\n?? software/libcariboulite/src/audio_sink.h\n?? software/libcariboulite/tests/test_audio_sink.c\n?? software/libcariboulite/tests/test_audio_sink.py",
+  "uname": {
+    "system": "Linux",
+    "node": "pi4f-trixie",
+    "release": "6.18.50+rpt-rpi-v8",
+    "version": "#1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11)",
+    "machine": "aarch64",
+    "processor": ""
+  },
+  "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.7\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"",
+  "pi_model": "Raspberry Pi 4 Model B Rev 1.5",
+  "capture_listing": "**** List of CAPTURE Hardware Devices ****\ncard 2: Loopback [Loopback], device 0: Loopback PCM [Loopback PCM]\n  Subdevices: 8/8\n  Subdevice #0: subdevice #0\n  Subdevice #1: subdevice #1\n  Subdevice #2: subdevice #2\n  Subdevice #3: subdevice #3\n  Subdevice #4: subdevice #4\n  Subdevice #5: subdevice #5\n  Subdevice #6: subdevice #6\n  Subdevice #7: subdevice #7\ncard 2: Loopback [Loopback], device 1: Loopback PCM [Loopback PCM]\n  Subdevices: 7/8\n  Subdevice #0: subdevice #0\n  Subdevice #1: subdevice #1\n  Subdevice #2: subdevice #2\n  Subdevice #3: subdevice #3\n  Subdevice #4: subdevice #4\n  Subdevice #5: subdevice #5\n  Subdevice #6: subdevice #6\n  Subdevice #7: subdevice #7\ncard 4: USB [Jabra SPEAK 510 USB], device 0: USB Audio [USB Audio]\n  Subdevices: 0/1\n  Subdevice #0: subdevice #0",
+  "playback_listing": "**** List of PLAYBACK Hardware Devices ****\ncard 0: vc4hdmi0 [vc4-hdmi-0], device 0: MAI PCM i2s-hifi-0 [MAI PCM i2s-hifi-0]\n  Subdevices: 1/1\n  Subdevice #0: subdevice #0\ncard 1: vc4hdmi1 [vc4-hdmi-1], device 0: MAI PCM i2s-hifi-0 [MAI PCM i2s-hifi-0]\n  Subdevices: 1/1\n  Subdevice #0: subdevice #0\ncard 2: Loopback [Loopback], device 0: Loopback PCM [Loopback PCM]\n  Subdevices: 7/8\n  Subdevice #0: subdevice #0\n  Subdevice #1: subdevice #1\n  Subdevice #2: subdevice #2\n  Subdevice #3: subdevice #3\n  Subdevice #4: subdevice #4\n  Subdevice #5: subdevice #5\n  Subdevice #6: subdevice #6\n  Subdevice #7: subdevice #7\ncard 2: Loopback [Loopback], device 1: Loopback PCM [Loopback PCM]\n  Subdevices: 8/8\n  Subdevice #0: subdevice #0\n  Subdevice #1: subdevice #1\n  Subdevice #2: subdevice #2\n  Subdevice #3: subdevice #3\n  Subdevice #4: subdevice #4\n  Subdevice #5: subdevice #5\n  Subdevice #6: subdevice #6\n  Subdevice #7: subdevice #7\ncard 3: Headphones [bcm2835 Headphones], device 0: bcm2835 Headphones [bcm2835 Headphones]\n  Subdevices: 8/8\n  Subdevice #0: subdevice #0\n  Subdevice #1: subdevice #1\n  Subdevice #2: subdevice #2\n  Subdevice #3: subdevice #3\n  Subdevice #4: subdevice #4\n  Subdevice #5: subdevice #5\n  Subdevice #6: subdevice #6\n  Subdevice #7: subdevice #7\ncard 4: USB [Jabra SPEAK 510 USB], device 0: USB Audio [USB Audio]\n  Subdevices: 0/1\n  Subdevice #0: subdevice #0",
+  "audio_route": "loopback",
+  "audio_processes": "PID COMMAND\n   1234 /usr/bin/pipewire\n   1235 /usr/bin/pipewire -c filter-chain.conf\n   2756 arecord -D plughw:4,0 -f S16_LE -c 1 -r 48000\n   2757 aplay -D plughw:Loopback,0,1 -f S16_LE -c 1 -r 48000\n   2758 arecord -D plughw:Loopback,1,0 -f S16_LE -c 1 -r 48000\n   2759 aplay -D plughw:4,0 -f S16_LE -c 1 -r 48000",
+  "app_sha256": "a4748230f077f2c2283a556c956f74aa0d66dbe922fdc26c1c6543281dc318b7",
+  "firmware_sha256": "dcdf0733ef1ee8088b82381148475a6e4de87c6f00b8d14480a46d48621d31f6",
+  "setup": {
+    "load": "50 ohm dummy load on HiF",
+    "audio": "Jabra GN 510 USB",
+    "monitor": "SDRPlay RSP2PRO",
+    "monitor_rate": 2000000,
+    "frequency_hz": 430100000,
+    "mode": "NFM",
+    "audio_bandwidth_hz": 10000,
+    "squelch_dbm": -120,
+    "tx_power_dbm": -3
+  }
+}

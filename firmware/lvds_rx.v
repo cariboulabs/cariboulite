@@ -5,7 +5,7 @@ module lvds_rx (
 
     input             i_fifo_full,
     output            o_fifo_write_clk,
-    output            o_fifo_push,
+    output reg        o_fifo_push, // 'reg' added as o_fifo_push is assigned in an always block
     output reg [31:0] o_fifo_data,
     input             i_sync_input,
     output     [ 1:0] o_debug_state
@@ -17,15 +17,20 @@ module lvds_rx (
   // Modem sync symbols
   localparam modem_i_sync = 2'b10, modem_q_sync = 2'b01;
 
+  // Set to 1 for fixed-data-frame testing purposes only
+  parameter TEST_FIXED_FRAME = 0; 
+
   // Internal Registers
   reg [1:0] r_state_if;
   reg [2:0] r_phase_count;
   reg r_sync_input;
+  reg [4:0] r_test_cnt; // For fixed-data-frame testing purposes only
 
   // Initial conditions
   initial begin
     r_state_if = state_idle;
     r_phase_count = 3'b111;
+    r_test_cnt = 5'b00000; // For fixed-data-frame testing purposes only
   end
 
   // Global Assignments
@@ -39,6 +44,21 @@ module lvds_rx (
       o_fifo_push <= 1'b0;
       r_phase_count <= 3'b111;
       r_sync_input <= 1'b0;
+      r_test_cnt <= 5'b00000; // For fixed-data-frame testing purposes only
+    end else if (TEST_FIXED_FRAME) begin
+      r_state_if <= state_idle;
+      r_phase_count <= 3'b111;
+      r_sync_input <= 1'b1;
+      
+      r_test_cnt <= r_test_cnt + 1'b1; // For fixed-data-frame testing purposes only
+      o_fifo_push <= 1'b0; // for fixed-data-frame testing purposes only
+
+      if ((r_test_cnt == 5'b00000) && !i_fifo_full) begin
+          o_fifo_data <= {2'b10, 13'h0555, 1'b0, 2'b01, 13'h0AAA, 1'b1};
+          o_fifo_push <= 1'b1;
+      end //else begin
+          //o_fifo_push <= 1'b0;
+      //end
     end else begin
       case (r_state_if)
         state_idle: begin
@@ -60,8 +80,7 @@ module lvds_rx (
               r_state_if <= state_idle;
             end
           end else begin
-          
-          r_phase_count <= r_phase_count - 1;
+            r_phase_count <= r_phase_count - 1'b1;
           end
           o_fifo_push <= 1'b0;
           o_fifo_data <= {o_fifo_data[29:0], i_ddr_data};
@@ -77,7 +96,6 @@ module lvds_rx (
             r_phase_count <= r_phase_count - 1;
             o_fifo_data   <= {o_fifo_data[29:0], i_ddr_data};
           end
-
         end
       endcase
     end

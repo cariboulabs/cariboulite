@@ -421,6 +421,10 @@ void at86rf215_get_iq_if_cfg(at86rf215_st* dev, at86rf215_iq_interface_config_st
     if (verbose)
     {
         printf("Current I/Q interface settings:\n");
+        printf("   RF_IQIFC0: 0x%02x\n",data[0]);
+        printf("   RF_IQIFC1: 0x%02x\n",data[1]);
+        printf("   RF_IQIFC2: 0x%02x\n",data[2]);
+        printf("\n");
         printf("   Loopback (RX => TX): %s\n", cfg->loopback_enable?"enabled":"disabled");
         printf("   Drive strength: %d mA\n", cfg->drv_strength+1);
 
@@ -433,6 +437,7 @@ void at86rf215_get_iq_if_cfg(at86rf215_st* dev, at86rf215_iq_interface_config_st
             printf("   Common mode voltage: %d mV\n", (cfg->common_mode_voltage+1) * 50 + 100);
         }
 
+        printf("   TX control with I/Q data: %s\n", cfg->tx_control_with_iq_if?"enabled":"disabled");
         printf("   I/Q interface for sub-GHz: %s\n", cfg->radio09_mode==at86rf215_iq_if_mode?"enabled":"diabled");
         printf("   I/Q interface for 2.4-GHz: %s\n", cfg->radio24_mode==at86rf215_iq_if_mode?"enabled":"diabled");
         printf("   I/Q Clock <=> Data skew: %.3f ns\n", cfg->clock_skew+1.906f);
@@ -525,14 +530,71 @@ void at86rf215_setup_iq_radio_transmit (at86rf215_st* dev, at86rf215_rf_channel_
     /*
     It is assumed, that the radio has been reset before and is in State TRXOFF. All interrupts in register RFn_IRQS should be enabled (RFn_IRQM=0x3f).
     */
+    
+    at86rf215_iq_clock_data_skew_en skew = 2; // 0 = 1.906 ns, 1 = 2.906 ns, 2 = 3.906 ns, 3 = 4.906 ns
+    uint8_t iqloopback = 0;                   // 0 = disabled, 1 = enabled
+    double frequency = 430100000;             // Hz
+    int tx_power = -10;                       // dBm
+    
 
     // 1. Set TRXOFF mode
-    // 2. Enable all interrupts in 09,_24_IRQS
-    // 3. Enable I/Q radio mode - setting IQIFC1.CHPM=1 at AT86RF215
+    at86rf215_radio_set_state(dev, radio, at86rf215_radio_state_cmd_trx_off);
+
+    // 2. Enable all radio interrupts in 09,_24_IRQS
+    at86rf215_radio_irq_st int_mask = {
+        .wake_up_por = 1,
+        .trx_ready = 1,
+        .energy_detection_complete = 1,
+        .battery_low = 1,
+        .trx_error = 1,
+        .IQ_if_sync_fail = 1,
+        .res = 0,
+    };
+    at86rf215_radio_setup_interrupt_mask(dev, radio, &int_mask);
+
+    // 3. Enable I/Q radio mode - setting IQIFC1.CHPM=1 at AT86RF215 (in AT86RF215IQ it is the only choice)
+    at86rf215_iq_interface_config_st iq_if_config =
+    {
+        .loopback_enable = iqloopback,
+        .drv_strength = at86rf215_iq_drive_current_4ma,
+        .common_mode_voltage = at86rf215_iq_common_mode_v_ieee1596_1v2,
+        .tx_control_with_iq_if = false,
+        .radio09_mode = at86rf215_iq_if_mode,
+        .radio24_mode = at86rf215_iq_if_mode,
+        .clock_skew = skew,
+    };
+    at86rf215_setup_iq_if(dev, &iq_if_config);
+    
     // 4. Configure the Transmitter Frontend:
     //      Set the transmitter analog frontend sub-registers TXCUTC.LPFCUT and TXCUTC.PARAMP
     //      Set the transmitter digital frontend sub-registers TXDFE.SR and TXDFE.RCUT
+    at86rf215_radio_tx_ctrl_st tx_config =
+    {
+        .pa_ramping_time = at86rf215_radio_tx_pa_ramp_32usec,
+        .current_reduction = at86rf215_radio_pa_current_reduction_0ma,
+        .tx_power = tx_power,
+        .analog_bw = at86rf215_radio_tx_cut_off_80khz,
+        .digital_bw = at86rf215_radio_rx_f_cut_half_fs,
+        .fs = at86rf215_radio_rx_sample_rate_4000khz,
+        .direct_modulation = 0,
+    };
+    at86rf215_radio_setup_tx_ctrl(dev, radio, &tx_config);
+
+    at86rf215_radio_external_ctrl_st aux_cfg =
+    {
+        .ext_lna_bypass_available = 0,
+        .agc_backoff = 0,
+        .analog_voltage_external = 0,
+        .analog_voltage_enable_in_off = 0,
+        .int_power_amplifier_voltage = 2,
+        .fe_pad_configuration = 1,
+    };
+    at86rf215_radio_setup_external_settings(dev, radio, &aux_cfg);
+
+
     // 5. Configure the channel parameters, see section "Channel Configuration" on page 62 and transmit power
+    at86rf215_setup_channel(dev, radio, frequency);
+
     // 6. Optional: Perform ED measurement, see section "Energy Measurement" on page 56. The following steps are recommended:
     //      Configure the measurement period, see register RFn_EDD.
     //      Switch to State RX.
@@ -540,11 +602,18 @@ void at86rf215_setup_iq_radio_transmit (at86rf215_st* dev, at86rf215_rf_channel_
     //          For single and continuous ED modes a measurement starts if the mode is written to sub-register EDC.EDM.
     //          The completion of the measurement is indicated by the interrupt IRQS.EDC. The resulting ED value can be read from register RFn_EDV.
     //      For the automatic mode, a measurement starts by setting bit AGCC.FRZC=1. After the completion of the measurement period, the ED value can be read from register RFn_EDV.
+    
     // 7. Switch to State TXPREP; interrupt IRQS.TRXRDY is issued.
+    at86rf215_radio_set_state(dev, radio, at86rf215_radio_state_cmd_tx_prep);
+    
+    
     // 8. To start the actual transmission, there are two possibilities, depending on the setting of sub-register IQIFC0.EEC:
     //      IQIFC0.EEC=0 => Enable the radio transmitter by writing command TX to the register RFn_CMD via SPI.
     //      IQIFC0.EEC=1 => The transmitter is activated automatically with the TX start signal embedded in I_DATA[0],
+    at86rf215_radio_set_state(dev, radio, at86rf215_radio_state_cmd_tx);
+    
     // 9. To finish a transmission depends on the setting of bit IQIFC0.EEC:
+
     //      IQIFC0.EEC=0 => To leave the State TX, write command TXPREP to the register RFn_CMD. Reaching State TXPREP is indicated by the interrupt IRQS.TRXRDY.
     //      IQIFC0.EEC=1 => If the bit I_DATA[0] is set to 0 (see Figure 6-4 on page 47) the ramp down process of the PA is started automatically. After ramp down the transmitter switches back to State TXPREP.
 }
@@ -564,7 +633,8 @@ void at86rf215_setup_iq_radio_receive (at86rf215_st* dev, at86rf215_rf_channel_e
 
 
     // 2. Enable all radio interrupts in 09,_24_IRQS
-    at86rf215_radio_irq_st int_mask = {
+    at86rf215_radio_irq_st int_mask = 
+    {
         .wake_up_por = 1,
         .trx_ready = 1,
         .energy_detection_complete = 1,

@@ -1,0 +1,12 @@
+File,Function,Physical Copper Order,Evidence
+cariboulite_r2.8.GTL,Copper 1 / Component Side,1,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.G1,Copper 2 / Layer 1,2,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.G2,Copper 3 / Layer 2,3,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.GBL,Copper 4 / Solder Side,4,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.GTO,Top silkscreen / Top Overlay,,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.GBO,Bottom silkscreen / Bottom Overlay,,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.GTS,Top solder mask / Top Solder,,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.GBS,Bottom solder mask / Bottom Solder,,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.GTP,Top solder paste,,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.GBP,Bottom solder paste,,Original .EXTREP; copper header Layer_Physical_Order
+cariboulite_r2.8.Outline,Board outline; duplicated source contours preserved,,Original .EXTREP; copper header Layer_Physical_Order

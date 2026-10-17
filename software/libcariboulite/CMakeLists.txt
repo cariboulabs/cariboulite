@@ -1,21 +1,33 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.15...3.27)
 project(cariboulite 
         VERSION 1.2.0
         LANGUAGES C CXX
         DESCRIPTION "CaribouLite RpiSDR C API")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -ffast-math -fno-math-errno -funroll-loops")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -fno-math-errno -funroll-loops")
         
+
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Bring the headers
 include_directories(./src)
+include_directories(./src/at86rf215) # AT86RF215 headers
+include_directories(./src/rffc507x)  # RFFC507X  headers
 include_directories(${PROJECT_SOURCE_DIR}/src)
 add_compile_options(-Wall -Wextra -Wno-unused-variable -Wno-missing-braces)
 
 # ------------------------------------
 # MAIN - Source files for main library
 # ------------------------------------
-set(SOURCES_LIB src/cariboulite.c src/cariboulite_setup.c src/cariboulite_events.c src/cariboulite_radio.c)
+set(SOURCES_LIB src/cariboulite.c 
+                src/cariboulite_setup.c 
+                src/cariboulite_events.c 
+                src/cariboulite_radio.c
+                src/cariboulite_sys_storage.c
+                src/cariboulite_sys_accessor.c)
+
 set(TARGET_LINK_LIBS    datatypes
                         production_utils
                         caribou_fpga
@@ -27,10 +39,13 @@ set(TARGET_LINK_LIBS    datatypes
                         io_utils
                         zf_log
                         rt
-                        m
-                        pthread)
+                        m)
 
 set(SOURCES_CPP_LIB src/CaribouLiteCpp.cpp src/CaribouLiteRadioCpp.cpp)
+
+# Enable POSIX/GNU extensions so siginfo_t and SA_SIGINFO are visible
+add_definitions(-D_POSIX_C_SOURCE=200809L)
+add_compile_definitions(_GNU_SOURCE)
 
 # Add internal project dependencies
 add_subdirectory(src/datatypes EXCLUDE_FROM_ALL)
@@ -47,26 +62,42 @@ add_subdirectory(src/iir EXCLUDE_FROM_ALL)
 
 # Create the library cariboulite
 add_library(cariboulite STATIC ${SOURCES_LIB} ${SOURCES_CPP_LIB})
-target_link_libraries(cariboulite PRIVATE ${TARGET_LINK_LIBS})                                                                  
+target_link_libraries(cariboulite PUBLIC ${TARGET_LINK_LIBS})                                                                  
 set_target_properties(cariboulite PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h;src/CaribouLite.hpp")
-set_target_properties(cariboulite PROPERTIES OUTPUT_NAME cariboulite)
+set_target_properties(cariboulite PROPERTIES OUTPUT_NAME cariboulite_static)
 
 add_library(cariboulite_shared SHARED ${SOURCES_LIB} ${SOURCES_CPP_LIB})
-target_link_libraries(cariboulite_shared PRIVATE ${TARGET_LINK_LIBS})                                                                  
+target_link_libraries(cariboulite_shared PUBLIC ${TARGET_LINK_LIBS})                                                                  
 set_target_properties(cariboulite_shared PROPERTIES PUBLIC_HEADER "src/cariboulite.h;src/cariboulite_radio.h;src/CaribouLite.hpp")
 set_property(TARGET cariboulite_shared PROPERTY POSITION_INDEPENDENT_CODE 1)
 set_target_properties(cariboulite_shared PROPERTIES OUTPUT_NAME cariboulite)
 
 
+#--------------------------------------
+# add pthread scheduling support
+#--------------------------------------
+find_package(Threads REQUIRED)
+
+#--------------------------------------
+# add ncurses support
+#--------------------------------------
+find_package(Curses REQUIRED)
+
+#--------------------------------------
+# add ALSA support
+#--------------------------------------
+find_package(ALSA REQUIRED)
+#include_directories(${PROJECT_SOURCE_DIR}/include)
+
+include_directories(${CURSES_INCLUDE_DIR})
 
 #--------------------------------------
 # create the Soapy shared object
 #--------------------------------------
+set(BIN_DEST "${CMAKE_INSTALL_PREFIX}")
 find_package(SoapySDR CONFIG)
-if (NOT SoapySDR_FOUND)
-    message(WARNING "SoapySDR development files not found - skipping support")
-    return()
-endif ()
+
+
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     include(CheckCXXCompilerFlag)
@@ -81,39 +112,57 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     add_definitions(-Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-psabi)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
-execute_process (
-    COMMAND bash -c "SoapySDRUtil --info | grep 'Search path' | cut -d':' -f2 | xargs | cut -d' ' -f1 | xargs"
-    OUTPUT_VARIABLE SOAPY_DEST
-)
-string(STRIP ${SOAPY_DEST} SOAPY_DEST)
+if(SoapySDR_FOUND)
+    execute_process (
+        COMMAND bash -c "SoapySDRUtil --info | grep 'Search path' | cut -d':' -f2 | xargs | cut -d' ' -f1 | xargs"
+        OUTPUT_VARIABLE SOAPY_DEST
+    )
+    string(STRIP ${SOAPY_DEST} SOAPY_DEST)
 
-execute_process (
-    COMMAND bash -c "SoapySDRUtil --info | grep 'Search path' | cut -d':' -f2 | xargs | cut -d' ' -f1 | awk -F '/lib/' '{print $1}' | xargs"
-    OUTPUT_VARIABLE BIN_DEST
-)
-string(STRIP ${BIN_DEST} BIN_DEST)
+    SOAPY_SDR_MODULE_UTIL(
+        TARGET SoapyCariboulite
+        SOURCES
+            src/soapy_api/SoapyCariboulite.cpp
+            src/soapy_api/Cariboulite.cpp
+            src/soapy_api/Cariboulite.hpp
+            src/soapy_api/CaribouliteStreamFunctions.cpp
+            src/soapy_api/CaribouliteStream.cpp
+            src/soapy_api/CaribouliteSession.cpp
+            src/soapy_api/CaribouliteSensors.cpp
+        LIBRARIES cariboulite iir
+        DESTINATION ${SOAPY_DEST}
+        PREFIX ""
+    )
 
-SOAPY_SDR_MODULE_UTIL(
-    TARGET SoapyCariboulite
-    SOURCES
-        src/soapy_api/SoapyCariboulite.cpp
-        src/soapy_api/Cariboulite.cpp
-        src/soapy_api/Cariboulite.hpp
-        src/soapy_api/CaribouliteStreamFunctions.cpp
-        src/soapy_api/CaribouliteStream.cpp
-        src/soapy_api/CaribouliteSession.cpp
-        src/soapy_api/CaribouliteSensors.cpp
-    LIBRARIES cariboulite iir
-    DESTINATION ${SOAPY_DEST}
-    PREFIX ""
-)
+else()
+    message(WARNING "SoapySDR development files not found - skipping support")
+endif()
 
 # ----------------------------------
 # TESTS - source files for the tests
 # ----------------------------------
 set(SOURCES_CARIBOU_PROGRAMMER test/caribou_programmer.c)
 set(SOURCES_FPGA_COMM test/fpga_comm_test.c)
-set(SOURCES_TEST_MAIN src/cariboulite_test_app.c src/app_menu.c)
+set(SOURCES_TEST_MAIN 
+    src/cariboulite_test_app.c 
+    src/app_menu.c 
+    src/radio_profile.c
+    src/modem_snapshot.c
+    src/tone_source.c
+    src/nbfm_mod.c
+    src/nbfm_demod.c src/nbfm_demod_dsp.c src/wbfm_demod.c
+    src/demod_worker.c
+    src/noise_squelch.c
+    src/carrier_squelch.c
+    src/pipeline_transport.c
+    src/pipeline_runtime.c
+    src/mod_worker.c
+    src/tx_pipeline.c
+    src/tx_audio_buffer.c
+    src/rx_pipeline.c
+    src/modem_selftest.c
+    src/alsa_source.c
+    src/alsa_sink.c)
 set(SOURCES_MAIN src/cariboulite_util.c)
 set(SOURCES_PROD src/cariboulite_production.c)
 
@@ -122,10 +171,24 @@ add_executable(fpgacomm ${SOURCES_FPGA_COMM})
 add_executable(cariboulite_test_app ${SOURCES_TEST_MAIN})
 add_executable(cariboulite_util ${SOURCES_MAIN})
 
+# Hardware-free DSP example: no ALSA, radio, FIFO or worker dependencies.
+add_executable(nbfm_memory_demo
+    tools/nbfm_memory_demo.c src/memory_audio.c src/tone_source.c
+    src/nbfm_mod.c src/nbfm_demod.c src/nbfm_demod_dsp.c src/wbfm_demod.c)
+target_include_directories(nbfm_memory_demo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(nbfm_memory_demo PRIVATE m)
+
+
 target_link_libraries(caribou_programmer cariboulite)
 target_link_libraries(fpgacomm cariboulite)
-target_link_libraries(cariboulite_test_app cariboulite)
-target_link_libraries(cariboulite_util cariboulite)
+target_link_libraries(cariboulite_test_app
+    PRIVATE
+        cariboulite_shared
+        ${CURSES_LIBRARIES}
+        m
+        Threads::Threads
+        ALSA::ALSA)
+target_link_libraries(cariboulite_util     cariboulite_shared)
 
 set_target_properties( caribou_programmer PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)
 set_target_properties( fpgacomm PROPERTIES RUNTIME_OUTPUT_DIRECTORY test)

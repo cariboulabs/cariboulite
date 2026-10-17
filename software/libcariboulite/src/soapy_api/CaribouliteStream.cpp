@@ -1,60 +1,16 @@
+#include <SoapySDR/Errors.h>
 #include "Cariboulite.hpp"
 #include <Iir.h>
 #include <byteswap.h>
 #include <chrono>
 
 
-#define NUM_BYTES_PER_CPLX_ELEM         ( sizeof(cariboulite_sample_complex_int16) )
-#define NUM_NATIVE_MTUS_PER_QUEUE		( 10 )
 
-// Undefine to also use TX
-//#define USE_ASYNC                       ( 1 )
-#define USE_ASYNC_OVERRIDE_WRITES       ( true )
-#define USE_ASYNC_BLOCK_READS           ( true )
-
-//=================================================================
-void ReaderThread(SoapySDR::Stream* stream)
-{
-#if USE_ASYNC
-    SoapySDR_logf(SOAPY_SDR_INFO, "Entering Reader Thread");
-    
-    while (stream->readerThreadRunning())
-    {
-        if (!stream->stream_active)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
-        }
-        
-        int ret = cariboulite_radio_read_samples(stream->radio, 
-                                                    stream->interm_native_buffer1, 
-                                                    stream->interm_native_meta, 
-                                                    stream->mtu_size);
-        if (ret < 0)
-        {
-            if (ret == -1)
-            {
-                printf("reader thread failed to read SMI!\n");
-            }
-            // a special case for debug streams which are not
-            // taken care of in the soapy front-end (ret = -2)
-            ret = 0;
-        }
-        
-        if (ret) stream->rx_queue->put(stream->interm_native_buffer1, ret);
-    }
-    
-    SoapySDR_logf(SOAPY_SDR_INFO, "Leaving Reader Thread");
-#endif //USE_ASYNC
-}
-
-//=================================================================
 SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
 {
+    stream_active = 0;
+    native_dir = cariboulite_channel_dir_rx;
     // init pointers
-    reader_thread = NULL;
-    rx_queue = NULL;
-    interm_native_buffer1 = NULL;
     interm_native_buffer2 = NULL;
     interm_native_meta = NULL;
     filter_i = NULL;
@@ -64,15 +20,9 @@ SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
     this->radio = radio;
     mtu_size = getMTUSizeElements();
     
-    SoapySDR_logf(SOAPY_SDR_INFO, "Creating SampleQueue MTU: %d I/Q samples (%d bytes)", 
+    SoapySDR_logf(SOAPY_SDR_INFO, "Creating stream MTU: %d I/Q samples (%d bytes)",
 				mtu_size, mtu_size * sizeof(cariboulite_sample_complex_int16));
 
-    #if USE_ASYNC
-        rx_queue = new circular_buffer<cariboulite_sample_complex_int16>(mtu_size * NUM_NATIVE_MTUS_PER_QUEUE, 
-                                                                         USE_ASYNC_OVERRIDE_WRITES, 
-                                                                         USE_ASYNC_BLOCK_READS);
-        interm_native_buffer1 = new cariboulite_sample_complex_int16[mtu_size];
-    #endif //USE_ASYNC
 
 	format = CARIBOULITE_FORMAT_INT16;
 
@@ -90,11 +40,6 @@ SoapySDR::Stream::Stream(cariboulite_radio_state_st *radio)
 	filt50_q.setup(4e6, 50e3/2);
 	filt100_q.setup(4e6, 100e3/2);
     
-    #if USE_ASYNC
-        reader_thread_running = 1;
-        stream_active = 0;
-        reader_thread = new std::thread(ReaderThread, this);
-    #endif //USE_ASYNC
 }
 
 //=================================================================
@@ -104,14 +49,6 @@ SoapySDR::Stream::~Stream()
 	filter_i = NULL;
 	filter_q = NULL;
     
-    #if USE_ASYNC
-        stream_active = 0;
-        reader_thread_running = 0;
-        reader_thread->join();
-        if (reader_thread) delete reader_thread;
-        if (interm_native_buffer1) delete[] interm_native_buffer1;
-        if (rx_queue) delete rx_queue;
-    #endif //USE_ASYNC
     
     if (interm_native_buffer2) delete[] interm_native_buffer2;
     if (interm_native_meta) delete[] interm_native_meta;
@@ -175,24 +112,19 @@ int SoapySDR::Stream::setFormat(const std::string &fmt)
 //=================================================================
 int SoapySDR::Stream::Write(cariboulite_sample_complex_int16 *buffer, size_t num_samples, uint8_t* meta, long timeout_us)
 {
-	return cariboulite_radio_write_samples(radio, buffer, num_samples);
+    if (!num_samples) return 0;
+    if (!stream_active) {
+        if (timeout_us > 0) std::this_thread::sleep_for(std::chrono::microseconds(timeout_us));
+        return SOAPY_SDR_TIMEOUT;
+    }
+    int ret = cariboulite_radio_write_samples_timed(radio, buffer, num_samples, timeout_us);
+    return ret > 0 ? ret : (ret == 0 ? SOAPY_SDR_TIMEOUT : SOAPY_SDR_STREAM_ERROR);
 }
 
 //=================================================================
 int SoapySDR::Stream::WriteSamples(cariboulite_sample_complex_int16* buffer, size_t num_elements, long timeout_us)
 {
-    int ret = cariboulite_radio_write_samples(radio, buffer, num_elements);
-    if (ret < 0)
-    {
-        if (ret == -1)
-        {
-            printf("Failed to write\n");
-        }
-        // a special case for debug streams which are not
-        // taken care of in the soapy front-end (ret = -2)
-        ret = 0;
-    }
-    return ret;
+    return Write(buffer, num_elements, NULL, timeout_us);
 }
 
 //=================================================================
@@ -259,23 +191,15 @@ int SoapySDR::Stream::WriteSamplesGen(void* buffer, size_t num_elements, long ti
 //=================================================================
 int SoapySDR::Stream::Read(cariboulite_sample_complex_int16 *buffer, size_t num_samples, uint8_t *meta, long timeout_us)
 {
-    #if USE_ASYNC
-        return rx_queue->get(buffer, num_samples, timeout_us);
-    #else                                                        // caribou_smi_sample_meta not defined...
-        int ret = cariboulite_radio_read_samples(radio, buffer, (cariboulite_sample_meta*)meta, num_samples);
-        if (ret < 0)
-        {
-            if (ret == -1)
-            {
-                printf("reader thread failed to read SMI!\n");
-                ret = 0;
-            }
-            // a special case for debug streams which are not
-            // taken care of in the soapy front-end (ret = -2)
-            ret = 0;
-        }
-        return ret;
-    #endif //USE_ASYNC
+    if (!num_samples) return 0;
+    if (!stream_active) {
+        if (timeout_us > 0) std::this_thread::sleep_for(std::chrono::microseconds(timeout_us));
+        return SOAPY_SDR_TIMEOUT;
+    }
+    int ret = cariboulite_radio_read_samples_timed(radio, buffer,
+        (cariboulite_sample_meta*)meta, num_samples, timeout_us);
+    if (ret == -3) return SOAPY_SDR_CORRUPTION;
+    return ret > 0 ? ret : (ret == 0 ? SOAPY_SDR_TIMEOUT : SOAPY_SDR_STREAM_ERROR);
 }
 
 //=================================================================

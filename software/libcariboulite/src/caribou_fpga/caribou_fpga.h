@@ -85,8 +85,9 @@ typedef struct
     uint8_t rx_fifo_empty : 1;       // LSB
     uint8_t tx_fifo_full : 1;
     uint8_t smi_channel: 1;
-    uint8_t i_smi_test : 1;
-    uint8_t reserved : 4;            // MSB
+    uint8_t i_smi_test : 1;          // always zero
+    uint8_t smi_direction : 1;
+    uint8_t reserved : 3;            // MSB
 } caribou_fpga_smi_fifo_status_st;
 
 /**
@@ -94,9 +95,18 @@ typedef struct
  */
 typedef enum
 {
-    caribou_fpga_smi_channel_0 = 0,
-    caribou_fpga_smi_channel_1 = 1,
+    caribou_fpga_smi_channel_0 = 0, // RX09
+    caribou_fpga_smi_channel_1 = 1, // RX24
 } caribou_fpga_smi_channel_en;
+
+/**
+ * @brief SMI direction select
+ */
+typedef enum
+{
+    caribou_fpga_smi_direction_0 = 0, // TX
+    caribou_fpga_smi_direction_1 = 1, // RX
+} caribou_fpga_smi_direction_en;
 
 /**
  * @brief Syncronization bit (metadata) source. Either software
@@ -156,7 +166,7 @@ int caribou_fpga_hard_reset_keep(caribou_fpga_st* dev, bool reset);
 // programming
 int caribou_fpga_get_status(caribou_fpga_st* dev, caribou_fpga_status_en *stat);
 int caribou_fpga_program_to_fpga(caribou_fpga_st* dev, unsigned char *buffer, size_t len, bool force_prog);
-int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, char *filename, bool force_prog);
+int caribou_fpga_program_to_fpga_from_file(caribou_fpga_st* dev, const char *filename, bool force_prog);
 
 // System Controller
 int caribou_fpga_get_versions (caribou_fpga_st* dev, caribou_fpga_versions_st *vers);
@@ -164,6 +174,8 @@ void caribou_fpga_print_versions (caribou_fpga_st* dev);
 int caribou_fpga_get_errors (caribou_fpga_st* dev, uint8_t *err_map);
 char* caribou_fpga_get_mode_name (caribou_fpga_io_ctrl_rfm_en mode);
 int caribou_fpga_set_debug_modes (caribou_fpga_st* dev, bool dbg_fifo_push, bool dbg_fifo_pull, bool dbg_smi);
+// Select the fixed interface-test pattern; clears other debug-mode bits.
+int caribou_fpga_set_debug_loopback(caribou_fpga_st* dev, bool enabled);
 
 int caribou_fpga_set_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t gap);
 int caribou_fpga_get_sys_ctrl_tx_sample_gap (caribou_fpga_st* dev, uint8_t *gap);

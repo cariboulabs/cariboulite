@@ -1,6 +1,61 @@
+// Enable POSIX/GNU extensions
+#ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+
+#include "audio_demod.h"
 #include <stdio.h>
 #include "cariboulite.h"
 #include "cariboulite_setup.h"
+#include "caribou_smi/caribou_smi.h"
+#include <time.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <errno.h>
+#include <math.h>
+#include <assert.h>
+#include <stddef.h>   // if you want offsetof
+#include <stdint.h>
+#include "alsa_sink.h"
+
+_Static_assert(sizeof(caribou_smi_sample_complex_int16) == 4,
+               "caribou_smi_sample_complex_int16 must be 4 bytes (2x int16)");
+
+#ifdef CARIBOU_SMI_BYTES_PER_SAMPLE
+_Static_assert(CARIBOU_SMI_BYTES_PER_SAMPLE == sizeof(caribou_smi_sample_complex_int16),
+               "CARIBOU_SMI_BYTES_PER_SAMPLE must match complex sample size");
+#endif
+
+#include "tone_source.h"
+#include "alsa_source.h"
+#include "nbfm_mod.h"
+#include "noise_squelch.h"
+#include "demod_worker.h"
+#include "pipeline_runtime.h"
+#include "tx_pipeline.h"
+#include "rx_pipeline.h"
+#include "radio_profile.h"
+#include "modem_snapshot.h"
+#include "modem_selftest.h"
+
+// included here, to use ncurcus for a text-baused UI for my additions
+#include "ncurses.h"
+
+// include here, for testing and access to level registers
+#include <at86rf215.h>
+#include <rffc507x.h>
+
+// include here, for testing
+#define SOURCE "firmware/top.bin"
+
+#include <pthread.h>
+#include <sched.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/select.h> 
 
 //=================================================
 typedef enum
@@ -16,6 +71,10 @@ typedef enum
 	app_selection_modem_tx_cw,
 	app_selection_modem_rx_iq,
 	app_selection_synthesizer,
+	app_selection_nbfm_tx_tone,
+	app_selection_nbfm_rx,
+    app_selection_nbfm_modem_selftest,
+	app_selection_monitor_modem_status,
 	app_selection_quit = 99,
 } app_selection_en;
 
@@ -39,6 +98,12 @@ static void fpga_smi_fifo(sys_st *sys);
 static void modem_tx_cw(sys_st *sys);
 static void modem_rx_iq(sys_st *sys);
 static void synthesizer(sys_st *sys);
+static void nbfm_tx_tone(sys_st *sys);
+static void nbfm_rx(sys_st *sys);
+static void monitor_modem_status(sys_st *sys);
+
+// --- forward declarations for pthread entry points ---
+//static void* wbfm_demod_thread(void* arg);
 
 //=================================================
 app_menu_item_st handles[] =
@@ -54,9 +119,41 @@ app_menu_item_st handles[] =
 	{app_selection_modem_tx_cw, modem_tx_cw, "Modem transmit CW signal",},
 	{app_selection_modem_rx_iq, modem_rx_iq, "Modem receive I/Q stream",},
     {app_selection_synthesizer, synthesizer, "Synthesizer 85-4200 MHz",},
+	{app_selection_nbfm_tx_tone, nbfm_tx_tone, "NBFM TX Tone (HiF)",},
+	{app_selection_nbfm_rx, nbfm_rx, "NBFM RX (HiF)",},
+    {app_selection_nbfm_modem_selftest, nbfm_modem_selftest, "NBFM modem Self-Test",},
+	{app_selection_monitor_modem_status, monitor_modem_status, "Monitor Modem Status (HiF)",},
 };
 #define NUM_HANDLES 	(int)(sizeof(handles)/sizeof(app_menu_item_st))
 
+// constants
+#define SR   4000000.0   // sample rate
+#define DF   NBFM_DEFAULT_DEVIATION_HZ // peak deviation (Hz)
+#define FM   700.0       // modulating tone (Hz)
+#define AMP  2047.0      // amplitude (safe for 13-bit signed)
+
+//=================================================
+
+static inline void set_rt_and_affinity(void)
+{
+    // Hard RT priority and CPU affinity for the calling thread
+    struct sched_param sp = { .sched_priority = 40 };     // 1..99; 40 is sane
+    pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+
+#ifdef __linux__
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(2, &set);                                     // keep this away from CPU0 IRQs
+    pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
+#endif
+
+    // Avoid page faults while streaming
+    mlockall(MCL_CURRENT | MCL_FUTURE);
+}
+
+static inline void smi_idle(sys_st* sys) {
+    caribou_smi_set_driver_streaming_state(&sys->smi, (smi_stream_state_en)0);
+}
 
 //=================================================
 static void app_hard_reset_fpga(sys_st *sys)
@@ -93,7 +190,8 @@ static void app_fpga_programming(sys_st *sys)
 
 	printf("FPGA Programming:\n");
 	sys->force_fpga_reprogramming = true;
-	int res = cariboulite_configure_fpga (sys, cariboulite_firmware_source_blob, NULL);
+	int res = cariboulite_configure_fpga (sys, cariboulite_firmware_source_file, SOURCE);
+	//int res = cariboulite_configure_fpga (sys, cariboulite_firmware_source_blob, NULL);
 	if (res < 0)
 	{
 		printf("	ERROR: FPGA programming failed `%d`\n", res);
@@ -243,15 +341,15 @@ static void modem_tx_cw(sys_st *sys)
 	while (1)
 	{
 		printf("	Parameters:\n");
-		printf("	[1] Frequency @ Low Channel [%.2f MHz]\n", current_freq_lo);
-		printf("	[2] Frequency @ High Channel [%.2f MHz]\n", current_freq_hi);
-		printf("	[3] Power out @ Low Channel [%.2f dBm]\n", current_power_lo);
-		printf("	[4] Power out @ High Channel [%.2f dBm]\n", current_power_hi);
-		printf("	[5] On/off CW output @ Low Channel [Currently %s]\n", state_lo?"ON":"OFF");
-		printf("	[6] On/off CW output @ High Channel [Currently %s]\n", state_hi?"ON":"OFF");
-        printf("	[7] Low Channel decrease frequency (5MHz)\n");
-        printf("	[8] Low Channel increase frequency (5MHz)\n");
-        printf("	[9] Hi Channel decrease frequency (5MHz)\n");
+		printf("	[ 1] Frequency @ Low Channel [%.2f MHz]\n", current_freq_lo);
+		printf("	[ 2] Frequency @ High Channel [%.2f MHz]\n", current_freq_hi);
+		printf("	[ 3] Power out @ Low Channel [%.2f dBm]\n", current_power_lo);
+		printf("	[ 4] Power out @ High Channel [%.2f dBm]\n", current_power_hi);
+		printf("	[ 5] On/off CW output @ Low Channel [Currently %s]\n", state_lo?"ON":"OFF");
+		printf("	[ 6] On/off CW output @ High Channel [Currently %s]\n", state_hi?"ON":"OFF");
+        printf("	[ 7] Low Channel decrease frequency (5MHz)\n");
+        printf("	[ 8] Low Channel increase frequency (5MHz)\n");
+        printf("	[ 9] Hi Channel decrease frequency (5MHz)\n");
         printf("	[10] Hi Channel increase frequency (5MHz)\n");
 		printf("	[99] Return to Main Menu\n");
 		printf("	Choice: ");
@@ -446,6 +544,8 @@ static void print_iq(char* prefix, cariboulite_sample_complex_int16* buffer, siz
 
 static void* reader_thread_func(void* arg)
 {
+    pthread_setname_np(pthread_self(), "reader_thread");
+    set_rt_and_affinity();
     iq_test_reader_st* ctrl = (iq_test_reader_st*)arg;
     cariboulite_radio_state_st *cur_radio = NULL;
     size_t read_len = caribou_smi_get_native_batch_samples(&ctrl->sys->smi);
@@ -728,6 +828,768 @@ static void synthesizer(sys_st *sys)
     
 }
 
+//======helper function=====display a 8 bit number==========================
+void print_binairy8(uint8_t value) {
+    for (int i = 7; i >= 0; --i) {
+        putchar((value & (1 << i)) ? '1' : '0');
+        if (i % 8 == 0 && i != 0) putchar(' ');
+    }
+    putchar('\n');
+}
+
+static void nbfm_tx_tone(sys_st *sys)
+{
+    tx_pipeline_t tx = {0};
+    tx_params_t par = {
+        .freq_hz      = 430100000.0,
+        .tx_power_dbm = -3,
+        .tone_mode    = true,
+        .tone_hz      = 600.0f,
+        .tone_amp     = 0.4f,
+        .mic_dev      = NULL,
+        .out_scale    = 4000.0f,
+        .f_dev_hz     = NBFM_DEFAULT_DEVIATION_HZ,
+    };
+
+    if (tx_pipeline_init(&tx, sys, &sys->radio_high, &par) != 0) {
+        fprintf(stderr, "[tx_tone] init failed\n");
+        return;
+    }
+
+    for (;;) {
+        int choice = -1;
+        printf("TX freq: %.0f Hz  power: %d dBm\n", par.freq_hz, par.tx_power_dbm);
+        printf("TX rate: %u samples/s; %zu samples/10ms; gap %u (verified at setup)\n",
+               par.rf_fs ? par.rf_fs : 4000000, tx_pipeline_frame_samples(&tx),
+               4000000 / (par.rf_fs ? par.rf_fs : 4000000) - 1);
+        printf(" [1] Toggle NBFM TX   [2] Select 2 MS/s   [4] Select 4 MS/s   [99] Return\n");
+        printf(" Choice: ");
+        if (scanf("%d", &choice) != 1) continue;
+        if (choice == 1) {
+            if (!tx.running) {
+                // Join idle workers before resetting shared FPGA FIFO state.
+                // Recreate DSP too, discarding audio left by the previous run.
+                tx_pipeline_destroy(&tx);
+                if (caribou_fpga_soft_reset(&sys->fpga) != 0 ||
+                    tx_pipeline_init(&tx, sys, &sys->radio_high, &par) != 0) {
+                    fprintf(stderr, "[tx_tone] clean restart failed\n");
+                    break;
+                }
+                if (tx_pipeline_start(&tx) == 0) printf("TX: ON\n");
+            } else {
+                tx_pipeline_stop(&tx);
+                printf("TX: OFF\n");
+            }
+        } else if (choice == 2 || choice == 4) {
+            if (tx.running) {
+                printf("Stop TX before changing sample rate.\n");
+                continue;
+            }
+            tx_pipeline_destroy(&tx);
+            par.rf_fs = choice * 1000000;
+            if (tx_pipeline_init(&tx, sys, &sys->radio_high, &par) != 0) {
+                fprintf(stderr, "[tx_tone] rate change failed\n");
+                break;
+            }
+        } else if (choice == 99) {
+            break;
+        }
+    }
+
+    tx_pipeline_destroy(&tx);
+    cariboulite_radio_set_tx_samp_cutoff_flt(&sys->radio_high, 4000000);
+    printf("NBFM TX tone stopped.\n");
+}
+
+static void nbfm_rx(sys_st *sys)
+{
+    rx_pipeline_t rx = {0};
+    rx_params_t par = {
+        .freq_hz       = 430100000.0,
+        .pcm_dev       = "plughw:Loopback,0,0",
+        .deemph_tau_s  = 50e-6f,
+        .pcm_gain      = 8000.0f,
+        .fs_rf         = 4000000.0f,
+        .fs_audio      = 48000.0f,
+    };
+
+    if (rx_pipeline_init(&rx, sys, &sys->radio_high, &par) != 0) {
+        fprintf(stderr, "[rx] init failed\n");
+        return;
+    }
+
+    for (;;) {
+        int choice = -1;
+        printf("RX freq: %.0f Hz\n", par.freq_hz);
+        printf("RX rate: %.0f samples/s (%.0f samples/10ms)\n", par.fs_rf, par.fs_rf / 100);
+        printf(" [1] Toggle NBFM RX   [2] Select 2 MS/s   [4] Select 4 MS/s   [99] Return\n");
+        printf(" Choice: ");
+        if (scanf("%d", &choice) != 1) continue;
+        if (choice == 1) {
+            if (!rx.running) {
+                if (rx_pipeline_start(&rx) == 0) printf("RX: ON\n");
+            } else {
+                rx_pipeline_stop(&rx);
+                printf("RX: OFF\n");
+            }
+        } else if (choice == 2 || choice == 4) {
+            if (rx.running) {
+                printf("Stop RX before changing sample rate.\n");
+                continue;
+            }
+            rx_pipeline_destroy(&rx);
+            par.fs_rf = choice * 1000000.0f;
+            if (rx_pipeline_init(&rx, sys, &sys->radio_high, &par) != 0) {
+                fprintf(stderr, "[rx] rate change failed\n");
+                break;
+            }
+        } else if (choice == 99) {
+            break;
+        }
+    }
+
+    rx_pipeline_destroy(&rx);
+    cariboulite_radio_set_rx_sample_rate_flt(&sys->radio_high, 4000000);
+    printf("NBFM RX stopped.\n");
+}
+
+#include "monitor_loopback.h"
+
+static bool monitor_init_pipelines(tx_pipeline_t* tx, rx_pipeline_t* rx,
+                                   sys_st* sys, cariboulite_radio_state_st* radio,
+                                   const tx_params_t* txpar,
+                                   const rx_params_t* rxpar)
+{
+    if (tx_pipeline_init(tx, sys, radio, txpar) != 0) {
+        fprintf(stderr, "[monitor] TX initialization failed; returning to menu\n");
+        return false;
+    }
+    if (rx_pipeline_init(rx, sys, radio, rxpar) != 0) {
+        fprintf(stderr, "[monitor] RX initialization failed; returning to menu\n");
+        tx_pipeline_destroy(tx);
+        return false;
+    }
+    return true;
+}
+
+// Configuration entry is separate from tuning: shared hardware is tuned only
+// after stopping the opposite direction, immediately before starting a stream.
+static bool monitor_parse_frequency(const char* text,
+                                    const cariboulite_radio_state_st* radio,
+                                    double* hz)
+{
+    char* end;
+    errno = 0;
+    double mhz = strtod(text, &end);
+    if (end == text || errno || !radio_profile_finite(mhz)) return false;
+    while (*end == ' ' || *end == '\t') ++end;
+    if (*end) return false;
+    double value = mhz * 1000000.0;
+    if (!radio_profile_frequency_valid(radio->type,
+            radio->sys->board_info.numeric_product_id, value)) return false;
+    *hz = value;
+    return true;
+}
+
+static bool monitor_frequency_prompt(bool tx,
+                                     const cariboulite_radio_state_st* radio,
+                                     double* hz)
+{
+    char input[32] = {0};
+    size_t used = 0;
+    timeout(-1);
+    for (;;) {
+        move(getmaxy(stdscr)-1, 0); clrtoeol();
+        printw("%s MHz [%0.6f]: %s  (Enter saves; Esc cancels)",
+               tx ? "TX" : "RX", *hz/1e6, input);
+        refresh();
+        int key = getch();
+        if (key == 27 || key == ERR) { timeout(200); return false; }
+        if (key == '\n' || key == '\r' || key == KEY_ENTER) {
+            timeout(200);
+            return used && monitor_parse_frequency(input, radio, hz);
+        }
+        if (key == KEY_BACKSPACE || key == 127 || key == 8) {
+            if (used) input[--used] = 0;
+        } else if (key >= 32 && key <= 126 && used < sizeof(input)-1) {
+            input[used++] = (char)key; input[used] = 0;
+        }
+    }
+}
+
+static bool monitor_parse_noise_levels(const char* text, float* open_rms, float* close_rms)
+{
+    char* end;
+    errno = 0;
+    float opening = strtof(text, &end);
+    if (end == text || errno || (*end != ' ' && *end != '\t')) return false;
+    const char* second = end;
+    float closing = strtof(second, &end);
+    if (end == second || errno) return false;
+    while (*end == ' ' || *end == '\t') ++end;
+    uint32_t levels;
+    if (*end || !noise_squelch_pack_levels(opening, closing, &levels)) return false;
+    return noise_squelch_unpack_levels(levels, open_rms, close_rms);
+}
+
+static bool monitor_noise_levels_prompt(float* open_rms, float* close_rms)
+{
+    char input[48] = {0};
+    size_t used = 0;
+    timeout(-1);
+    for (;;) {
+        move(getmaxy(stdscr)-1, 0); clrtoeol();
+        printw("Noise RMS open close [%.3f %.3f]: %s  (Enter applies; Esc cancels)",
+               *open_rms, *close_rms, input);
+        refresh();
+        int key = getch();
+        if (key == 27 || key == ERR) { timeout(200); return false; }
+        if (key == '\n' || key == '\r' || key == KEY_ENTER) {
+            timeout(200);
+            return used && monitor_parse_noise_levels(input, open_rms, close_rms);
+        }
+        if (key == KEY_BACKSPACE || key == 127 || key == 8) {
+            if (used) input[--used] = 0;
+        } else if (key >= 32 && key <= 126 && used < sizeof(input)-1) {
+            input[used++] = (char)key; input[used] = 0;
+        }
+    }
+}
+
+static int monitor_apply_noise_levels(rx_pipeline_t* rx, rx_params_t* par,
+                                      float open_rms, float close_rms)
+{
+    if (rx_pipeline_set_noise_squelch_levels(rx, open_rms, close_rms) != 0) return -1;
+    rx_noise_squelch_status_t status;
+    if (rx_pipeline_get_noise_squelch_status(rx, &status) != 0) return -1;
+    par->noise_squelch_open_rms = status.open_rms;
+    par->noise_squelch_close_rms = status.close_rms;
+    return 0;
+}
+
+static int monitor_start_tx(tx_pipeline_t* tx, rx_pipeline_t* rx, const tx_params_t* par)
+{
+    rx_pipeline_stop(rx);
+    if (tx_pipeline_set_freq_power(tx, par->freq_hz, par->tx_power_dbm) != 0) return -1;
+    return tx_pipeline_start(tx);
+}
+
+static int monitor_start_rx(tx_pipeline_t* tx, rx_pipeline_t* rx, const rx_params_t* par)
+{
+    tx_pipeline_stop(tx);
+    if (rx_pipeline_set_freq(rx, par->freq_hz) != 0) return -1;
+    return rx_pipeline_start(rx);
+}
+
+// Recreate only the stopped RX pipeline. TX modulation and saved frequencies
+// are independent of the receive mode. A failed init is cleaned up by the caller.
+static int monitor_cycle_rx_mode(tx_pipeline_t* tx, rx_pipeline_t* rx,
+                                 const monitor_loopback_t* loopback,
+                                 sys_st* sys, rx_params_t* par)
+{
+    if (tx_pipeline_running(tx) || rx_pipeline_running(rx) ||
+        loopback->armed || loopback->active) return -EBUSY;
+    rx_params_t next = *par;
+    next.mode = par->mode == AUDIO_DEMOD_NBFM ? AUDIO_DEMOD_WBFM : AUDIO_DEMOD_NBFM;
+    cariboulite_radio_state_st* radio = rx->radio;
+    rx_pipeline_destroy(rx);
+    if (rx_pipeline_init(rx, sys, radio, &next) != 0) return -1;
+    *par = next;
+    return 0;
+}
+
+static const char* monitor_register_text(int value, char text[5])
+{
+    if (value >= 0 && value <= 255) snprintf(text, 5, "0x%02X", (unsigned)value);
+    else snprintf(text, 5, "--");
+    return text;
+}
+
+static void monitor_print_register_pair(const modem_snapshot* rf09,
+                                        const modem_snapshot* rf24,
+                                        unsigned index)
+{
+    char low[5], high[5];
+    printw("    RF09-%-6s:%s  RF24-%-6s:%s\n",
+        modem_snapshot_radio_names[index], monitor_register_text(rf09->radio[index], low),
+        modem_snapshot_radio_names[index], monitor_register_text(rf24->radio[index], high));
+}
+
+static void monitor_print_readback_pair(const char* rx_name, double rx_value,
+                                         const char* tx_name, double tx_value)
+{
+    char rx_text[24], tx_text[24];
+    if (rx_value > 0) snprintf(rx_text, sizeof(rx_text), "%.0f", rx_value);
+    else snprintf(rx_text, sizeof(rx_text), "unavailable");
+    if (tx_value > 0) snprintf(tx_text, sizeof(tx_text), "%.0f", tx_value);
+    else snprintf(tx_text, sizeof(tx_text), "unavailable");
+    printw("    RX %-14s: %-11s TX %-14s: %s\n", rx_name, rx_text, tx_name, tx_text);
+}
+
+void monitor_modem_status(sys_st *sys)
+{
+	//mlockall(MCL_CURRENT | MCL_FUTURE);
+    
+    // --- NEW: pipelines ---
+    tx_pipeline_t txp = {0};
+    rx_pipeline_t rxp = {0};
+    monitor_loopback_t loopback = {0};
+    cariboulite_radio_state_st* radio = &sys->radio_high; // RF24 / HiF
+
+    tx_params_t txpar = {
+        .freq_hz      = 430100000.0,
+        .tx_power_dbm = -12,                    // Requested TX power for menu 14 (dBm)
+        .rf_fs        = 4000000,
+        .tone_mode    = false,
+        .tone_hz      = 600.0f,
+        .tone_amp     = 0.4f,
+        .mic_dev      = "plughw:Loopback,1,1", // app reads
+        .out_scale    = 4000.0f,
+        .f_dev_hz     = NBFM_DEFAULT_DEVIATION_HZ,
+    };
+
+    rx_params_t rxpar = {
+        .freq_hz       = 430100000.0,
+        .pcm_dev       = "plughw:Loopback,0,0", // app writes
+        .deemph_tau_s  = 50e-6f,
+        .pcm_gain      = 8000.0f,
+        .noise_squelch_open_rms = NOISE_SQUELCH_OPEN_RMS,
+        .noise_squelch_close_rms = NOISE_SQUELCH_CLOSE_RMS,
+        .fs_rf         = 4000000.0f,
+        .fs_audio      = 48000.0f,
+    };
+
+    // init once (threads idle until start)
+    if (!monitor_init_pipelines(&txp, &rxp, sys, radio, &txpar, &rxpar)) return;
+
+	nbfm_tx_active = false;
+    nbfm_rx_active = false;
+
+	initscr(); // Initialize ncurses mode
+	cbreak();
+	noecho();
+	timeout(200);
+        
+    const char* rate_notice = "[1] 1 MS/s  [2] 2 MS/s  [4] 4 MS/s: stop TX and RX before changing";
+
+    at86rf215_st *modem = &sys->modem;
+	caribou_fpga_st *fpga = &sys->fpga;
+    rffc507x_st *mixer = &sys->mixer;
+    rffc507x_device_id_st mix_id = {0};
+    rffc507x_device_status_st mix_status = {0};
+    
+	caribou_fpga_smi_fifo_status_st status = {0};
+    uint8_t *val = (uint8_t *)&status;
+
+	uint8_t debug = 0x00;
+	caribou_fpga_io_ctrl_rfm_en mode = 0x00;
+    
+	//int screen_max_y; 
+	int screen_max_x;
+	// int ret = 0;
+
+	time_t current_time;
+	clock_t loop_start, loop_end;
+	float elapsed_time = 0.0;
+	
+    // main loop to monitor modem status
+	while (1)
+    {
+		
+		loop_start = clock();
+		//getmaxyx(stdscr, screen_max_y, screen_max_x);
+		screen_max_x = getmaxx(stdscr);
+		clear();
+
+		time(&current_time);
+		move(0,0);
+		printw("%s [T] TX [R] RX [M] RX mode [L] loopback [1/2/4] MS/s [Q] quit [X] stats",
+               radio->type == cariboulite_channel_s1g ? "S1G/RF09" : "HiF/RF24");
+		move(0, screen_max_x - 12);
+		printw("%12ld",current_time);
+        move(1,0);
+        printw("Requested TX: %d dBm  TX %.0f / RX %.0f MS/s", txpar.tx_power_dbm,
+            txpar.rf_fs / 1000000.0, rxpar.fs_rf / 1000000);
+        move(1, screen_max_x - 12);
+        printw("%12.5f", elapsed_time);
+        move(2,0);
+        printw("Requested [F] TX %.6f MHz  [G] RX %.6f MHz", txpar.freq_hz/1e6, rxpar.freq_hz/1e6);
+        move(3,0);
+        printw("SMI timing settings: (n x 62.5ns)");
+        struct smi_settings smi_set = {0};
+        HW_LOCK();
+        bool smi_settings_valid = ioctl(sys->smi.filedesc,
+            BCM2835_SMI_IOC_GET_SETTINGS, &smi_set) == 0;
+        HW_UNLOCK();
+        move(4,0);
+        if (smi_settings_valid)
+            printw("    reading setup: %d strobe: %d  hold: %d pace: %d",
+                smi_set.read_setup_time, smi_set.read_strobe_time,
+                smi_set.read_hold_time, smi_set.read_pace_time);
+        else
+            printw("    reading timings: unavailable");
+        move(5,0);
+        if (smi_settings_valid)
+            printw("    writing setup: %d strobe: %d  hold: %d pace: %d",
+                smi_set.write_setup_time, smi_set.write_strobe_time,
+                smi_set.write_hold_time, smi_set.write_pace_time);
+        else
+            printw("    writing timings: unavailable");
+        move(6,0);
+        printw("AT86RF215 Modem Status Registers (-- unavailable):");
+        move(7,0);
+		//refresh();
+
+        // Use the same non-destructive register sampler as the backend. A
+        // fresh snapshot keeps failed reads unavailable instead of reusing bytes.
+        modem_snapshot rf09, rf24;
+        modem_snapshot_init(&rf09, at86rf215_rf_channel_900mhz);
+        modem_snapshot_init(&rf24, at86rf215_rf_channel_2400mhz);
+        modem_snapshot_refresh(&rf09, modem, at86rf215_rf_channel_900mhz, &g_hw_lock);
+        modem_snapshot_refresh(&rf24, modem, at86rf215_rf_channel_2400mhz, &g_hw_lock);
+        const modem_snapshot* active = radio->type == cariboulite_channel_s1g ? &rf09 : &rf24;
+        char cfg[5], clko[5], reset_text[5], iq0[5], iq1[5];
+        printw("    RF_CFG:%s  RF_CLKO:%s  RF_RST:%s\n",
+            monitor_register_text(active->common[1], cfg),
+            monitor_register_text(active->common[2], clko),
+            monitor_register_text(active->common[0], reset_text));
+        printw("    IQIFC0:%s  IQIFC1:%s  IQIFC2:not polled\n",
+            monitor_register_text(active->common[5], iq0),
+            monitor_register_text(active->common[6], iq1));
+        static const unsigned display_registers[] = {
+            14, 11, 10, 12, 13, 20, 19, 21, 23, 24, 1, 3, 27, 28, 2, 22,
+        };
+        for (size_t i = 0; i < sizeof(display_registers) / sizeof(display_registers[0]); ++i)
+            monitor_print_register_pair(&rf09, &rf24, display_registers[i]);
+        printw("    RF09-IRQS:not polled  RF24-IRQS:not polled\n");
+        printw("    RSSI dBm: RF09 ");
+        if (rf09.radio[14] >= 0) printw("%+d", (int)(int8_t)rf09.radio[14]);
+        else printw("unavailable");
+        printw("  RF24 ");
+        if (rf24.radio[14] >= 0) printw("%+d", (int)(int8_t)rf24.radio[14]);
+        else printw("unavailable");
+        printw("\n");
+
+        HW_LOCK();
+        rffc507x_readback_status(mixer, &mix_id, &mix_status);
+        HW_UNLOCK();
+        printw("RFFC5071 Mixer Status Registers\n");
+        printw("    ID: 0x%04X REV: 0x%04X\n", mix_id.fields.device_id, mix_id.fields.device_rev);
+        printw("    STAT: 0x%04X PLL_LOCK: %d, CT_CAL: %d, KV_CAL: %d, CT_CAL_FAIL: %d\n",
+			mix_status.raw,
+			mix_status.fields.pll_lock, mix_status.fields.coarse_tune_cal_value, 
+			mix_status.fields.kv_cal_value, mix_status.fields.coarse_tune_cal_fail);
+
+        //refresh();
+        HW_LOCK();
+        bool fifo_status_valid = caribou_fpga_get_smi_ctrl_fifo_status(&sys->fpga, &status) == 0;
+        HW_UNLOCK();
+        if (fifo_status_valid) {
+            printw("FPGA SMI info (0x%02X):\n", *val);
+            printw("    RX FIFO EMPTY: %d\n", status.rx_fifo_empty);
+            printw("    TX FIFO FULL : %d\n", status.tx_fifo_full);
+            printw("    RX SOURCE    : %d    // 0=RF09 1=RF24; unused in TX\n", status.smi_channel);
+            printw("    SMI DIRECTION: %d    // 0=TX   1=RX\n", status.smi_direction);
+        } else printw("FPGA SMI info: unavailable\n");
+        //refresh();
+        HW_LOCK();
+        bool mode_valid = caribou_fpga_get_io_ctrl_mode(&sys->fpga, &debug, &mode) == 0;
+        HW_UNLOCK();
+        if (mode_valid) printw("    DEBUG = %d, MODE: '%s'\n", debug, caribou_fpga_get_mode_name(mode));
+        else printw("    FPGA mode: unavailable\n");
+        //refresh();
+        if (loopback.active && monitor_loopback_read(sys, &loopback) != 0) {
+            monitor_loopback_stop(sys, &loopback);
+            rate_notice = "Loopback read failed. [L] retries cleanup if locked; see debug log.";
+        }
+        printw("Interface loopback: %s | RF TX blocked while enabled\n",
+               loopback.active ? "ON" : loopback.armed ? "CLEANUP REQUIRED" : "OFF");
+        if (loopback.armed) {
+            printw("    FPGA test frame: 0x84037048; capture: HiF RX (decoded I/Q)\n");
+            printw("    Samples: %llu  timeouts: %lu  latest batch preview: %d\n",
+                   loopback.total, loopback.timeouts, loopback.count);
+            if (!loopback.count) printw("    No fresh samples. Requires the loopback-capable FPGA image.\n");
+            for (int j = 0; j < loopback.count; ++j) {
+                printw(" %2d:I=%04X Q=%04X", j,
+                       (unsigned)(uint16_t)loopback.samples[j].i,
+                       (unsigned)(uint16_t)loopback.samples[j].q);
+                if (j % 4 == 3 || j == loopback.count - 1) printw("\n");
+            }
+        }
+        if (!loopback.armed) {
+            printw("IQ Data Stream:\n");
+            printw("    TX_I:0x%08X  TX_Q:0x%08X\n", latest_tx_sample.i, latest_tx_sample.q);
+            printw("    RX_I:0x%08X  RX_Q:0x%08X\n", latest_rx_sample.i, latest_rx_sample.q);
+        }
+        uint8_t tx_sample_gap = 255;
+        HW_LOCK();
+        bool tx_gap_valid = caribou_fpga_get_sys_ctrl_tx_sample_gap(fpga, &tx_sample_gap) == 0;
+        HW_UNLOCK();
+        if (tx_gap_valid) printw("    TX sample gap      : %d\n", tx_sample_gap);
+        else printw("    TX sample gap      : unavailable\n");
+        printw("Modem readback (%s, Hz):\n", radio->type == cariboulite_channel_s1g ? "RF09" : "RF24");
+        monitor_print_readback_pair("analog BW", radio_profile_rx_bandwidth_hz(active->radio[10]),
+            "analog cutoff", radio_profile_tx_bandwidth_hz(active->radio[19]));
+        monitor_print_readback_pair("sample rate", radio_profile_sample_rate_hz(active->radio[11]),
+            "sample rate", radio_profile_sample_rate_hz(active->radio[20]));
+        monitor_print_readback_pair("digital cutoff", radio_profile_digital_cutoff_hz(active->radio[11]),
+            "digital cutoff", radio_profile_digital_cutoff_hz(active->radio[20]));
+        //refresh();
+
+        // --- TX FIFO stats panel ---
+        
+        tx_pipeline_stats_t tst;
+        tx_pipeline_get_stats(&txp, &tst);
+        rf10_stats_t stx = tst.txq;
+        float tx_fill_pct = (stx.cap ? (100.0f * (float)stx.count / (float)stx.cap) : 0.f);
+        
+        // optional: rates since last sample
+        static struct timespec tx_last_ts = {0};
+        static rf10_stats_t    tx_last_s  = {0};
+        double tx_rate_puts = 0.0, tx_rate_gets = 0.0;
+
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        if (tx_last_ts.tv_sec != 0) {
+        double dt = (now.tv_sec - tx_last_ts.tv_sec) + (now.tv_nsec - tx_last_ts.tv_nsec)/1e9;
+            if (dt > 0.0 && stx.puts >= tx_last_s.puts && stx.gets >= tx_last_s.gets) {
+                tx_rate_puts = (double)(stx.puts - tx_last_s.puts) / dt;
+                tx_rate_gets = (double)(stx.gets - tx_last_s.gets) / dt;
+            }
+        }
+        tx_last_ts = now; tx_last_s = stx;
+        
+        printw("Linux TX FIFO: %zu samples/frame (10 ms)\n", tx_pipeline_frame_samples(&txp));
+        printw("    depth: %zu/%zu (%.0f%%), min:%zu max:%zu\n",
+            stx.count, stx.cap, tx_fill_pct, stx.min_depth, stx.max_depth);
+        printw("    puts:%zu gets:%zu drops:%zu tO_put:%zu tO_get:%zu\n",
+            stx.puts, stx.gets, stx.drops, stx.timeouts_put, stx.timeouts_get);
+        printw("    rate: puts %.1f/s, gets %.1f/s  (expect ~100 fps @ 10ms)\n",
+            tx_rate_puts, tx_rate_gets);
+
+        // If you want to highlight trouble:
+        if (stx.drops > 0)               printw("    NOTE: Overwrites occurred (producer faster than writer)\n");
+        if (stx.timeouts_put > 0)        printw("    NOTE: Producer timed out waiting to enqueue\n");
+        if (stx.timeouts_get > 0)        printw("    NOTE: Writer timed out waiting for frames\n");
+    
+        rx_pipeline_stats_t rst;
+        rx_pipeline_get_stats(&rxp, &rst);
+        rf10_stats_t srx = rst.rxq;
+        float rx_fill_pct = (srx.cap ? (100.0f * (float)srx.count / (float)srx.cap) : 0.f);
+        
+        // optional: rates since last sample
+        static struct timespec rx_last_ts = {0};
+        static rf10_stats_t    rx_last_s  = {0};
+        double rx_rate_puts = 0.0, rx_rate_gets = 0.0;
+
+        if (rx_last_ts.tv_sec != 0) {
+        double dt = (now.tv_sec - rx_last_ts.tv_sec) + (now.tv_nsec - rx_last_ts.tv_nsec)/1e9;
+            if (dt > 0.0 && srx.puts >= rx_last_s.puts && srx.gets >= rx_last_s.gets) {
+                rx_rate_puts = (double)(srx.puts - rx_last_s.puts) / dt;
+                rx_rate_gets = (double)(srx.gets - rx_last_s.gets) / dt;
+            }
+        }
+        rx_last_ts = now; rx_last_s = srx;
+        
+        printw("Linux RX FIFO: %zu samples/frame (10 ms)\n",
+               rx_pipeline_frame_samples(&rxp));
+        printw("    depth: %zu/%zu (%.0f%%), min:%zu max:%zu\n",
+            srx.count, srx.cap, rx_fill_pct, srx.min_depth, srx.max_depth);
+        printw("    puts:%zu gets:%zu drops:%zu tO_put:%zu tO_get:%zu\n",
+            srx.puts, srx.gets, srx.drops, srx.timeouts_put, srx.timeouts_get);
+        printw("    rate: puts %.1f/s, gets %.1f/s  (expect ~100 fps @ 10ms)\n",
+            rx_rate_puts, rx_rate_gets);
+        
+        // Same “trouble” hints, adapted to RX roles
+        if (srx.drops > 0)               printw("    NOTE: Overwrites occurred (demod slower than reader)\n");
+        if (srx.timeouts_put > 0)        printw("    NOTE: Reader timed out waiting to enqueue\n");
+        if (srx.timeouts_get > 0)        printw("    NOTE: Demod timed out waiting for frames\n");
+
+        printw("RX mode: %s  [M] cycle (TX/RX/loopback stopped); TX mode: NBFM\n",
+            rxpar.mode == AUDIO_DEMOD_WBFM ? "WBFM mono" : "NBFM");
+        printw("Squelch: [N] noise %s  [C] carrier %s  audio %s\n",
+            rxpar.mode == AUDIO_DEMOD_WBFM ? "N/A (WBFM)" : rxpar.noise_squelch_disabled ? "OFF" : "ON",
+            rxpar.carrier_squelch_enabled ? "ON" : "OFF",
+            !rx_pipeline_running(&rxp) ? "IDLE" :
+            rx_pipeline_squelch_open(&rxp) ? "OPEN" : "MUTED");
+        if (rxpar.mode == AUDIO_DEMOD_NBFM) {
+            rx_noise_squelch_status_t noise;
+            if (rx_pipeline_get_noise_squelch_status(&rxp, &noise) == 0) {
+                if (noise.valid)
+                    printw("Noise RMS %.3f  detector %s  [S] open %.3f / close %.3f\n",
+                        noise.rms, noise.detector_open ? "OPEN" : "CLOSED",
+                        noise.open_rms, noise.close_rms);
+                else printw("Noise RMS --  [S] open %.3f / close %.3f\n",
+                        noise.open_rms, noise.close_rms);
+                printw("Higher noise thresholds admit noisier signals; levels can change during RX.\n");
+            }
+        }
+        printw("\n%s\n", rate_notice);
+        refresh();
+        int key = getch();
+        if (key == 's' || key == 'S') {
+            if (rxpar.mode != AUDIO_DEMOD_NBFM) {
+                rate_notice = "Noise-squelch levels are available in NBFM mode.";
+                continue;
+            }
+            float opening = rxpar.noise_squelch_open_rms;
+            float closing = rxpar.noise_squelch_close_rms;
+            if (monitor_noise_levels_prompt(&opening, &closing) &&
+                monitor_apply_noise_levels(&rxp, &rxpar, opening, closing) == 0)
+                rate_notice = "Noise-squelch levels applied; saved for this monitor session.";
+            else rate_notice = "Levels retained. Enter 0 < open < close <= 8.0 (0.001 RMS steps).";
+            continue;
+        }
+        if (key == 'm' || key == 'M') {
+            int result = monitor_cycle_rx_mode(&txp, &rxp, &loopback, sys, &rxpar);
+            if (result == -EBUSY) {
+                rate_notice = "Stop TX, RX and interface loopback before changing RX mode.";
+            } else if (result != 0) {
+                fprintf(stderr, "[monitor] RX mode initialization failed; returning to menu\n");
+                break;
+            } else {
+                rate_notice = "RX mode selected. [R] starts RX; TX remains NBFM.";
+            }
+            continue;
+        }
+        if (key == 'n' || key == 'N' || key == 'c' || key == 'C') {
+            if ((key == 'n' || key == 'N') && rxpar.mode == AUDIO_DEMOD_WBFM) {
+                rate_notice = "Noise squelch is available in NBFM only; [C] controls carrier squelch.";
+                continue;
+            }
+            if (key == 'n' || key == 'N') rxpar.noise_squelch_disabled = !rxpar.noise_squelch_disabled;
+            else rxpar.carrier_squelch_enabled = !rxpar.carrier_squelch_enabled;
+            rx_pipeline_set_squelch(&rxp, !rxpar.noise_squelch_disabled,
+                                    rxpar.carrier_squelch_enabled);
+            continue;
+        }
+        if (key == 'l' || key == 'L') {
+            if (loopback.armed) {
+                if (monitor_loopback_stop(sys, &loopback) != 0)
+                    rate_notice = "Loopback cleanup failed; TX/RX locked. [L] retries cleanup.";
+                else rate_notice = "Loopback OFF; radios stopped. [T]/[R] available.";
+            } else {
+                tx_pipeline_stop(&txp);
+                rx_pipeline_stop(&rxp);
+                if (monitor_loopback_start(sys, &loopback) != 0)
+                    rate_notice = "Loopback start failed. [L] retries cleanup if locked.";
+                else rate_notice = "Loopback ON: RF TX disabled. [L] stops; [Q] cleans up and exits.";
+            }
+            continue;
+        }
+        if (monitor_loopback_blocks_control(&loopback, key)) {
+            rate_notice = "Stop interface loopback with [L] before TX, RX, frequency or rate changes.";
+            continue;
+        }
+        if ((key == 'q' || key == 'Q') && loopback.armed &&
+            monitor_loopback_stop(sys, &loopback) != 0) {
+            rate_notice = "Cleanup failed; staying in monitor with TX blocked. [L] retries.";
+            continue;
+        }
+        if (key == 'f' || key == 'F' || key == 'g' || key == 'G') {
+            if (tx_pipeline_running(&txp) || rx_pipeline_running(&rxp)) {
+                rate_notice = "Stop TX and RX before editing frequencies.";
+                continue;
+            }
+            bool tx = key == 'f' || key == 'F';
+            if (monitor_frequency_prompt(tx, radio, tx ? &txpar.freq_hz : &rxpar.freq_hz))
+                rate_notice = "Frequency saved; applied when that direction starts.";
+            else if (radio->type == cariboulite_channel_s1g)
+                rate_notice = "Unchanged: cancelled or invalid MHz (377-530 or 779-1020).";
+            else rate_notice = sys->board_info.numeric_product_id == system_type_cariboulite_full
+                ? "Unchanged: cancelled or invalid MHz (1 <= MHz < 6000)."
+                : "Unchanged: cancelled or invalid MHz (2385 <= MHz <= 2495).";
+            continue;
+        }
+        if (key == '1' || key == '2' || key == '4') {
+            if (tx_pipeline_running(&txp) || rx_pipeline_running(&rxp)) {
+                rate_notice = "Stop TX and RX before changing sample rate.";
+                continue;
+            }
+            tx_pipeline_destroy(&txp);
+            rx_pipeline_destroy(&rxp);
+            txpar.rf_fs = (key - '0') * 1000000;
+            rxpar.fs_rf = txpar.rf_fs;
+            if (!monitor_init_pipelines(&txp, &rxp, sys, radio, &txpar, &rxpar)) break;
+            rate_notice = "TX/RX rate selected. [T] starts TX; [R] starts RX.";
+            continue;
+        }
+		
+		if(key == 'q' || key == 'Q') // Press 'q' to exit
+		{
+			if (rx_pipeline_running(&rxp)) {
+                rx_pipeline_stop(&rxp);
+            }
+            if (tx_pipeline_running(&txp)) {
+                tx_pipeline_stop(&txp);
+            }
+            break;
+		}
+
+		if (key == 'x' || key == 'X') {      // reset FIFO diagnostics
+			tx_pipeline_reset_stats(&txp);
+            rx_pipeline_reset_stats(&rxp);
+		}
+
+        // --- T: toggle TX ---
+        if (key == 't' || key == 'T') {
+            if (!tx_pipeline_running(&txp)) {
+                uint8_t iq_control = 0;
+                if (at86rf215_read_buffer(modem, REG_RF_IQIFC0, &iq_control, 1) != 0 ||
+                    (iq_control & 0x80)) {
+                    rate_notice = "TX blocked: modem loopback enabled or register read failed.";
+                    continue;
+                }
+                rx_pipeline_stop(&rxp);
+                // Join both pipelines before resetting shared FPGA state.
+                tx_pipeline_destroy(&txp);
+                rx_pipeline_destroy(&rxp);
+                if (caribou_fpga_soft_reset(fpga) != 0 ||
+                    !monitor_init_pipelines(&txp, &rxp, sys, radio, &txpar, &rxpar)) break;
+                if (monitor_start_tx(&txp, &rxp, &txpar) != 0)
+                    rate_notice = "TX tuning/start failed; see debug log.";
+                else rate_notice = "TX running at the saved TX frequency.";
+            } else {
+                tx_pipeline_stop(&txp);
+            }
+        }
+
+        // --- R: toggle RX ---
+        if (key == 'r' || key == 'R') {
+            if (!rx_pipeline_running(&rxp)) {
+                if (monitor_start_rx(&txp, &rxp, &rxpar) != 0)
+                    rate_notice = "RX tuning/start failed; see debug log.";
+                else rate_notice = "RX running at the saved RX frequency.";
+            } else {
+                rx_pipeline_stop(&rxp);
+            }
+        }
+        
+		loop_end = clock();
+		elapsed_time = (float)(loop_end - loop_start)/ (float)CLOCKS_PER_SEC;
+
+	}
+    
+    smi_idle(sys);  // force driver to IDLE (unblocks reads/writes if they’re waiting)
+    
+    HW_LOCK();
+    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_tx, false);
+    cariboulite_radio_activate_channel(radio, cariboulite_channel_dir_rx, false);
+    HW_UNLOCK();
+    usleep(30 * 1000);
+    
+    // put driver idle first
+    smi_idle(sys);
+
+    // stop/destroy pipelines (order doesn’t matter now)
+    tx_pipeline_destroy(&txp);
+    rx_pipeline_destroy(&rxp);
+
+    printw("Monitoring stopped.\n");
+	//refresh();
+	endwin(); // End ncurses mode
+	return;
+}
 
 //=================================================
 int app_menu(sys_st* sys)
@@ -739,19 +1601,19 @@ int app_menu(sys_st* sys)
 	printf("	 | |__| (_| | |  | | |_) | (_) | |_| | |___| | ||  __/  \n");
 	printf("	  \\____\\__,_|_|  |_|_.__/ \\___/ \\__,_|_____|_|\\__\\___|  \n");
 	printf("\n\n");
-	
+
 	while (1)
 	{
 		int choice = -1;
 		printf(" Select a function:\n");
 		for (int i = 0; i < NUM_HANDLES; i++)
 		{
-			printf(" [%d]  %s\n", handles[i].num, handles[i].text);
+			printf(" [%2d]  %s\n", handles[i].num, handles[i].text);
 		}
-		printf(" [%d]  %s\n", app_selection_quit, "Quit");
+		printf(" [%2d]  %s\n", app_selection_quit, "Quit");
 
 		printf("    Choice:   ");
-		if (scanf("%d", &choice) != 1) continue;
+		if (scanf("%2d", &choice) != 1) continue;
 
 		if ((app_selection_en)(choice) == app_selection_quit) return 0;
 		for (int i = 0; i < NUM_HANDLES; i++)
@@ -770,6 +1632,10 @@ int app_menu(sys_st* sys)
 				}
 			}
 		}
+
 	}
 	return 1;
 }
+
+#include "baseline_test.h"
+#include "baseline_test.inc"

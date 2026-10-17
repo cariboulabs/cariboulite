@@ -1,0 +1,267 @@
+{
+  "measured_at_utc": "2026-10-10T17:41:06.447238+00:00",
+  "machine": "Raspberry Pi 4 Model B Rev 1.5",
+  "architecture": "aarch64",
+  "kernel": "6.18.50+rpt-rpi-v8",
+  "compiler": "cc (Debian 14.2.0-19) 14.2.0",
+  "compiler_flags": [
+    "-O3",
+    "-ffast-math",
+    "-fno-math-errno",
+    "-funroll-loops",
+    "-DNDEBUG",
+    "-fPIE",
+    "-D_GNU_SOURCE",
+    "-D_POSIX_C_SOURCE=200809L",
+    "-Wall",
+    "-Wextra"
+  ],
+  "cpu_affinity": 3,
+  "cpu_frequency_sysfs_after_run_khz": {
+    "scaling_governor": "ondemand",
+    "scaling_cur_freq": "1800000",
+    "scaling_min_freq": "600000",
+    "scaling_max_freq": "1800000"
+  },
+  "clock": "CLOCK_THREAD_CPUTIME_ID",
+  "baseline": "d288d4c40c871b3e9daf0be331c399dc8c623d3f",
+  "baseline_sha256": "5280100263e7b46be174be43342d65888a343e86a40d1b0683119c448d656ccb",
+  "atan2f_source_sha256": "c4fead1cc07f3e89d3c93837efcaa8beff701de6d292032c7df25602641f7955",
+  "shared_header_sha256": {
+    "fm_demod_internal.h": "664111964c8aa36ec9f9973df4a7a54ff825747e0664e583d55068ae47b2d914",
+    "nbfm_demod.h": "f89b6aa951ae3abc3e440115930ce57e23d004c4438b684901486f7ae61bae8c",
+    "audio_demod.h": "ffe108018e29267ce74a9a2fea8b135fd0c171ec4492dc3f288685489bc40c9e",
+    "fm_audio.h": "6036390b26eec9581439f9005d3f7a37260628baf99c1fa038db383207a41c4c",
+    "fm_discriminator.h": "e71eac4da7a11679a3944d29647f9a7a862c853d51e7f3d0a420b38d8edbaab2",
+    "nbfm_channel_filter.h": "22760ef83aaf26b5ea675352cc306888b2bd26528e06348bd7b3abafae55a23f",
+    "nbfm_channel_coeffs.h": "fea32e96df8902523c00d2d6dfd551c47d10bcfe2b1b2c3bd6dcd8ad4b494ee2",
+    "nbfm_defaults.h": "ec714a98b5bac70cad2b341c275c1b511805081763368ce3b153041e7ae39822",
+    "math_compat.h": "4770ca3d2213959bd3be09e1b7c810573221706b5b712c2c515b03babc5bba99",
+    "iq16.h": "db8ced1c9deb41712717d0f5f562665d8849cd77f550c013df66f19f407a9d33",
+    "audio_format.h": "1ebc4a94194c0335b13910224fbab2aaa614a348e10153fbaf70fcfa5c1b75e8"
+  },
+  "rounds": 7,
+  "blocks_per_round_per_policy": 100,
+  "scope": "Only standalone NBFM DSP, including channel filter, limiter, angle, raw tap and audio; excludes input generation, RF transport, queues, squelch, ALSA and other threads. CPU percentages are of one core, not the whole four-core Pi.",
+  "angle_accuracy": {
+    "sweep_points": 262145,
+    "legacy_max_absolute_error_rad": 5.14189533052,
+    "atan2f_max_absolute_error_rad": 1.19205350035e-07,
+    "legacy_max_error_within_2500Hz_rad": 0.0163345449624,
+    "atan2f_max_error_within_2500Hz_rad": 1.48956332824e-08,
+    "zero_product_atan2f": 0
+  },
+  "cases": [
+    {
+      "rf_rate": 1000000,
+      "input": "three-tone FM, +/-2.5 kHz, +500 Hz offset",
+      "legacy": {
+        "round_seconds_per_block": [
+          0.00026674958,
+          0.00026557679,
+          0.00026604013,
+          0.00026562203,
+          0.00026651031,
+          0.00026665502,
+          0.00026552221
+        ],
+        "peak_ms_per_block": 0.33176,
+        "median_ms_per_10ms_block": 0.26604013000000004,
+        "one_core_percent": 2.6604013
+      },
+      "atan2f": {
+        "round_seconds_per_block": [
+          0.00029624313,
+          0.00029609428,
+          0.00029603689,
+          0.00029575507,
+          0.00029614832,
+          0.00029605107,
+          0.00029684792
+        ],
+        "peak_ms_per_block": 0.335,
+        "median_ms_per_10ms_block": 0.29609428000000004,
+        "one_core_percent": 2.9609428
+      },
+      "added_one_core_percentage_points": 0.3005415,
+      "paired_median_added_us_per_10ms_block": 29.99675999999996,
+      "paired_median_added_one_core_percentage_points": 0.29996759999999956
+    },
+    {
+      "rf_rate": 1000000,
+      "input": "deterministic full-band RF noise",
+      "legacy": {
+        "round_seconds_per_block": [
+          0.00026762519,
+          0.00026649354,
+          0.00026637019,
+          0.00027111327,
+          0.00026694778,
+          0.00026670417,
+          0.00026663882
+        ],
+        "peak_ms_per_block": 0.33063,
+        "median_ms_per_10ms_block": 0.26670417,
+        "one_core_percent": 2.6670417000000004
+      },
+      "atan2f": {
+        "round_seconds_per_block": [
+          0.00029686928,
+          0.00029614501,
+          0.00029599792,
+          0.00029819205,
+          0.0002964165,
+          0.00029613316,
+          0.00029652216
+        ],
+        "peak_ms_per_block": 0.373148,
+        "median_ms_per_10ms_block": 0.29641649999999997,
+        "one_core_percent": 2.964165
+      },
+      "added_one_core_percentage_points": 0.29712329999999954,
+      "paired_median_added_us_per_10ms_block": 29.468719999999994,
+      "paired_median_added_one_core_percentage_points": 0.2946871999999999
+    },
+    {
+      "rf_rate": 2000000,
+      "input": "three-tone FM, +/-2.5 kHz, +500 Hz offset",
+      "legacy": {
+        "round_seconds_per_block": [
+          0.00031409834,
+          0.00031276406,
+          0.00031294425,
+          0.00031327779,
+          0.00031226986,
+          0.00031284462,
+          0.00031297314
+        ],
+        "peak_ms_per_block": 0.347797,
+        "median_ms_per_10ms_block": 0.31294425,
+        "one_core_percent": 3.1294425
+      },
+      "atan2f": {
+        "round_seconds_per_block": [
+          0.00034430185,
+          0.00034717983,
+          0.00034457493,
+          0.00034452042,
+          0.00034578482,
+          0.00034522888,
+          0.00034555197
+        ],
+        "peak_ms_per_block": 0.39863,
+        "median_ms_per_10ms_block": 0.34522888,
+        "one_core_percent": 3.4522888000000003
+      },
+      "added_one_core_percentage_points": 0.32284630000000014,
+      "paired_median_added_us_per_10ms_block": 32.38425999999998,
+      "paired_median_added_one_core_percentage_points": 0.3238425999999998
+    },
+    {
+      "rf_rate": 2000000,
+      "input": "deterministic full-band RF noise",
+      "legacy": {
+        "round_seconds_per_block": [
+          0.00031533515,
+          0.00031371683,
+          0.00031401365,
+          0.00031437741,
+          0.00031377368,
+          0.00031356209,
+          0.00031442839
+        ],
+        "peak_ms_per_block": 0.353723,
+        "median_ms_per_10ms_block": 0.31401365,
+        "one_core_percent": 3.1401365
+      },
+      "atan2f": {
+        "round_seconds_per_block": [
+          0.00034555832,
+          0.00034684336,
+          0.00034531412,
+          0.00034550464,
+          0.00034513093,
+          0.00034533845,
+          0.00034468748
+        ],
+        "peak_ms_per_block": 0.387093,
+        "median_ms_per_10ms_block": 0.34533844999999996,
+        "one_core_percent": 3.4533845
+      },
+      "added_one_core_percentage_points": 0.31324799999999975,
+      "paired_median_added_us_per_10ms_block": 31.300470000000022,
+      "paired_median_added_one_core_percentage_points": 0.3130047000000002
+    },
+    {
+      "rf_rate": 4000000,
+      "input": "three-tone FM, +/-2.5 kHz, +500 Hz offset",
+      "legacy": {
+        "round_seconds_per_block": [
+          0.00042259522,
+          0.00042176302,
+          0.00042008739,
+          0.0004219201,
+          0.00041940406,
+          0.00041966752,
+          0.00041878862
+        ],
+        "peak_ms_per_block": 0.479,
+        "median_ms_per_10ms_block": 0.42008739,
+        "one_core_percent": 4.2008738999999995
+      },
+      "atan2f": {
+        "round_seconds_per_block": [
+          0.00045045336,
+          0.00045288128,
+          0.00045226503,
+          0.00045131279,
+          0.00045456465,
+          0.00045283653,
+          0.00045411371
+        ],
+        "peak_ms_per_block": 0.51737,
+        "median_ms_per_10ms_block": 0.45283653,
+        "one_core_percent": 4.5283653
+      },
+      "added_one_core_percentage_points": 0.32749140000000043,
+      "paired_median_added_us_per_10ms_block": 32.17764000000003,
+      "paired_median_added_one_core_percentage_points": 0.3217764000000003
+    },
+    {
+      "rf_rate": 4000000,
+      "input": "deterministic full-band RF noise",
+      "legacy": {
+        "round_seconds_per_block": [
+          0.00042173834,
+          0.00042140915,
+          0.00041993965,
+          0.0004225435,
+          0.00042053988,
+          0.00041992792,
+          0.00042206809
+        ],
+        "peak_ms_per_block": 0.473667,
+        "median_ms_per_10ms_block": 0.42140914999999995,
+        "one_core_percent": 4.214091499999999
+      },
+      "atan2f": {
+        "round_seconds_per_block": [
+          0.00045284295,
+          0.0004529841,
+          0.00045506407,
+          0.00045134428,
+          0.00045367979,
+          0.00045385093,
+          0.00045293655
+        ],
+        "peak_ms_per_block": 0.509315,
+        "median_ms_per_10ms_block": 0.4529841,
+        "one_core_percent": 4.529840999999999
+      },
+      "added_one_core_percentage_points": 0.3157494999999999,
+      "paired_median_added_us_per_10ms_block": 31.574950000000033,
+      "paired_median_added_one_core_percentage_points": 0.31574950000000035
+    }
+  ],
+  "checksum": 7342958
+}

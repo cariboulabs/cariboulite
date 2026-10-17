@@ -17,7 +17,6 @@
 //#define ZF_LOG_LEVEL ZF_LOG_ERROR
 #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 
-#include "datatypes/circular_buffer.h"
 #include "cariboulite_setup.h"
 #include "cariboulite_radio.h"
 
@@ -105,19 +104,14 @@ public:
 	void setDigitalFilter(DigitalFilterType type);
 	DigitalFilterType getDigitalFilter() const { return filterType;};
 	int setFormat(const std::string &fmt);
-	inline int readerThreadRunning() {return reader_thread_running;};
     void activateStream(int active) {stream_active = active;};
     
 public:
     cariboulite_radio_state_st *radio;
     cariboulite_channel_dir_en native_dir;
     size_t mtu_size;
-    std::thread *reader_thread;
     int stream_active;
-    int reader_thread_running;
-	circular_buffer<cariboulite_sample_complex_int16> *rx_queue;
     
-	cariboulite_sample_complex_int16 *interm_native_buffer1;
     cariboulite_sample_complex_int16 *interm_native_buffer2;
     cariboulite_sample_meta* interm_native_meta;
 	DigitalFilterType filterType;

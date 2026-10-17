@@ -1,3 +1,4 @@
+#include <limits.h>
 #ifndef ZF_LOG_LEVEL
     #define ZF_LOG_LEVEL ZF_LOG_VERBOSE
 #endif
@@ -5,7 +6,9 @@
 #define ZF_LOG_TAG "CARIBOU_SMI"
 #include "zf_log/zf_log.h"
 
-#define _GNU_SOURCE
+// #ifndef _GNU_SOURCE
+//     #define _GNU_SOURCE
+// #endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/poll.h>
 #include <sys/time.h>
+#include <sys/mman.h>   // for mlockall, MCL_CURRENT, MCL_FUTURE
 #include <sched.h>
 #include <pthread.h>
 #include <time.h>
@@ -25,24 +29,98 @@
 #include "caribou_smi.h"
 #include "smi_utils.h"
 #include "io_utils/io_utils.h"
+#include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
+
+#ifndef CARIBOU_SMI_BYTES_PER_SAMPLE
+    #define CARIBOU_SMI_BYTES_PER_SAMPLE  (sizeof(caribou_smi_sample_complex_int16))
+#endif
+
 
 //=========================================================================
+// int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state)
+// {
+//     int ret = ioctl(dev->filedesc, SMI_STREAM_IOC_SET_STREAM_STATUS, state);
+//     if (ret != 0)
+//     {
+//         ZF_LOGE("failed setting smi stream state (%d)", state);
+//         return -1;
+//     }
+//     dev->state = state;
+//     return 0;
+// }
+
+/* --- TX leftover accumulator (shared between write/start/stop) --- */
+static caribou_smi_sample_complex_int16 g_tx_accum[16384];
+static size_t g_tx_accum_n = 0;
+
+static inline void caribou_smi_tx_accum_reset(void)
+{
+    g_tx_accum_n = 0;
+}
+
 int caribou_smi_set_driver_streaming_state(caribou_smi_st* dev, smi_stream_state_en state)
 {
-    int ret = ioctl(dev->filedesc, SMI_STREAM_IOC_SET_STREAM_STATUS, state);
-    if (ret != 0)
-    {
-        ZF_LOGE("failed setting smi stream state (%d)", state);
-        return -1;
+    static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+    static smi_stream_state_en last = smi_stream_idle;
+
+    pthread_mutex_lock(&mtx);
+    if (state == last) {
+        pthread_mutex_unlock(&mtx);
+        return 0;            // no-op: desired == current (cached)
     }
-    dev->state = state;
-    return 0;
+
+    int r = ioctl(dev->filedesc, SMI_STREAM_IOC_SET_STREAM_STATUS, state);
+    if (r == 0) {
+        last = state;        // update only on success
+        dev->write_partial_bytes = 0; // a new stream cannot resume an old sample
+    }
+    pthread_mutex_unlock(&mtx);
+    return r;
 }
 
 //=========================================================================
 smi_stream_state_en caribou_smi_get_driver_streaming_state(caribou_smi_st* dev)
 {
     return dev->state;
+}
+
+
+//=========================================================================
+/* --- helpers for “exact quarter” writes and priming ---*/  
+static void caribou_smi_boost_sched(void)
+{
+#ifdef MCL_CURRENT
+    // lock current+future pages in RAM
+    (void)mlockall(MCL_CURRENT | MCL_FUTURE);
+#endif
+
+    // switch to SCHED_FIFO if permitted
+    struct sched_param sp = { .sched_priority = 50 };
+    (void)sched_setscheduler(0, SCHED_FIFO, &sp);
+}
+
+static inline size_t smi_quarter_bytes(const caribou_smi_st *dev)
+{
+    return (size_t)(dev->native_batch_len / 4);
+}
+
+/* Block until exactly 'len' bytes are written (handles EINTR/EAGAIN). */
+static int write_all(int fd, const uint8_t *buf, size_t len)
+{
+    size_t off = 0;
+    while (off < len) {
+        ssize_t r = write(fd, buf + off, len - off);
+        if (r > 0) { off += (size_t)r; continue; }
+        if (r < 0 && errno == EINTR) continue;
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            (void)poll(&(struct pollfd){ .fd = fd, .events = POLLOUT }, 1, 1);
+            continue;
+        }
+        return -1; // real error
+    }
+    return 0;
 }
 
 //=========================================================================
@@ -56,7 +134,7 @@ static void caribou_smi_print_smi_settings(caribou_smi_st* dev, struct smi_setti
     printf("    dma enable: %c, passthru enable: %c\n", settings->dma_enable ? 'Y':'N', settings->dma_passthrough_enable ? 'Y':'N');
     printf("    dma threshold read: %d, write: %d\n", settings->dma_read_thresh, settings->dma_write_thresh);
     printf("    dma panic threshold read: %d, write: %d\n", settings->dma_panic_read_thresh, settings->dma_panic_write_thresh);
-    printf("    native kernel chunk size: %d bytes\n", dev->native_batch_len);
+    printf("    native kernel chunk size: %ld bytes\n", dev->native_batch_len);
 }
 
 //=========================================================================
@@ -90,15 +168,16 @@ static int caribou_smi_get_smi_settings(caribou_smi_st *dev, struct smi_settings
 //=========================================================================
 static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings *settings, bool print)
 {
-    settings->read_setup_time = 0;
-    settings->read_strobe_time = 5;
-    settings->read_hold_time = 0;
-    settings->read_pace_time = 0;
+    //measured in cycles of the SMICLK 1/16MHz = 62.5ns, 1 = 62.5ns
+    settings->read_setup_time = 1;   // orginal value: 0, last try 1
+    settings->read_strobe_time = 5;  // orginal value: 5, last try 3
+    settings->read_hold_time = 1;    // orginal value: 0, last try 1
+    settings->read_pace_time = 1;    // orignal value: 0, last try 0
 
-    settings->write_setup_time = 0;
-    settings->write_strobe_time = 5;
-    settings->write_hold_time = 0;
-    settings->write_pace_time = 0;
+    settings->write_setup_time = 1;  // orginal value: 0, last try 1
+    settings->write_strobe_time = 5; // orginal value: 5, last try 3
+    settings->write_hold_time = 1;   // orginal value: 0, last try 1
+    settings->write_pace_time = 1;   // orginla value: 0, last try 0
 
 	// 8 bit on each transmission (4 TRX per sample)
     settings->data_width = SMI_WIDTH_8BIT;
@@ -110,7 +189,7 @@ static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings 
     settings->pack_data = 1;
 	
 	// External DREQs enabled
-    settings->dma_passthrough_enable = 1;
+    settings->dma_passthrough_enable = 1; // orginal: 1
 	
     // RX DREQ Threshold Level. 
     // A RX DREQ will be generated when the RX FIFO exceeds this threshold level. 
@@ -118,13 +197,13 @@ static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings 
     // If the DMA is set to perform burst reads, the threshold must ensure that there is 
     // sufficient data in the FIFO to satisfy the burst
     // Instruction: Lower is faster response
-    settings->dma_read_thresh = 1;
+    settings->dma_read_thresh = 1; // 0 - 511 range (9 bit)
     
     // TX DREQ Threshold Level. 
     // A TX DREQ will be generated when the TX FIFO drops below this threshold level. 
     // This will instruct an external AXI TX DMA to write more data to the TX FIFO.
     // Instruction: Higher is faster response
-    settings->dma_write_thresh = 254;
+    settings->dma_write_thresh = 254; //381; // orginal: 254
     
     // RX Panic Threshold level.
     // A RX Panic will be generated when the RX FIFO exceeds this threshold level. 
@@ -136,7 +215,7 @@ static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings 
     // A TX Panic will be generated when the TX FIFO drops below this threshold level. 
     // This will instruct the AXI TX DMA to increase the priority of its bus requests.
     // Instruction: Higher is more aggresive
-    settings->dma_panic_write_thresh = 224;
+    settings->dma_panic_write_thresh = 495; // 397; // orginal: 224
 
     if (print)
     {
@@ -166,6 +245,14 @@ static int caribou_smi_setup_settings (caribou_smi_st* dev, struct smi_settings 
     }
     
     return 0;
+}
+
+int caribou_smi_get_current_settings(caribou_smi_st* dev, struct smi_settings* settings)
+{
+    if (!dev || !dev->initialized || !settings)
+        return -1;
+
+    return caribou_smi_get_smi_settings(dev, settings, false);
 }
 
 //=========================================================================
@@ -284,7 +371,7 @@ static int caribou_smi_find_buffer_offset(caribou_smi_st* dev, uint8_t *buffer, 
 
     if (found == false)
     {
-        smi_utils_dump_hex(buffer, 16);
+        //smi_utils_dump_hex(buffer, 16);
         return -1;
     }
 
@@ -440,26 +527,65 @@ again:
     return fds.revents & POLLIN || fds.revents & POLLOUT;
 }
 
-//=========================================================================
+//==old=======================================================================
+// static int caribou_smi_timeout_write(caribou_smi_st* dev,
+//                             uint8_t* buffer,
+//                             size_t len,
+//                             uint32_t timeout_num_millisec)
+// {
+//     int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_smi_to_device);
+
+//     if (res < 0)
+//     {
+//         ZF_LOGD("poll error");
+//         return -1;
+//     }
+//     else if (res == 0)  // timeout
+//     {
+//         ZF_LOGD("===> smi write fd timeout");
+//         return 0;
+//     }
+
+//     return write(dev->filedesc, buffer, len);
+// }
+
+//==new=======================================================================
 static int caribou_smi_timeout_write(caribou_smi_st* dev,
-                            uint8_t* buffer,
-                            size_t len,
-                            uint32_t timeout_num_millisec)
+                                     uint8_t* buffer,
+                                     size_t len,
+                                     uint32_t timeout_ms)
 {
-    int res = caribou_smi_poll(dev, timeout_num_millisec, smi_stream_dir_smi_to_device);
+    uint8_t *p = buffer;
+    size_t   left = len;
+    int      wrote_total = 0;
 
-    if (res < 0)
-    {
-        ZF_LOGD("poll error");
-        return -1;
-    }
-    else if (res == 0)  // timeout
-    {
-        //ZF_LOGD("===> smi write fd timeout");
-        return 0;
+    while (left > 0) {
+        ssize_t r = write(dev->filedesc, p, left);
+        if (r > 0) {
+            p += r;
+            left -= (size_t)r;
+            wrote_total += (int)r;
+            continue;
+        }
+        if (r < 0) {
+            if (errno == EINTR) continue; // retry immediately
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // wait for POLLOUT briefly
+                int ready = caribou_smi_poll(dev, timeout_ms, smi_stream_dir_smi_to_device);
+                if (ready > 0) continue;          // try write again
+                // timeout or poll error → return what we have so far
+                return wrote_total;
+            }
+            // other error
+            return (wrote_total > 0) ? wrote_total : -1;
+        }
+
+        // r == 0 should not happen for a blocking char device; treat as “not ready”
+        int ready = caribou_smi_poll(dev, timeout_ms, smi_stream_dir_smi_to_device);
+        if (ready <= 0) return wrote_total; // timeout or error: partial is fine
     }
 
-    return write(dev->filedesc, buffer, len);
+    return wrote_total;
 }
 
 //=========================================================================
@@ -510,8 +636,13 @@ void caribou_smi_setup_ios(caribou_smi_st* dev)
 }
 
 //=========================================================================
-int caribou_smi_init(caribou_smi_st* dev,
-                    void* context)
+int caribou_smi_init(caribou_smi_st* dev, void* context)
+{
+    return caribou_smi_init_with_fd(dev, context, -1);
+}
+
+// A duplicate retains the early ownership claim's open file description.
+int caribou_smi_init_with_fd(caribou_smi_st* dev, void* context, int owned_fd)
 {
     char smi_file[] = "/dev/smi";
     struct smi_settings settings = {0};
@@ -522,6 +653,7 @@ int caribou_smi_init(caribou_smi_st* dev,
 
     // start from a defined state
     memset(dev, 0, sizeof(caribou_smi_st));
+    dev->filedesc = -1;
 
     // checking the loaded modules
     // --------------------------------------------
@@ -533,13 +665,15 @@ int caribou_smi_init(caribou_smi_st* dev,
 
     // open the smi device file
     // --------------------------------------------
-    int fd = open(smi_file, O_RDWR);
+    int fd = owned_fd >= 0 ? fcntl(owned_fd, F_DUPFD_CLOEXEC, 0)
+                           : open(smi_file, O_RDWR | O_CLOEXEC);
     if (fd < 0)
     {
         ZF_LOGE("couldn't open smi driver file '%s' (%s)", smi_file, strerror(errno));
         return -1;
     }
     dev->filedesc = fd;
+    caribou_smi_boost_sched();   // optional: reduces micro-stalls
 
     // Setup the bus I/Os
     // --------------------------------------------
@@ -583,12 +717,20 @@ int caribou_smi_init(caribou_smi_st* dev,
 //=========================================================================
 int caribou_smi_close (caribou_smi_st* dev)
 {
+    /* Another descriptor may retain ownership: stop DMA explicitly. */
+    if (dev->initialized)
+        caribou_smi_set_driver_streaming_state(dev, smi_stream_idle);
     // release temporary buffers
     if (dev->read_temp_buffer) free(dev->read_temp_buffer);
     if (dev->write_temp_buffer) free(dev->write_temp_buffer);
 
     // close smi device file
-    return close (dev->filedesc);
+    dev->read_temp_buffer = NULL;
+    dev->write_temp_buffer = NULL;
+    int ret = dev->filedesc >= 0 ? close(dev->filedesc) : 0;
+    dev->filedesc = -1;
+    dev->initialized = 0;
+    return ret;
 }
 
 //=========================================================================
@@ -684,10 +826,18 @@ int caribou_smi_read(caribou_smi_st* dev, caribou_smi_channel_en channel,
 #define SMI_TX_SAMPLE_SOF               (1<<2)
 #define SMI_TX_SAMPLE_MODEM_TX_CTRL     (1<<1)
 #define SMI_TX_SAMPLE_COND_TX_CTRL      (1<<0)
+//======helper function====================================================
+void print_binairy32(uint32_t value) {
+    for (int i = 31; i >= 0; --i) {
+        putchar((value & (1 << i)) ? '1' : '0');
+        if (i % 8 == 0 && i != 0) putchar(' ');
+    }
+    putchar('\n');
+}
 //=========================================================================
-static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t data_length, caribou_smi_sample_complex_int16* sample_offset)
+static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t data_length, const caribou_smi_sample_complex_int16* sample_offset)
 {
-    caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
+    const caribou_smi_sample_complex_int16* cmplx_vec = sample_offset;  
     uint32_t *samples = (uint32_t*)(data);
     
     // Sample Structure
@@ -697,8 +847,8 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
     
     for (unsigned int i = 0; i < (data_length / CARIBOU_SMI_BYTES_PER_SAMPLE); i++)
     {                    
-        int32_t ii = 0xFFFF; //cmplx_vec[i].i;
-        int32_t qq = 0; //cmplx_vec[i].q;
+        int32_t ii = cmplx_vec[i].i;
+        int32_t qq = cmplx_vec[i].q;
         ii &= 0x1FFF;
         qq &= 0x1FFF;
 		
@@ -708,58 +858,325 @@ static void caribou_smi_generate_data(caribou_smi_st* dev, uint8_t* data, size_t
         s |= (ii & 0x1); s <<= 6;
         s |= (qq >> 7) & 0x3F; s <<= 8;
         s |= (qq & 0x7F);
+        //s = 0x80000000; // we need only one bit to be correct...
 		
-		//if (i < 2) printf("0x%08X\n", s);
-		
-        samples[i] = __builtin_bswap32(s);
-        //samples[i] = s;
+		//if (i < 2) 
+        //{
+        //    printf("0x%08X   ", s);
+        //    print_binairy32(s);
+        //}  
+        
+        //samples[i] = __builtin_bswap32(s);
+        samples[i] = s; // like this we have 0 missed 'programmed write'.
     }
 }
 
-//=========================================================================
-int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
-                        caribou_smi_sample_complex_int16* samples, size_t length_samples)
-{
-    size_t left_to_write = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;   // in bytes
-    size_t written_so_far = 0;                                      // in samples
-    uint32_t to_millisec = (2 * length_samples * 1000) / CARIBOU_SMI_SAMPLE_RATE;
-    if (to_millisec < 2) to_millisec = 2;
+//==old======================================================================
+// int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
+//                         caribou_smi_sample_complex_int16* samples, size_t length_samples)
+// {
+//     size_t left_to_write = length_samples * CARIBOU_SMI_BYTES_PER_SAMPLE;   // in bytes
+//     size_t written_so_far = 0;                                      // in samples
+//     //uint32_t to_millisec = (2 * length_samples * 1000) / CARIBOU_SMI_SAMPLE_RATE;
+//     uint32_t to_millisec = (2 * length_samples * 1000) / dev->sample_rate;
+//     if (to_millisec < 2) to_millisec = 2;
 
-    smi_stream_state_en state = smi_stream_tx_channel;
+//     smi_stream_state_en state = smi_stream_tx_channel;
 
-    // apply the state
-    if (caribou_smi_set_driver_streaming_state(dev, state) != 0)
-    {
-		printf("caribou_smi_set_driver_streaming_state -> Failed\n");
-        return -1;
-    }
+//     // apply the state
+//     // if (caribou_smi_set_driver_streaming_state(dev, state) != 0)
+//     // {
+// 	// 	printf("caribou_smi_set_driver_streaming_state -> Failed\n");
+//     //     return -1;
+//     // }
 
-    while (left_to_write)
-    {
-        // prepare the buffer
-        caribou_smi_sample_complex_int16* sample_offset = samples + written_so_far;
-        size_t current_write_len = (left_to_write > dev->native_batch_len) ? dev->native_batch_len : left_to_write;
+//     while (left_to_write)
+//     {
+//         // prepare the buffer
+//         caribou_smi_sample_complex_int16* sample_offset = samples + written_so_far;
+//         size_t current_write_len = (left_to_write > dev->native_batch_len) ? dev->native_batch_len : left_to_write;
 		
-        // make sure the written bytes length is a whole sample multiplication
-        // if the number of remaining bytes is smaller than sample size -> finish;
-        current_write_len &= 0xFFFFFFFC;
-        if (!current_write_len) break;
+//         // make sure the written bytes length is a whole sample multiplication
+//         // if the number of remaining bytes is smaller than sample size -> finish;
+//         current_write_len &= 0xFFFFFFFC;
+//         if (!current_write_len) break;
 
-        caribou_smi_generate_data(dev, dev->write_temp_buffer, current_write_len, sample_offset);
+//         caribou_smi_generate_data(dev, dev->write_temp_buffer, current_write_len, sample_offset);
 
-        int ret = caribou_smi_timeout_write(dev, dev->write_temp_buffer, current_write_len, to_millisec);
-        if (ret < 0)
-        {
+//         int ret = caribou_smi_timeout_write(dev, dev->write_temp_buffer, current_write_len, to_millisec);
+//         if (ret < 0)
+//         {
+//             return -1;
+//         }
+//         else if (ret == 0) break;
+
+//         left_to_write  -= (size_t)ret;   // subtract *actual* bytes written
+//         written_so_far += (size_t)ret / CARIBOU_SMI_BYTES_PER_SAMPLE;
+//     }
+
+//     return written_so_far;
+// }
+
+//==new====================================================================
+int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en channel,
+                      caribou_smi_sample_complex_int16* samples, size_t length_samples)
+{
+    if (length_samples == 0) return 0;
+    // The return type can represent at most INT_MAX accepted samples per call.
+    if (length_samples > INT_MAX) length_samples = INT_MAX;
+    return caribou_smi_write_samples(dev, channel, samples, (int)length_samples);
+}
+
+// int caribou_smi_write_samples(caribou_smi_st *dev,
+//                               caribou_smi_channel_en ch,
+//                               const caribou_smi_sample_complex_int16 *samples,
+//                               int n_samples)
+// {
+//     (void)ch; // channel via driver state
+
+//     if (!dev || dev->filedesc < 0 || !samples || n_samples <= 0)
+//         return -EINVAL;
+
+//     const size_t bps = (size_t)CARIBOU_SMI_BYTES_PER_SAMPLE;
+//     const size_t total_bytes = (size_t)n_samples * bps;
+
+//     size_t bytes_left = total_bytes;
+//     size_t consumed_samples = 0;
+
+//     // Use a small write timeout; driver/DMA will pull as ready.
+//     const uint32_t to_ms = 5;
+
+//     while (bytes_left) {
+//         // write at most native chunk; keep it whole-sample aligned
+//         size_t cur = (bytes_left > dev->native_batch_len) ? dev->native_batch_len : bytes_left;
+//         cur &= ~(bps - 1);                  // round down to whole sample
+//         if (!cur) break;
+
+//         // Pack caller’s samples for this chunk into write_temp_buffer
+//         size_t cur_samp = cur / bps;
+//         caribou_smi_generate_data(dev,
+//                                   (uint8_t*)dev->write_temp_buffer,
+//                                   cur,
+//                                   (caribou_smi_sample_complex_int16*)(samples + consumed_samples));
+
+//         // Write (may be partial); returns bytes actually written
+//         int w = caribou_smi_timeout_write(dev,
+//                                           (uint8_t*)dev->write_temp_buffer,
+//                                           cur,
+//                                           to_ms);
+//         if (w < 0) {
+//             // hard error
+//             return (consumed_samples > 0) ? (int)consumed_samples : w;
+//         }
+//         if (w == 0) {
+//             // timed out this round; report what we consumed so far
+//             break;
+//         }
+
+//         // Convert bytes written back to samples *we can advance the source by*
+//         size_t w_whole = (size_t)w & ~(bps - 1);
+//         size_t w_samp  = w_whole / bps;
+
+//         consumed_samples += w_samp;
+//         bytes_left       -= w_whole;
+
+//         if (w_whole < cur) {
+//             // short write; let caller feed again later
+//             break;
+//         }
+//     }
+
+//     return (int)consumed_samples;
+// }
+
+int caribou_smi_write_samples(caribou_smi_st *dev,
+                              caribou_smi_channel_en ch,
+                              const caribou_smi_sample_complex_int16 *samples,
+                              int n_samples)
+{
+    (void)ch;
+    const size_t bps = CARIBOU_SMI_BYTES_PER_SAMPLE;
+    if (!dev || dev->filedesc < 0 || !samples || n_samples <= 0 ||
+        !dev->write_temp_buffer || dev->native_batch_len < bps)
+        return -EINVAL;
+
+    size_t consumed = 0;
+    int error = 0;
+    while (consumed < (size_t)n_samples) {
+        size_t chunk_samples = dev->native_batch_len / bps;
+        if (chunk_samples > (size_t)n_samples - consumed)
+            chunk_samples = (size_t)n_samples - consumed;
+        size_t chunk_bytes = chunk_samples * bps;
+        caribou_smi_generate_data(dev, (uint8_t*)dev->write_temp_buffer,
+                                  chunk_bytes, samples + consumed);
+
+        // The caller retries the first unreported sample, including its prefix.
+        size_t off = dev->write_partial_bytes;
+        int attempts = 0;
+        while (off < chunk_bytes) {
+            int w = caribou_smi_timeout_write(dev,
+                        (uint8_t*)dev->write_temp_buffer + off,
+                        chunk_bytes - off, 25);
+            if (w < 0) { error = w; break; }
+            if (w == 0) {
+                if (++attempts >= 4) break;
+                continue;
+            }
+            off += (size_t)w;
+            attempts = 0;
+        }
+
+        // Account for progress on every exit, including timeout and hard error.
+        consumed += off / bps;
+        dev->write_partial_bytes = off % bps;
+        if (off < chunk_bytes) break;
+    }
+    return consumed ? (int)consumed : error;
+}
+
+
+// Deadline-based entry points for callers with an explicit latency budget.
+// The SMI driver returns immediately when its FIFO is empty/full. Stream I/O
+// and transitions must be serialized by the caller, as with the legacy API.
+static int64_t smi_now_us(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+}
+
+static int64_t smi_deadline_us(long timeout_us)
+{
+    int64_t now = smi_now_us();
+    if (timeout_us <= 0) return now;
+    return timeout_us > INT64_MAX - now ? INT64_MAX : now + timeout_us;
+}
+
+static int smi_transfer_until(caribou_smi_st *dev, void *buffer, size_t bytes,
+                              bool tx, int64_t deadline)
+{
+    bool first = true;
+    for (;;) {
+        if (!first && smi_now_us() >= deadline) return 0;
+        first = false;
+        ssize_t n = tx ? write(dev->filedesc, buffer, bytes)
+                       : read(dev->filedesc, buffer, bytes);
+        if (n > 0) return (int)n;
+        if (n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK)
+            return -1;
+        if (n < 0 && errno == EINTR) continue;
+        int64_t remaining = deadline - smi_now_us();
+        if (remaining <= 0) return 0;
+        struct timespec wait = { remaining / 1000000, (remaining % 1000000) * 1000 };
+        struct pollfd fd = { .fd = dev->filedesc, .events = tx ? POLLOUT : POLLIN };
+        int ready = ppoll(&fd, 1, &wait, NULL);
+        if (ready < 0) {
+            if (errno == EINTR) continue;
             return -1;
         }
-        else if (ret == 0) break;
-
-        written_so_far += current_write_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
-        left_to_write -= ret;
+        if (ready == 0) return 0;
+        if (fd.revents & (POLLERR | POLLHUP | POLLNVAL)) return -1;
     }
-
-    return written_so_far;
 }
+
+int caribou_smi_read_timed(caribou_smi_st *dev, caribou_smi_channel_en channel,
+    caribou_smi_sample_complex_int16 *samples, caribou_smi_sample_meta *metadata,
+    size_t count, long timeout_us)
+{
+    if (!count) return 0;
+    if (!dev || dev->filedesc < 0 || !samples || !dev->read_temp_buffer ||
+        dev->native_batch_len < CARIBOU_SMI_BYTES_PER_SAMPLE) return -1;
+    int64_t deadline = smi_deadline_us(timeout_us);
+    size_t max_count = dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
+    if (count > max_count) count = max_count;
+    int n = smi_transfer_until(dev, dev->read_temp_buffer,
+                               count * CARIBOU_SMI_BYTES_PER_SAMPLE, false, deadline);
+    if (n <= 0) return n;
+    if (n % CARIBOU_SMI_BYTES_PER_SAMPLE) return -3;
+    if (caribou_smi_rx_data_analyze(dev, channel, dev->read_temp_buffer, n,
+                                   samples, metadata) < 0) return -3;
+    if (dev->debug_mode != caribou_smi_none) return -2;
+    return n / CARIBOU_SMI_BYTES_PER_SAMPLE;
+}
+
+// EXTLB echoes TX frames, including I_DATA[0] (embedded TX control).
+// Normal RX requires that bit to be zero; only this diagnostic reader permits it.
+int caribou_smi_read_loopback_timed(caribou_smi_st *dev,
+    caribou_smi_channel_en channel, caribou_smi_sample_complex_int16 *samples,
+    size_t count, long timeout_us)
+{
+    if (!count) return 0;
+    if (!dev || dev->filedesc < 0 || !samples || !dev->read_temp_buffer ||
+        dev->native_batch_len < CARIBOU_SMI_BYTES_PER_SAMPLE) return -1;
+    if (dev->debug_mode != caribou_smi_none) return -2;
+    size_t capacity = dev->native_batch_len / CARIBOU_SMI_BYTES_PER_SAMPLE;
+    if (count > capacity) count = capacity;
+    int n = smi_transfer_until(dev, dev->read_temp_buffer, count * 4,
+                              false, smi_deadline_us(timeout_us));
+    if (n <= 0) return n;
+    if (n < 4) return -3;
+    const uint8_t *bytes = (const uint8_t *)dev->read_temp_buffer;
+    int probe = n / 4 < 4 ? n / 4 : 4;
+    int offset;
+    for (offset = 0; offset + probe * 4 <= n; ++offset) {
+        int valid = 0;
+        for (; valid < probe; ++valid) {
+            uint32_t word;
+            memcpy(&word, bytes + offset + valid * 4, 4);
+            if ((word & 0xC000C000u) != 0x80004000u) break;
+        }
+        if (valid == probe) break;
+    }
+    if (offset + probe * 4 > n) return -3;
+    int decoded = 0;
+    for (; offset + 4 <= n && (size_t)decoded < count; offset += 4) {
+        uint32_t word;
+        memcpy(&word, bytes + offset, 4);
+        if ((word & 0xC000C000u) != 0x80004000u) break;
+        int16_t i = (word >> 17) & 0x1fff;
+        int16_t q = (word >> 1) & 0x1fff;
+        if (i >= 0x1000) i -= 0x2000;
+        if (q >= 0x1000) q -= 0x2000;
+        samples[decoded].i = channel == caribou_smi_channel_2400 ? q : i;
+        samples[decoded].q = channel == caribou_smi_channel_2400 ? i : q;
+        ++decoded;
+    }
+    return decoded ? decoded : -3;
+}
+
+int caribou_smi_write_timed(caribou_smi_st *dev, caribou_smi_channel_en channel,
+    const caribou_smi_sample_complex_int16 *samples, size_t count, long timeout_us)
+{
+    (void)channel;
+    if (!count) return 0;
+    const size_t bps = CARIBOU_SMI_BYTES_PER_SAMPLE;
+    if (!dev || dev->filedesc < 0 || !samples || !dev->write_temp_buffer ||
+        dev->native_batch_len < bps) return -1;
+    int64_t deadline = smi_deadline_us(timeout_us);
+    if (count > dev->native_batch_len / bps) count = dev->native_batch_len / bps;
+    size_t bytes = count * bps;
+    caribou_smi_generate_data(dev, dev->write_temp_buffer, bytes, samples);
+    size_t off = dev->write_partial_bytes;
+    int result;
+    do {
+        result = smi_transfer_until(dev, (uint8_t*)dev->write_temp_buffer + off,
+                                     bytes - off, true, deadline);
+        if (result <= 0) break;
+        off += result;
+        // Return available whole samples promptly; preserve the next prefix.
+        if (off >= bps || smi_now_us() >= deadline) break;
+    } while (off < bytes);
+    dev->write_partial_bytes = off % bps;
+    return off >= bps ? (int)(off / bps) : (result < 0 ? -1 : 0);
+}
+
+// Optionally keep the older name as a thin wrapper:
+// int caribou_smi_write(caribou_smi_st* dev, caribou_smi_channel_en ch,
+//                       caribou_smi_sample_complex_int16* samples, size_t length_samples)
+// {
+//     int n = (int)length_samples;
+//     return caribou_smi_write_samples(dev, ch, samples, n);
+// }
 
 //=========================================================================
 size_t caribou_smi_get_native_batch_samples(caribou_smi_st* dev)
@@ -779,5 +1196,56 @@ int caribou_smi_flush_fifo(caribou_smi_st* dev)
         ZF_LOGE("failed flushing driver fifos");
         return -1;
     }
+    return 0;
+}
+
+int caribou_smi_start_tx(caribou_smi_st *dev)
+{
+    if (!dev) return -EINVAL;
+    if (dev->state == smi_stream_tx_channel) return 0;
+
+    // 1) Arm TX in the kernel FIRST
+    if (caribou_smi_set_driver_streaming_state(dev, smi_stream_tx_channel) != 0)
+        return -1;
+    dev->state = smi_stream_tx_channel;
+
+    // 2) Prefill a few chunks of steady zeros using the SAME writer
+    const size_t bps     = (size_t)CARIBOU_SMI_BYTES_PER_SAMPLE;
+    const size_t q_bytes = (size_t)(dev->native_batch_len / 4);
+    const size_t q_samp  = q_bytes / bps;
+
+    caribou_smi_sample_complex_int16 zero = {0, 0};
+
+    // Build one zero quarter in write_temp_buffer
+    for (size_t i = 0; i < q_samp; ++i) {
+        ((caribou_smi_sample_complex_int16*)dev->write_temp_buffer)[i] = zero;
+    }
+    // Pack it to device format
+    caribou_smi_generate_data(dev, (uint8_t*)dev->write_temp_buffer, q_bytes,
+                              (caribou_smi_sample_complex_int16*)dev->write_temp_buffer);
+
+    // Push a few quarters (non-blocking, allow partials/timeouts)
+    for (int i = 0; i < 8; ++i) {
+        int w = caribou_smi_timeout_write(dev,
+                                          (uint8_t*)dev->write_temp_buffer,
+                                          q_bytes,
+                                          5);
+        if (w <= 0) break; // fine; DMA will pull as it goes
+    }
+
+    return 0;
+}
+
+int caribou_smi_stop(caribou_smi_st *dev) {
+
+    if (!dev) return -EINVAL;
+
+    /* Drop any partial block so next TX starts clean */
+    //caribou_smi_tx_accum_reset();
+
+    if (dev->state == smi_stream_idle) return 0;
+    if (caribou_smi_set_driver_streaming_state(dev, smi_stream_idle) != 0) return -1;
+    
+    dev->state = smi_stream_idle;
     return 0;
 }

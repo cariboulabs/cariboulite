@@ -134,6 +134,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
         }
     }
 
+    stream->activateStream(0);
     cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false);
     return stream;
 }
@@ -146,6 +147,7 @@ SoapySDR::Stream *Cariboulite::setupStream(const int direction,
      */
 void Cariboulite::closeStream(SoapySDR::Stream *stream)
 {
+    stream->activateStream(0);
     cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false);
 }
 
@@ -188,10 +190,13 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
                                     const long long timeNs,
                                     const size_t numElems)
 {
-    stream->activateStream(1);
+    if (flags || numElems) return SOAPY_SDR_NOT_SUPPORTED;
+    stream->activateStream(0);
     int ret = cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), true);
+    if (ret != 0) return SOAPY_SDR_STREAM_ERROR;
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    return ret;
+    stream->activateStream(1);
+    return 0;
 }
 
 //========================================================
@@ -211,8 +216,10 @@ int Cariboulite::activateStream(SoapySDR::Stream *stream,
      */
 int Cariboulite::deactivateStream(SoapySDR::Stream *stream, const int flags, const long long timeNs)
 {
+    if (flags) return SOAPY_SDR_NOT_SUPPORTED;
     stream->activateStream(0);
-	return cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false);
+    return cariboulite_radio_activate_channel(radio, stream->getInnerStreamType(), false) == 0
+        ? 0 : SOAPY_SDR_STREAM_ERROR;
 }
 
 //========================================================
@@ -244,6 +251,8 @@ int Cariboulite::readStream(
             long long &timeNs,
             const long timeoutUs)
 {
+    flags = 0;
+    timeNs = 0;
 	// Verify that it is an RX stream
     if (stream->getInnerStreamType() != cariboulite_channel_dir_rx)
     {
@@ -281,6 +290,7 @@ int Cariboulite::writeStream(
             const long long timeNs, // const long long !!
             const long timeoutUs)
 {
+    if (flags) return SOAPY_SDR_NOT_SUPPORTED;
 	// Verify that it is an TX stream
     if (stream->getInnerStreamType() != cariboulite_channel_dir_tx)
     {

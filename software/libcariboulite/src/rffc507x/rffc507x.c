@@ -253,7 +253,7 @@ void rffc507x_reg_write(rffc507x_st* dev, uint8_t r, uint16_t v)
 //===========================================================================
 void rffc507x_disable(rffc507x_st* dev)
 {
-	ZF_LOGD("rfc5071_disable");
+	ZF_LOGD("rfc507x_disable");
 	set_RFFC507X_ENBL(dev, 0);
 	rffc507x_regs_commit(dev);
 }
@@ -261,7 +261,7 @@ void rffc507x_disable(rffc507x_st* dev)
 //===========================================================================
 void rffc507x_enable(rffc507x_st* dev)
 {
-	ZF_LOGD("rfc5071_enable");
+	ZF_LOGD("rfc507x_enable");
 	set_RFFC507X_ENBL(dev, 1);
 	rffc507x_regs_commit(dev);
 }
@@ -389,22 +389,19 @@ void rffc507x_readback(rffc507x_st* dev, uint16_t *readback_buff, int buf_len)
 void rffc507x_readback_status(rffc507x_st* dev, rffc507x_device_id_st* dev_id,
                                                 rffc507x_device_status_st* stat)
 {
-	uint16_t *dev_id_int = (uint16_t *)dev_id;
-	uint16_t *stat_int = (uint16_t *)stat;
-
-	if (dev_id_int)
+	if (dev_id)
 	{
 		set_RFFC507X_READSEL(dev, 0);
 		rffc507x_regs_commit(dev);
-		*dev_id_int = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
+		dev_id->raw = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
 		//printf("%04X\n", *dev_id_int);
 	}
 
-	if (stat_int)
+	if (stat)
 	{
 		set_RFFC507X_READSEL(dev, 1);
 		rffc507x_regs_commit(dev);
-		*stat_int = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
+		stat->raw = rffc507x_reg_read(dev, RFFC507X_READBACK_REG);
 		//printf("%04X\n", *stat_int);
 	} 
 }
@@ -413,21 +410,20 @@ void rffc507x_readback_status(rffc507x_st* dev, rffc507x_device_id_st* dev_id,
 void rffc507x_print_dev_id(rffc507x_device_id_st* dev_id)
 {
 	if (!dev_id) return;
-	uint16_t *temp = (uint16_t*)dev_id;
-	ZF_LOGD("RFFC507X DEVID: 0x%04X ID: 0x%04X, Rev: %d (%s)", *temp, 
-										dev_id->device_id, dev_id->device_rev, 
-										dev_id->device_rev==1?"RFFC507x":"RFFC507xA");
+	//uint16_t *temp = (uint16_t*)dev_id;
+	ZF_LOGD("RFFC507X DEVID: 0x%04X ID: 0x%04X, Rev: %d (%s)", dev_id->raw, 
+										dev_id->fields.device_id, dev_id->fields.device_rev, 
+										dev_id->fields.device_rev==1?"RFFC507x":"RFFC507xA");
 }
 
 //===========================================================================
 void rffc507x_print_stat(rffc507x_device_status_st* stat)
 {
 	if (!stat) return;
-	uint16_t *temp = (uint16_t*)stat;
 	ZF_LOGD("RFFC507X STAT: 0x%04X PLL_LOCK: %d, CT_CAL: %d, KV_CAL: %d, CT_CAL_FAIL: %d",
-			*temp,
-			stat->pll_lock, stat->coarse_tune_cal_value, 
-			stat->kv_cal_value, stat->coarse_tune_cal_fail);
+			stat->raw,
+			stat->fields.pll_lock, stat->fields.coarse_tune_cal_value, 
+			stat->fields.kv_cal_value, stat->fields.coarse_tune_cal_fail);
 }
 
 

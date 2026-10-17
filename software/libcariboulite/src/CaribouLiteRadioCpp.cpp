@@ -97,6 +97,9 @@ int CaribouLiteRadio::ReadSamples(std::complex<float>* samples, size_t num_to_re
 //==================================================================
 int CaribouLiteRadio::ReadSamples(std::complex<short>* samples, size_t num_to_read, uint8_t* meta)
 {
+    // Bound the C reader by the actual allocation, even for oversized requests.
+    if (_read_capacity == 0) return 0;
+    if (num_to_read > _read_capacity) num_to_read = _read_capacity;
     if (!_rx_is_active || _read_samples == NULL || _read_metadata == NULL || num_to_read == 0)
     {
         printf("reading from closed stream: rx_active = %d, _read_samples_is_null=%d, _read_metadata_is_null=%d, num_to_read=%ld\n",
@@ -191,6 +194,7 @@ CaribouLiteRadio::CaribouLiteRadio( const cariboulite_radio_state_st* radio,
         // allocate internal buffers
         _read_samples = new cariboulite_sample_complex_int16[mtu_size];       
         _read_metadata = new cariboulite_sample_meta[mtu_size];        
+        _read_capacity = mtu_size;
     }
     
     _write_samples = NULL;

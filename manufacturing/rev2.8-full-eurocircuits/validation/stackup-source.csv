@@ -1,0 +1,14 @@
+Source Row,Name,Material,Thickness,Dielectric Constant
+4,Top Paste,,,
+5,Top Overlay,,,
+6,Top Solder,White,1.00mil,4.0
+7,Component Side,Copper,1.38mil,
+8,Dielectric 1,PrePreg,4.33mil,4.3
+9,Layer 1,Copper,1.38mil,
+10,Dielectric 7,FR-4,47.24mil,4.3
+11,Layer 2,Copper,1.38mil,
+12,Dielectric 2,PrePreg,4.33mil,4.3
+13,Solder Side,Copper,1.38mil,
+14,Bottom Solder,White,1.00mil,4.0
+15,Bottom Overlay,,,
+16,Bottom Paste,,,

@@ -1,0 +1,35 @@
+{
+  "automation_completed": true,
+  "returncode": 0,
+  "rssi": {
+    "12_rx_2000000": {
+      "count": 10,
+      "min_dbm": -109.0,
+      "mean_dbm": -106.4,
+      "max_dbm": -103.0
+    },
+    "12_rx_4000000": {
+      "count": 10,
+      "min_dbm": -107.0,
+      "mean_dbm": -102.7,
+      "max_dbm": -100.0
+    },
+    "14_rx_2000000": {
+      "count": 10,
+      "min_dbm": -114.0,
+      "mean_dbm": -107.0,
+      "max_dbm": -104.0
+    },
+    "14_rx_4000000": {
+      "count": 10,
+      "min_dbm": -102.0,
+      "mean_dbm": -63.3,
+      "max_dbm": -58.0
+    }
+  },
+  "audible_result": "Jan confirmed normal baseline completion, correct tone pitch and clean modulation.",
+  "listener_confirmation_date": "2026-09-19",
+  "manual_selftest": "Option 13 passed; confirmed separately by Jan.",
+  "extended_rx": "Jan reports extended RX revealed nothing out of the ordinary. Exact duration and per-rate details were not separately supplied.",
+  "h4_result": "Passed and explicitly accepted by Jan on 2026-09-19."
+}

@@ -1,6 +1,12 @@
 # Prerequisites
 *.d
 
+# macOS Finder metadata
+.DS_Store
+
+# Python bytecode caches
+__pycache__/
+
 # Object files
 *.o
 *.ko
@@ -41,6 +47,7 @@
 *.su
 *.idb
 *.pdb
+*.log
 
 # Kernel Module Compile Results
 *.mod*

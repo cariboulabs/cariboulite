@@ -1,0 +1,44 @@
+Subject: Technical feasibility / quotation for 5 CaribouLite Full Rev 2.8 assemblies
+
+Please review the attached original production data and derivative BOM/CPL for
+five Full Rev 2.8 boards. This is an exact-design reproduction and a quotation
+request only. Please do not alter PCB geometry or substitute components without
+written approval.
+
+1. Can you manufacture the specified 0.1016 mm blind holes: 661 from copper 1
+   to 2, and 736 from copper 3 to 4? All three NC drill files are included.
+   Please confirm the process, layer spans, finished hole sizes, and any
+   required via filling/capping. Do not reinterpret these as through holes.
+
+2. Can you reproduce the attached stack report's 0.109982 mm outer dielectrics,
+   1.199896 mm centre dielectric and nominal 35.052 um copper layers? Your
+   published blind-via process uses a reversed build, whereas this report
+   labels the outer dielectric PrePreg and centre FR-4. Please identify any
+   required material/process or thickness deviation explicitly for review.
+   The report's 1.610868 mm total includes 0.0254 mm mask on each side;
+   copper plus dielectric sums to 1.560068 mm. Please clarify finished thickness.
+
+3. Please inspect the original repeated outline geometry, the outline included
+   in copper exports, mask/paste, mixed PTH/NPTH through file, and minimum
+   geometry. Identify any adjustment your CAM process proposes before applying it.
+   Surface finish, laminate grade, mask colour, copper and thickness tolerances
+   need agreement; please identify your proposed values rather than assume them.
+
+4. The assembly BOM specifies 205 components per board. Four extra source PnP
+   references are schematic-marked DNP; TP13 is a bare test point. The normalized
+   CPL contains only the 205 BOM components. Please verify the import and all
+   polarized/IC rotations, especially bottom-side rotation conventions and J1.
+   Coordinates are mm in the unchanged absolute Gerber frame. J1's centre is
+   corrected to its 40-hole centroid; original side and rotation are preserved.
+
+5. Please quote exact component sourcing and identify unavailable/ambiguous
+   parts, minimum quantities, assembly spares and any customer-supplied items.
+   Revised manufacturer codes require documented identity and approval before
+   use. Please pay particular attention to the Abracon 26 MHz TCXO, Coilcraft
+   0402CS-5N6XGLW, TC1-1-13M+, and the two Johanson legacy MPNs.
+
+Please provide the feasibility findings, DFM/assembly warnings, explicit
+assumptions and quotation before any manufacturing release. No substitutions,
+design changes, procurement or manufacture are authorized by this request.
+
+Draft prepared for the owner; not sent.

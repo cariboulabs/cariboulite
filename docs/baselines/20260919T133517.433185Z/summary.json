@@ -1,0 +1,34 @@
+{
+  "automation_completed": true,
+  "returncode": 0,
+  "rssi": {
+    "12_rx_2000000": {
+      "count": 10,
+      "min_dbm": -110.0,
+      "mean_dbm": -106.1,
+      "max_dbm": -104.0
+    },
+    "12_rx_4000000": {
+      "count": 10,
+      "min_dbm": -106.0,
+      "mean_dbm": -103.6,
+      "max_dbm": -100.0
+    },
+    "14_rx_2000000": {
+      "count": 10,
+      "min_dbm": -107.0,
+      "mean_dbm": -105.2,
+      "max_dbm": -103.0
+    },
+    "14_rx_4000000": {
+      "count": 10,
+      "min_dbm": -107.0,
+      "mean_dbm": -102.9,
+      "max_dbm": -98.0
+    }
+  },
+  "audible_result": "Jan reports all H6 tests pass.",
+  "listener_confirmation_date": "2026-09-19",
+  "h6_result": "Passed: Jan confirmed all requested tests pass.",
+  "observation": "Menu 14 RX source selector reads 1 in HiF RX and resets to 0 on TX startup. This selector is unused for TX; display label clarified after the test."
+}

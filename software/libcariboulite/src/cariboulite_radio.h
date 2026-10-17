@@ -15,6 +15,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /**
  * @brief Radio channel direction
@@ -174,6 +175,7 @@ typedef struct
     cariboulite_radio_sample_rate_en    tx_fs;
     
     bool                                tx_loopback_anabled;
+    bool                                tx_control_with_iq_if; // if true, the modem will control TX with I/Q data
 
     // at86rf215_radio_energy_detection_st rx_energy_detection;
     float                               rx_energy_detection_value;
@@ -607,6 +609,15 @@ int cariboulite_radio_read_samples(cariboulite_radio_state_st* radio,
 int cariboulite_radio_write_samples(cariboulite_radio_state_st* radio,
                             cariboulite_sample_complex_int16* buffer,
                             size_t length);  
+
+// Explicit timeout in microseconds; returns up to one native batch.
+// Zero means timeout, negatives are errors; legacy entry points are unchanged.
+int cariboulite_radio_read_samples_timed(cariboulite_radio_state_st *radio,
+    cariboulite_sample_complex_int16 *buffer, cariboulite_sample_meta *metadata,
+    size_t length, long timeout_us);
+
+int cariboulite_radio_write_samples_timed(cariboulite_radio_state_st *radio,
+    cariboulite_sample_complex_int16 *buffer, size_t length, long timeout_us);
 
 /**
  * @brief Get Native Chunk (MTU)
