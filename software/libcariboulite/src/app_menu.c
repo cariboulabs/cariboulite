@@ -1147,8 +1147,8 @@ void monitor_modem_status(sys_st *sys)
 	timeout(200);
         
 	double frequency = 430100000;     // Default frequency in Hz
-    float  tx_bw     = 1000000.0f;    // Default TX bandwidth in Hz
-    float  tx_sr     = 4000000.0f;    // Default TX sample rate in Hz
+    float  tx_bw     = 0.0f;          // TX bandwidth readback in Hz
+    float  tx_sr     = 0.0f;          // TX sample-rate readback in Hz
     float  rx_bw     = 2000000.0f;    // Default RX bandwidth in Hz
     float  rx_sr     = 4000000.0f;    // Default RX sample rate in Hz
     const char* rate_notice = "[1] 1 MS/s  [2] 2 MS/s  [4] 4 MS/s: stop TX and RX before changing";
@@ -1197,8 +1197,7 @@ void monitor_modem_status(sys_st *sys)
 	HW_LOCK(); 
 	cariboulite_radio_set_frequency(radio, true, &frequency);
 	cariboulite_radio_set_tx_power(radio, txpar.tx_power_dbm);
-    cariboulite_radio_set_tx_bandwidth_flt(radio,tx_bw);
-    cariboulite_radio_set_tx_samp_cutoff_flt(radio, tx_sr);
+    // The shared TX pipeline already configured the NBFM filters and sample rate.
     cariboulite_radio_set_rx_bandwidth_flt(radio,rx_bw);
     cariboulite_radio_set_rx_sample_rate_flt(radio, rx_sr);
 	HW_UNLOCK();
