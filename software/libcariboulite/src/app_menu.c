@@ -51,6 +51,7 @@ _Static_assert(CARIBOU_SMI_BYTES_PER_SAMPLE == sizeof(caribou_smi_sample_complex
 
 #include <pthread.h>
 #include <sched.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/select.h> 
 
@@ -1190,9 +1191,6 @@ void monitor_modem_status(sys_st *sys)
 	int screen_max_x;
 	// int ret = 0;
 
-    struct smi_settings smi_set = {0};
-    caribou_smi_get_current_settings(&sys->smi, &smi_set);
-
 	// Set up the radio
 	HW_LOCK(); 
 	cariboulite_radio_set_frequency(radio, true, &frequency);
@@ -1231,10 +1229,25 @@ void monitor_modem_status(sys_st *sys)
         printw("[F] TX %.6f MHz  [G] RX %.6f MHz", txpar.freq_hz/1e6, rxpar.freq_hz/1e6);
         move(3,0);
         printw("SMI timing settings: (n x 62.5ns)");
+        struct smi_settings smi_set = {0};
+        HW_LOCK();
+        bool smi_settings_valid = ioctl(sys->smi.filedesc,
+            BCM2835_SMI_IOC_GET_SETTINGS, &smi_set) == 0;
+        HW_UNLOCK();
         move(4,0);
-        printw("    reading setup: %d strobe: %d  hold: %d pace: %d", smi_set.read_setup_time, smi_set.read_strobe_time, smi_set.read_hold_time, smi_set.read_pace_time);
+        if (smi_settings_valid)
+            printw("    reading setup: %d strobe: %d  hold: %d pace: %d",
+                smi_set.read_setup_time, smi_set.read_strobe_time,
+                smi_set.read_hold_time, smi_set.read_pace_time);
+        else
+            printw("    reading timings: unavailable");
         move(5,0);
-        printw("    writing setup: %d strobe: %d  hold: %d pace: %d", smi_set.write_setup_time, smi_set.write_strobe_time, smi_set.write_hold_time, smi_set.write_pace_time);
+        if (smi_settings_valid)
+            printw("    writing setup: %d strobe: %d  hold: %d pace: %d",
+                smi_set.write_setup_time, smi_set.write_strobe_time,
+                smi_set.write_hold_time, smi_set.write_pace_time);
+        else
+            printw("    writing timings: unavailable");
         move(6,0);
         printw("AT86RF215 Modem Status Registers:");
         move(7,0);
